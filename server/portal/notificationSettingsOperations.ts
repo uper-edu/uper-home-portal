@@ -22,7 +22,7 @@ export async function writeNotificationSettings(
   const {webhook,...body}=input;
   // Older channel editors may still submit a Webhook directly. The receipt stores no target or secret.
   if(typeof webhook==='string'){
-    const key=process.env.ACCESS_OPERATION_KEY||process.env.LARK_WEBHOOK_ENCRYPTION_KEY;
+    const key=process.env.LARK_WEBHOOK_ENCRYPTION_KEY;
     if(!key)invalid('notification_settings_unavailable',503);
     body.webhookFingerprint=createHmac('sha256',key!).update(webhook).digest('hex');
   }else if(webhook===null)body.webhookCleared=true;

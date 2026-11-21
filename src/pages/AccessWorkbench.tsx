@@ -10,14 +10,13 @@ import {AdminEditor} from '../components/admin/AdminEditor';
 import {AdminSearchField} from '../components/admin/AdminSearchField';
 import {CrmContentNav,CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
-import {AdminFormSection,AdminFormFeedback,AdminFormGrid} from '../components/AdminFormLayout';
+import {AdminFormSection,AdminFormFeedback,AdminFormGrid,AdminSavedReadError} from '../components/AdminFormLayout';
 import {isAiAdministrator} from '../utils/aiServicePolicy';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import {AdminField,firstMissingAdminField} from '../components/AdminForm';
 import {PageMetadata} from '../components/PageMetadata';
 import { managementRequest, pendingAccessOperations } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "../components/AccessOperationStatus";
-import {AdminSecondaryActions} from "../components/admin/AdminRecordActions";
 import { AccessSafetyPanel, canUseAccessRecovery } from "../components/AccessSafetyPanel";
 import {AdminListState,AdminListTable} from '../components/admin/AdminList';
 import {AdminRecordEntry,AdminRowAction} from '../components/admin/AdminListControl';
@@ -89,7 +88,7 @@ function systemLocation(href:string, employeeId:string) {
   const tab=url.searchParams.get('tab')||'users';
   return {
     href:url.pathname+url.search,
-    tab:Object.hasOwn(moduleIcons,tab)||tab==='recovery'||tab==='restore-review'?tab:'users',
+    tab:Object.hasOwn(moduleIcons,tab)||tab==='restore-review'?tab:'users',
     params:url.searchParams,
   };
 }
@@ -151,6 +150,9 @@ export function AccessWorkspace({
     [busy, setBusy] = useState(false),
     [saving, setSaving] = useState(false),
     [audit, setAudit] = useState<any[]>([]);
+  const pendingSaveId=useRef<string|undefined>(undefined);
+  const [savedReadFailed,setSavedReadFailed]=useState(false);
+  const [signInNoticeUserId,setSignInNoticeUserId]=useState<string|null>(null);
   const [user, setUser] = useState<any>(null),
     [role, setRole] = useState<Role | null>(null),
     [why, setWhy] = useState(""),
@@ -219,14 +221,23 @@ export function AccessWorkspace({
     try {
       setData(await api());
       setReadDenied(false);
+      setSavedReadFailed(false);
+      return true;
     } catch (e) {
       const failure=e as Error&{status?:number};
       if(failure.status===401||failure.status===403){setReadDenied(true);setData(null);resetEditor();}
       setErr(failure.message);
+      return false;
     }
   };
   useEffect(()=>{const refresh=()=>{void load();};window.addEventListener('uper-lark-changed',refresh);return()=>window.removeEventListener('uper-lark-changed',refresh);},[employee.id]);
-  const operationResolved = () => {
+  const operationResolved = (receipt:Parameters<NonNullable<React.ComponentProps<typeof AccessOperationStatus>['onResolved']>>[0]) => {
+    const editorPath=user?'/users'+(user.id?'/'+user.id:''):role?'/roles/'+role.id:undefined;
+    if(receipt.state==='committed'&&receipt.operationId===pendingSaveId.current&&editorPath&&receipt.url==='/api/admin/access'+editorPath&&
+      (user?receipt.body?.user?.id:typeof receipt.body?.revision==='number')){
+      void finishSave(receipt.body);
+      return true;
+    }
     setErr("");
     void api()
       .then((current) => {
@@ -254,7 +265,7 @@ export function AccessWorkspace({
         .then(setAudit)
         .catch((e) => setErr(e.message));
   }, [tab]);
-  const recoveryView=tab==='recovery'||tab==='restore-review';
+  const recoveryView=tab==='restore-review';
   const editorHasDraft = Boolean(user || role) && (dirty || larkDirty || why.length > 0 || password.length > 0);
   const refreshAccess = async () => {
     if (refreshing.current || busy || editorHasDraft) return;
@@ -292,6 +303,7 @@ export function AccessWorkspace({
     resetEditor();
   };
   const resetEditor = () => {
+    pendingSaveId.current=undefined;
     setLarkDirty(false);
     setLarkDraft(undefined);
     setLarkValidation("");
@@ -435,6 +447,27 @@ export function AccessWorkspace({
     setDirty(true);
     setPreview(null);
   };
+  const finishSave = async (result:{user?:Omit<User,'effective'>;revision?:number;signInRequired?:boolean}={}) => {
+    setNotice("");
+    if(user){
+      const savedUser=result.user;
+      if(savedUser){
+        setData(previous=>previous&&{...previous,users:previous.users.map(row=>
+          row.id===savedUser.id?{...row,...savedUser}:row)});
+        if(!user.id)proceedNavigation(recordHref('users',savedUser.id,roleFilter));
+      }
+      if(user.id)setSignInNoticeUserId(result.signInRequired===true?user.id:null);
+    }else if(role&&typeof result.revision==='number'){
+      const savedRole={...role,revision:result.revision};
+      setData(previous=>previous&&{...previous,roles:previous.roles.some(row=>row.id===role.id)
+        ?previous.roles.map(row=>row.id===role.id?savedRole:row):[...previous.roles,savedRole]});
+      if(!recordId)proceedNavigation(recordHref('roles',role.id));
+    }
+    resetEditor();
+    setLatest(null);
+    if(!await load())setSavedReadFailed(true);
+    window.dispatchEvent(new Event("uper-access-changed"));
+  };
   const save = async () => {
     if (busy) return;
     if(larkDirty && !larkDraft){setLarkValidation(t("Look up the Lark identity first, or clear the input.","Cari identitas Lark dahulu atau kosongkan input.","请先查询核对Lark身份，或清空查询输入。"));return;}
@@ -444,35 +477,27 @@ export function AccessWorkspace({
     setBusy(true);
     setSaving(true);
     setErr("");
+    const path=user?'/users'+(user.id?'/'+user.id:''):role?'/roles/'+role.id:undefined;
+    const operationUrl='/api/admin/access'+path;
+    const previousOperation=pendingAccessOperations(employee.id).find(operation=>operation.url===operationUrl);
     try {
-      if (user)
-        await api(user.id ? "/users/" + user.id : "/users", {
+      let result;
+      if (user) {
+        result=await api(user.id ? "/users/" + user.id : "/users", {
           ...user,
           reason: why,
           temporaryPassword: password,
           ...(larkDraft?{larkBinding:larkDraft}:{}),
         });
-      else if (role) {
+      } else if (role) {
         if (!preview) throw Error("access_preview_required");
-        await api("/roles/" + role.id, { ...role, reason: why });
+        result=await api("/roles/" + role.id, { ...role, reason: why });
       }
-      setDirty(false);
-      setLarkDirty(false);setLarkDraft(undefined);
-      setUser(null);
-      setRole(null);
-      setPassword("");
-      setPreview(null);
-      setWhy("");
-      setNotice(
-        t(
-          "Saved. Affected sessions were revoked; sign in again if required. Customer ownership is unchanged.",
-          "Tersimpan. Sesi terkait dicabut; login kembali jika diperlukan. Kepemilikan pelanggan tidak berubah.",
-          "已保存，受影响会话已撤销；需要时请重新登录。客户归属没有改变。",
-        ),
-      );
-      await load();
-      window.dispatchEvent(new Event("uper-access-changed"));
+      await finishSave(result);
     } catch (e) {
+      if(!previousOperation){
+        pendingSaveId.current=pendingAccessOperations(employee.id).find(operation=>operation.url===operationUrl)?.operationId;
+      }
       setErr((e as Error).message);
     } finally {
       setBusy(false);
@@ -548,6 +573,11 @@ export function AccessWorkspace({
       "Staff handover updated",
       "Serah terima staf diperbarui",
       "人员交接已更新",
+    ],
+    "access.restore.bootstrap_administrator": [
+      "Restore administrator password initialized",
+      "Kata sandi administrator pemulihan disiapkan",
+      "已设置恢复复核管理员的临时密码",
     ],
     "access.restore.review": [
       "Restored authorization reviewed",
@@ -729,11 +759,10 @@ export function AccessWorkspace({
           onResolved={operationResolved}
         />
         <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight}
-          view={tab==='recovery'?'recovery':tab==='restore-review'?'review':undefined}
+          view={tab==='restore-review'?'review':undefined}
           onReview={()=>navigateRecord('restore-review','')}
           onReturn={()=>requestNavigation(()=>{
             proceedNavigation(recordHref('users'));
-            requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('.access-recovery-menu button')?.focus());
           })}
           onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>
         {discarding&&!user&&!role&&<CrmDiscardDialog lang={lang} isLight={isLight}
@@ -755,13 +784,6 @@ export function AccessWorkspace({
           actions={can("access.read") && (tab!=='audit'||can('access.audit')) && (
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")}
               secondary={<>
-                {isAccessTab(tab)&&canUseAccessRecovery(employee)&&<div className="access-recovery-menu">
-                  <AdminSecondaryActions alwaysMenu appearance="header" label={t('More actions','Tindakan lain','更多操作')}>
-                    <AdminRowAction href={recordHref('recovery')} onClick={event=>openRecord(event,'recovery','')}>
-                      {t('Administrator recovery','Pemulihan administrator','管理员恢复')}
-                    </AdminRowAction>
-                  </AdminSecondaryActions>
-                </div>}
                 <AdminRefreshAction label={t("Refresh", "Segarkan", "刷新")}
                 loading={isRefreshing} disabled={busy || editorHasDraft}
                 onClick={() => void refreshAccess()}/>
@@ -781,7 +803,8 @@ export function AccessWorkspace({
           </p>
         ) : (
           <>
-            {err && !user && !role && (
+            {savedReadFailed&&!user&&!role&&<AdminSavedReadError lang={lang} busy={isRefreshing} onRetry={()=>void refreshAccess()}/>}
+            {err && !savedReadFailed && !user && !role && (
               <p role="alert" className="access-error">
                 {errorText}
               </p>
@@ -806,7 +829,7 @@ export function AccessWorkspace({
               onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>}
             {tab==='guide'&&<SystemAccessGuide lang={lang} canAudit={can('access.audit')}
               canAi={isAiAdministrator(employee)} canTest={!!data?.testDirectoryAvailable}
-              canRecover={canUseAccessRecovery(employee)} shellHeight={shellHeight}
+              shellHeight={shellHeight}
               onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}/>}
             {recordTab && <section className="access-record-workspace crm-detail-root" data-theme={isLight?"light":"dark"} style={{"--crm-shell-height":shellHeight+"px"} as React.CSSProperties} aria-label={listTitle}>
               {!recordId && <div className="access-record-toolbar">
@@ -857,6 +880,10 @@ export function AccessWorkspace({
                         :can('access.roles')&&<CrmPageAction icon={Pencil} variant="primary" label={t('Edit role','Edit peran','编辑角色')}
                           onClick={()=>openRole(selectedRecord)}/>)}/>}/>
                   <div className="crm-detail-body access-record-body" data-admin-scroll="detail" tabIndex={0} onKeyDown={containPaneKeys}>
+                    {signInNoticeUserId&&signInNoticeUserId===selectedRecord?.id&&<div className="access-user-signin">
+                      <AdminFormFeedback state="saved" lang={lang}>{t('This user needs to sign in again.','Pengguna ini perlu masuk kembali.','该用户需要重新登录。')}</AdminFormFeedback>
+                      <button type="button" onClick={()=>setSignInNoticeUserId(null)}>{t('Dismiss','Tutup','关闭提示')}</button>
+                    </div>}
                     {selectedRecord?'loginId' in selectedRecord?<><section>
                       <h2>{t('Account information','Informasi akun','账号信息')}</h2>
                       <dl className="access-record-facts">
@@ -968,7 +995,7 @@ export function AccessWorkspace({
               onResolved={operationResolved}
             />
             {saving&&<AdminFormFeedback state="saving" lang={lang}/>}
-            {err&&<AdminFormFeedback state={hasPendingResult?'unknown':'error'} lang={lang}>{errorText}</AdminFormFeedback>}
+            {err&&<AdminFormFeedback state={hasPendingResult?'unknown':'error'} lang={lang}>{hasPendingResult&&user?.id?undefined:errorText}</AdminFormFeedback>}
             {larkValidation&&larkDirty&&!larkDraft&&<AdminFormFeedback state="error" lang={lang}>{larkValidation}</AdminFormFeedback>}
             {err && err!=="admin_required_missing" && (
               <button

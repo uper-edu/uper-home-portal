@@ -18,7 +18,7 @@ import { enrollmentRosterReturnPath } from '../../utils/crmEnrollmentManagement'
 import { enrollmentOpportunityReturnPath } from '../../utils/crmEnrollmentOpportunityRoute';
 import { formatCrmEventTime,validateLocalInstant,viewerTimeZone } from '../../utils/crmOperatingTime';
 import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
-import { AdminFormActions } from '../AdminFormLayout';
+import { AdminFormActions,AdminSavedReadError } from '../AdminFormLayout';
 import { CrmDisclosure } from './CrmDisclosure';
 import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
 
@@ -79,7 +79,8 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   const receiptOperation=useCrmOrderOperation();
   const [refundBusy,setRefundBusy]=useState(false);
   const busy=receiptOperation.busy||refundBusy;
-  const [saved,setSaved]=useState(false);
+  const [savedDetailRead,setSavedDetailRead]=useState<string|null>(null);
+  const [savedListRead,setSavedListRead]=useState(false);
   const [discard,setDiscard]=useState<{destination?:string}>();
   useEffect(()=>{onRefreshingChange(loading);return()=>onRefreshingChange(false);},[loading,onRefreshingChange]);
   useEffect(()=>{onDirty(dirty);return ()=>onDirty(false);},[dirty,onDirty]);
@@ -97,7 +98,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
         if(response.status===401||response.status===403){setList(undefined);setDenied(true);setOrderId(null);return;}
         if(!response.ok)throw Error();
         const data:Worklist=await response.json();
-        if(!controller.signal.aborted){setList(data);setDenied(false);}
+        if(!controller.signal.aborted){setList(data);setDenied(false);setSavedListRead(false);}
       }).catch(()=>{
         if(!controller.signal.aborted)setError(t('暂时无法读取课程报名订单。','Enrollment orders could not be loaded.','Pesanan pendaftaran belum dapat dimuat.'));
       }).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
@@ -109,19 +110,20 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
     setDetailError('');
     void fetch(endpoint+'?order='+encodeURIComponent(orderId),{cache:'no-store',signal:controller.signal})
       .then(async response=>{
+        if(controller.signal.aborted)return;
+        if([401,403,404].includes(response.status)){
+          setDetails(undefined);setSavedDetailRead(null);
+          setDetailError(t('此报名订单当前无法查看。','This enrollment order is no longer available.','Pesanan pendaftaran ini tidak dapat dilihat lagi.'));
+          return;
+        }
         if(!response.ok)throw Error();
         const data: {orders:RecordRow[]}=await response.json();
-        if(!controller.signal.aborted)setDetails({id:orderId,row:data.orders.find(row=>row.id===orderId)});
+        if(!controller.signal.aborted){setDetails({id:orderId,row:data.orders.find(row=>row.id===orderId)});setSavedDetailRead(null);}
       }).catch(()=>{
         if(!controller.signal.aborted)setDetailError(t('暂时无法读取核款详情。','Payment details could not be loaded.','Detail verifikasi belum dapat dimuat.'));
       });
     return ()=>controller.abort();
   },[orderId,refresh,refreshVersion]);
-  useEffect(()=>{
-    if(!saved)return;
-    const timer=window.setTimeout(()=>setSaved(false),6000);
-    return ()=>window.clearTimeout(timer);
-  },[saved]);
   const [reviewFocus,setReviewFocus]=useState(Boolean(target));
   const reviewHeading=useRef<HTMLDivElement>(null);
   useEffect(()=>{
@@ -132,11 +134,11 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   },[reviewFocus,details,orderId]);
   const open=(id:string,review=false)=>{
     setReviewFocus(review);
-    setDetails(undefined);setDetailError('');setSaved(false);setOrderId(id);
+    setDetails(undefined);setDetailError('');setSavedDetailRead(null);setOrderId(id);
   };
   const closeOrder=(destination?:string)=>{
     if(destination){window.location.assign(destination);return;}
-    receiptOperation.clear();setOrderId(null);setDetails(undefined);setSelected(undefined);setDirty(false);setDetailError('');setDiscard(undefined);setSaved(false);
+    receiptOperation.clear();setOrderId(null);setDetails(undefined);setSelected(undefined);setDirty(false);setDetailError('');setDiscard(undefined);setSavedDetailRead(null);
     const url=new URL(window.location.href);
     if(url.searchParams.has('enrollmentOrder')){
       url.searchParams.delete('enrollmentOrder');url.searchParams.delete('opportunityReturn');url.searchParams.delete('rosterReturn');
@@ -149,11 +151,11 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
     if(dirty)setDiscard({destination});
     else closeOrder(destination);
   };
-  const afterWrite=()=>{setDirty(false);setRefresh(value=>value+1);onQueueChanged();};
+  const afterWrite=()=>{setDirty(false);setSavedDetailRead(orderId);setSavedListRead(true);setRefresh(value=>value+1);onQueueChanged();};
   const receiptOutcome=async(result:ReturnType<typeof receiptOperation.submit>)=>{
     const outcome=await result;
     if(outcome?.state==='saved'){
-      setSaved(true);setSelected(undefined);afterWrite();
+      setSelected(undefined);afterWrite();
     }else if(outcome?.state==='rejected'){
       setRequestId(crypto.randomUUID());
       setDetailError(outcome.code==='enrollment_duplicate_receipt'
@@ -186,7 +188,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
         <CrmSingleSelect lang={lang} isLight={isLight} label={t('核款队列','Payment queue','Antrean verifikasi')} value={status}
           options={filters} onChange={next=>{setStatus(next);setPage(1);}}/>
       </CrmListFilters>
-      {error&&<p role="alert">{error}</p>}
+      {error&&(savedListRead?<AdminSavedReadError lang={lang} busy={loading} onRetry={()=>setRefresh(value=>value+1)}/>:<p role="alert">{error}</p>)}
       {loading&&!list&&<p className="crm-list-meta" role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
       {list&&<p className="crm-list-meta" role="status">{t(`匹配 ${list.total} 笔订单`,`${list.total} matching orders`,`${list.total} pesanan cocok`)}</p>}
       {list&&(hasResults?<CrmListTable label={paymentWorkspaceLabel('enrollment',lang)}
@@ -222,8 +224,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
       }}/>}
       lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={()=>requestClose(rosterBack)}>
     <div className="crm-enrollment-finance-detail" onChange={()=>setDirty(true)}>
-    {detailError&&<p role="alert">{detailError}</p>}
-    {saved&&<span className="crm-opportunity-feedback" role="status">{t('实收已登记','Verified receipt recorded','Dana terverifikasi telah dicatat')}</span>}
+    {detailError&&(savedDetailRead===orderId?<AdminSavedReadError lang={lang} onRetry={()=>setRefresh(value=>value+1)}/>:<p role="alert">{detailError}</p>)}
     {!details&&!detailError&&<p role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
     {details?.id===orderId&&!row&&<p>{t('该报名订单暂不可核款。','This enrollment order is unavailable for verification.','Pesanan ini belum dapat diverifikasi.')}</p>}
     {row&&<article className="crm-course-catalog">
@@ -257,8 +258,8 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
         </li>)}</ul>
       </CrmDisclosure>}
       {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={afterWrite} onBusyChange={setRefundBusy} onDraftChange={()=>setDirty(true)}/> :
-      selected !== row.id ? <div className="crm-enrollment-finance-actions"><button type="button" ref={receiptTrigger} className="crm-work-button" data-primary onClick={() => {
-        setSelected(row.id);setRequestId(crypto.randomUUID());setDetailError('');setSaved(false);
+      selected !== row.id ? <div className="crm-enrollment-finance-actions"><button type="button" ref={receiptTrigger} className="crm-work-button" data-primary disabled={savedDetailRead===orderId} onClick={() => {
+        setSelected(row.id);setRequestId(crypto.randomUUID());setDetailError('');setSavedDetailRead(null);
       }}>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')}</button></div>
       : <AdminForm lang={lang} className="crm-form-layout" onSubmit={async (event:React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();

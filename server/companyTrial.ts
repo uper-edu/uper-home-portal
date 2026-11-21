@@ -35,9 +35,9 @@ export function companyConfiguration(env = process.env) {
   if (env.APP_URL !== companyOrigin || env.ACCESS_PUBLIC_ORIGIN !== companyOrigin)
     throw Error('Company trial requires the approved canonical HTTPS origin');
   const direct=internalMysqlDirect(env);
-  if (!env.ACCESS_TRUSTED_PROXIES || (env.ACCESS_OPERATION_KEY || '').length < 32 ||
+  if (!env.ACCESS_TRUSTED_PROXIES ||
       !env.TRIAL_FRONTEND_DIRECTORY || env.MYSQL_TRIAL_SOCKET || (!direct && !env.MYSQL_CA_PEM))
-    throw Error('Company trial requires explicit proxy peers, stable private key, frontend directory and an approved MySQL transport');
+    throw Error('Company trial requires explicit proxy peers, frontend directory and an approved MySQL transport');
   const peers=env.ACCESS_TRUSTED_PROXIES.split(',').map(p=>p.trim()).filter(Boolean);
   if(!peers.length || peers.some(p=>!exactPrivateProxy(p)))throw Error('Company trial requires exact private proxy peers, never wildcard networks');
   portalWorkerEnabled(env);
@@ -61,8 +61,8 @@ export function productionConfiguration(env = process.env) {
     throw Error('Production deployment requires an explicit allowlist of approved public origins containing the canonical origin');
   if (env.MYSQL_TLS_MODE !== 'disabled')
     throw Error('Production deployment requires the explicitly approved internal MySQL direct mode');
-  if (!env.ACCESS_TRUSTED_PROXIES || (env.ACCESS_OPERATION_KEY || '').length < 32)
-    throw Error('Production deployment requires explicit proxy peers and a stable private operation key');
+  if (!env.ACCESS_TRUSTED_PROXIES)
+    throw Error('Production deployment requires explicit proxy peers');
   const peers=env.ACCESS_TRUSTED_PROXIES.split(',').map(p=>p.trim()).filter(Boolean);
   if(!peers.length || peers.some(p=>!exactPrivateProxy(p)))throw Error('Production deployment requires exact private proxy peers');
   portalWorkerEnabled(env);

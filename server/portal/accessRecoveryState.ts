@@ -1,14 +1,5 @@
 import { pool } from "./store.ts";
-export const administratorPermissions = [
-  "access.read",
-  "access.users",
-  "access.roles",
-  "access.sessions",
-  "access.audit",
-];
-export const fullAdministrator = (e: any) =>
-  !!e?.active &&
-  administratorPermissions.every((p) => e.permissions.includes(p));
+export {administratorPermissions,fullAdministrator} from "./accessAdministrator.ts";
 export async function restoreState(c: any = pool) {
   return (
     (await c.query("SELECT value FROM access_state WHERE id='restore_review'"))
@@ -33,7 +24,7 @@ export async function accessRestoreGate(q: any, r: any, next: any) {
     if (
       state?.required &&
       !q.path.startsWith("/api/admin/access") &&
-      !/^\/api\/crm\/auth\/(login|logout|me|operations(?:\/.*)?)$/.test(q.path)
+      !/^\/api\/crm\/auth\/(login|logout|me|password|operations(?:\/.*)?)$/.test(q.path)
     ) {
       r.status(423).json({ error: "access_restore_required" });
       return;

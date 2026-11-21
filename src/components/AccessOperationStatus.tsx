@@ -17,7 +17,8 @@ export function AccessOperationStatus({
     state: "committed" | "cancelled";
     url: string;
     operationId: string;
-  }) => void;
+    body?: any;
+  }) => boolean | void;
 }) {
   const [pending, setPending] = useState(() => pendingAccessOperations(actor)),
     [message, setMessage] = useState(""),
@@ -65,13 +66,14 @@ export function AccessOperationStatus({
                 const d = await r.json();
                 if (d.state === "committed" || d.state === "cancelled") {
                   forgetAccessOperation(p.operationId);
-                  onResolved?.({
+                  const handled=onResolved?.({
                     state: d.state,
                     url: p.url,
                     operationId: p.operationId,
+                    body:d.result?.body,
                   });
                   setMessage(
-                    d.state === "cancelled"
+                    handled?"" : d.state === "cancelled"
                       ? t(
                           "Closed before commit. Reload the current record, then start a new operation.",
                           "Ditutup sebelum tersimpan. Muat ulang data terbaru, lalu mulai operasi baru.",
@@ -151,13 +153,14 @@ export function AccessOperationStatus({
                     if (!["committed", "cancelled"].includes(d.state))
                       throw Error();
                     forgetAccessOperation(p.operationId);
-                    onResolved?.({
+                    const handled=onResolved?.({
                       state: d.state,
                       url: p.url,
                       operationId: p.operationId,
+                      body:d.result?.body,
                     });
                     setMessage(
-                      d.state === "committed"
+                      handled?"" : d.state === "committed"
                         ? t(
                             "The original operation already committed. Reload the saved record; no saved change was cancelled.",
                             "Operasi awal sudah tersimpan. Muat ulang data; perubahan tersimpan tidak dibatalkan.",

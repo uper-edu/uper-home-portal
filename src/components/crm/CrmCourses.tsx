@@ -14,7 +14,7 @@ import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
 import {useEffect,useRef,useState} from 'react';
 import {AdminField} from '../AdminForm';
-import {AdminStaticField,AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
+import {AdminSavedReadError,AdminStaticField,AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
 import {AdminEditor} from '../admin/AdminEditor';
 import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
 import {courseError} from '../../utils/crmCoursePricing';
@@ -24,6 +24,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  const [data,setData]=useState<any>(null),[form,setForm]=useState<any>(null),[error,setError]=useState(''),[state,setState]=useState(''),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[latest,setLatest]=useState<any>(null);
  const pending=useRef<any>(null),gate=useRef(false);const busy=['saving','checking'].includes(state),unknown=state==='unknown';
  const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
+ const [awaitingSavedRead,setAwaitingSavedRead]=useState(false);
  const readRequest=useRef<AbortController|null>(null);
  const title=t('Courses','Kursus','课程');
  const {filters,change,clear}=useEnrollmentSettingsFilters('courses',{search:'',level:'',status:'',sort:'level'});
@@ -42,7 +43,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
    if(!r.ok)throw Error();
    const d=await r.json();
    if(signal.aborted)return;
-   setData(d);setReadState('ready');
+   setData(d);setReadState('ready');setAwaitingSavedRead(false);
    try{const id=sessionStorage.getItem('uper_course_pending:'+d.actorId);if(id&&!pending.current){pending.current={requestId:id};setState('unknown');}}catch{}
   }catch(cause){
    if(signal.aborted)return;
@@ -90,9 +91,15 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
      a.id.localeCompare(b.id);
  })??[];
  const close=()=>{if(dirty||unknown)setDiscard(true);else setForm(null);};
+ async function finishSave() {
+   setDirty(false);setForm(null);pending.current=null;
+   try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}
+   setState('');setError('');setAwaitingSavedRead(true);
+   await load().catch(()=>{});
+ }
  const save=async(e:any)=>{e.preventDefault();if(gate.current||unknown)return;if(!form.config.teaching.level){setError(t('Select the level.','Pilih level.','请选择级别。'));return;}if(!form.config.teaching.material.trim()){setError(t('Select or add a textbook.','Pilih atau tambahkan buku ajar.','请选择或新增主教材。'));return;}gate.current=true;setState('saving');setError('');const b={id:form.id,revision:form.revision,requestId:crypto.randomUUID(),config:{...form.config,sessions:Number(form.config.sessions),price:Number(form.config.price),maxDiscountBps:Number(form.config.maxDiscountBps),maxDiscountAmount:form.config.maxDiscountAmount===null||form.config.maxDiscountAmount===''?null:Number(form.config.maxDiscountAmount)}};pending.current=b;try{sessionStorage.setItem('uper_course_pending:'+data.actorId,b.requestId);}catch{}
- try{const r=await fetch('/api/crm/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();if(!r.ok){if(r.status>=500){setState('unknown');return;}setState('failed');setError(courseError(d.error,lang));if(r.status===409){try{const fresh=await fetch('/api/crm/courses',{cache:'no-store'});if(fresh.ok)setLatest((await fresh.json()).courses.find((c:any)=>c.id===b.id));}catch{}}pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}return;}if(d.courseId!==b.id||d.operationKind!=='course')throw Error('unconfirmed');setDirty(false);setForm(null);pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}setState('saved');await load().catch(()=>setError(t('Saved; refresh to review.','Disimpan; segarkan untuk memeriksa.','已保存，请刷新核对。')));}catch{setState('unknown');}finally{gate.current=false;}};
- const query=async()=>{if(!pending.current||gate.current)return;gate.current=true;setState('checking');try{const r=await fetch('/api/crm/courses/results/'+pending.current.requestId,{cache:'no-store'});if(!r.ok)throw Error();setDirty(false);setForm(null);pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}setState('saved');await load().catch(()=>setError(t('Saved; refresh to review.','Disimpan; segarkan untuk memeriksa.','已保存，请刷新核对。')));}catch{setState('unknown');setError(t('Save result is not confirmed. Check again before resubmitting.','Hasil simpan belum pasti. Periksa lagi sebelum mengirim ulang.','保存结果尚未确认，请继续查询，不要重复提交。'));}finally{gate.current=false;}};
+ try{const r=await fetch('/api/crm/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();if(!r.ok){if(r.status>=500){setState('unknown');return;}setState('failed');setError(courseError(d.error,lang));if(r.status===409){try{const fresh=await fetch('/api/crm/courses',{cache:'no-store'});if(fresh.ok)setLatest((await fresh.json()).courses.find((c:any)=>c.id===b.id));}catch{}}pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}return;}if(d.courseId!==b.id||d.operationKind!=='course')throw Error('unconfirmed');await finishSave();}catch{setState('unknown');}finally{gate.current=false;}};
+ const query=async()=>{if(!pending.current||gate.current)return;gate.current=true;setState('checking');try{const r=await fetch('/api/crm/courses/results/'+pending.current.requestId,{cache:'no-store'});if(!r.ok)throw Error();const receipt=await r.json();if(receipt.operationKind!=='course'||!receipt.courseId||(pending.current.id&&receipt.courseId!==pending.current.id))throw Error();await finishSave();}catch{setState('unknown');setError(t('Save result is not confirmed. Check again before resubmitting.','Hasil simpan belum pasti. Periksa lagi sebelum mengirim ulang.','保存结果尚未确认，请继续查询，不要重复提交。'));}finally{gate.current=false;}};
  const [deleting,setDeleting]=useState<{id:string;name:string;revision:number;requestId:string}>();
  const [deleteState,setDeleteState]=useState<'idle'|'saving'|'unknown'|'checking'>('idle');
  const deleteGate=useRef(false);
@@ -127,8 +134,9 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
    subtitle={t('Maintain teaching content and course specifications.','Kelola materi dan spesifikasi kursus.','维护主教材、节数和学习成果。')}
    actions={<><AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>
      {data?.canManage&&<CrmPageAction icon={Plus} variant="primary" label={t('Create course','Buat kursus','创建课程')} disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}/>}</>}/>
+ {awaitingSavedRead&&readState==='error'&&<AdminSavedReadError lang={lang} onRetry={refresh}/>}
  {!form&&unknown&&<div><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" className="crm-work-button" onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></div>}{!form&&state==='saved'&&<CrmSaveFeedback state="saved" lang={lang}/ >}{!form&&error&&<p role="alert">{error}</p>}
- {(listState!=='ready'||!data?.courses.length)&&<AdminListState lang={lang}
+ {(listState!=='ready'||!data?.courses.length)&&!(awaitingSavedRead&&readState==='error')&&<AdminListState lang={lang}
    state={listState==='ready'?'empty':listState}
    message={listState==='ready'
     ?t('No courses yet. Create and publish a course before confirming enrollment.','Belum ada kursus. Buat dan terbitkan sebelum konfirmasi pendaftaran.','暂无课程。创建并发布课程后，销售才能确认报名。')

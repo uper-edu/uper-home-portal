@@ -15,7 +15,7 @@ import {larkNotificationColor} from '../utils/larkNotificationColors';
 import {dailyDigestPreview} from '../utils/larkDailyDigest';
 import {larkNotificationSample} from '../utils/larkNotificationSamples';
 import {standardLarkKinds,type LarkKind,larkNotificationPreview} from '../utils/larkNotificationPresentation';
-import {AdminFormFeedback,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
+import {AdminFormFeedback,AdminSavedReadError,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
 import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
 import { LarkChannelTestControls, type LarkChannelTest } from "./crm/LarkChannelTestControls";
 import {crmFormText} from '../utils/crmFormLanguage';
@@ -252,6 +252,7 @@ export default function NotificationCenter({
   const [confirmWebhookClear, setConfirmWebhookClear] = useState(false);
   const editorPanel = useRef<HTMLDivElement>(null);
   const editorHeading = useRef<HTMLHeadingElement>(null);
+  const [awaitingSavedRead,setAwaitingSavedRead]=useState<Tab>();
   const editorReturn = useRef<string | null>(null);
   useEffect(() => {
     if (editor) {
@@ -261,14 +262,14 @@ export default function NotificationCenter({
   }, [editor]);
   useEffect(() => {
     const id=editorReturn.current;
-    if (editor || busy || !active || !id) return;
+    if (editor || busy || awaitingSavedRead===tab || !active || !id) return;
     const frame=requestAnimationFrame(()=>{
       const trigger=document.getElementById(id)??panelRef.current?.querySelector<HTMLElement>('.crm-page-action');
       trigger?.focus({preventScroll:true});
       editorReturn.current=null;
     });
     return()=>cancelAnimationFrame(frame);
-  }, [editor,busy,active]);
+  }, [editor,busy,active,awaitingSavedRead,tab]);
   const channelNameInput = useRef<HTMLInputElement>(null);
   const signingRefInput = useRef<HTMLInputElement>(null);
   const webhookInput = useRef<HTMLInputElement>(null);
@@ -277,7 +278,7 @@ export default function NotificationCenter({
   const editorBaseline=useRef<string|null>(null);
   const editorVersion=useRef<number|string|null|undefined>(undefined);
   const [confirmEnable,setConfirmEnable]=useState(false);
-  const [saveResult,setSaveResult]=useState<{requestId:string;enabled:boolean;lookup?:'missing'|'error'}>();
+  const [saveResult,setSaveResult]=useState<{requestId:string;lookup?:'missing'|'error'}>();
   const [settingsConflict,setSettingsConflict]=useState(false);
   const editorBlocked=busy||!!saveResult;
 
@@ -418,6 +419,7 @@ export default function NotificationCenter({
         setRouting(routingConfig);
       }
       if (editorBaseline.current === null) setError("");
+      setAwaitingSavedRead(topic=>topic===tab?undefined:topic);
       setDenied(false);
     } catch (e) {
       const status=(e as {status?:number}).status;
@@ -640,12 +642,11 @@ export default function NotificationCenter({
       ? <AdminFormSection className="crm-form-section notification-form-section" title={title}>{fields}</AdminFormSection>
       : fields;
   };
-  const finishSettingsSave=async(enabled:boolean,receipt=false)=>{
+  const finishSettingsSave=async()=>{
     setSaveResult(undefined);
     setEditor(null);
-    setNotice(receipt?cancelText('已查到本次保存回执。','The save receipt was confirmed.','Bukti penyimpanan terkonfirmasi.'):
-      editor==='rule'?(enabled?t('策略已启用，仅影响新事件','Policy enabled for new events'):
-        t('策略已停用并保存为草稿','Policy saved as inactive draft')):t('渠道配置已保存','Channel saved'));
+    setNotice('');
+    setAwaitingSavedRead(tab);
     await load();
   };
   const checkSettingsSave=async()=>{
@@ -654,7 +655,7 @@ export default function NotificationCenter({
     try{
       const receipt=await api('notification-settings/results/'+encodeURIComponent(saveResult.requestId));
       if(receipt?.success!==true)throw Error();
-      await finishSettingsSave(saveResult.enabled,true);
+      await finishSettingsSave();
     }catch(error){
       setSaveResult({...saveResult,lookup:(error as {status?:number}).status===404?'missing':'error'});
     }finally{setBusy(false);}
@@ -727,11 +728,11 @@ export default function NotificationCenter({
           webhook: managedCredentials||!canManageCredentials ? undefined : typeof webhookDraft === "string" ? webhookDraft.trim() : webhookDraft,
         });
       }
-      await finishSettingsSave(enabled);
+      await finishSettingsSave();
     } catch (e) {
       const failure=e as Error&{status?:number};
       if(submitted&&(!failure.status||failure.status>=500)){
-        setSaveResult({requestId,enabled});
+        setSaveResult({requestId});
       }else if(failure.message==='notification_settings_conflict'){
         setSettingsConflict(true);
         await load();
@@ -962,7 +963,8 @@ export default function NotificationCenter({
                 id={editorTriggerId(isRuleTopic?'rule':'channel','')}
                 label={isRuleTopic?t('新增策略','Add policy'):t('新增渠道','Add channel')} onClick={()=>edit()}/>}
             </>}/>
-          {error && !editor && (tab!=="notification-jobs"||cancelId) && (
+          {error&&!denied&&!editor&&awaitingSavedRead===tab&&<AdminSavedReadError lang={lang} busy={loading} onRetry={()=>void load()}/>}
+          {error && !editor && (denied||awaitingSavedRead!==tab) && (tab!=="notification-jobs"||cancelId) && (
             <p
               role="alert"
               className="text-xs p-3 rounded-lg bg-rose-500/10 text-rose-500"

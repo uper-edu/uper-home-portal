@@ -26,7 +26,7 @@
 
 | 设置 | 放置位置与默认值 |
 | --- | --- |
-| `PORTAL_BOOTSTRAP_SECRET_FILE` | 私有运行配置里填绝对路径。文件为 dotenv 格式，接受 `MYSQL_TRIAL_URL`、`ACCESS_OPERATION_KEY`、`ACCESS_INITIAL_PASSWORD` 和旧版按需使用的 `ACCESS_INITIAL_PASSWORDS_FILE`。所列变量以私有文件值为准。首次初始化员工后可移除初始密码。 |
+| `PORTAL_BOOTSTRAP_SECRET_FILE` | 私有运行配置里填绝对路径。文件为 dotenv 格式，接受 `MYSQL_TRIAL_URL`、`ACCESS_INITIAL_PASSWORD` 和旧版按需使用的 `ACCESS_INITIAL_PASSWORDS_FILE`。所列变量以私有文件值为准。首次初始化员工后可移除初始密码。 |
 | `PORTAL_CREDENTIAL_KEYRING_FILE` | 私有运行配置里填绝对路径。配置文件权限为 `0600` 或只读 `0400`。以运行账号直接读取文件，容器以只读方式挂载到容器内路径。文件需独立于数据库快照。 |
 | `PORTAL_CREDENTIAL_PROVIDER_CHECKS` | 默认 `false`。仅在批准供应商认证检查的环境启用，完成后可恢复默认。 |
 | `PORTAL_GA_DISPATCH_ENABLED` | 默认 `false`。授权外发前保留关闭。升级原本已开展 GA 外发的站点时，单独确认连续发送或暂停及队列范围。 |
@@ -34,6 +34,19 @@
 密钥文件是 JSON 对象，字段为 `environment`、`active` 和 `keys`。`environment` 为 `dev`、`test` 或 `prod`，`active` 为当前写入的密钥 ID。`keys` 按 ID 保存各版本密钥，每个值为 32 个随机字节的 64 字符十六进制编码。目录应只允许运维和运行账号按需访问，文件放在仓库及发布包之外。密钥版本可按受控备份策略保留和归档。
 
 迁移期间，仍在使用旧 SMTP 密文的环境须保留对应的 `PORTAL_ENROLLMENT_MAIL_CREDENTIAL_KEY`。旧生产 Lark 加密群配置仍需对应的 `LARK_WEBHOOK_ENCRYPTION_KEY`。待同环境最后一个依赖迁移后再从运行配置移除。旧 `PORTAL_GA_STAGING_API_SECRET` 的生产使用需结合服务器脚本和配置核实。
+
+### 退役账号操作密钥
+
+本地 3000 已从 `.env.dev` 移除 `ACCESS_OPERATION_KEY`，其余配置及文件权限 `0600` 保持原样。重启后健康检查通过，前后端均运行 `d7abf9aab20f-bc907157ddbf1ee3`（提交 `d7abf9a`）。现有系统管理员登录与「系统管理 → 用户与权限」的用户、角色数据回读均返回 HTTP 200。未登录访问同一管理接口返回 HTTP 401。
+
+Robert 在本地 3000 用现有管理员账号登录成功，并确认能分别打开「用户」和「角色」页面。自助改密和两位管理员互相重置密码沿用无旧密钥的模拟库验收。此次复验未改动现有账号的密码或权限。
+
+公司测试先切换验收，生产在公司测试通过并获放行后按同样步骤执行。
+
+1. 切换前，核对待确认的账号操作回执。按环境私下保留旧版本与旧启动配置供回退，在旧版本仍运行时保留其密钥。
+2. 为 `d7abf9a` 或包含这项改动的后续版本准备启动配置。仅从新版本的私有环境文件和运行注入中删掉 `ACCESS_OPERATION_KEY`。如使用 `PORTAL_BOOTSTRAP_SECRET_FILE`，也要在新版本启动前清理该文件中的同名条目。新版会拒绝启动密钥文件中不在允许清单内的变量。仍有旧 Lark Webhook 密文时，保留其独立的 `LARK_WEBHOOK_ENCRYPTION_KEY`。
+3. 在切换窗口用新配置启动新版。核对健康状态与前后端版本，用现有系统管理员重新登录，并进入「用户与权限」读取用户和角色。公司测试通过后再安排生产切换。
+4. 如需回退到依赖旧变量的版本，用同一环境留存的旧配置和旧版本一起回退。回退完成后重新核对启动、登录与权限回读。
 
 ## 迁移旧 SMTP 和 Lark 群密文
 

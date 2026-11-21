@@ -4,7 +4,7 @@ import {AdminEditor} from './admin/AdminEditor';
 import {AdminListState} from './admin/AdminList';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminField,AdminForm,AdminRequiredNote} from './AdminForm';
-import {AdminFormFeedback,AdminFormGrid,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
+import {AdminFormFeedback,AdminSavedReadError,AdminFormGrid,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
 import {CrmSingleSelect} from './crm/CrmSingleSelect';
 import {CrmDisclosure} from './crm/CrmDisclosure';
 import {CrmPageAction} from './crm/CrmPageAction';
@@ -24,7 +24,7 @@ type AiServiceData={
   extractions?:{model:string;status:string;completed_at:string}[];
 };
 type AiServiceCheck={ok:boolean;results:{model:string;actualModel?:string;ok:boolean}[]};
-type Notice=''|'saved'|'verified'|'unknown'|'queryPendingFailed'|'error'|'conflict'|'required';
+type Notice=''|'verified'|'unknown'|'queryPendingFailed'|'error'|'conflict'|'required';
 type ReadFailure='error'|'denied';
 const pendingKey='uper-ai-pending',draftKey='uper-ai-draft';
 const emptySelection:AiSelection={primary:'',fallback:''};
@@ -61,6 +61,7 @@ export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChang
   const [busy,setBusy]=useState(false),[querying,setQuerying]=useState(false);
   const [failure,setFailure]=useState<ReadFailure>(),[notice,setNotice]=useState<Notice>('');
   const [unresolved,setUnresolved]=useState(()=>typeof sessionStorage!=='undefined'&&!!sessionStorage.getItem(pendingKey));
+  const [awaitingSavedRead,setAwaitingSavedRead]=useState(false);
   const [diagnosing,setDiagnosing]=useState(false);
   const submitting=useRef(false),reading=useRef(false);
   const selection=draft??data?.current??emptySelection;
@@ -88,10 +89,10 @@ export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChang
     reading.current=true;setQuerying(true);
     try{
       const next:AiServiceData=await call();
-      setData(next);setFailure(undefined);
+      setData(next);setFailure(undefined);setAwaitingSavedRead(false);
       const pending=sessionStorage.getItem(pendingKey);
       if(pending&&next.history?.some(record=>record.requestId===pending)){
-        clearPending();setDraft(undefined);setCheck(undefined);setNotice('saved');
+        clearPending();setDraft(undefined);setCheck(undefined);setNotice('');
       }else if(pending)setNotice('unknown');
       else if(notice==='conflict'||notice==='queryPendingFailed'){
         setNotice('');setCheck(undefined);
@@ -134,7 +135,7 @@ export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChang
       });
       if(result.unchanged)setNotice('verified');
       if(result.saved){
-        clearPending();setDraft(undefined);setNotice('saved');
+        clearPending();setDraft(undefined);setCheck(undefined);setAwaitingSavedRead(true);
         setData(previous=>previous&&{...previous,current:result.result.current,revision:result.result.revision});
         await load();
       }
@@ -149,7 +150,7 @@ export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChang
     }finally{submitting.current=false;setBusy(false);}
   };
 
-  return <AiServiceContent {...{lang,isLight,data,selection,check,busy,notice,unresolved,diagnosing,querying,failure,renderHeading}}
+  return <AiServiceContent {...{lang,isLight,data,selection,check,busy,notice,unresolved,diagnosing,querying,failure,awaitingSavedRead,renderHeading}}
     onSelect={choose} onSubmit={()=>void submit()} onQuery={()=>void load()}
     onDiagnose={()=>{setCheck(undefined);setNotice('');setDiagnosing(true);}}
     onTestCurrent={()=>void submit(true)}
@@ -160,12 +161,12 @@ export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChang
 
 type ContentProps={
   lang:CrmLanguage;isLight:boolean;data?:AiServiceData;selection:AiSelection;check?:AiServiceCheck|null;
-  busy:boolean;notice:Notice;unresolved:boolean;diagnosing?:boolean;querying?:boolean;failure?:ReadFailure;
+  busy:boolean;notice:Notice;unresolved:boolean;diagnosing?:boolean;querying?:boolean;failure?:ReadFailure;awaitingSavedRead?:boolean;
   renderHeading:(actions:ReactNode,required:boolean)=>ReactNode;children?:ReactNode;
   onSelect:(selection:AiSelection)=>void;onSubmit:()=>void;onQuery:()=>void;onDiagnose:()=>void;
   onTestCurrent:()=>void;onCloseDiagnostics:()=>void;
 };
-export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,unresolved,diagnosing,querying,failure,
+export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,unresolved,diagnosing,querying,failure,awaitingSavedRead,
   renderHeading,children,onSelect,onSubmit,onQuery,onDiagnose,onTestCurrent,onCloseDiagnostics}:ContentProps){
   const t=words(lang);
   const status=(ok:boolean)=><span className="ai-check" data-ok={ok}>
@@ -176,7 +177,7 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
     return effort?value[role]+' · '+t(effort):value[role];
   };
   const feedback=notice&&<AdminFormFeedback lang={lang}
-    state={notice==='saved'||notice==='verified'?'saved':notice==='unknown'||notice==='queryPendingFailed'?'unknown':'error'}>
+    state={notice==='verified'?'saved':notice==='unknown'||notice==='queryPendingFailed'?'unknown':'error'}>
     {t(notice)}
   </AdminFormFeedback>;
   const results=(busy||check)&&<div role="status" aria-live="polite">
@@ -202,7 +203,7 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
           label={t(busy&&!diagnosing?'busy':'testSave')} keepFocusWhileLoading loading={busy&&!diagnosing}
           disabled={actionDisabled||(!busy&&blocked)||!!diagnosing} />}
       </>,!!data)}
-      {(!data||failure)&&<AdminListState lang={lang} state={failure??'loading'} onRetry={onQuery}/>}
+      {awaitingSavedRead&&failure==='error'?<AdminSavedReadError lang={lang} busy={querying} onRetry={onQuery}/>:(!data||failure)&&<AdminListState lang={lang} state={failure??'loading'} onRetry={onQuery}/>}
       {!data&&!diagnosing&&feedback}
       {data&&<AdminFormSection variant="card" title={t('models')} actions={<CrmPageAction icon={FlaskConical}
         label={t('testCurrent')} onClick={onDiagnose} disabled={blocked}/>}>

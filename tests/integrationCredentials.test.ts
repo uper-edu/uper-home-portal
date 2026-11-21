@@ -45,7 +45,7 @@ test('the deployment file accepts only startup secrets and requires private perm
   const directory=mkdtempSync(join(tmpdir(),'uper-bootstrap-'));
   t.after(()=>rmSync(directory,{recursive:true,force:true}));
   const file=join(directory,'bootstrap');
-  writeFileSync(file,'MYSQL_TRIAL_URL=mysql://fixture.invalid/test\nACCESS_OPERATION_KEY=fake-recovery-secret\n',{mode:0o600});
+  writeFileSync(file,'MYSQL_TRIAL_URL=mysql://fixture.invalid/test\n',{mode:0o600});
   assert.equal(readBootstrapSecrets(file).MYSQL_TRIAL_URL,'mysql://fixture.invalid/test');
   writeFileSync(file,'PORTAL_ENV=prod\n');
   assert.throws(()=>readBootstrapSecrets(file),/Unexpected/);

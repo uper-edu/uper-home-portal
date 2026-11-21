@@ -1,4 +1,4 @@
-import {AdminFormFeedback} from '../AdminFormLayout';
+import {AdminSavedReadError} from '../AdminFormLayout';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminRecordBack,AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {useAdminRecordSidebarLayout} from '../admin/AdminRecordWorkspace';
@@ -244,7 +244,8 @@ export function CrmCampaignHub({
   const [editor, setEditor] = useState<CrmCampaignRecord | null | undefined>(
     undefined,
   );
-  const [saveNotice, setSaveNotice] = useState(false);
+  const campaignsReadId=useRef(0);
+  const [awaitingSavedRead, setAwaitingSavedRead] = useState(false);
   const [campaignDeleteTarget, setCampaignDeleteTarget] = useState<{id:string;name:string} | null>(null);
   const [campaignDeleteError, setCampaignDeleteError] = useState("");
   const [campaignDeleting, setCampaignDeleting] = useState(false);
@@ -316,7 +317,6 @@ export function CrmCampaignHub({
       return;
     }
     requestLeave(() => {
-      setSaveNotice(false);
       setPromotionFormCampaignId(formCampaignId);
       setMobileList(false);
       navigateCampaign(c, tab);
@@ -324,7 +324,6 @@ export function CrmCampaignHub({
   };
   const closeCampaign = () =>
     requestLeave(() => {
-      setSaveNotice(false);
       setPromotionFormCampaignId(undefined);
       setMobileList(false);
       navigateCampaign(null);
@@ -334,7 +333,6 @@ export function CrmCampaignHub({
   const changeDetailTab = (tab: DetailTab, keyboard = false) => {
     if (activeDetailCampaign && tab !== detailTab)
       requestLeave(() => {
-        setSaveNotice(false);
         setPromotionFormCampaignId(undefined);
         navigateCampaign(activeDetailCampaign, tab);
       });
@@ -355,7 +353,6 @@ export function CrmCampaignHub({
       const url = campaignReviewUrl(window.location.href, filters, c?.id);
       window.history.pushState({}, "", url);
       setPageUrl(url);
-      setSaveNotice(false);
     });
   const returnFromSourceReview = () =>
     requestLeave(() => {
@@ -368,7 +365,6 @@ export function CrmCampaignHub({
         });
       window.history.pushState({}, "", url);
       setPageUrl(url);
-      setSaveNotice(false);
     });
   const reviewCampaignPromotions = (c: CrmCampaignRecord) =>
     openSourceReview(c);
@@ -380,7 +376,6 @@ export function CrmCampaignHub({
   };
   const handleOpenCreateWizard = () =>
     requestLeave(() => {
-      setSaveNotice(false);
       setEditor(null);
     });
   const handleOpenEditWizard = (c: CrmCampaignRecord, materials = false) => {
@@ -393,7 +388,7 @@ export function CrmCampaignHub({
     setEditor(undefined);
     updateCampaign(c);
     navigateCampaign(c, created ? "overview" : "info");
-    setSaveNotice(true);
+    setAwaitingSavedRead(true);
     void fetchCampaigns();
   };
   useEffect(() => {
@@ -404,12 +399,10 @@ export function CrmCampaignHub({
         window.history.pushState({}, "", pageUrl);
         requestLeave(() => {
           window.history.replaceState({}, "", target);
-          setSaveNotice(false);
           setPromotionFormCampaignId(undefined);
           setPageUrl(target);
         });
       } else {
-        setSaveNotice(false);
         setPromotionFormCampaignId(undefined);
         setPageUrl(target);
       }
@@ -483,18 +476,22 @@ export function CrmCampaignHub({
   }, [organicDetail, detailTab, requestedDetailTab]);
   // Fetch campaigns
   const fetchCampaigns = async (refreshReviews = true) => {
+    const readId=++campaignsReadId.current;
     if (refreshReviews) onRefreshReviewCounts?.();
     setIsLoading(true);
     setCampaignError(false);
     try {
       const data = await loadCampaignWorkspace(fetch);
+      if(readId!==campaignsReadId.current)return;
       setCampaigns(data.campaigns);
       setRefreshedLeads(data.leads);
+      setAwaitingSavedRead(false);
     } catch (err) {
+      if(readId!==campaignsReadId.current)return;
       setCampaignError(true);
       console.error("[CAMPAIGN HUB] Failed to fetch campaigns:", err);
     } finally {
-      setIsLoading(false);
+      if(readId===campaignsReadId.current)setIsLoading(false);
     }
   };
   useEffect(() => {
@@ -839,6 +836,7 @@ export function CrmCampaignHub({
                       onDiscard={campaignDeleteError ? undefined : () => void handleDeleteCampaign()}
                     />
                   )}
+                {awaitingSavedRead&&campaignError&&<AdminSavedReadError lang={lang} busy={isLoading} onRetry={()=>void fetchCampaigns(false)}/>}
                 <CrmDetailTabs
                   id="crm-campaign"
                   contentId="crm-campaign-content"
@@ -906,6 +904,7 @@ export function CrmCampaignHub({
                         onCloseForm={() => setPromotionFormCampaignId(undefined)}
                         onSaved={(c) => {
                           updateCampaign(c);
+                          setAwaitingSavedRead(true);
                           void fetchCampaigns();
                         }}
                         onStateChange={(state) => {
@@ -1131,6 +1130,7 @@ export function CrmCampaignHub({
                       }}
                       onSaved={(c) => {
                         updateCampaign(c);
+                        setAwaitingSavedRead(true);
                         void fetchCampaigns();
                       }}
                     />
@@ -1141,9 +1141,6 @@ export function CrmCampaignHub({
           </div>
         </div>
       )}
-      {saveNotice&&<AdminFormFeedback state="saved" lang={lang} placement="floating">
-        {u("Campaign information saved. The campaign code and existing links stay unchanged.")}
-      </AdminFormFeedback>}
       {pendingLeave && (
         <CrmDiscardDialog
           lang={lang}

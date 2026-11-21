@@ -447,6 +447,10 @@ export function mountAccessManagement(app: Express) {
           await audit(c,actor.id,'lark.binding',{employeeId:old.id,before:prior||null,after:nextBinding,reason:why});
         }
         await ensureAdministrator(c);
+        const activeSession = (await c.query(
+          "SELECT 1 FROM crm_sessions WHERE user_id=:p1 AND expires_at>UTC_TIMESTAMP(6) LIMIT 1",
+          [old.id],
+        )).rows.length > 0;
         await c.query("DELETE FROM crm_sessions WHERE user_id=:p1", [old.id]);
         const next = {
           ...old,
@@ -465,6 +469,7 @@ export function mountAccessManagement(app: Express) {
         return {
           user: safeUser(next),
           sessionsRevoked: true,
+          signInRequired: b.active && activeSession,
           ownershipUnchanged: true,
         };
       });

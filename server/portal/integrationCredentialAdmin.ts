@@ -145,7 +145,7 @@ export function mountIntegrationCredentials(app: Express, {
   app.get(path,route(async(q,r)=>{
     await requireAdministrator(q);
     r.json({environment:credentialSlot('ga','default').environment,keyringReady:keyringReady(),
-      bootstrap:{database:!!process.env.MYSQL_TRIAL_URL,recovery:!!process.env.ACCESS_OPERATION_KEY},
+      bootstrap:{database:!!process.env.MYSQL_TRIAL_URL},
       gaEnabled:(await gaSettings(pool)).dispatchEnabled});
   }));
   const gaPath=path+'/ga-settings';

@@ -63,7 +63,6 @@ export interface PolicyActionControls {
   modifiedCount: number;
   isSaving: boolean;
   isResetting: boolean;
-  saveSuccess: boolean;
   save: () => Promise<void>;
   reset: () => Promise<void>;
   discard: () => void;
@@ -246,7 +245,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [checkingResult,setCheckingResult]=useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<PolicySaveError | null>(null);
   const [showTimeErrors, setShowTimeErrors] = useState(false);
   const [serverTimeErrors, setServerTimeErrors] = useState<WorkTimeErrors>({});
@@ -542,7 +540,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const submitPolicy = useCallback(async (replacement?:CrmPolicyConfig) => {
     if(policyRead!=='ready'||inFlight.current||!isPolicyTopic(activeCategory)||pendingTopics.current[activeCategory])return;
     const topic=activeCategory,submitted=replacement||formData;
-    setSaveSuccess(false);setSaveError(null);setServerTimeErrors({});setShowTimeErrors(true);
+    setSaveError(null);setServerTimeErrors({});setShowTimeErrors(true);
     const invalid=policyConfigErrors({...savedPolicy,...topicPatch(submitted,topic)});
     if(Object.keys(invalid).length){setSaveError(new PolicySaveError('policy_save_rejected',invalid));focusConfig(invalid);return;}
     inFlight.current=true;setIsSaving(true);
@@ -552,7 +550,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       const saved=typeof result==='object'?result:submitted;
       setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,saved,{topic,submitted}));
       if(topic==='assignment'&&includeExisting&&submitted.autoAssignment.enabled){setIncludeExisting(false);setBackfillConfiguration(saved.autoAssignment);}
-      setSaveSuccess(true);setTimeout(()=>setSaveSuccess(false),4000);
     }catch(error){
       const failure=error instanceof PolicySaveError?error:new PolicySaveError('policy_topic_unknown');
       if(failure.code==='policy_topic_unknown')pendingTopics.current[topic]={submitted,failure};
@@ -573,7 +570,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       if(policyEqual(topicPatch(saved,topic),topicPatch(submitted,topic))){
         delete pendingTopics.current[topic];
         setPolicyDraft(state=>reconcilePolicyDraft(state.draft,state.base,saved,{topic,submitted}));
-        setSaveError(null);setSaveSuccess(true);
+        setSaveError(null);
         if(topic==='assignment'&&includeExisting&&saved.autoAssignment.enabled){
           setIncludeExisting(false);setBackfillConfiguration(saved.autoAssignment);
         }
@@ -602,21 +599,20 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   };
   const discard=useCallback(()=>{
     if(!isPolicyTopic(activeCategory))return;
-    setFormData(current=>({...current,...topicPatch(savedPolicy,activeCategory)}));setSaveError(null);setServerTimeErrors({});setShowTimeErrors(false);setSaveSuccess(false);
+    setFormData(current=>({...current,...topicPatch(savedPolicy,activeCategory)}));setSaveError(null);setServerTimeErrors({});setShowTimeErrors(false);
   },[activeCategory,savedPolicy,setFormData]);
-  useEffect(()=>{setResetTopic(undefined);setSaveError(pendingPolicy?.failure??null);setSaveSuccess(false);setShowTimeErrors(false);},[activeCategory]);
+  useEffect(()=>{setResetTopic(undefined);setSaveError(pendingPolicy?.failure??null);setShowTimeErrors(false);},[activeCategory]);
   useEffect(() => {
     onActionControlsChange?.({
       isDirty: modifiedFieldsCount > 0,
       modifiedCount: modifiedFieldsCount,
       isSaving,
       isResetting,
-      saveSuccess,
       save: () => submitPolicy(),
       reset: handleReset,
       discard,
     });
-  }, [modifiedFieldsCount, isSaving, isResetting, saveSuccess, submitPolicy, handleReset, discard, onActionControlsChange]);
+  }, [modifiedFieldsCount, isSaving, isResetting, submitPolicy, handleReset, discard, onActionControlsChange]);
   useEffect(() => () => onActionControlsChange?.(null), [onActionControlsChange]);
   const toggleWorkDay = (day: number) => {
     const current = formData.businessHours.workDays || [];
@@ -1368,7 +1364,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
       </details>
           </AdminSecondaryActions>
         </>}>
-        <div ref={saveFeedback} tabIndex={-1}>{saveError&&<div><AdminFormFeedback lang={lang} state={saveError.code==='policy_topic_unknown'?'unknown':'error'}>{policyMessage(saveError.code,lang)}</AdminFormFeedback>{saveError.currentPolicy&&isPolicyTopic(activeCategory)&&<details className="policy-conflict-review"><summary>{['Compare saved values','Bandingkan nilai tersimpan','核对最新已保存值'][languageIndex]}</summary><dl>{topicChangeFields(formData,saveError.currentPolicy,activeCategory).map(field=>{const read=(value:any)=>field.split('.').reduce((node,key)=>node?.[key],value);return <div key={field}><dt>{policyFieldLabel(field,lang)}</dt><dd>{['Saved','Tersimpan','已保存'][languageIndex]}: {displayPolicyValue(read(saveError.currentPolicy))} · {['Your draft','Draf Anda','你的草稿'][languageIndex]}: {displayPolicyValue(read(formData))}</dd></div>;})}</dl><button type="button" onClick={()=>{const latest=saveError.currentPolicy!;delete pendingTopics.current[activeCategory as PolicyTopic];setPolicyDraft(state=>({...state,base:{...state.base,...topicPatch(latest,activeCategory as PolicyTopic)}}));setSaveError(null);}}>{['Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿'][languageIndex]}</button></details>}{Object.entries(saveError.fields).map(([field,code])=><button key={field} type="button" onClick={()=>focusConfig({[field]:code})}>{policyFieldLabel(field,lang)}: {policyMessage(code,lang)}</button>)}</div>}{saveSuccess&&<AdminFormFeedback lang={lang} state="saved">{policyMessage('policy_topic_saved',lang)}</AdminFormFeedback>}</div>
+        <div ref={saveFeedback} tabIndex={-1}>{saveError&&<div><AdminFormFeedback lang={lang} state={saveError.code==='policy_topic_unknown'?'unknown':'error'}>{policyMessage(saveError.code,lang)}</AdminFormFeedback>{saveError.currentPolicy&&isPolicyTopic(activeCategory)&&<details className="policy-conflict-review"><summary>{['Compare saved values','Bandingkan nilai tersimpan','核对最新已保存值'][languageIndex]}</summary><dl>{topicChangeFields(formData,saveError.currentPolicy,activeCategory).map(field=>{const read=(value:any)=>field.split('.').reduce((node,key)=>node?.[key],value);return <div key={field}><dt>{policyFieldLabel(field,lang)}</dt><dd>{['Saved','Tersimpan','已保存'][languageIndex]}: {displayPolicyValue(read(saveError.currentPolicy))} · {['Your draft','Draf Anda','你的草稿'][languageIndex]}: {displayPolicyValue(read(formData))}</dd></div>;})}</dl><button type="button" onClick={()=>{const latest=saveError.currentPolicy!;delete pendingTopics.current[activeCategory as PolicyTopic];setPolicyDraft(state=>({...state,base:{...state.base,...topicPatch(latest,activeCategory as PolicyTopic)}}));setSaveError(null);}}>{['Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿'][languageIndex]}</button></details>}{Object.entries(saveError.fields).map(([field,code])=><button key={field} type="button" onClick={()=>focusConfig({[field]:code})}>{policyFieldLabel(field,lang)}: {policyMessage(code,lang)}</button>)}</div>}</div>
       </AdminTopicHeader>}
       {isPolicyTopic(activeCategory)&&policyRead!=='ready'&&<AdminListState lang={lang} state={policyRead}
         onRetry={onRetryPolicy}/>}
@@ -1461,7 +1457,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     value={formData.businessHours.startTime}
                     onChange={(e) => {
                       setSaveError(null);
-                      setSaveSuccess(false);
                       setServerTimeErrors({});
                       setShowTimeErrors(true);
                       setFormData({
@@ -1502,7 +1497,6 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
                     value={formData.businessHours.endTime}
                     onChange={(e) => {
                       setSaveError(null);
-                      setSaveSuccess(false);
                       setServerTimeErrors({});
                       setShowTimeErrors(true);
                       setFormData({

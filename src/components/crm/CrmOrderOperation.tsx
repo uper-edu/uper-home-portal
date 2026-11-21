@@ -8,6 +8,7 @@ const operations = {
   'refund-returns': {scope:'finance',kind:'enrollment.refund.return'},
   invitations: {scope:'aftercare',kind:'enrollment.transfer.invite'},
   refund: {scope:'aftercare',kind:'enrollment.refund.intake'},
+  end: {scope:'aftercare',kind:'enrollment.order.end'},
 } as const;
 
 type Operation = keyof typeof operations;

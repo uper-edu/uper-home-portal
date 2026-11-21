@@ -26,7 +26,7 @@ import { interestOption } from '../EnrollmentInterests';
 import { enrollmentStatuses } from '../EnrollmentApplication';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { AdminField, AdminFieldLabel, AdminForm, AdminRequiredNote } from '../AdminForm';
-import { AdminFormActions, AdminFormFeedback } from '../AdminFormLayout';
+import { AdminFormActions, AdminFormFeedback, AdminSavedReadError } from '../AdminFormLayout';
 import { describeFollowUpTask } from '../../utils/crmFollowUp';
 import { CrmSimpleWorkflow } from './CrmSimpleWorkflow';
 import { CrmDisclosure } from './CrmDisclosure';
@@ -601,7 +601,8 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const [busy,setBusy]=useState(false);
   const progressOpener=useRef<HTMLElement|null>(null);
   const [saveError,setSaveError]=useState(false);
-  const [notice,setNotice]=useState(false);
+  const [progressReadFailed,setProgressReadFailed]=useState(false);
+  const [readingProgress,setReadingProgress]=useState(false);
   const tableScroll=useRef<HTMLDivElement>(null);
   const searchField=useRef<HTMLInputElement>(null);
   const detailBody=useRef<HTMLDivElement>(null);
@@ -695,12 +696,27 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const openProgress=async(row:Opportunity,agreementId?:string)=>{
     if(busy)return;
     if(document.activeElement instanceof HTMLElement)progressOpener.current=document.activeElement;
-    setBusy(true);setSaveError(false);setNotice(false);
+    setBusy(true);setSaveError(false);
     try{
       const lead=await read<any>('/api/crm/leads/'+row.customerId,new AbortController().signal);
       setProgress({lead:lead.lead??lead,opportunity:row,agreementId});
       setProgressDirty(false);
     }catch{setSaveError(true);}finally{setBusy(false);}
+  };
+  const readSavedProgress=async()=>{
+    if(readingProgress)return;
+    setReadingProgress(true);
+    try{
+      const signal=new AbortController().signal;
+      const [latest,record]=await Promise.all([
+        read<OpportunityList>(listEndpoint,signal),
+        id?read<Opportunity>(base+'/'+id,signal):undefined,
+      ]);
+      setResult({endpoint:listEndpoint,actorId,data:latest});
+      if(record)setDetail(record);
+      setProgressReadFailed(false);
+    }catch{setProgressReadFailed(true);}
+    finally{setReadingProgress(false);}
   };
   const closeProgress=()=>{
     if(busy)return;
@@ -999,25 +1015,18 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           })}
         </CrmListTable>}
     </>}
-    {saveError?<AdminFormFeedback state="error" lang={lang} placement="floating">
-      {notice?t(lang,['进展已保存，暂时无法刷新记录。','Progress saved, but the record could not be refreshed.','Kemajuan tersimpan, tetapi catatan belum dapat dimuat ulang.']):
-        t(lang,['暂时无法打开进展记录，请重试。','Progress could not be opened. Try again.','Catatan kemajuan belum dapat dibuka. Coba lagi.'])}
-    </AdminFormFeedback>:notice&&<AdminFormFeedback state="saved" lang={lang} placement="floating">
-      {t(lang,['商机进展已保存','Opportunity progress saved','Kemajuan peluang tersimpan'])}
+    {saveError&&<AdminFormFeedback state="error" lang={lang} placement="floating">
+      {t(lang,['暂时无法打开进展记录，请重试。','Progress could not be opened. Try again.','Catatan kemajuan belum dapat dibuka. Coba lagi.'])}
     </AdminFormFeedback>}
+    {progressReadFailed&&<AdminSavedReadError lang={lang} busy={readingProgress} onRetry={()=>void readSavedProgress()}/>}
     {progress&&<CrmOperationLayer progress customerContext={false} lang={lang} isLight={isLight} busy={busy}
       context={progress.opportunity.customerName} title={t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])} onClose={closeProgress}>
       <CrmSimpleWorkflow lead={progress.lead} fixedOpportunity={progress.opportunity} lang={lang} isLight={isLight} timezone={viewerTimeZone()}
         initialDraft={progress.agreementId?{simple:{agreementIntent:'update',commitmentChange:{id:progress.agreementId,status:''}}}:undefined}
         onDirty={setProgressDirty} onBusy={setBusy} onCancel={closeProgress}
         onSaved={async()=>{
-          setProgress(null);setNotice(true);
-          try{
-            const signal=new AbortController().signal;
-            const latest=read<OpportunityList>(listEndpoint,signal).then(data=>setResult({endpoint:listEndpoint,actorId,data}));
-            if(id)await Promise.all([latest,read<Opportunity>(base+'/'+id,signal).then(setDetail)]);
-            else await latest;
-          }catch{setSaveError(true);}
+          setProgress(null);
+          await readSavedProgress();
         }}/>
     </CrmOperationLayer>}
     {confirmDiscard&&<CrmDiscardDialog lang={lang} isLight={isLight}

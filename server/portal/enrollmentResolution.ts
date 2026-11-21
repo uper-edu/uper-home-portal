@@ -131,11 +131,11 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
   }));
   app.get(staff+'/:id/results/:operation/:requestId',wrap(async(q,r)=>{
     const name=String(q.params.operation);
-    if(name!=='invitations'&&name!=='refund')invalid('enrollment_result_missing',404);
-    const actor=name==='refund'?await manager(q):await supportActor(q);
+    if(name!=='invitations'&&name!=='refund'&&name!=='end')invalid('enrollment_result_missing',404);
+    const actor=name==='invitations'?await supportActor(q):await manager(q);
     const result=await read(async c=>{
       if(name==='invitations')await authorizeInvitation(c,actor,String(q.params.id));
-      return operationResult(c,q,actor,name==='invitations'?'enrollment.transfer.invite':'enrollment.refund.intake');
+      return operationResult(c,q,actor,name==='invitations'?'enrollment.transfer.invite':name==='end'?'enrollment.order.end':'enrollment.refund.intake');
     });
     r.set('Cache-Control','no-store').json(result);
   }));

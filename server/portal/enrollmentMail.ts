@@ -453,7 +453,7 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
     if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
     const selectedPool=q.body?.pool,sticky=q.body?.sticky;
     if(sticky!==undefined&&typeof sticky!=='boolean')invalid('enrollment_mail_invalid',400);
-    await transact(async c=>{
+    const saved=await transact(async c=>{
       const {config,revision}=await configuration(c,true);
       if(revision!==q.body?.revision)invalid('enrollment_mail_conflict',409);
       if(!config.pools?.some(p=>p.id===selectedPool))invalid('enrollment_mail_invalid',400);
@@ -462,8 +462,9 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
         [environment(),next]);
       await c.query(`INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.pool_selected',:p2)`,
         [actor.id,{environment:environment(),previousPool:config.selectedPool,pool:selectedPool,previousSticky:config.sticky,sticky:next.sticky}]);
+      return {selectedPool,sticky:next.sticky,revision:revision+1};
     });
-    return r.json({ok:true});
+    return r.json({ok:true,settings:saved});
   }));
   app.get('/api/crm/enrollment/mail',wrap(async(q,r)=>{
     await staff(q,'crm.operations.manage');

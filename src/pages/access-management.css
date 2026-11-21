@@ -402,3 +402,6 @@
   .system-guide-contents ol { display:grid;gap:4px; }
   .system-guide-contents a { display:flex;min-height:40px;align-items:center; }
 }
+
+.access-user-signin { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.access-user-signin > button { color: var(--admin-accent); text-decoration: underline; min-height: 40px; }

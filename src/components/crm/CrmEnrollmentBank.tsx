@@ -29,16 +29,9 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
   const [hidden,setHidden]=useState(false);
   const [busy,setBusy]=useState(false);
   const [discard,setDiscard]=useState(false);
-  const [notice,setNotice]=useState(false);
   const dirty=!!(draft&&saved&&fields.some(key=>draft.bank[key].trim()!==saved.bank[key]));
   useEffect(()=>{onDraftChange(dirty||busy||!!pending);},[dirty,busy,pending,onDraftChange]);
   useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
-  useEffect(()=>{
-    if(!notice)return;
-    const timer=window.setTimeout(()=>setNotice(false),3500);
-    return ()=>window.clearTimeout(timer);
-  },[notice]);
-
   async function load(signal?:AbortSignal) {
     try{
       const response=await fetch(path,{cache:'no-store',signal});
@@ -57,7 +50,7 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
   },[active,saved,hidden]);
 
   function success(settings:Settings) {
-    setSaved(settings);setPending(undefined);setDraft(undefined);setNotice(true);
+    setSaved(settings);setPending(undefined);setDraft(undefined);
   }
   async function save() {
     if(!draft||!dirty||busy||pending||error==='conflict')return;
@@ -87,7 +80,7 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
   return <>
     <AdminFormSection title={title} variant="subgroup"
       description={t(['修改只影响之后获席的新订单。现有订单保留原收款账户。','Changes apply to future orders. Existing orders keep their original bank details.','Perubahan berlaku untuk pesanan baru. Pesanan lama tetap memakai rekening sebelumnya.'])}
-      actions={saved&&<button type="button" className="crm-work-button" aria-haspopup="dialog" onClick={event=>{event.currentTarget.focus({preventScroll:true});setNotice(false);setError(undefined);setDraft(saved);}}>
+      actions={saved&&<button type="button" className="crm-work-button" aria-haspopup="dialog" onClick={event=>{event.currentTarget.focus({preventScroll:true});setError(undefined);setDraft(saved);}}>
         {t(['编辑收款账户','Edit bank account','Edit rekening'])}</button>}>
       {!saved&&error==='load'?<CrmSaveFeedback state="error" lang={lang}>
         {t(['暂时无法读取收款账户。','The bank account could not be loaded.','Rekening belum dapat dimuat.'])}{' '}
@@ -128,6 +121,5 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
     </AdminEditor>}
     {active&&discard&&<CrmDiscardDialog lang={lang} isLight={isLight}
       onKeep={()=>setDiscard(false)} onDiscard={()=>{setDraft(undefined);setDiscard(false);}}/>}
-    {notice&&<span className="crm-opportunity-feedback" role="status">{t(['报名收款账户已保存','Enrollment bank account saved','Rekening pendaftaran tersimpan'])}</span>}
   </>;
 }

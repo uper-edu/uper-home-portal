@@ -167,14 +167,16 @@ export default {
       "Ethan",
       [
         "crm_leader",
-        "cms_admin"
+        "cms_admin",
+        "access_admin"
       ]
     ],
     [
       "Monite",
       [
         "crm_leader",
-        "cms_admin"
+        "cms_admin",
+        "access_admin"
       ]
     ]
   ]

@@ -186,7 +186,7 @@ export function mountTrustRoutes(
       const log = (l.profile.followUpLogs || []).find(
         (v: any) => v.requestId === req.params.requestId && v.actor === e.id,
       );
-      if (log) return res.json({ saved: true, leadId: l.id, ...log.result });
+      if (log) return res.json({ saved: true, leadId: l.id, ...log.result, lead: {...l.profile,id:l.id} });
       invalid("Operation not found", 404);
     }),
   );

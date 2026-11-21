@@ -11,7 +11,7 @@ import type {CrmLanguage} from '../../utils/crmLanguage';
 import {enrollmentBusinessDayLimit,enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRuleDefaults,enrollmentRuleFields,
   type EnrollmentRuleField,type EnrollmentRules} from '../../utils/enrollmentRules';
 
-type Feedback='saved'|'load-error'|'load-denied'|'save-error'|'conflict';
+type Feedback='load-error'|'load-denied'|'save-error'|'conflict';
 const endpoint='/api/crm/enrollment/rules';
 const asDraft=(rules:typeof enrollmentRuleDefaults)=>Object.fromEntries(
   enrollmentRuleFields.map(key=>[key,String(rules[key])]),
@@ -70,7 +70,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
     setDraft(asDraft(rules));
     setPending(undefined);
     setShowSaved(false);
-    setFeedback('saved');
+    setFeedback(undefined);
   }
   async function save() {
     if(!saved||!dirty||inFlight.current||pending||feedback==='conflict') return;
@@ -182,7 +182,6 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
       {pending&&!busy&&<CrmSaveFeedback state="unknown" lang={lang}>{checkState==='missing'?t('No result yet. Your draft is retained.','Hasil belum ditemukan. Draf disimpan.','暂未查到这次操作的结果，草稿已保留。'):
         checkState==='error'?t('Unable to check the result. Your draft is retained.','Hasil belum dapat diperiksa. Draf disimpan.','暂时无法查询结果，草稿已保留。'):
         t('Save outcome unknown.','Hasil penyimpanan belum diketahui.','暂未确认是否保存成功。')} <button type="button" className="crm-work-link" onClick={()=>void checkResult()}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></CrmSaveFeedback>}
-      {feedback==='saved'&&!dirty&&<CrmSaveFeedback state="saved" lang={lang}/>}
     </div>
     </AdminForm>
     {saved&&<div className="crm-enrollment-rules-body">

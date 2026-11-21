@@ -40,7 +40,7 @@ export function frontendEnvironment(target, directory = process.cwd()) {
   const { values } = readEnvironment(target, directory);
   return Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith('VITE_')));
 }
-const bootstrapKeys = new Set(['MYSQL_TRIAL_URL','ACCESS_OPERATION_KEY','ACCESS_INITIAL_PASSWORD','ACCESS_INITIAL_PASSWORDS_FILE']);
+const bootstrapKeys = new Set(['MYSQL_TRIAL_URL','ACCESS_INITIAL_PASSWORD','ACCESS_INITIAL_PASSWORDS_FILE']);
 
 export function readBootstrapSecrets(file){
   if(!path.isAbsolute(file))throw Error('Bootstrap secret file must have an absolute path');

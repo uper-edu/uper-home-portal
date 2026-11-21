@@ -73,7 +73,6 @@
 | `ACCESS_PUBLIC_ORIGIN` | 受保护访问使用的正式 HTTPS 主站来源。 模板值为 `https://uperedu.com`。 |
 | `ACCESS_ALLOWED_ORIGINS` | 正式站获准的 HTTPS 来源清单，须包含主站。多个来源以逗号分隔。 模板值为 `https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com`。 |
 | `ACCESS_TRUSTED_PROXIES` | 可信反向代理的具体私网 IP，多个地址以逗号分隔。 |
-| `ACCESS_OPERATION_KEY` | 至少 32 字符的管理员恢复签名密钥，按环境独立保管。 |
 | `PORTAL_WORKER_ENABLED` | 后台 worker 开关。省略时正式站默认开启。首次部署核验或维护时按发布步骤显式控制。 模板值为 `true`。 |
 
 ### 集成凭证与浏览器统计
@@ -97,7 +96,7 @@
 | `PORTAL_LOG_LEVEL` | 调整日志级别时填写。 模板值为 `info`。 |
 | `MYSQL_BIN_DIRECTORY` | 备份或恢复工具找不到 MySQL 客户端时填写。 |
 | `ACCESS_INITIAL_PASSWORD` | 首次初始化预置员工时，通过私有配置提供已约定的统一初始密码。首次登录须修改。已有账号的日常启动可省略。 |
-| `PORTAL_BOOTSTRAP_SECRET_FILE` | 部署层按需提供数据库连接、恢复签名和初始化配置的私有文件。 |
+| `PORTAL_BOOTSTRAP_SECRET_FILE` | 部署层按需提供数据库连接和初始化配置的私有文件。 |
 | `PORTAL_CREDENTIAL_PROVIDER_CHECKS` | 仅获准调用真实供应商核验时启用。 模板值为 `false`。 |
 | `OPENAI_MODEL` | 后台尚无模型配置时可覆盖默认 OpenAI 模型。 模板值为 `gpt-6.2-sol`。 |
 | `PORTAL_COS_BUCKET` | 按需核对 COS 桶。 |
@@ -116,6 +115,8 @@
 | SMTP | `PORTAL_ENROLLMENT_MAIL_CREDENTIAL_KEY` | 同时保留仍被发件账号引用的旧密码变量。逐账号确认后台解密、重启回读、按授权投递和回退条件后，才移除该账号的旧来源。最后一个依赖迁移后再移除旧密文解密密钥。 |
 | COS | `PORTAL_COS_SECRET_ID`、`PORTAL_COS_SECRET_KEY`、`PORTAL_COS_SECURITY_TOKEN` | 确认后台凭证接管同一目标，重启后验证 CMS 媒体读取和所需操作，并确认回退后移除。会话令牌仅用于临时凭证。 |
 | 旧 Lark 发送模式 | `PORTAL_NOTIFICATION_MODE`、`LARK_PERSONAL_DELIVERY_ENABLED` | 只在沿用尚未迁移模式的旧生产库时保留原值。首次升级后，核对 CRM → 销售运营 → 通知与审计 → 通知渠道，确认群及个人模式均已迁移后移除。 |
+
+升级到移除账号操作密钥的版本时，从私有运行配置和 `PORTAL_BOOTSTRAP_SECRET_FILE` 指向的文件中清理旧的 `ACCESS_OPERATION_KEY` 项。启动仍核对域名、可信代理、数据库和生产就绪。两位系统管理员通过后台互相重置密码。
 
 ## 4. 软件系统默认设置
 

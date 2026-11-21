@@ -39,3 +39,23 @@ test('a stale version is rejected for a rule, existing group and new group ID',(
   assert.throws(()=>checkNotificationSettingsVersion(null,changed),{status:409});
   assert.throws(()=>checkNotificationSettingsVersion(2,3),{status:409});
 });
+
+test('legacy Webhook retries use the existing Lark encryption key and keep the URL out of receipts',async t=>{
+  const previous=process.env.LARK_WEBHOOK_ENCRYPTION_KEY;
+  t.after(()=>{
+    if(previous===undefined)delete process.env.LARK_WEBHOOK_ENCRYPTION_KEY;
+    else process.env.LARK_WEBHOOK_ENCRYPTION_KEY=previous;
+  });
+  const {db,entries}=fixture();
+  const body={requestId,webhook:'https://example.invalid/fixture-secret'};
+  let saves=0;
+  const write=async()=>{saves++;return {success:true};};
+  delete process.env.LARK_WEBHOOK_ENCRYPTION_KEY;
+  await assert.rejects(writeNotificationSettings(db,'admin','group','group-1',body,write),{status:503});
+  assert.equal(saves,0);
+  process.env.LARK_WEBHOOK_ENCRYPTION_KEY='existing-lark-fixture-key';
+  await writeNotificationSettings(db,'admin','group','group-1',body,write);
+  await writeNotificationSettings(db,'admin','group','group-1',body,write);
+  assert.equal(saves,1);
+  assert.doesNotMatch(JSON.stringify([...entries]),/fixture-secret/);
+});

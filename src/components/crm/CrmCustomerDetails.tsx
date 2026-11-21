@@ -61,7 +61,6 @@ export function CrmCustomerProfile({
   dynamicProfile,
   basicActions,
   contactFields,
-  communication,
   participation,
   identity,
   signalFocus,
@@ -74,7 +73,6 @@ export function CrmCustomerProfile({
   dynamicProfile?: React.ReactNode;
   basicActions?: (node: HTMLDivElement | null) => void;
   contactFields?: (node: HTMLDivElement | null) => void;
-  communication?: React.ReactNode;
   participation?: React.ReactNode;
   identity?: React.ReactNode;
   signalFocus?: { id: string; token: number };

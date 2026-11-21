@@ -3,7 +3,7 @@ import {mountClientDiagnostics} from './clientDiagnostics.ts';
 import {listPromotionReviews,promotionReviewCounts,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
 import {campaignPromotionPath,campaignPromotionShortUrl,promotionIdForShortSlug,PROMOTION_SHORT_CODE_PREFIX} from "../src/utils/campaignPromotion.ts";
 import {presetPromotionOwner,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
-import {addCampaignPromotion,deleteCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
+import {addCampaignPromotion,campaignPromotionResult,deleteCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
 import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
 import {resolveCampaignLinks} from "../src/utils/campaignCode.ts";
 import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
@@ -111,6 +111,11 @@ app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>{
 app.get('/api/crm/campaigns/sources/promotions/:leadId/results/:requestId',wrap(async(q:any,r:any)=>r.json(await promotionReviewResult(q.params.leadId,q.params.requestId,r.locals.crmEmployee))));
 app.post('/api/crm/campaigns/sources/promotions/:leadId/review',wrap(async(q:any,r:any)=>r.json(await reviewPromotion(q.params.leadId,q.body,r.locals.crmEmployee))));
 app.get(['/api/crm/campaigns/:idOrCode','/api/campaigns/:idOrCode'],wrap(async(q:any,r:any)=>{const list=q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns();const resolved=await getCampaignByIdOrCode(q.params.idOrCode);const campaign=resolved && list.find(c=>c.id===resolved.id);if(!campaign)return r.status(404).json({error:'Campaign not found'});const {stats,...publicCampaign}=campaign;r.json({success:true,campaign:q.path.startsWith('/api/crm')?campaign:publicCampaign});}));
+app.get('/api/crm/campaigns/:id/links/results/:requestId',wrap(async(q:any,r:any)=>{
+ const actor=r.locals.crmEmployee;
+ if(!actor.permissions.includes('campaigns.manage'))return r.status(403).json({error:'Permission denied'});
+ r.set('Cache-Control','no-store').json(await campaignPromotionResult(q.params.id,q.params.requestId,actor.id));
+}));
 app.post('/api/crm/campaigns/:id/links',wrap(async(q:any,r:any)=>r.json({success:true,...await addCampaignPromotion(q.params.id,q.body,r.locals.crmEmployee.id)})));
 app.delete('/api/crm/campaigns/:id/links/:linkId',wrap(async(q:any,r:any)=>{
  if(!r.locals.crmEmployee.permissions.includes('campaigns.manage')||!validMutationOrigin(q))return r.status(403).json({error:'Permission denied'});

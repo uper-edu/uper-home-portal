@@ -12,7 +12,7 @@ import {AdminFormGuide} from '../AdminFormGuide';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {CrmDiscardDialog} from './CrmDetailWorkspace';
-import {AdminFormGrid,AdminFormSection,AdminFormFeedback} from '../AdminFormLayout';
+import {AdminFormGrid,AdminFormSection,AdminFormFeedback,AdminSavedReadError} from '../AdminFormLayout';
 import {AdminStatus} from '../AdminStatus';
 import {AdminField} from '../AdminForm';
 import {AdminTopicFrame} from "../AdminTopicFrame";
@@ -175,6 +175,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   const [contentRead,setContentRead] = useState<{
     section:CmsSection;state:'loading'|'refreshing'|'ready'|'error'|'denied';hasSnapshot?:boolean;
   }>();
+  const [awaitingSavedRead,setAwaitingSavedRead]=useState<CmsSection>();
   const activeSectionRef=useRef(activeSection);
   activeSectionRef.current=activeSection;
   const contentRequests=useRef<Partial<Record<CmsSection,number>>>({});
@@ -243,6 +244,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       if(!data.success||!Array.isArray(data.items))throw Error();
       if(!current())return;
       setSectionCounts(prev => ({...prev,[section]:data.items.length}));
+      setAwaitingSavedRead(pending=>pending===section?undefined:pending);
       if(activeSectionRef.current===section){
         setItems(data.items);
         setContentRead({section,state:'ready',hasSnapshot:true});
@@ -424,14 +426,21 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     }
   };
 
-  const finishCmsSave=async(operation:any,result:any)=>{
-    const response=await fetch(`/api/cms/content/${operation.collection}`);if(!response.ok)throw Error();
-    const data=await response.json();
-    const current=data.items.find((v:any)=>(v._id||v.id)===(result.item?._id||operation.draft?._id));
-    rememberCms(null);setCmsTone('saved');cmsRequestId.current='';
-    setEditingItem(current||null);setIsModalOpen(!!current);cmsDraftBase.current=JSON.stringify(current||null);
-    setCmsResult(current&&current._cmsVersion!==result.item?._cmsVersion?t('Saved; a newer version is displayed.','本次已保存；当前显示之后更新的版本。'):t('Saved and reloaded.','已保存并重新载入。'));
-    await fetchItems(operation.collection);
+  const finishCmsSave=async(section:CmsSection,result:{item?:any})=>{
+    const savedItem=result?.item;
+    const id=savedItem?._id||savedItem?.id;
+    if(!id)throw Error('Missing saved CMS record');
+    rememberCms(null);
+    cmsRequestId.current='';
+    cmsDraftBase.current='';
+    setCmsResult('');
+    setEditingItem(null);
+    setIsModalOpen(false);
+    setAwaitingSavedRead(section);
+    setItems(previous=>previous.some(item=>(item._id||item.id)===id)
+      ?previous.map(item=>(item._id||item.id)===id?savedItem:item)
+      :[...previous,savedItem]);
+    await fetchItems(section,true);
   };
   const checkCmsResult=async()=>{
     if(!pendingCms||isSaving||isUploading)return;
@@ -439,7 +448,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     try{const r=await fetch(`/api/cms/operations/${encodeURIComponent(pendingCms.requestId)}?kind=${pendingCms.kind}&collection=${pendingCms.collection}`,{cache:'no-store',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS)});if(!r.ok)throw Error();const data=await r.json();
       if(data.state!=='committed'){setCmsNotFound(data.state==='not_found');setCmsResult(t('No committed result found yet. The original request may still be running. Check again.','暂未查到提交结果，原请求可能仍在处理，请再次查询。'));return;}
       if(pendingCms.kind==='upload'){applyUploadedImage(data.result.url,pendingCms.collection,pendingCms.target);rememberCms(null);setCmsTone('saved');setCmsResult(t('Image upload confirmed. Save content separately.','图片上传已确认，请另行保存内容。'));}
-      else await finishCmsSave(pendingCms,data.result);
+      else await finishCmsSave(pendingCms.collection,data.result);
     }catch{setCmsResult(t('Result unavailable. Your draft is retained.','暂时无法查询结果，草稿已保留。'));}finally{setIsSaving(false);}
   };
   const handleSave = async (e: React.FormEvent) => {
@@ -456,7 +465,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');setCmsResult(res.status===409
         ?(lang==='zh'?'这条内容或保存请求与当前版本冲突。草稿已保留，请核对最新版本。':lang==='id'?'Konten atau permintaan simpan bertentangan dengan versi saat ini. Draf disimpan; periksa versi terbaru.':'This content or save request conflicts with the current version. The draft is retained. Review the latest version.')
         :t('Save rejected. Review permissions, fields or the latest version; draft retained.','保存被拒绝，请核对权限、字段或最新版本；草稿保留。'));return;}throw Error();}
-      await finishCmsSave(operation,data);
+      await finishCmsSave(operation.collection,data);
     }catch{setCmsResult(t('Save outcome unconfirmed. Query the result before continuing.','保存结果尚未确认，请先查询再继续。'));}finally{setIsSaving(false);}
   };
   const applyUploadedImage=(uploadedUrl:string,section:string,target:string)=>{
@@ -482,7 +491,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       await sendCmsUpload(pendingCms,cmsUploadBody.current);return;
     }
     const operation=pendingCms;setIsSaving(true);setCmsNotFound(false);
-    try{const res=await fetch(`/api/cms/content/${operation.collection}`,{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(cmsSaveRequest(operation))});const data=await res.json();if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');}setCmsResult(t('Original retry rejected. Draft retained; query before continuing.','原请求重试被拒绝，草稿保留，请查询结果后继续。'));return;}await finishCmsSave(operation,data);}
+    try{const res=await fetch(`/api/cms/content/${operation.collection}`,{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(cmsSaveRequest(operation))});const data=await res.json();if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');}setCmsResult(t('Original retry rejected. Draft retained; query before continuing.','原请求重试被拒绝，草稿保留，请查询结果后继续。'));return;}await finishCmsSave(operation.collection,data);}
     catch{setCmsResult(t('Save outcome unconfirmed. Query the result before continuing.','保存结果尚未确认，请先查询再继续。'));}finally{setIsSaving(false);}
   };
   const handleFileUpload=async(e:React.ChangeEvent<HTMLInputElement>)=>{
@@ -700,7 +709,8 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
           <div className="flex-1" aria-busy={isLoading||contentState==='refreshing'}>
             {isLoading&&<AdminListState lang={lang} state="loading"/>}
-            {(contentState==='error'||contentState==='denied')&&<AdminListState lang={lang} state={contentState}
+            {contentState==='error'&&awaitingSavedRead===activeSection&&<AdminSavedReadError lang={lang} onRetry={()=>void fetchItems(activeSection,true)}/>}
+            {(contentState==='denied'||contentState==='error'&&awaitingSavedRead!==activeSection)&&<AdminListState lang={lang} state={contentState}
               message={contentState==='error'?t('Failed to load content','加载内容失败'):undefined}
               compact={hasSnapshot} onRetry={()=>void fetchItems(activeSection,hasSnapshot)}/>}
             {hasSnapshot&&(filteredItems.length===0

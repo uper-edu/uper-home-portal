@@ -254,9 +254,33 @@ export function CampaignPromotionLinks({
     if (dirty) setConfirmCancel(true);
     else closeForm();
   }
+  function completeSave(record:CrmCampaignRecord) {
+    if(record?.id!==campaign.id)throw Error('Invalid result');
+    closeForm();
+    onSaved(record);
+  }
+  async function checkSavedLink() {
+    if(!pending.current||saving.current)return;
+    saving.current=true;
+    setBusy(true);
+    try {
+      const response=await fetch(`/api/crm/campaigns/${encodeURIComponent(campaign.id)}/links/results/${encodeURIComponent(pending.current.requestId)}`,{cache:'no-store',signal:AbortSignal.timeout(20000)});
+      if(response.status===404){
+        setError("No result yet. The original draft is retained.");
+        return;
+      }
+      if(!response.ok)throw Error();
+      completeSave((await response.json()).campaign);
+    }catch{
+      setError("Unable to check the result. The original draft is retained.");
+    }finally{
+      saving.current=false;
+      setBusy(false);
+    }
+  }
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (saving.current) return;
+    if (saving.current || unknown) return;
     if (!v.promotionKind) { setError("Select promotion type"); return; }
     const content = v.content.trim();
     if (content && !promotionCodePattern.test(content)) {
@@ -287,19 +311,11 @@ export function CampaignPromotionLinks({
         return;
       }
       if (!d.link?.id || !d.campaign) throw Error("Invalid result");
-      pending.current = null;
-      setUnknown(false);
-      onCloseForm();
-      setCustomSource(false);
-      setV(newPromotionDraft);
-      onSaved(d.campaign);
-      setNotice(
-        "Promotion link saved. Copy the link or open its QR code.",
-      );
+      completeSave(d.campaign);
     } catch {
       setUnknown(true);
       setError(
-        "Save outcome unknown. Retry the same request to retrieve the saved link; do not create it again.",
+        "Save outcome unknown. Check the original result before saving again.",
       );
     } finally {
       saving.current = false;
@@ -364,9 +380,8 @@ export function CampaignPromotionLinks({
           lang={lang} light={isLight} busy={busy} onClose={requestClose} onSubmit={save}
           footer={<>
             <button type="button" disabled={busy} onClick={requestClose}>{u("Cancel")}</button>
-            <button type="submit" data-primary disabled={busy}>
-              {busy ? u("Saving…") : unknown ? u("Retry original request") : u("Create promotion link & QR")}
-            </button>
+            {unknown?<button type="button" data-primary disabled={busy} onClick={()=>void checkSavedLink()}>{u("Check save result")}</button>:
+              <button type="submit" data-primary disabled={busy}>{busy?u("Saving…"):u("Create promotion link & QR")}</button>}
           </>}
         >
           {(dirty || busy) && !error && (

@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {auditLog} from './audit.ts';
-import {tx} from './store.ts';
+import {pool,tx} from './store.ts';
 import {promotionInput,promotionIdPrefix} from '../../src/utils/campaignPromotion.ts';
 import {assertEditableCampaign,isEvergreenCampaign} from '../../src/utils/organicCampaign.ts';
 import {allocatePromotionShortCode,presetPromotionOwner} from '../../cloud/mysql/promotion-short-links.mjs';
@@ -14,6 +14,21 @@ export async function promotionShortCodes(db:any) {
 export function attachPromotionShortCodes<T extends {promotionLinks?:CampaignPromotionLink[]}>(campaign:T,codes:ReadonlyMap<string,string>):T {
  if(!campaign.promotionLinks?.length)return campaign;
  return {...campaign,promotionLinks:campaign.promotionLinks.map(link=>({...link,shortCode:codes.get(link.id)}))};
+}
+
+export async function campaignPromotionResult(campaignId:string,requestId:string,actor:string,db=pool) {
+ if(!/^[-a-zA-Z0-9]{8,100}$/.test(requestId))throw Object.assign(Error('A request ID is required.'),{status:400});
+ const {rows:[receipt]}=await db.query(
+  `SELECT c.config, a.data, s.short_code FROM portal_audit a
+    JOIN trial_campaigns c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(a.data,'$.campaignId'))
+    LEFT JOIN campaign_promotion_short_links s ON s.p=JSON_UNQUOTE(JSON_EXTRACT(a.data,'$.link.id'))
+    WHERE a.actor=:p1 AND a.action='campaign.promotion.create'
+      AND JSON_UNQUOTE(JSON_EXTRACT(a.data,'$.requestId'))=:p2 AND c.id=:p3
+    ORDER BY a.id DESC LIMIT 1`,[actor,requestId,campaignId]);
+ if(!receipt)throw Object.assign(Error('Promotion link result not found.'),{status:404});
+ const link=receipt.config.promotionLinks?.find((link:CampaignPromotionLink)=>link.id===receipt.data.link?.id);
+ const campaign=attachPromotionShortCodes(receipt.config,await promotionShortCodes(db));
+ return {campaign,link:link?{...link,shortCode:receipt.short_code??undefined}:null};
 }
 
 export async function addCampaignPromotion(campaignId:string,input:any,actor:string) {

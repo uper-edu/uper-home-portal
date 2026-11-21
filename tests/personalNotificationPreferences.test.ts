@@ -8,7 +8,7 @@ const hook=registerHooks({load(url,context,next){return url.endsWith('.css')?{fo
 const {PersonalNotificationPreferencesForm}=await import('../src/components/PersonalNotificationPreferencesForm.tsx');
 hook.deregister();
 const all=personalNotificationTypes.map(t=>t[0]);
-const render=(props:any={})=>renderToStaticMarkup(React.createElement(PersonalNotificationPreferencesForm,{initial:defaultPersonalPreferences(),systemTypes:all,visibleTypes:all,deliveryEnabled:true,bound:true,isLight:true,lang:'zh',onDirty:()=>{},onBusy:()=>{},onCancel:()=>{},...props}));
+const render=(props:any={})=>renderToStaticMarkup(React.createElement(PersonalNotificationPreferencesForm,{initial:defaultPersonalPreferences(),systemTypes:all,visibleTypes:all,deliveryEnabled:true,bound:true,isLight:true,lang:'zh',onDirty:()=>{},onBusy:()=>{},onCancel:()=>{},onSaved:()=>{},...props}));
 test('required and operational notices cannot be disabled even by historical preferences',()=>{
  for(const type of all.filter(personalNotificationRequired)){assert.equal(personalNotificationAllowed({revision:1,language:'en',disabledTypes:[type]},type),true);}
  const p=normalizePersonalPreferences({revision:2,language:'id',disabledTypes:['handoff.requested','assessment.completed']});assert.deepEqual(p.disabledTypes,['assessment.completed']);assert.equal(personalNotificationAllowed(p,'assessment.completed'),false);assert.equal(personalNotificationLanguage(p,'en'),'id');assert.equal(personalNotificationLanguage(defaultPersonalPreferences(),'zh'),'zh');

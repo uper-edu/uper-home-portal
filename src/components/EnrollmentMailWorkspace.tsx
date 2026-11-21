@@ -7,7 +7,7 @@ import {AdminSearchField} from './admin/AdminSearchField';
 import {AdminEditor} from './admin/AdminEditor';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminField} from './AdminForm';
-import {AdminStaticField,AdminFormActions,AdminFormGrid,AdminFormSection,AdminFormFeedback,AdminFormSummary} from './AdminFormLayout';
+import {AdminStaticField,AdminFormActions,AdminFormGrid,AdminFormSection,AdminFormFeedback,AdminSavedReadError,AdminFormSummary} from './AdminFormLayout';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminRecordHeader} from './admin/AdminRecordHeader';
 import {AdminDetailActions,AdminRecordTitle} from './admin/AdminRecordWorkspace';
@@ -85,6 +85,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   const [credentialKeyError,setCredentialKeyError]=useState(false);
   const [pendingOperation,setPendingOperation]=useState<string>(),[operationCheck,setOperationCheck]=useState<'unconfirmed'|'error'>();
   const [adminConflict,setAdminConflict]=useState(false);
+  const [awaitingSavedRead,setAwaitingSavedRead]=useState(false);
   const [revision,setRevision]=useState(0);
   const [settingsDraft,setSettingsDraft]=useState<{pool:string;sticky:boolean;revision:number}>();
   const [settingsLookup,setSettingsLookup]=useState<'different'|'error'>();
@@ -95,24 +96,32 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   const recordLinks=useRef(new Map<string,HTMLAnchorElement>());
   const memberLinks=useRef(new Map<string,HTMLAnchorElement>());
   const poolPosition=useRef<{id:string;address:string;top:number}>(null);
+  const mailReadId=useRef(0);
   const refresh=useCallback(async()=>{
     if(!allowed)return;
+    const readId=++mailReadId.current;
     setLoading(true);setFailure(undefined);setReadiness(undefined);
     try{
       const response=await fetch(admin?adminPath:'/api/crm/enrollment/mail',{cache:'no-store'});
+      if(readId!==mailReadId.current)return;
       if(response.status===403||response.status===401){
         setFailure('denied');setResult(undefined);return;
       }
       if(!response.ok)throw Error();
       const next:AdminView|BusinessView=await response.json();
+      if(readId!==mailReadId.current)return;
       setResult(next);
+      setAwaitingSavedRead(false);
       if(!admin){
         const intake=await fetch('/api/crm/enrollment/readiness',{cache:'no-store'}).catch(()=>undefined);
-        if(intake?.ok)setReadiness(await intake.json());
+        if(intake?.ok){
+          const value=await intake.json();
+          if(readId===mailReadId.current)setReadiness(value);
+        }
       }
       return next;
-    }catch{setFailure('error');}
-    finally{setLoading(false);}
+    }catch{if(readId===mailReadId.current)setFailure('error');}
+    finally{if(readId===mailReadId.current)setLoading(false);}
   },[admin,allowed]);
   useEffect(()=>{void refresh();},[refresh]);
 
@@ -193,10 +202,12 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
         if(response.status===409)await refresh();
         return;
       }
-      const next=await refresh();
-      if(next&&'rows' in next&&next.selectedPool===settings.pool&&next.sticky===settings.sticky){
-        setSettingsDraft(undefined);setFeedback('saved');
-      }else setFeedback('unknown');
+      const {settings:saved}=await response.json();
+      if(saved?.selectedPool!==settings.pool||saved.sticky!==settings.sticky||saved.revision!==settings.revision+1)throw Error();
+      setResult(current=>current&&'rows' in current?{...current,...saved}:current);
+      setSettingsDraft(undefined);
+      setAwaitingSavedRead(true);
+      await refresh();
     }catch{setFeedback('unknown');}
     finally{setBusy(false);}
   };
@@ -205,7 +216,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
     const next=await refresh();
     if(!next||!('rows' in next)){setSettingsLookup('error');return;}
     if(next.selectedPool===settings.pool&&next.sticky===settings.sticky){
-      setSettingsDraft(undefined);setFeedback('saved');
+      setSettingsDraft(undefined);setFeedback(undefined);
     }else if(next.revision>settings.revision){
       // A different revision has taken effect. The submitted revision can no longer be applied.
       setFeedback('error');setSettingsLookup(undefined);
@@ -251,6 +262,13 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
       }else edit(editing,latest);
     }finally{setBusy(false);}
   };
+  const finishAdminSave=async()=>{
+    const reassigned=editing==='reassign';
+    close();
+    if(reassigned)setFeedback('saved');
+    else setAwaitingSavedRead(true);
+    await refresh();
+  };
   const checkAdminResult=async()=>{
     if(busy||!pendingOperation)return;
     setBusy(true);setOperationCheck(undefined);
@@ -258,7 +276,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
       const response=await fetch(adminPath+'/results/'+encodeURIComponent(pendingOperation),{cache:'no-store'});
       if(!response.ok)throw Error();
       if((await response.json()).state==='committed'){
-        close();setFeedback('saved');await refresh();
+        await finishAdminSave();
       }else setOperationCheck('unconfirmed');
     }catch{setOperationCheck('error');}
     finally{setBusy(false);}
@@ -295,10 +313,11 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
         }
         setFeedback('error');return;
       }
-      close();setFeedback('saved');await refresh();
+      await finishAdminSave();
     }catch{setPendingOperation(requestId);setFeedback('unknown');}
     finally{setBusy(false);}
   };
+  const savedReadError=awaitingSavedRead&&failure==='error';
   const heading=admin?t('邮件配置','Email configuration','Konfigurasi email'):t('招生邮件','Admissions email','Email penerimaan');
   const word=(state:string)=>stateWords[state]?t(...stateWords[state]):state;
   const fixedSender=t('为同一报名邮箱固定发件账号','Keep the same sender for each enrollment email address','Gunakan pengirim yang sama untuk setiap alamat email pendaftaran');
@@ -415,7 +434,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
       {href:poolListHref,label:t('发信池','Sending pool','Pool pengiriman'),current:view==='pool'},
     ]} onNavigate={onNavigate}/>}
     {feedback==='saved'&&editing===undefined&&<AdminFormFeedback state="saved" lang={lang} placement="floating"/>}
-    {!isDetail&&(!allowed||!result||failure)&&<AdminListState lang={lang} state={!allowed?'denied':failure??'loading'} onRetry={refresh}/>}
+    {!isDetail&&allowed&&savedReadError&&<AdminSavedReadError lang={lang} busy={loading} onRetry={()=>void refresh()}/>}
+    {!isDetail&&(!allowed||!result||failure&&!savedReadError)&&<AdminListState lang={lang} state={!allowed?'denied':failure??'loading'} onRetry={refresh}/>}
     {isDetail&&<div className="crm-detail-root" data-theme={isLight?'light':'dark'} data-record-scroll="page">
       <article className="crm-detail-panel access-record-detail">
         <AdminRecordHeader back={{label:poolView?t('返回发信池列表','Back to sending pools','Kembali ke daftar pool'):
@@ -432,7 +452,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
               t('编辑发件账号','Edit sending account','Edit akun pengirim')}
               onClick={()=>edit(detailPool?{pool:detailPool}:accountIndex)}/>}/>}/>
         <div className="crm-detail-body access-record-body">
-          {(!allowed||!config||failure)&&<AdminListState lang={lang} state={!allowed?'denied':failure??'loading'} onRetry={refresh}/>}
+          {allowed&&savedReadError&&<AdminSavedReadError lang={lang} busy={loading} onRetry={()=>void refresh()}/>}
+          {(!allowed||!config||failure&&!savedReadError)&&<AdminListState lang={lang} state={!allowed?'denied':failure??'loading'} onRetry={refresh}/>}
           {allowed&&activeView&&(detailPool?<><AdminFormSection title={t('发信配置','Sending configuration','Konfigurasi pengiriman')}>
             <dl className="access-record-facts">
               <div><dt>{t('发信池类型','Pool type','Jenis pool')}</dt><dd>{detailPool.transport.toUpperCase()}</dd></div>

@@ -110,7 +110,7 @@ export function CampaignMaterials({
     changed.current.clear();
     setPendingSave(undefined);setCheckState(undefined);
     onSaved(record);
-    feedback("Drafts saved. No message was sent or welcome message activated.");
+    feedback("");
   };
   async function save() {
     if(busy||pendingSave)return;

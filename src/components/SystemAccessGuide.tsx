@@ -48,9 +48,7 @@ const chapters=[
     ['If another authorized administrator can sign in, use the normal credential reset procedure first.',
      'Jika administrator berwenang lain masih dapat masuk, gunakan prosedur reset kredensial biasa terlebih dahulu.',
      '如果其他有权管理员还能登录，优先通过用户详情的账号管理操作重置密码。'],
-    ['A full system administrator can open Users & access → More actions → Administrator recovery to issue authorization or check a result by operation ID.',
-     'Administrator sistem dengan izin lengkap dapat membuka Pengguna & akses → Tindakan lain → Pemulihan administrator untuk menerbitkan izin atau memeriksa hasil dengan ID operasi.',
-     '完整系统管理员可从「用户与权限 → 更多操作 → 管理员恢复」签发授权，或凭操作 ID 查询结果。'],
+
     ['If business access is locked after a restore, follow the security review link at the top of System Management and complete the required account checks before release.',
      'Jika akses bisnis dikunci setelah pemulihan, buka tinjauan keamanan dari bagian atas Manajemen Sistem dan selesaikan pemeriksaan akun sebelum membuka akses.',
      '恢复后业务访问被锁定时，从系统管理顶部进入安全复核，完成账号核对并满足放行条件后再解除限制。'],
@@ -66,8 +64,8 @@ const references=[
   [continuity],
 ];
 
-export function SystemAccessGuide({lang,canAudit,canAi,canTest,canRecover,shellHeight,onNavigate}:{
-  lang:CrmLanguage;canAudit:boolean;canAi:boolean;canTest:boolean;canRecover:boolean;shellHeight:number;onNavigate:(href:string)=>void;
+export function SystemAccessGuide({lang,canAudit,canAi,canTest,shellHeight,onNavigate}:{
+  lang:CrmLanguage;canAudit:boolean;canAi:boolean;canTest:boolean;shellHeight:number;onNavigate:(href:string)=>void;
 }){
   useEffect(()=>{
     const id=window.location.hash.slice(1);
@@ -84,7 +82,6 @@ export function SystemAccessGuide({lang,canAudit,canAi,canTest,canRecover,shellH
     <>{link('users',['Users','Pengguna','用户'])}{link('roles',['Roles','Peran','角色'])}{canAudit&&link('audit',['Change audit','Audit perubahan','变更审计'])}</>,
     null,canAi&&link('credentials&credentialTopic=llm',['AI model services','Layanan model AI','AI 模型服务']),
     canTest&&link('test',['Test environment & accounts','Lingkungan uji & akun','测试环境和账号']),
-    canRecover&&link('recovery',['Administrator recovery','Pemulihan administrator','管理员恢复']),
   ];
   return <><AdminPageHeader title={['System management guide','Panduan manajemen sistem','系统管理使用指南'][col]}
     subtitle={['Find the steps and permissions for account management, integrations and recovery.',
