@@ -363,8 +363,12 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   const monthlyLabel=t('每月封数上限','Monthly message limit','Batas pesan bulanan');
   const rateLabel=t('窗口封数','Messages per window','Pesan per jendela');
   const windowLabel=t('窗口秒数','Window in seconds','Jendela dalam detik');
-  const credentialStatus=(address:string)=>activeView?.configured.some(c=>c.address===address&&c.configured)?
+  const credentialConfigured=(address:string)=>activeView?.configured.some(c=>c.address===address&&c.configured);
+  const credentialStatus=(address:string)=>credentialConfigured(address)?
     t('已配置','Configured','Dikonfigurasi'):t('未配置','Missing','Belum diatur');
+  const credentialBadge=(address:string)=><AdminStatus tone={credentialConfigured(address)?'success':'warning'}>
+    {credentialStatus(address)}
+  </AdminStatus>;
   const accountStatus=(account:MailAccount)=><AdminStatus active={account.enabled}>
     {account.enabled?t('启用','Enabled','Aktif'):t('停用','Disabled','Nonaktif')}
   </AdminStatus>;
@@ -485,7 +489,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
                   poolPosition.current={id:detailPool.id,address,top:window.scrollY};
                   onNavigate(href);
                 }}>{address}</AdminRecordEntry></td>
-                <td>{accountStatus(account)}</td><td>{credentialStatus(address)}</td>
+                <td>{accountStatus(account)}</td><td>{credentialBadge(address)}</td>
               </tr>;
             })}</AdminListTable>:<AdminListState lang={lang} state="empty"/>}
           </AdminFormSection></>:detailAccount?<>
@@ -544,7 +548,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
               <td>{activeView.usage[a.address]?.external??0} / {a.external}</td>
               <td>{activeView.usage[a.address]?.monthly??0} / {a.monthly??'—'}</td>
               <td>{a.rate} / {a.windowSeconds} {t('秒','seconds','detik')}</td>
-              <td>{credentialStatus(a.address)}</td>
+              <td>{credentialBadge(a.address)}</td>
               <td><div className="admin-row-actions">
                 <AdminRowAction onClick={()=>edit(index)}>{t('编辑','Edit','Edit')}</AdminRowAction>
                 {canManageCredentials&&activeView.managedCredentials&&<AdminRowAction aria-haspopup="dialog" onClick={event=>{
