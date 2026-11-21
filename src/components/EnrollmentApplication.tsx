@@ -1,3 +1,7 @@
+import VisitorBoundary from './VisitorBoundary';
+import {visitorScope} from '../services/visitorScope';
+import {readVisitorContact,rememberVisitorContact,readEnrollmentDraft,writeEnrollmentDraft,subscribeVisitorContact} from '../services/visitorContact';
+import {getStudentContext} from '../services/studentProfileStorage';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
@@ -33,7 +37,11 @@ export function enrollmentCopy(language: Language, text: Copy) {
   return text[language === 'zh' ? 0 : language === 'id' ? 2 : 1];
 }
 export async function enrollmentPost(path: string, body: unknown) {
-  const response = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const owner=visitorScope();
+  const headers:Record<string,string>={'Content-Type':'application/json'};
+  if(owner)headers['X-Visitor-Scope']=owner;
+  const response = await fetch(path, { method: 'POST', headers, body: JSON.stringify(body) });
+  if(owner&&owner!==visitorScope())throw Error('enrollment_verification_required');
   const data = await response.json();
   if (!response.ok) throw Error(data.error);
   return data;
@@ -44,7 +52,13 @@ type AssistedApplication={id:string;name:string;quote:{level:string;format:strin
 type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string; listPath: string; fromWaitlist?: string; navigationState?:unknown };
 type InterestRecord = { kind: 'waitlist' | 'demands'; id: string };
 
-export function EnrollmentApplication({ classId, language, full = false, demandOnly = false, paymentClasses, applicationClass, waitlistClass, mineClasses, record, returnAction }: {
+export function EnrollmentApplication(props:Parameters<typeof EnrollmentForm>[0]) {
+  return <VisitorBoundary><EnrollmentForm {...props}/></VisitorBoundary>;
+}
+
+type ContactDraft={email?:string;name?:string;phone?:string;forAnother?:boolean;priority?:boolean};
+
+function EnrollmentForm({ classId, language, full = false, demandOnly = false, paymentClasses, applicationClass, waitlistClass, mineClasses, record, returnAction }: {
   classId?: string; language: Language; full?: boolean; demandOnly?: boolean; paymentClasses?: PublicEnrollmentClass[];
   applicationClass?: ApplicationClass; waitlistClass?: PublicEnrollmentClass; mineClasses?: PublicEnrollmentClass[]; record?: InterestRecord;
   returnAction?: ReactNode;
@@ -73,12 +87,30 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   const [stillWaiting,setStillWaiting] = useState(false);
   const [savedDemand,setSavedDemand] = useState(false);
   const [hasNoSeat,setHasNoSeat] = useState(full);
-  const [email,setEmail] = useState('');
-  const [name,setName] = useState('');
-  const [phone,setPhone] = useState('');
+  const [owner]=useState(visitorScope);
+  const formKey=paymentClasses?'payment:'+orderId:classId?(waitlistClass||full?'waitlist:':'apply:')+classId:demandOnly?'demand':'mine';
+  const [savedDraft]=useState(()=>readEnrollmentDraft<ContactDraft>(owner,formKey)??{});
+  const draftRef=useRef(savedDraft);
+  const [contact]=useState(()=>readVisitorContact(owner)??getStudentContext()?.leadProfile??{});
+  function saveDraft(patch:ContactDraft) {
+    draftRef.current={...draftRef.current,...patch};
+    writeEnrollmentDraft(owner,formKey,draftRef.current);
+  }
+  function clearDraft() {
+    draftRef.current={};
+    writeEnrollmentDraft(owner,formKey);
+  }
+  const [forAnother,setForAnother]=useState(!!savedDraft.forAnother);
+  const [email,updateEmail] = useState(savedDraft.email ?? (savedDraft.forAnother||paymentClasses?'':contact.email??''));
+  const [name,updateName] = useState(savedDraft.name ?? (savedDraft.forAnother||!classId&&!demandOnly?'':contact.fullName??''));
+  const [phone,updatePhone] = useState(savedDraft.phone ?? (savedDraft.forAnother||!classId&&!demandOnly?'':contact.whatsapp??''));
+  const setEmail=(value:string)=>{updateEmail(value);saveDraft({email:value});};
+  const setName=(value:string)=>{updateName(value);saveDraft({name:value});};
+  const setPhone=(value:string)=>{updatePhone(value);saveDraft({phone:value});};
   const phoneField = useEnrollmentPhoneField(language,phone);
   const phoneError = phoneField.error && <small className="enrollment-form-error" role="alert" id={phoneField.errorId}>{phoneField.error}</small>;
-  const [priority,setPriority] = useState(true);
+  const [priority,updatePriority] = useState(savedDraft.priority??true);
+  const setPriority=(value:boolean)=>{updatePriority(value);saveDraft({priority:value});};
   const [challenge,setChallenge] = useState<string>();
   const [code,setCode] = useState('');
   const [verificationStep,setVerificationStep] = useState(false);
@@ -90,7 +122,30 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   const emailConfirmed = verifiedEmail === currentEmail && !!currentEmail;
   const [verified,setVerified] = useState(false);
   const [busy,setBusy] = useState(false);
+  const personOption=<label className="enrollment-priority">
+    <input type="checkbox" checked={forAnother} disabled={busy} onChange={event=>{
+      const another=event.target.checked;
+      setForAnother(another);
+      const defaults=another?{}:readVisitorContact(owner)??contact;
+      editEmail(defaults.email??'');
+      setName(defaults.fullName??'');
+      setPhone(defaults.whatsapp??'');
+      saveDraft({forAnother:another});
+    }}/>
+    {t(['我在替他人填写','I’m filling this in for someone else','Saya mengisi untuk orang lain'])}
+  </label>;
   const [error,setError] = useState('');
+  useEffect(()=>{
+    if (forAnother || paymentClasses || challenge || verified || verificationStep || busy) return;
+    return subscribeVisitorContact(owner,contact=>{
+      const edits=draftRef.current;
+      if(edits.email===undefined)updateEmail(contact.email??'');
+      if(classId||demandOnly){
+        if(edits.name===undefined)updateName(contact.fullName??'');
+        if(edits.phone===undefined)updatePhone(contact.whatsapp??'');
+      }
+    });
+  },[owner,forAnother,paymentClasses,challenge,verified,verificationStep,busy,classId,demandOnly]);
   const [requestId] = useState(() => crypto.randomUUID());
   const [file,setFile] = useState<File>();
   const cancelDialog=useRef<HTMLDialogElement>(null);
@@ -170,6 +225,8 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   function verify() {
     return run(async () => {
       await enrollmentPost(base+'/email/verify',{email,challengeId:challenge,code});
+      if(!paymentClasses)rememberVisitorContact(owner,{email});
+      clearDraft();
       setVerified(true);
       if (orderId) await getOrder(orderId);
       else if (!classId) await getOrders();
@@ -182,6 +239,8 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   }
   async function submitApplication() {
     const result=await enrollmentPost(base+'/applications',{ classId,name,phone,priority,requestId,source:sourceQuery() });
+    if(!forAnother&&(emailConfirmed||applicationClass))rememberVisitorContact(owner,{fullName:name,email,whatsapp:phone});
+    clearDraft();
     const next=new URLSearchParams(params);
     next.set('order',result.id);
     next.delete('apply');
@@ -231,13 +290,20 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   const join = () => phoneField.check() && run(async () => {
     if (waitlistClass) await verifyEnteredEmail();
     await enrollmentPost(base+'/waitlist',{classId,phone,name,source:sourceQuery()});
+    if(waitlistClass&&!forAnother)rememberVisitorContact(owner,{fullName:name,email,whatsapp:phone});
+    clearDraft();
     setJoined(true);
   });
   function savePreferences(data: Parameters<React.ComponentProps<typeof EnrollmentDemandForm>['onSave']>[0]) {
     void run(async () => {
       if (demandOnly) await verifyEnteredEmail();
       await enrollmentPost(base+'/demands',{...data,source:sourceQuery()});
-      if (demandOnly) setSavedDemand(true);
+      if (demandOnly) {
+        if(!forAnother)rememberVisitorContact(owner,{fullName:data.name,email,whatsapp:data.criteria.phone});
+        clearDraft();
+        writeEnrollmentDraft(owner,formKey+':criteria');
+        setSavedDemand(true);
+      }
       else {setEditDemand(undefined);await getOrders();}
     });
   }
@@ -400,6 +466,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         <p>{applicationClass.schedule}</p>
       </div>
       <p className="enrollment-tuition">{t(['本班学费','Class tuition','Biaya kelas'])} <strong>{formatCurrency(applicationClass.price,language)}</strong></p>
+      {personOption}
       <label className="enrollment-field">{learnerLabel}
         <input required maxLength={120} autoComplete="name" value={name} onChange={event=>setName(event.target.value)}
           placeholder={t(['输入学员姓名','Enter learner name','Masukkan nama siswa'])}/>
@@ -458,7 +525,8 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
             ? ['已确认开班 · 满班','Class confirmed · Full','Kelas dikonfirmasi · Penuh']
             : ['满班','Full','Penuh'])}</span></p>
         </article>
-        <label className="enrollment-field">{learnerLabel}
+        {personOption}
+      <label className="enrollment-field">{learnerLabel}
           <input autoComplete="name" required maxLength={120} value={name} onChange={event=>setName(event.target.value)}
             placeholder={t(['输入学员姓名','Enter learner name','Masukkan nama siswa'])}/>
         </label>
@@ -479,7 +547,8 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
           </Link>}
         </div>
       </form> : <EnrollmentDemandForm language={language} prefill={enrollmentDemandPrefill(params,language)} busy={busy} onSave={savePreferences}
-        verification={{email:emailField,code:codeField}} awaitingCode={awaitingCode}/>}
+        verification={{email:emailField,code:codeField}} awaitingCode={awaitingCode}
+        contact={{name,phone,setName,setPhone,personOption}} draft={{owner,key:formKey+':criteria'}}/>}
     </>;
   }
   function paymentDeadline(value: string) {

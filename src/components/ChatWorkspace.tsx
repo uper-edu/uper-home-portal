@@ -473,7 +473,7 @@ export default function ChatWorkspace({
         <p>{confirm==='restart'
           ? t('为当前使用者开始一段新对话。原有对话会保留。','Start a new conversation for this user. Earlier conversations will be kept.','Mulai percakapan baru untuk pengguna ini. Percakapan sebelumnya tetap disimpan.')
           : confirm==='switch'
-            ? t('另一位使用者将开启独立咨询。当前使用者的对话和测评记录会保留。','Another person will open a separate consultation. This user’s chat and assessment will be kept.','Pengguna lain akan membuka konsultasi terpisah. Percakapan dan hasil tes pengguna ini tetap disimpan.')
+            ? t('另一位使用者将开启独立咨询。原对话和测评记录会保留。查看原使用者的报名需要重新验证邮箱。','Another person will open a separate consultation. Earlier chats and assessments will be kept. Verify the email again to access the previous user’s enrollments.','Pengguna lain akan membuka konsultasi terpisah. Percakapan dan hasil tes sebelumnya tetap disimpan. Verifikasi kembali email untuk melihat pendaftaran pengguna sebelumnya.')
             : t('开始新一轮测评，之前的结果和对话都会保留。','Your earlier results and conversation will be kept.','Hasil sebelumnya dan percakapan Anda tetap tersimpan.')}</p>
         {personError&&<p role="alert" className="chat-assessment-review">{t('切换未确认成功，请刷新后核对当前使用者。','Switch not confirmed. Reload and check the current user.','Pergantian belum dikonfirmasi. Muat ulang dan periksa pengguna saat ini.')}</p>}
         {confirm==='restart'&&chatFailed&&<p role="alert" className="chat-assessment-review">{t('新对话暂未确认，请重试。','New conversation not confirmed. Please retry.','Percakapan baru belum dikonfirmasi. Coba lagi.')}</p>}

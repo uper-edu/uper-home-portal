@@ -1,3 +1,4 @@
+import {rememberVisitorContact} from './visitorContact';
 import {trackEvent,trackReceipt,trackConfirmedReceipt} from '../utils/analytics';
 import {registrationAnalyticsReceipt,assessmentAnalyticsReceipt,advisorAnalyticsReceipt,registrationAdvisorAnalyticsReceipts} from '../utils/analyticsReceipts';
 import {saveRegistration,hasPendingRegistration,RegistrationSaveError} from './registrationSave';
@@ -126,6 +127,7 @@ export async function registerContact(profile: object,options:{queryOnly?:boolea
   if(analyticsReceipt&&options.contactConversion!==false)trackConfirmedReceipt({...analyticsReceipt,params:{...analyticsReceipt.params,entry_point:contact.promotionEntryPoint,response_time_ms:Date.now()-began}});
   for(const receipt of registrationAdvisorAnalyticsReceipts(data))trackConfirmedReceipt(receipt);
   saveStudentContext({leadProfile:data.lead});
+  if(options.contactConversion)rememberVisitorContact(responseScope,data.lead??{});
   return data;
 }
 export const INQUIRY_IDENTITY_CHANGED = 'INQUIRY_IDENTITY_CHANGED';

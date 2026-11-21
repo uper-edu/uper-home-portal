@@ -1,3 +1,4 @@
+import {enrollmentSessionCookie,enrollmentVisitorDigest,readEnrollmentSessionDigest} from './enrollmentVisitorSession.ts';
 import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox,enrollmentSmtpReady} from './enrollmentMail.ts';
 import type { Express, Request, Response } from 'express';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -33,7 +34,7 @@ import { hasConfiguredEnrollmentBank,mountEnrollmentBank,readEnrollmentBank } fr
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
-const sessionCookie = 'uper_enrollment_session';
+
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const otpKey = randomBytes(32);
 const sha = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -50,9 +51,9 @@ const enrollTx = (work: (c: Client) => Promise<any>) => tx(work, { isolation: 'R
 const moneyTx = (work:(c:Client)=>Promise<any>)=>enrollTx(async c=>{await lockEnrollmentFunds(c);return work(c);});
 
 async function session(c: Client, q: Request): Promise<string> {
-  const token = q.headers.cookie?.match(/(?:^|;\s*)uper_enrollment_session=([a-f0-9]{64})(?:;|$)/)?.[1];
-  if (!token) invalid('enrollment_verification_required', 401);
-  const row = (await c.query('SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE', [sha(token!)])).rows[0];
+  const digest=readEnrollmentSessionDigest(q.headers.cookie);
+  if (!digest) invalid('enrollment_verification_required', 401);
+  const row = (await c.query('SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE', [digest])).rows[0];
   if (!row) invalid('enrollment_verification_required', 401);
   return row.email;
 }
@@ -110,9 +111,10 @@ export async function enrollmentReadiness(c:Client,policy?:ReturnType<typeof enr
   return {accepting:reasons.length===0,servicing:true,reasons};
 }
 
-export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
+export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor }: {
   wrap: (fn: Route) => (q: Request, r: Response) => void;
   staff: (q: Request, permission: string) => Promise<Employee>;
+  visitor: (q:Request,r:Response)=>Promise<{id:string}>;
 }) {
   const policy = enrollmentServicePolicy();
   const maintenanceMode=async()=>enrollmentServicePolicy(process.env,(await enrollmentMailDelivery()).mode);
@@ -264,6 +266,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const { challengeId, code } = q.body;
     if (!uuid.test(challengeId) || typeof code !== 'string' || !/^\d{6}$/.test(code)) invalid('enrollment_invalid_code');
     const token = randomBytes(32).toString('hex');
+    const scope=await visitor(q,r);
     const sessionHours = await enrollTx(async (c: Client) => {
       await lockEnrollmentEmail(c, email);
       const row = (await c.query(`SELECT *,expires_at>UTC_TIMESTAMP(6) AS active
@@ -278,11 +281,11 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       }
       await c.query('UPDATE enrollment_email_challenges SET used=TRUE WHERE email=:p1', [email]);
       await c.query('INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,TIMESTAMPADD(HOUR,:p3,UTC_TIMESTAMP(6)))',
-        [sha(token),email,rules.emailSessionHours]);
+        [enrollmentVisitorDigest(token,scope.id),email,rules.emailSessionHours]);
       return rules.emailSessionHours;
     });
     if (sessionHours===null) invalid('enrollment_invalid_code', 401);
-    r.cookie(sessionCookie, token, { httpOnly: true, secure: q.secure, sameSite: 'strict', path: base, maxAge: sessionHours*3_600_000 });
+    r.cookie(enrollmentSessionCookie, 'v2.'+token, { httpOnly: true, secure: q.secure, sameSite: 'strict', path: base, maxAge: sessionHours*3_600_000 });
     r.json({ verified: true });
   });
 

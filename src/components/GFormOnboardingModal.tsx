@@ -5,6 +5,7 @@ import {questionnaireOptions} from '../utils/crmQuestionnaire';
 import {validContactPhone,contactPhoneText,CONTACT_PHONE_ERROR} from '../utils/contactPhone';
 import {validContactEmail,contactEmailText,CONTACT_EMAIL_ERROR} from '../utils/contactEmail';
 import {pendingRegistrationDraft,RegistrationSaveError,registrationSaveText} from '../services/registrationSave';
+import {readVisitorContact,subscribeVisitorContact} from '../services/visitorContact';
 import {visitorScope} from '../services/visitorScope';
 import {
   chatRegistrationAnswers,chatRegistrationStepForPending,readChatRegistrationDraft,withoutChatRegistrationContact,writeChatRegistrationDraft,
@@ -44,7 +45,14 @@ function ChatRegistrationForm({initialLang='en',profile,onConsultFirst,onComplet
   const [pending]=useState(()=>{try{return pendingRegistrationDraft(owner,sessionStorage);}catch{return null;}});
   const [lang,setLang]=useState<HskLanguage>(()=>pending?.language==='zh'||pending?.language==='en'||pending?.language==='id'?pending.language:initialLang);
   const [step,setStep]=useState<ChatRegistrationStep>(()=>pending?chatRegistrationStepForPending(pending):profile?'preferences':'contact');
-  const [draft,setDraft]=useState<ChatRegistrationDraft>(()=>pending??readChatRegistrationDraft(owner));
+  const [draft,setDraft]=useState<ChatRegistrationDraft>(()=>pending??{...readVisitorContact(owner),...readChatRegistrationDraft(owner)});
+  useEffect(()=>{
+    if(step!=='contact'||pending)return;
+    return subscribeVisitorContact(owner,contact=>{
+      const saved=readChatRegistrationDraft(owner);
+      setDraft(current=>({...current,fullName:contact.fullName,email:contact.email,whatsapp:contact.whatsapp,...saved}));
+    });
+  },[owner,step,pending]);
   const [submitting,setSubmitting]=useState(false);
   const [saveUnknown,setSaveUnknown]=useState(Boolean(pending));
   const [error,setError]=useState<RegistrationSaveError['state']>();
@@ -71,7 +79,7 @@ function ChatRegistrationForm({initialLang='en',profile,onConsultFirst,onComplet
     }
     const next={...draft,...patch};
     setDraft(next);
-    writeChatRegistrationDraft(owner,next);
+    writeChatRegistrationDraft(owner,{...readChatRegistrationDraft(owner),...patch});
   }
   function toggle(field:'goals'|'buyingSignals',value:string){
     const current=draft[field]??[];
@@ -91,7 +99,7 @@ function ChatRegistrationForm({initialLang='en',profile,onConsultFirst,onComplet
       await onComplete(chatRegistrationAnswers(draft,step),lang,options,step);
       setSaveUnknown(false);
       if(step==='contact'){
-        const remaining=withoutChatRegistrationContact(draft);
+        const remaining=withoutChatRegistrationContact(readChatRegistrationDraft(owner));
         setDraft(remaining);
         writeChatRegistrationDraft(owner,remaining);
         setStep('preferences');

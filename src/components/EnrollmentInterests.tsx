@@ -1,3 +1,4 @@
+import {readEnrollmentDraft,writeEnrollmentDraft} from '../services/visitorContact';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import { useState, type ReactNode } from 'react';
 import { PublicSingleSelect } from './PublicSingleSelect';
@@ -34,15 +35,27 @@ export const waitlistStates:Record<string,Copy>={
   closed:['候补已结束','Waitlist closed','Daftar tunggu ditutup'],
 };
 
-export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy, verification, awaitingCode }: {
+export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy, verification, awaitingCode, contact, draft }: {
   language:InterestLanguage; initial?:DemandItem; prefill?:DemandCriteria;
   onSave:(record:{id:string;revision:number;criteria:DemandCriteria;name?:string})=>void;
+  contact?:{name:string;phone:string;setName:(value:string)=>void;setPhone:(value:string)=>void;personOption:ReactNode};
+  draft?:{owner:string;key:string};
   busy:boolean; verification?:{email:ReactNode; code:ReactNode}; awaitingCode?:boolean;
 }) {
   const t=(text:Copy)=>interestText(language,text);
   const [id]=useState(initial?.id||crypto.randomUUID());
-  const [name,setName]=useState('');
-  const [criteria,setCriteria]=useState<DemandCriteria>(initial?.criteria ?? prefill ?? {level:'unsure',period:'any',format:'any',notes:'',phone:''});
+  const [localName,setLocalName]=useState('');
+  const [localCriteria,setLocalCriteria]=useState<DemandCriteria>(()=>initial?.criteria ??
+    (draft&&readEnrollmentDraft<DemandCriteria>(draft.owner,draft.key)) ?? prefill ??
+    {level:'unsure',period:'any',format:'any',notes:'',phone:''});
+  const name=contact?.name??localName;
+  const setName=contact?.setName??setLocalName;
+  const criteria=contact?{...localCriteria,phone:contact.phone}:localCriteria;
+  function setCriteria(value:DemandCriteria) {
+    const next=contact?{...value,phone:''}:value;
+    setLocalCriteria(next);
+    if(draft)writeEnrollmentDraft(draft.owner,draft.key,next);
+  }
   const phoneField = useEnrollmentPhoneField(language,criteria.phone);
   const notesRequired=[criteria.level,criteria.period,criteria.format].includes('other');
   const [invalid,setInvalid]=useState(false);
@@ -62,7 +75,7 @@ export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy,
     <div className={verification ? 'enrollment-demand-filters' : undefined}>
     {fields.map(([key,label,options])=><PublicSingleSelect key={key} label={t(label)} value={criteria[key]}
       options={options.map(value=>({value,label:interestOption(language,value)}))}
-      onChange={value=>setCriteria(current=>({...current,[key]:value}))}/>)}
+      onChange={value=>setCriteria({...criteria,[key]:value})}/>)}
     </div>
     {verification&&<p className="enrollment-journey-note">{t([
       '「不限」表示该项都可以。「其他」表示现有选项不合适，请补充具体需求。',
@@ -71,11 +84,12 @@ export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy,
     ])}</p>}
     <label className={verification?'enrollment-field':undefined}>{t(notesRequired?['补充说明（必填）','Additional details (required)','Rincian tambahan (wajib)']:['补充说明（选填）','Additional details (optional)','Rincian tambahan (opsional)'])}
       <textarea required={notesRequired} maxLength={1000} value={criteria.notes} onChange={event=>setCriteria({...criteria,notes:event.target.value})}/></label>
+    {contact?.personOption}
     {!initial&&<label className={verification?'enrollment-field':undefined}>{t(['学员姓名','Learner name','Nama siswa'])}
       <input required autoComplete="name" maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>}
     {verification?.email}
     <label className={verification?'enrollment-field':undefined}>{t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP'])}
-      <input type="tel" autoComplete="tel" required {...phoneField.inputProps} value={criteria.phone} onChange={event=>setCriteria({...criteria,phone:event.target.value})}/>
+      <input type="tel" autoComplete="tel" required {...phoneField.inputProps} value={criteria.phone} onChange={event=>contact?contact.setPhone(event.target.value):setCriteria({...criteria,phone:event.target.value})}/>
       {phoneField.error&&<small className="enrollment-form-error" role="alert" id={phoneField.errorId}>{phoneField.error}</small>}</label>
     {verification?.code}
     {invalid && <p role="alert">{t(['请检查联系方式和补充说明。','Check your phone number and additional details.','Periksa nomor telepon dan rincian tambahan.'])}</p>}

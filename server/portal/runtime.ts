@@ -8,6 +8,7 @@ import {promotionEntryPoint,promotionEvidenceKeys} from '../../src/utils/promoti
 import {mountCourseRoutes} from './courseCatalog.ts';
 import { mountEnrollmentManagement } from './enrollmentManagement.ts';
 import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
+import {enrollmentSessionCookie,portalVisitorCookie,portalVisitorToken} from './enrollmentVisitorSession.ts';
 import { mountEnrollmentApplication } from './enrollmentApplication.ts';
 import { attachEnrollmentOpportunitySummaries } from './enrollmentCrm.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
@@ -125,7 +126,7 @@ import {
 import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
 import { loadCampaigns } from "../campaignStorage.ts";
 import { mountHskAssessments } from "./assessments.ts";
-const cookieName = "uper_visitor";
+const cookieName = portalVisitorCookie;
 async function issueVisitor(res: Response) {
   const token = crypto.randomBytes(32).toString("hex");
   const row = (await pool.query(
@@ -138,11 +139,7 @@ async function issueVisitor(res: Response) {
 }
 async function visitor(req: Request, res: Response) {
   if (res.locals.portalVisitor) return res.locals.portalVisitor;
-  const token = (req.headers.cookie || "")
-    .split(";")
-    .map((s) => s.trim())
-    .find((s) => s.startsWith(cookieName + "="))
-    ?.slice(cookieName.length + 1);
+  const token = portalVisitorToken(req.headers.cookie);
   const existing =
     token &&
     (
@@ -386,7 +383,7 @@ export async function mountPortal(app: Express) {
   app.use(accessRestoreGate);
   mountEnrollmentCatalog(app, { wrap, staff });
   mountEnrollmentManagement(app, wrap, staff);
-  mountEnrollmentApplication(app, { wrap, staff });
+  mountEnrollmentApplication(app, { wrap, staff, visitor });
   mountEnrollmentMail(app,{wrap,staff});
   startEnrollmentMail();
   mountAccessOperations(app);
@@ -450,6 +447,7 @@ export async function mountPortal(app: Express) {
   app.post("/api/portal/new-person",wrap(async(req,res)=>{
     await visitor(req,res);
     await issueVisitor(res);
+    res.clearCookie(enrollmentSessionCookie,{path:"/api/enrollment",httpOnly:true,secure:req.secure,sameSite:"strict"});
     res.json({success:true});
   }));
   app.post(
