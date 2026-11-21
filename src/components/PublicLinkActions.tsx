@@ -110,8 +110,8 @@ function saveContext() {
   return {browser:'desktop',embedded} as const;
 }
 
-export function PublicLinkModal({title, close, label, children, className = '', focusTitle = false}: {
-  title:string; close:()=>void; label:string; children:ReactNode; className?:string; focusTitle?:boolean;
+export function PublicLinkModal({title, close, label, children, className = '', focusTitle = false, restoreFocus = true}: {
+  title:string; close:()=>void; label:string; children:ReactNode; className?:string; focusTitle?:boolean; restoreFocus?:boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -125,9 +125,10 @@ export function PublicLinkModal({title, close, label, children, className = '', 
     return () => {
       dialog.close();
       document.body.style.overflow = previous;
-      if (opener?.isConnected) opener.focus({preventScroll:true});
+      if (restoreFocus && opener?.isConnected) opener.focus({preventScroll:true});
+      if (!restoreFocus && document.activeElement===opener) opener?.blur();
     };
-  }, [focusTitle]);
+  }, [focusTitle,restoreFocus]);
   return <dialog ref={ref} className={`public-link-dialog ${className}`} aria-label={title}
     onCancel={event=>{event.preventDefault();event.stopPropagation();close();}}
     onClick={event=>{if (event.target === event.currentTarget) close();}}>
@@ -141,8 +142,8 @@ export function PublicLinkModal({title, close, label, children, className = '', 
   </dialog>;
 }
 
-export function PublicLinkDialog({language, address, shareTitle, combined = false, close}: {
-  language:SiteLanguage; address:string; shareTitle?:string; combined?:boolean; close:()=>void;
+export function PublicLinkDialog({language, address, shareTitle, combined = false, restoreFocus, close}: {
+  language:SiteLanguage; address:string; shareTitle?:string; combined?:boolean; restoreFocus?:boolean; close:()=>void;
 }) {
   const t = words[language];
   const [status,setStatus] = useState<'idle'|'copied'|'failed'|'share-failed'>('idle');
@@ -222,7 +223,7 @@ export function PublicLinkDialog({language, address, shareTitle, combined = fals
       <summary>{t.showLink}<ChevronDown size={15} aria-hidden="true"/></summary>
       <input ref={manualLink} aria-label={t.pageLink} readOnly value={url} onFocus={event=>event.currentTarget.select()}/>
     </details>;
-  return <PublicLinkModal title={combined?t.shareAndSave:shareTitle?t.share:shortcutTitle} close={close} label={t.close} focusTitle={combined}
+  return <PublicLinkModal title={combined?t.shareAndSave:shareTitle?t.share:shortcutTitle} close={close} label={t.close} focusTitle={combined} restoreFocus={restoreFocus}
     className={`public-link-panel${combined?' public-link-panel--combined':''}`}>
     {combined ? <div className="public-link-preview">
       <span className="public-link-preview-icon"><img src="/uper-logo-mark.svg" alt="" width="27" height="27"/></span>
@@ -267,12 +268,14 @@ export function PublicPageLinkActions({path, language, params, shareTitle, mobil
   path:'/'|'/link'|'/chat'|'/enrollment'; language:SiteLanguage; params:URLSearchParams; shareTitle:string; mobileOnly?:boolean;
 }) {
   const [action,setAction] = useState<'shortcut'|'share'|'combined'>();
+  const [restoreFocus,setRestoreFocus] = useState(true);
   const t = words[language];
   const previewTitle = path==='/'?t.homeTitle:path==='/link'?t.hubTitle:shareTitle;
   return <>
     <button type="button" className="public-link-button public-link-button--mobile"
       aria-label={t.shareAndSave} title={t.shareAndSave} aria-haspopup="dialog" onClick={event=>{
         event.currentTarget.focus({preventScroll:true});
+        setRestoreFocus(event.detail===0);
         setAction('combined');
       }}>
       <Share size={18} strokeWidth={1.65} aria-hidden="true"/>
@@ -288,7 +291,7 @@ export function PublicPageLinkActions({path, language, params, shareTitle, mobil
       </button>
     </>}
     {action&&<PublicLinkDialog language={language} address={promotionJourneyUrl(`${path}?lang=${language}`,params)}
-      combined={action==='combined'} shareTitle={action==='combined'?previewTitle:action==='share'?shareTitle:undefined}
+      combined={action==='combined'} restoreFocus={action!=='combined'||restoreFocus} shareTitle={action==='combined'?previewTitle:action==='share'?shareTitle:undefined}
       close={()=>setAction(undefined)}/>}
   </>;
 }
