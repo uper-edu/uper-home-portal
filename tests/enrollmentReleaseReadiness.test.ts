@@ -32,6 +32,21 @@ test('local mail simulation is independent of the CRM worker',()=>{
   }
 });
 
+test('the company mailbox is opt-in and tied to the isolated test database',()=>{
+  const testEnv={PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial',TRIAL_DATASET:'synthetic',
+    PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',PORTAL_WORKER_ENABLED:'false',
+    PORTAL_ENROLLMENT_MAIL_TRANSPORT:'simulation',PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/private/simulated-mail',
+    PORTAL_ENROLLMENT_SIMULATION_DATABASE:'uper_trial_enrollment_review',
+    MYSQL_TRIAL_URL:'mysql://fixture:fixture@mysql/uper_trial_enrollment_review'};
+  assert.deepEqual(enrollmentServicePolicy(testEnv),{simulation:true,servicing:true,maintenance:false});
+  for(const override of [{PORTAL_ENV:'prod'},{PORTAL_DEPLOYMENT:'remote-dev'},
+    {TRIAL_DATASET:'local-crm'},{PORTAL_WORKER_ENABLED:'true'},{PORTAL_ENROLLMENT_MAIL_TRANSPORT:''},
+    {PORTAL_ENROLLMENT_SIMULATION_DATABASE:''},{MYSQL_TRIAL_URL:'mysql://mysql/uper_trial_other'},
+    {PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'relative'}]){
+    assert.equal(enrollmentServicePolicy({...testEnv,...override}).simulation,false);
+  }
+});
+
 test('a saved but partially replaced test bank is still ineligible for live payments',()=>{
   const bank={name:'Bank',accountName:'UPER',accountNumber:'12345678'};
   assert.equal(hasConfiguredEnrollmentBank({bank,revision:0}),false);

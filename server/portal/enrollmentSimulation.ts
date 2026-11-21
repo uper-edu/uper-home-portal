@@ -7,10 +7,21 @@ export function isLocalEnrollmentRuntime(env = process.env) {
     env.MYSQL_TRIAL_SOCKET === '/private/tmp/uper-crm-mysql-local3000.sock';
 }
 
+function isIsolatedTestMailbox(env: NodeJS.ProcessEnv) {
+  if (env.PORTAL_ENV !== 'test' || env.PORTAL_DEPLOYMENT !== 'company-trial' ||
+      env.TRIAL_DATASET !== 'synthetic' || env.PORTAL_ENROLLMENT_MAIL_TRANSPORT !== 'simulation' ||
+      env.PORTAL_WORKER_ENABLED !== 'false') return false;
+  const database = env.PORTAL_ENROLLMENT_SIMULATION_DATABASE;
+  const url = URL.parse(env.MYSQL_TRIAL_URL ?? '');
+  return Boolean(database && /^uper_trial_[a-z0-9_]+$/.test(database) &&
+    url?.protocol === 'mysql:' && url.pathname === '/' + database);
+}
+
 export function enrollmentSimulation(env = process.env) {
   const directory = env.PORTAL_ENROLLMENT_SIMULATION_MAILBOX;
   const transport = env.PORTAL_ENROLLMENT_MAIL_TRANSPORT;
-  if (!isLocalEnrollmentRuntime(env) || (transport && transport !== 'simulation') ||
+  const local = isLocalEnrollmentRuntime(env) && (!transport || transport === 'simulation');
+  if ((!local && !isIsolatedTestMailbox(env)) ||
       !directory || !isAbsolute(directory)) return null;
   type Message={subject:string;html:string;text:string;language:string};
   async function deliver(id:string,email:string,message:Message,code?:string){

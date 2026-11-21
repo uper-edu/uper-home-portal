@@ -8,6 +8,7 @@ export function enrollmentServicePolicy(env = process.env) {
   );
   const servicing = isLocalEnrollmentRuntime(env) || configuredService;
   // Local OTP delivery does not process pre-existing orders or queued mail.
-  const maintenance = configuredService || simulation && env.PORTAL_ENROLLMENT_SERVICE_ENABLED === 'true';
+  const isolatedTestSimulation = simulation && env.PORTAL_ENV === 'test';
+  const maintenance = !isolatedTestSimulation && (configuredService || simulation && env.PORTAL_ENROLLMENT_SERVICE_ENABLED === 'true');
   return {simulation, servicing, maintenance};
 }
