@@ -7,7 +7,7 @@ export const enrollmentRuleDefaults = {
   emailResendSeconds:60,
   emailAttemptLimit:5,
   emailLockMinutes:10,
-  emailSessionHours:24,
+  emailSessionHours:7*24,
 };
 
 export type EnrollmentRuleField = keyof typeof enrollmentRuleDefaults;
