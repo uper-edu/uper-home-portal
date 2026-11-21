@@ -1,4 +1,4 @@
-import React, { type ReactNode } from "react";
+import React, { type ComponentPropsWithoutRef, type MouseEventHandler, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 /** Shared page-level actions; permission checks remain at each call site. */
@@ -17,6 +17,7 @@ export function CrmPageAction({
   description,
   className = "",
   type = "button",
+  "aria-haspopup": hasPopup,
   children,
 }: {
   label: string;
@@ -27,12 +28,13 @@ export function CrmPageAction({
   keepFocusWhileLoading?: boolean;
   disabled?: boolean;
   href?: string;
-  onClick?: () => void;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
   id?: string;
   title?: string;
   description?: string;
   className?: string;
   type?: "button" | "submit";
+  "aria-haspopup"?: ComponentPropsWithoutRef<"button">["aria-haspopup"];
   children?: ReactNode;
 }) {
   const tipId = React.useId();
@@ -44,6 +46,7 @@ export function CrmPageAction({
     title: description ? undefined : title || label,
     "aria-describedby": description ? tipId : undefined,
     "aria-label": iconOnly ? label : undefined,
+    "aria-haspopup": hasPopup,
     "aria-busy": loading || undefined,
   };
   const content = (

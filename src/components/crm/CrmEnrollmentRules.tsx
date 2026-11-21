@@ -113,7 +113,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
   }
 
   const controlsDisabled=busy||!!pending;
-  return <section className="crm-enrollment-rules" data-theme={isLight?'light':'dark'}>
+  return <section className="crm-enrollment-rules" data-admin-form="" data-theme={isLight?'light':'dark'}>
     <AdminForm lang={lang}
     onSubmit={(event:React.FormEvent)=>{event.preventDefault();void save();}}>
     <AdminTopicHeader isLight={isLight} headingRef={heading}
@@ -184,8 +184,6 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
         t('Save outcome unknown.','Hasil penyimpanan belum diketahui.','暂未确认是否保存成功。')} <button type="button" className="crm-work-link" onClick={()=>void checkResult()}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></CrmSaveFeedback>}
     </div>
     </AdminForm>
-    {saved&&<div className="crm-enrollment-rules-body">
-      <CrmEnrollmentBank lang={lang} isLight={isLight} active={active} onDraftChange={setBankDirty}/>
-    </div>}
+    {saved&&<CrmEnrollmentBank lang={lang} isLight={isLight} active={active} onDraftChange={setBankDirty}/>}
   </section>;
 }

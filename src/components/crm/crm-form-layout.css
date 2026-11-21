@@ -207,6 +207,14 @@
   border: 1px solid var(--af-border);
   border-radius: 14px;
 }
+.crm-enrollment-rules > .admin-form-section {
+  background: var(--af-surface);
+}
+.crm-enrollment-rules > .admin-form-section .crm-work-muted {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
 .crm-enrollment-rules-body > p {
   margin: 0;
   font-size: 13px;
@@ -218,7 +226,7 @@
   border-top: 1px solid var(--af-border);
   padding-top: var(--admin-form-group-gap);
 }
-.crm-enrollment-rules .admin-field input {
+.crm-enrollment-rules .admin-field input[type=number] {
   width: 8rem;
   padding: 8px 12px;
   font-variant-numeric: tabular-nums;

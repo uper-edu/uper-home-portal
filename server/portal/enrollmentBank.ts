@@ -1,11 +1,12 @@
 import type { Express,Request,Response } from 'express';
-import { enrollmentBankFields,type EnrollmentBank } from '../../src/utils/enrollmentBank.ts';
+import { enrollmentBankFields,enrollmentBankPlaceholder,type EnrollmentBank } from '../../src/utils/enrollmentBank.ts';
+export {hasConfiguredEnrollmentBank} from '../../src/utils/enrollmentBank.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { invalid,operation } from './trustWorkflow.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 type Handler=(q:Request,r:Response)=>Promise<unknown>;
-const defaults={bank:{name:'TEST BANK',accountName:'UPER TEST ONLY',accountNumber:'TEST-0000000000'},revision:0};
+const defaults={bank:enrollmentBankPlaceholder,revision:0};
 const path='/api/crm/enrollment/bank';
 const scope={leadId:'enrollment-bank',kind:'enrollment.bank.save'};
 const fields=Object.keys(enrollmentBankFields) as (keyof EnrollmentBank)[];
@@ -24,10 +25,6 @@ export async function readEnrollmentBank(c:Client):Promise<{bank:EnrollmentBank;
   const bank=parseBank(row.value?.bank);
   if(!bank||!Number.isSafeInteger(row.value?.revision)||row.value.revision<0)invalid('enrollment_bank_unavailable',503);
   return {bank,revision:row.value.revision};
-}
-
-export function hasConfiguredEnrollmentBank(settings:Awaited<ReturnType<typeof readEnrollmentBank>>) {
-  return settings.revision > 0 && fields.every(key => settings.bank[key] !== defaults.bank[key]);
 }
 
 export function mountEnrollmentBank(app:Express,{wrap,transact,authorize}:{
