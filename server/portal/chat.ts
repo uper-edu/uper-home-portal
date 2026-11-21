@@ -1,8 +1,8 @@
-import {chatWorkspaceEntry,type ChatWorkspaceEntry} from '../../src/utils/chatWorkspaceAction.ts';
+import {assessmentWorkspaceReply,chatWorkspaceEntry,type ChatWorkspaceEntry} from '../../src/utils/chatWorkspaceAction.ts';
 import {resolveChatLocalSchedule} from './chatLocalSchedule';
 import {chineseChatInput} from '../../src/utils/chatLanguage.ts';
 import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionFollowUp,refundConsultationIntent} from './chatEnrollment.ts';
-import {enrollmentGuideText,enrollmentReplyLanguage,hasConsultationEvidence,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,resolveEnrollmentComparison,withExplicitChatAppointmentTime,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
+import {assessmentEnrollmentSelection,enrollmentGuideText,enrollmentReplyLanguage,hasConsultationEvidence,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,resolveEnrollmentComparison,sharedEnrollmentComparison,withExplicitChatAppointmentTime,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
 import {readPublicEnrollmentClasses} from './enrollmentCatalog.ts';
 import {normalizeEnrollmentChatSelection} from '../../src/utils/enrollmentChatJourney.ts';
@@ -243,13 +243,10 @@ export function mountChat(app: Express) {
               ])
             ).rows[0]?.profile
           : null;
-        const priorAssessmentRequest=newestMessages.find(message=>
-          message.role==='assistant'&&message.request_id.startsWith('hsk-intro-'));
-        const ownedResult = assessmentForIntroduction ?? safeHskResult(ownedProfile?.latestAssessment) ??
-          (priorAssessmentRequest?safeHskResult((await db.query(
-            "SELECT result,created_at FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
-            [priorAssessmentRequest.request_id.slice('hsk-intro-'.length),conv.visitor_id],
-          )).rows[0]?.result):undefined);
+        const ownedResult = assessmentForIntroduction ?? safeHskResult((await db.query(
+          "SELECT result FROM hsk_attempts WHERE visitor_id=:p1 ORDER BY created_at DESC,id DESC LIMIT 1",
+          [conv.visitor_id],
+        )).rows[0]?.result) ?? safeHskResult(ownedProfile?.latestAssessment);
         const profileTopics=profileIntroduction?consultationProfile(ownedProfile):null;
         const profileQuote = profileTopics&&!history.some(message=>message.role==='user')
           ? profileIntroQuote(profileTopics) : undefined;
@@ -343,12 +340,12 @@ export function mountChat(app: Express) {
                               ownedProfile,
                               assessmentIntroduction,
                             ) +
-                            "\nProduce the new assistant turn for this automated event now. Use the supplied startingPointGuidance exactly for learning advice. The server already states the assessment scope. Do not repeat it. Do not continue or repeat an earlier assistant message. Do not greet. Give one useful next step. If earlier conversation already gives a level and usable time window, emit a recommend action and keep those constraints. If the assessment needs review, avoid choosing a definite class based on it. If the learner only asks to understand the results, give a practice suggestion. Ask at most one question, only when necessary.",
+                            "\nProduce the new assistant turn for this automated event now. Use the supplied startingPointGuidance exactly for learning advice. The server already states the assessment scope. Do not repeat it. Do not continue or repeat an earlier assistant message. Do not greet. Give one useful next step. If earlier conversation gives usable availability, emit a recommend action at the new assessment starting point. Keep the learner’s availability and format, and do not repeat earlier course levels or class references. If the assessment needs review, avoid choosing a definite class based on it. If the learner only asks to understand the results, give a practice suggestion. Ask at most one question, only when necessary.",
                         },
                       ]
                     : []),
                   {role:"system",content:
-                    'In both Chat surfaces, free HSK placement and learning profile are in the More menu. Answer the current question directly in prose first. When the learner asks how to take or resume the placement assessment, where to view their own result, or how to add or update learning details, return workspaceAction as assessment, assessment_result, or learning_profile respectively. The interface renders the correct button based on current state. Do not invent URLs, claim anything was opened or saved, assume a result exists, or require registration before assessment. The placement assessment suggests a learning starting point. Learning details are optional for consultation. For these navigation requests return catalogue and enrollment as null, do not redirect to enrollment or an external HSK page, and use no suggested prompts. Omit workspaceAction for unrelated requests.'},
+                    'Both Chat surfaces can open assessment and learning details directly from a button below the reply. Point to that button in the prose. When the learner asks for an assessment link, how to start, resume or retake it, where to view their own result, or how to add or update learning details, return workspaceAction as assessment, assessment_result, or learning_profile respectively. The interface renders the correct button based on current state. Do not invent URLs, claim anything was opened or saved, assume a result exists, or require registration before assessment. The placement assessment suggests a learning starting point. Learning details are optional for consultation. For these navigation requests return catalogue and enrollment as null, do not redirect to enrollment or an external HSK page, and use no suggested prompts. Omit workspaceAction for unrelated requests.'},
                   {role:"system",content:
                     'Always include "suggestedPrompts" in the same JSON response. For an ongoing consultation, give 1 or 2 short example messages the learner can send next in the language of your reply. Use the latest learner and their current conditions only. Give useful follow-ups or answers to the one question you asked. Once specific availability is given, do not ask the learner to restate it or suggest they change it unless no match is found. Any new timing option must be an explicit question or hypothetical, not a statement about the learner. Never repeat an answered question, include personal details, prices, dates, URLs, or suggest submitting, booking, paying or contacting someone as a chat message. If there is no useful follow-up, or they ask to stop, use []. When asked about Chat itself (including the follow-up controls), answer the feature question and set followupScope to "none"; never revive an earlier topic. If the learner updates their goal, suggest only the new current task; do not ask them to repeat a decision already answered in this turn. Example: "suggestedPrompts":["周末下午方便","上午下午都可以"].'},
                 ],
@@ -472,10 +469,10 @@ export function mountChat(app: Express) {
             const timing=resolveRecommendationTiming(parsed?.recommendationTiming,previousDeferral??undefined,
               learnerMessage,messageAt,assessmentGuidance?.needsReview===false?assessmentRecordedAt:undefined,
               proposed?.maxRecommendations);
-            const replaySelection=timing.completed&&previousConstraints;
-            const normalized=replaySelection
-              ?resolveConsultationRecommendation({kind:'recommend',...replaySelection,
-                level:replaySelection.level??assessmentGuidance?.level,maxRecommendations:previousDeferral?.limit??1},undefined,'')
+            const normalized=assessmentGuidance
+              ?assessmentGuidance.needsReview
+                ?{value:{kind:'advisor'},constraints:{...previousConstraints,level:undefined,requestedLevel:undefined}}
+                :assessmentEnrollmentSelection(selectionIntent,previousConstraints,assessmentGuidance.level,timing.completed&&previousConstraints?previousDeferral?.limit??1:undefined)
               :currentSelection;
             const held=timing.acknowledge||Boolean(timing.waiting&&proposed?.kind==='recommend');
             const priorPrice=!introduction&&proposed?.question==='quoted_price_unit'
@@ -487,7 +484,7 @@ export function mountChat(app: Express) {
             const openedClassReference=enrollmentContext?.kind==='class'&&!subjectChanged&&proposed?.kind==='inspect'&&
               !['compare_classes','price_difference'].includes(proposed.question??'')?[enrollmentContext.classId]:undefined;
             const fallbackReferences=viewingReferences?.length?viewingReferences:openedClassReference;
-            const actionIntent=fallbackReferences?.length&&!proposed?.referenceIds.length&&normalized.value&&typeof normalized.value==='object'
+            const actionIntent=!assessmentIntroduction&&fallbackReferences?.length&&!proposed?.referenceIds.length&&normalized.value&&typeof normalized.value==='object'
               ?{...normalized.value,referenceIds:fallbackReferences}
               :normalized.value;
             const learningAdvice=parsed.learningAdvice==='fluency_expectations';
@@ -503,7 +500,12 @@ export function mountChat(app: Express) {
             enrollment=action?{...action,replyLanguage:replyLang,
               ...(assessmentClass?{detailFields:[...new Set(['first','weekly','seats',...(action.detailFields??[])])]}:{}),
               ...(linkOnlyClassIds.length?{linkOnlyClassIds}:{})}:undefined;
-            if(held){
+            if(enrollment&&sharedEnrollmentComparison(enrollment))enrollment.sharedComparison=true;
+            const workspaceReply=workspaceEntry&&assessmentWorkspaceReply(workspaceEntry);
+            if(workspaceReply){
+              reply=workspaceReply;
+              catalogueUsed=false;
+            }else if(held){
               reply=enrollmentGuideText(replyLang,
                 '我记住了你给的选班条件。等你完成测评，我再用这些条件帮你找合适的班次。',
                 'I’ll keep your class preferences in mind and use them to find a suitable class once you finish the assessment.',

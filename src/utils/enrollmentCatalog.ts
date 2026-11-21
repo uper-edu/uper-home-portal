@@ -194,18 +194,18 @@ export const enrollmentWeekdays=[
 
 const enrollmentSessionTime=/^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** In local Jakarta time, with Monday as day 1. */
-export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh'){
+/** Display-ready day and time groups in Jakarta time, with Monday as day 1. */
+export function enrollmentWeeklyScheduleGroups(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh'){
   if(!plan||!Array.isArray(plan.days)||!plan.days.length||plan.days.some(day=>!Number.isInteger(day)||day<1||day>7)||
-    !Number.isInteger(plan.lessons)||plan.lessons<1||plan.lessons>24)return '';
+    !Number.isInteger(plan.lessons)||plan.lessons<1||plan.lessons>24)return [];
   const index=lang==='zh'?0:lang==='en'?1:2;
   const groups=new Map<string,string[]>();
   for(const day of [...new Set(plan.days)].sort((a,b)=>a-b)){
     const start=enrollmentSessionStart(plan,day);
-    if(typeof start!=='string'||!enrollmentSessionTime.test(start))return '';
+    if(typeof start!=='string'||!enrollmentSessionTime.test(start))return [];
     const [h,m]=start.split(':').map(Number);
     const end=h*60+m+plan.lessons*minutesPerPeriod;
-    if(!Number.isInteger(end)||end>=1440)return '';
+    if(!Number.isInteger(end)||end>=1440)return [];
     const endTime=[Math.floor(end/60),end%60].map(x=>String(x).padStart(2,'0')).join(':');
     const range=start+'–'+endTime;
     const label=enrollmentWeekdays[day-1][index];
@@ -213,9 +213,14 @@ export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undef
     names.push(lang==='zh'&&!plan.startByDay?label.slice(1):label);
     groups.set(range,names);
   }
-  const text=[...groups].map(([range,names])=>names.join(lang==='zh'?'、':', ')+' '+range);
-  const schedule=text.join(lang==='zh'?'；':' / ');
-  return (lang==='zh'?'每周'+(plan.startByDay?schedule.slice(1):schedule):schedule)+' WIB';
+  return [...groups].map(([time,names],i)=>({
+    days:(lang==='zh'&&i===0?(plan.startByDay?'每':'每周'):'')+names.join(lang==='zh'?'、':', '),time,
+  }));
+}
+
+export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh'){
+  const groups=enrollmentWeeklyScheduleGroups(plan,minutesPerPeriod,lang);
+  return groups.length?groups.map(({days,time})=>days+' '+time).join(lang==='zh'?'；':' / ')+' WIB':'';
 }
 
 /** One title contract for the catalog, CRM, applications and order details. */

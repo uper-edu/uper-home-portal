@@ -1,4 +1,4 @@
-import {enrollmentFormats,enrollmentLevels,enrollmentPeriods,enrollmentSessionStart,enrollmentWeekdays,type PublicEnrollmentClass} from './enrollmentCatalog';
+import {enrollmentFormats,enrollmentInstant,enrollmentLevels,enrollmentPeriods,enrollmentSessionStart,enrollmentWeekdays,enrollmentWeeklyScheduleText,type PublicEnrollmentClass} from './enrollmentCatalog';
 import {promotionJourneyUrl} from './promotionNavigation';
 
 export type EnrollmentGuideLanguage='zh'|'en'|'id';
@@ -24,6 +24,7 @@ export type EnrollmentGuideAction={
   classId?:string;
   rows?:EnrollmentGuideClass[];
   linkOnlyClassIds?:string[];
+  sharedComparison?:true;
   replyLanguage?:EnrollmentGuideLanguage;
   explicitDemand?:boolean;
   quoteMissing?:boolean;
@@ -53,6 +54,28 @@ export type EnrollmentQuote={
   classSize?:PublicEnrollmentClass['classSize'];
 };
 export const enrollmentGuideText=(lang:EnrollmentGuideLanguage,zh:string,en:string,id:string)=>({zh,en,id})[lang];
+
+/** Consolidate a pair only when no requested fact or difference would be hidden. */
+export function sharedEnrollmentComparison(action:EnrollmentGuideAction){
+  const {rows,question,detailFields}=action;
+  if(action.kind!=='class'||rows?.length!==2||action.intakePaused||action.referenceUnavailable||
+    action.missingClassLevels?.length||action.scheduleConflict||action.firstDateConflict||action.maximumTotal||
+    (question&&question!=='compare_classes')||(action.inspection&&!detailFields?.length)||
+    (detailFields?.length&&(!detailFields.includes('weekly')||!detailFields.includes('price')||
+      detailFields.some(field=>!['weekly','price','duration','first'].includes(field)))))return;
+  const [first,second]=rows;
+  const plan=first.weeklySchedule;
+  const periods=first.sessions;
+  const schedule=enrollmentWeeklyScheduleText(plan,first.minutes,'en');
+  if(!plan||!schedule||!periods||!(first.price>0)||first.id===second.id||
+    first.level!==second.level||first.format!==second.format||first.period!==second.period||
+    first.minutes!==second.minutes||periods!==second.sessions||plan.lessons!==second.weeklySchedule?.lessons||
+    first.price!==second.price||first.standardPrice!==second.standardPrice||
+    !rows.every(row=>Number.isSafeInteger(row.batchNumber)&&Number(row.batchNumber)>0&&enrollmentInstant(row.firstLesson))||
+    first.batchNumber===second.batchNumber||first.firstLesson.slice(0,10)===second.firstLesson.slice(0,10)||
+    schedule!==enrollmentWeeklyScheduleText(second.weeklySchedule,second.minutes,'en'))return;
+  return {rows:[first,second] as const,plan,periods};
+}
 export const enrollmentAppointmentRequested=(action:EnrollmentGuideAction)=>action.kind==='appointment'||
   (action.kind==='quote'&&(action.question==='appointment'||action.detailFields?.includes('appointment')));
 
@@ -272,6 +295,18 @@ export function hasConsultationEvidence(evidence:unknown,learnerMessage:string){
   if(!last||!quote.endsWith(last))return false;
   const inner=quote.slice(1,-1).trim();
   return inner.length>=2&&learnerMessage.includes(inner);
+}
+
+/** A fresh assessment resets the suggested level, while keeping compatible learner preferences. */
+export function assessmentEnrollmentSelection(value:unknown,previous:ConsultationConstraints|undefined,level:ConsultationConstraints['level'],deferredLimit?:number){
+  const course=normalizeEnrollmentIntent(value);
+  const constraints={...previous,level,requestedLevel:undefined};
+  const recommend=Boolean(level&&(deferredLimit||course?.kind==='recommend'));
+  return {
+    value:{...constraints,kind:recommend?'recommend':'browse',fields:recommend?course?.detailFields:undefined,
+      maxRecommendations:deferredLimit??course?.maxRecommendations},
+    constraints,
+  };
 }
 
 export function resolveConsultationRecommendation(value:unknown,previous:ConsultationConstraints|undefined,learnerMessage:string,criteria?:unknown){

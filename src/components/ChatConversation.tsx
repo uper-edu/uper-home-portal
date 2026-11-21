@@ -1,20 +1,30 @@
-import type {ReactNode, Ref} from 'react';
+import {Children, isValidElement, type ReactNode, type Ref} from 'react';
 import {Send, UserRound} from 'lucide-react';
-import Markdown from 'react-markdown';
+import Markdown, {type Components} from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {deliveryText, type Delivery} from '../services/chatDelivery';
 import {ChatEnrollmentGuide} from './ChatEnrollmentGuide';
-import type {EnrollmentGuideAction} from '../utils/enrollmentGuidance';
+import {sharedEnrollmentComparison, type EnrollmentGuideAction} from '../utils/enrollmentGuidance';
 import type {ChatOrigin,ChatSource} from '../services/portalChat';
 import type {ChatMessageAnchor} from '../utils/chatJourneyNavigation';
 
 const copy=(lang:string,zh:string,en:string,id:string)=>lang.startsWith('zh')?zh:lang.startsWith('en')?en:id;
 
+const replyMarkdown:Components={
+  p({node,children,...props}){
+    const content=node?.children.filter(child=>child.type!=='text'||child.value.trim());
+    const allStrong=content?.length&&content.every(child=>child.type==='element'&&child.tagName==='strong');
+    return <p {...props}>{allStrong?Children.map(children,child=>(
+      isValidElement<{children?:ReactNode}>(child)&&child.type==='strong'?child.props.children:child
+    )):children}</p>;
+  },
+};
+
 export function ChatFollowups({prompts, onSelect}: {prompts?: string[]; onSelect: (prompt: string) => void}) {
   if (!prompts?.length) return null;
-  return <div data-chat-followups className="mt-2 flex flex-wrap gap-1.5">
+  return <div data-chat-followups className="chat-followups">
     {prompts.map(prompt => <button key={prompt} type="button" onClick={() => onSelect(prompt)}
-      className="min-h-8 max-w-full rounded-full border border-primary-200 bg-white px-3 py-1 text-left text-xs text-primary-800 hover:bg-primary-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">
+      className="chat-followup">
       {prompt}
     </button>)}
   </div>;
@@ -25,8 +35,13 @@ export function ChatMessage({role,content,language,entry,origin,anchor,enrollmen
   origin?:ChatOrigin;anchor?:ChatMessageAnchor;delivery?:Delivery;compact?:boolean;busy?:boolean;onRetry?:()=>void;entryAction?:ReactNode;children?:ReactNode;
 }){
   const user=role==='user';
-  const guidance=enrollment&&<ChatEnrollmentGuide action={enrollment} language={language} entry={entry} origin={origin} anchor={anchor}/>;
-  if(!content&&!children&&!enrollment)return null;
+  const rows=enrollment?.rows;
+  const comparison=enrollment?.sharedComparison?sharedEnrollmentComparison(enrollment):undefined;
+  const embeddedGuide=enrollment&&(!rows?.length||comparison||rows.some(row=>enrollment.linkOnlyClassIds?.includes(row.id)))&&
+    <ChatEnrollmentGuide action={enrollment} language={language} entry={entry} origin={origin} anchor={anchor} comparison={comparison}/>;
+  const cards=enrollment&&!comparison&&rows?.some(row=>!enrollment.linkOnlyClassIds?.includes(row.id))&&
+    <ChatEnrollmentGuide action={enrollment} language={language} entry={entry} origin={origin} anchor={anchor} cards/>;
+  if(!content&&!children&&!enrollment&&!entryAction)return null;
   return <div data-chat-message={role} className={`flex flex-col ${user?'items-end':'items-start'}`}>
     {user&&delivery&&delivery!=='saved'&&<div role="status" className="mb-1 flex items-center gap-2 text-xs text-slate-600">
       <span>{deliveryText(delivery,language)}</span>
@@ -39,14 +54,17 @@ export function ChatMessage({role,content,language,entry,origin,anchor,enrollmen
         {user?<UserRound className="size-4"/>:<img src="/uper-logo-mark.svg" alt="" width="16" height="18" className="h-[18px] w-4 object-contain"/>}
       </div>
       <div data-chat-message-body className="grid min-w-0 justify-items-start">
-        {(content||children)&&<div data-chat-bubble className={`min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm leading-relaxed [overflow-wrap:anywhere] ${compact?'':'sm:px-4'} ${user?'rounded-tr-sm bg-primary-600 text-white shadow-sm':'rounded-tl-sm border border-slate-200/80 bg-white text-slate-800 shadow-sm'}`}>
+        {(content||children||entryAction||embeddedGuide)&&<div data-chat-bubble className={`min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm leading-relaxed [overflow-wrap:anywhere] ${compact?'':'sm:px-4'} ${user?'rounded-tr-sm bg-primary-600 text-white shadow-sm':'chat-reply-bubble'}`}>
           {children??(user?<span className="whitespace-pre-wrap">{content}</span>:
-            <div className="prose prose-sm max-w-none text-inherit prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-a:text-primary-800 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-              <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+            content&&<div className="chat-reply-text prose prose-sm max-w-none text-inherit prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-a:text-primary-800 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+              <Markdown components={replyMarkdown} remarkPlugins={[remarkGfm]}>{content}</Markdown>
             </div>)}
+          {(entryAction||embeddedGuide)&&<div className="chat-reply-actions">
+            {entryAction}
+            {embeddedGuide&&<div data-chat-enrollment>{embeddedGuide}</div>}
+          </div>}
         </div>}
-        {entryAction}
-        {guidance&&<div data-chat-enrollment className="w-full min-w-0">{guidance}</div>}
+        {cards&&<div data-chat-enrollment className="w-full min-w-0">{cards}</div>}
       </div>
     </div>
   </div>;

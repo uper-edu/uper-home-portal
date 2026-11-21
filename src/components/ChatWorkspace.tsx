@@ -490,9 +490,9 @@ export default function ChatWorkspace({
           </button>
         </div>
       </StandaloneChatDialog>}
-      {report&&<StandaloneChatDialog title={t('测评详细结果','Assessment details','Detail hasil tes')} closeLabel={closeLabel} onClose={()=>setReport(null)} wide>
+      {report&&<StandaloneChatDialog title={t('测评详情','Assessment details','Detail hasil tes')} closeLabel={closeLabel} onClose={()=>setReport(null)} variant="assessment-report">
         <HskAssessmentReport result={report} lang={lang} saving={savingReport} onRetry={()=>void retryReport(report)}/>
-        <div className="chat-dialog-actions"><button type="button" onClick={()=>{setReport(null);setConfirm('retake');}}>
+        <div className="chat-dialog-actions"><button className="chat-enrollment-next" type="button" onClick={()=>{setReport(null);setConfirm('retake');}}>
           {t('重新测评','Retake assessment','Ulangi tes')}
         </button></div>
       </StandaloneChatDialog>}
@@ -513,7 +513,7 @@ export default function ChatWorkspace({
               anchor={msg.enrollment?{owner:visitorScope(),conversationId:thread.conversationId,messageId:msg.id,
                 widget:presentation==='panel'||presentation==='mobile'}:undefined}
               delivery={msg.delivery} compact={compact} busy={isTyping} onRetry={()=>void handleSendMessage(undefined,msg)}
-              entryAction={entry&&<button type="button" className="chat-enrollment-next self-start" data-chat-workspace-action
+              entryAction={entry&&<button type="button" className="chat-enrollment-next chat-enrollment-next--primary" data-chat-workspace-action
                 disabled={busy} onClick={entry.open}>{entry.label}</button>}>
               {msg.isAssessmentResult&&msg.assessmentData?<ChatAssessmentSummary result={msg.assessmentData} lang={lang}
                 onDetails={()=>setReport(msg.assessmentData!)}/>:undefined}

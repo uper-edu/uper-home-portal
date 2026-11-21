@@ -4,6 +4,9 @@
   --chat-ink: #172c30;
   --chat-muted: #506863;
   --chat-border: #d7e3df;
+  --chat-reply-accent: #0f513e;
+  --chat-reply-option: #f0f7f3;
+  --chat-reply-option-hover: #e2f0e7;
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -58,29 +61,44 @@
 .standalone-chat-flow [data-chat-message=user] [data-chat-avatar] { display: none; }
 .standalone-chat-flow [data-chat-message=user] [data-chat-bubble] { background: #dfeee8; color: #194238; }
 .standalone-chat-flow [data-chat-bubble] { box-shadow: none; font-size: .9375rem; }
-.standalone-chat-flow [data-chat-message=assistant] [data-chat-bubble] { border-color: var(--chat-border); }
+.standalone-chat-flow .chat-reply-bubble {
+  padding: 14px 17px;
+  border-radius: 5px 17px 17px 17px;
+  background: #fff;
+  color: var(--chat-ink);
+  box-shadow: 0 2px 9px #112f2112;
+}
+.chat-reply-text { --tw-prose-body: var(--chat-ink); font-size: .875rem; font-weight: 400; line-height: 1.6; }
+.chat-reply-text p { line-height: inherit; text-wrap: pretty; }
+.chat-reply-text > p + p { margin-top: 9px; }
+.chat-reply-actions { display: grid; justify-items: start; gap: 7px; margin-top: 12px; }
+.chat-reply-actions:not(:first-child, :has(.chat-comparison)) { padding-top: 10px; border-top: 1px solid var(--chat-border); }
+.chat-reply-actions:first-child { margin-top: 0; }
+.chat-reply-actions > [data-chat-enrollment] { min-width: 0; max-width: 100%; }
+.chat-reply-actions:has(.chat-comparison) > [data-chat-enrollment] { width: 100%; }
 .standalone-chat-flow [data-chat-message-body] { gap: 10px; }
 .standalone-chat-flow [data-chat-enrollment] .enrollment-class-grid { max-width: 554px; margin-top: 0; }
 .standalone-chat-flow .enrollment-class-card--chat {
   width: 100%;
-  border-color: #d0e3da;
-  border-top: 3px solid #4a9b82;
+  container: chat-class-card / inline-size;
+  border-color: transparent;
   border-radius: 13px;
   padding: 14px 16px 0;
   gap: 5px;
+  box-shadow: 0 2px 9px #112f2112;
 }
 .standalone-chat-flow .enrollment-class-card--chat h2 { font-size: 17px; }
 .standalone-chat-flow .enrollment-class-card--chat .enrollment-class-bottom {
   margin: 6px -16px 0;
   padding: 11px 16px;
   border-radius: 0 0 12px 12px;
-  background: #f8fbfa;
-  flex-wrap: nowrap;
+  background: var(--chat-reply-option);
+  flex-wrap: wrap;
   align-items: center;
 }
-.standalone-chat-flow .enrollment-class-card--chat .enrollment-prices strong { color: #134b3e; font-size: 21px; }
-.standalone-chat-flow .enrollment-class-card--chat .enrollment-prices strong small { margin-inline-start: 6px; font-size: 12px; }
-.standalone-chat-flow .enrollment-class-card--chat .enrollment-primary, .chat-primary {
+.standalone-chat-flow .enrollment-class-card--chat .enrollment-prices strong { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 6px; color: #134b3e; font-size: 21px; }
+.standalone-chat-flow .enrollment-class-card--chat .enrollment-prices strong small { font-size: 12px; }
+.chat-primary {
   background: var(--chat-accent);
   color: #fff;
   border-radius: 9px;
@@ -96,21 +114,98 @@
   font-size: 14px;
   font-weight: 680;
 }
-.chat-primary:hover, .standalone-chat-flow .enrollment-class-card--chat .enrollment-primary:hover { background: var(--chat-accent-hover); }
-.chat-enrollment-next {
+.chat-primary:hover { background: var(--chat-accent-hover); }
+.chat-enrollment-next, .standalone-chat-flow .enrollment-class-card--chat .chat-enrollment-next {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   min-height: 44px;
+  max-width: 100%;
   justify-self: start;
-  background: #fff;
-  border: 1px solid #b4d3c8;
+  background: var(--chat-reply-option);
+  border: 1px solid var(--chat-border);
   border-radius: 9px;
-  padding: 0 13px;
-  color: var(--chat-accent);
+  padding: 6px 13px;
+  color: var(--chat-reply-accent);
   font-size: 14px;
   font-weight: 670;
+  line-height: 1.4;
+  text-align: center;
   text-decoration: none;
+  white-space: normal;
+}
+.chat-enrollment-next:hover, .chat-class-option:hover, .chat-followup:hover { background: var(--chat-reply-option-hover); }
+.chat-enrollment-next--primary, .standalone-chat-flow .enrollment-class-card--chat .chat-enrollment-next--primary {
+  background: var(--chat-reply-accent);
+  border-color: var(--chat-reply-accent);
+  color: #fff;
+}
+.chat-enrollment-next--primary:hover, .standalone-chat-flow .enrollment-class-card--chat .chat-enrollment-next--primary:hover { background: #0b4434; }
+.chat-enrollment-next:disabled { opacity: .55; }
+.chat-enrollment-next:focus-visible, .chat-class-option:focus-visible, .chat-followup:focus-visible { outline: 2px solid var(--chat-reply-accent); outline-offset: 2px; }
+.chat-class-links, .chat-followups { display: flex; flex-wrap: wrap; gap: 7px; }
+.chat-followups { margin: 8px 0 0 40px; }
+.chat-followup {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 6px 12px;
+  border: 1px solid var(--chat-border);
+  border-radius: 999px;
+  color: var(--chat-reply-accent);
+  font-size: 13px;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.chat-comparison { container-type: inline-size; }
+.standalone-chat-flow [data-chat-message=assistant]:has(.chat-comparison, [data-enrollment-card-group]) > div:last-child { width: min(100%, 594px); }
+.standalone-chat-flow [data-chat-message-body]:has(.chat-comparison, [data-enrollment-card-group]),
+.standalone-chat-flow .chat-reply-bubble:has(.chat-comparison) { width: 100%; }
+.chat-value { white-space: nowrap; }
+.chat-schedule-groups { display: flex; flex-wrap: wrap; column-gap: .6em; }
+.chat-comparison-schedule .chat-schedule-groups { display: grid; }
+.chat-comparison-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  padding-block: 11px;
+  border-block: 1px solid var(--chat-border);
+}
+.chat-comparison-facts > div + div { border-inline-start: 1px solid var(--chat-border); padding-inline-start: 14px; }
+.chat-comparison-facts dt, .chat-comparison-facts dd > span, .chat-comparison-duration { font-size: 13px; }
+.chat-comparison-facts dt, .chat-comparison-facts dd:not(.chat-comparison-schedule) > span, .chat-comparison-duration { color: var(--chat-muted); }
+.chat-comparison-facts dd { display: grid; margin-top: 3px; }
+.chat-comparison-price { color: var(--chat-reply-accent); font-size: 19px; line-height: 1.4; }
+.chat-comparison-duration { margin-top: 9px; }
+.chat-class-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; margin-top: 12px; }
+.chat-class-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 70px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--chat-reply-option);
+  color: var(--chat-ink);
+  line-height: 1.4;
+  text-decoration: none;
+}
+.chat-class-option-info { display: grid; gap: 2px; }
+.chat-class-option-info > span { color: var(--chat-muted); font-size: 12px; }
+.chat-class-option time { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.chat-class-option strong { font-size: 16px; }
+.chat-class-option small { color: var(--chat-muted); font-size: 12px; font-weight: 500; }
+.chat-class-option-action { color: var(--chat-reply-accent); font-size: 13px; font-weight: 680; white-space: nowrap; }
+@container (max-width: 365px) {
+  .chat-class-options { grid-template-columns: minmax(0, 1fr); }
+  .chat-class-option { min-height: 54px; padding-block: 6px; }
+}
+@container (max-width: 285px) {
+  .chat-comparison-facts { grid-template-columns: 1fr; gap: 7px; }
+  .chat-comparison-facts > div { display: grid; grid-template-columns: minmax(82px, auto) minmax(0, 1fr); gap: 5px; }
+  .chat-comparison-facts > div + div { border-inline-start: 0; padding-inline-start: 0; }
+  .chat-comparison-facts dd { margin-top: 0; }
 }
 .chat-welcome-layout { display: grid; place-items: center; min-height: 100%; padding: 24px 20px; }
 .chat-welcome { width: min(100%,536px); text-align: center; }
@@ -161,16 +256,7 @@
 .chat-assessment-summary h2 { font-size: 21px; font-weight: 720; line-height: 1.35; margin-top: 6px; color: #1d3f34; }
 .chat-assessment-status { display: flex; gap: 6px; align-items: center; color: #1b654d; font-size: 13px; font-weight: 670; }
 .chat-assessment-review { margin-top: 5px; color: #73531b; font-size: 13px; }
-.chat-assessment-summary > button {
-  display: inline-flex;
-  gap: 4px;
-  min-height: 44px;
-  align-items: center;
-  text-align: start;
-  color: var(--chat-accent);
-  font-size: 14px;
-  font-weight: 680;
-}
+.chat-assessment-summary > button { margin-top: 8px; }
 .standalone-chat-page [data-chat-composer] { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
 .standalone-chat-page [data-chat-composer] > div { max-width: 684px; }
 .standalone-chat-page [data-chat-composer] textarea { background: #f8fbfa; border-color: #a8c5ba; }
@@ -205,6 +291,15 @@
 .chat-dialog-body { padding: 16px; font-size: 14px; line-height: 1.6; }
 .chat-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 14px; }
 .chat-dialog-actions > button:not(.chat-primary) { min-height: 44px; padding: 0 12px; }
+.standalone-chat-dialog[data-chat-dialog="assessment-report"] { width: min(600px, calc(100% - 24px)); }
+.standalone-chat-dialog[data-chat-dialog="assessment-report"] > header { padding: 8px 16px 8px 20px; }
+.standalone-chat-dialog[data-chat-dialog="assessment-report"] > header h2 { font-size: 18px; }
+.standalone-chat-dialog[data-chat-dialog="assessment-report"] .chat-dialog-body { padding: clamp(12px, 3vw, 18px); }
+.standalone-chat-dialog[data-chat-dialog="assessment-report"] .chat-dialog-actions {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--chat-border);
+}
 .standalone-chat-dialog[data-chat-dialog="retake"] > header { border-bottom: 0; padding: 14px 20px 0; }
 .standalone-chat-dialog[data-chat-dialog="retake"] h2 { font-size: 20px; }
 .standalone-chat-dialog[data-chat-dialog="retake"] .chat-dialog-body { padding: 8px 20px 18px; }
@@ -246,8 +341,8 @@
   .chat-assessment-summary h2 { font-size: 19px; }
   .standalone-chat-flow .enrollment-class-card--chat { padding: 10px 11px 0; }
   .standalone-chat-flow .enrollment-class-card--chat h2 { font-size: 15px; }
-  .standalone-chat-flow .enrollment-class-card--chat .enrollment-class-bottom { margin-inline: -11px; padding: 9px 11px; flex-direction: column; align-items: stretch; }
-  .standalone-chat-flow .enrollment-class-card--chat .enrollment-primary { width: 100%; max-width: 100%; }
+  .standalone-chat-flow .enrollment-class-card--chat .enrollment-class-bottom { margin-inline: -11px; padding: 9px 11px; }
+  .standalone-chat-flow .chat-reply-bubble { padding: 11px 12px; }
 }
 .standalone-chat-flow [data-chat-message=assistant] > div:last-child { max-width: 100%; }
 .standalone-chat-flow [data-chat-message=assistant] [data-chat-message-body] { max-width: 610px; }
@@ -259,6 +354,10 @@
 .standalone-chat-flow .enrollment-class-card--chat .chat-class-heading h2 a { justify-content: flex-start; }
 .standalone-chat-flow .enrollment-class-card--chat > p { display: flex; align-items: center; gap: 7px; }
 .standalone-chat-flow .enrollment-class-card--chat > p > svg { flex: none; color: #437b6b; }
+@container chat-class-card (max-width: 355px) {
+  .standalone-chat-flow .enrollment-class-card--chat .chat-class-heading { flex-direction: column; gap: 4px; }
+  .standalone-chat-flow .enrollment-class-card--chat .chat-class-heading .enrollment-status { max-width: 100%; }
+}
 
 .chat-workspace-loading {
   width: min(100%, 728px);
@@ -280,14 +379,7 @@
 [data-chat-presentation=panel] .standalone-chat-flow { padding: 12px; }
 [data-chat-presentation=panel] .standalone-chat-flow > * + * { margin-top: 12px; }
 [data-chat-presentation=panel] .standalone-chat-flow [data-chat-bubble] { font-size: .875rem; }
-[data-chat-presentation=panel] .standalone-chat-flow .enrollment-class-card--chat .enrollment-class-bottom {
-  flex-direction: column;
-  align-items: stretch;
-}
-[data-chat-presentation=panel] .standalone-chat-flow .enrollment-class-card--chat .enrollment-primary {
-  max-width: none;
-  width: 100%;
-}
+[data-chat-presentation=panel] .standalone-chat-flow .chat-reply-bubble { padding: 11px 12px; }
 
 .chat-enrollment-back {
   flex: none;

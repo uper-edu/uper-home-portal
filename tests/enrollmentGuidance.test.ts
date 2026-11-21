@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {enrollmentClassComparison,enrollmentDemandPrefill,enrollmentGuideHref,enrollmentGuideRows,matchEnrollmentGuidance,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,resolveEnrollmentComparison,withExplicitChatAppointmentTime} from '../src/utils/enrollmentGuidance';
+import {enrollmentClassComparison,enrollmentDemandPrefill,enrollmentGuideHref,enrollmentGuideRows,matchEnrollmentGuidance,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,resolveEnrollmentComparison,sharedEnrollmentComparison,withExplicitChatAppointmentTime} from '../src/utils/enrollmentGuidance';
 import type {EnrollmentGuideAction} from '../src/utils/enrollmentGuidance';
 import type {PublicEnrollmentClass} from '../src/utils/enrollmentCatalog';
 
@@ -13,6 +13,25 @@ const sample=(overrides:Partial<PublicEnrollmentClass>={}):PublicEnrollmentClass
 const normalized=(overrides:Record<string,unknown>={})=>normalizeEnrollmentIntent({
   kind:'recommend',level:'HSK 1',period:'weekend',days:[6,7],earliest:'12:00',latest:'17:59',...overrides,
 })!;
+
+test('a shared comparison only consolidates equal schedule, tuition and duration across distinct batches',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const first=sample({batchNumber:1,period:'mixed',price:4158000,sessions:42,
+    weeklySchedule:{days:[5,6],start:'19:00',lessons:2,startByDay:{5:'19:00',6:'15:00'}}});
+  const second={...first,id:'fixture-b',batchNumber:2,firstLesson:'2027-01-15T19:00'};
+  const action:EnrollmentGuideAction={kind:'class',rows:[first,second],detailFields:['weekly','price','first'],sharedComparison:true};
+  assert.equal(sharedEnrollmentComparison(action)?.periods,42);
+  assert.match(enrollmentReply(action,'zh'),/两期课表、课时和学费相同/);
+  assert.match(enrollmentReply(action,'en'),/same weekly schedule/);
+  assert.match(enrollmentReply(action,'id'),/Jadwal mingguan/);
+  for(const change of [{price:second.price+1},{sessions:41},
+    {firstLesson:first.firstLesson},{weeklySchedule:{...second.weeklySchedule!,startByDay:{5:'19:00',6:'16:00'}}}]){
+    assert.equal(sharedEnrollmentComparison({...action,rows:[first,{...second,...change}]}),undefined);
+  }
+  assert.equal(sharedEnrollmentComparison({...action,detailFields:['weekly','price','teacher']}),undefined);
+  assert.equal(sharedEnrollmentComparison({...action,question:'apply'}),undefined);
+  assert.equal(sharedEnrollmentComparison({...action,firstDateConflict:true}),undefined);
+});
 
 test('a browse application uses verified timing and accepts exact evidence wrapped in quotation marks',()=>{
   const previous={level:'HSK 2',windows:[{day:5,earliest:'19:00'},{day:6,earliest:'15:00'}]};

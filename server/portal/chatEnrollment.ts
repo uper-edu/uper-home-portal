@@ -3,11 +3,11 @@ import { readPublicEnrollmentAppointments, readPublicEnrollmentClasses } from '.
 import { enrollmentReadiness } from './enrollmentApplication.ts';
 import { formatCurrency } from '../../src/utils/currency.ts';
 import {
-  enrollmentClassSizeText, enrollmentClassTitle, enrollmentTeacherLabel, enrollmentWeeklyScheduleText, enrollmentWeekdays,
+  enrollmentClassSizeText, enrollmentClassTitle, enrollmentInstant, enrollmentTeacherLabel, enrollmentWeeklyScheduleText, enrollmentWeekdays,
 } from '../../src/utils/enrollmentCatalog.ts';
 import {
   enrollmentAppointmentRequested, enrollmentClassComparison, enrollmentClassMatchesTiming, enrollmentFirstDateMatches, enrollmentGuideRows, enrollmentGuideText, enrollmentLevelMatches, enrollmentPreferenceScheduleText, enrollmentScheduleConflict, matchEnrollmentGuidance,
-  normalizeEnrollmentIntent, type ConsultationConstraints, type EnrollmentGuideAction, type EnrollmentGuideLanguage, type EnrollmentQuote,
+  normalizeEnrollmentIntent, sharedEnrollmentComparison, type ConsultationConstraints, type EnrollmentGuideAction, type EnrollmentGuideLanguage, type EnrollmentQuote,
 } from '../../src/utils/enrollmentGuidance.ts';
 
 export const chatEnrollmentInstruction = `
@@ -422,6 +422,15 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
       ].filter(Boolean).join('\n\n');
     }
     case 'class':{
+      const shared=action.sharedComparison&&sharedEnrollmentComparison(action);
+      if(shared){
+        const {level,format}=shared.rows[0];
+        const title=enrollmentClassTitle({level,format},lang);
+        const matches=!action.inspection||action.scheduleConfirmed;
+        return [matches?t(`有两期 ${title} 符合你的选班条件。`,`Two ${title} options match your preferences.`,`Ada dua pilihan ${title} yang sesuai dengan preferensi Anda.`):
+          t(`可以比较这两期 ${title}。`,`You can compare these two ${title} options.`,`Anda bisa membandingkan dua pilihan ${title} ini.`),
+          t('两期课表、课时和学费相同，可以按首课日期选。','Both have the same weekly schedule, number of lessons and tuition. You can choose by the first session date.','Jadwal mingguan, jumlah jam pelajaran, dan biayanya sama. Anda bisa memilih berdasarkan tanggal kelas pertama.')].join('\n\n');
+      }
       const question=action.question;
       const hasRoom=rows.some(row=>row.availability==='available'||row.availability==='limited');
       const requested=question==='price_difference'?['price','duration','class_size']:action.detailFields?.length?action.detailFields:question==='reserve'?['seats']:question==='period_unit'?[]:
@@ -430,6 +439,20 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
       const budget=maximum&&rows.length&&rows.every(row=>row.price>0&&row.price<=maximum)?amount(maximum):'';
       const priceBreakdown=action.inspection||question==='period_unit'||action.detailFields?.includes('price');
       const first=rows[0];
+      if(rows.length===1&&!action.inspection&&!question&&!action.detailFields?.length&&!maximum&&
+        !action.intakePaused&&!action.firstDateConflict&&!action.referenceUnavailable&&!action.missingClassLevels?.length&&!conflict&&
+        !action.linkOnlyClassIds?.includes(first.id)&&first.price>0&&hasRoom){
+        const starts=enrollmentInstant(first.firstLesson);
+        if(starts){
+          const date=new Intl.DateTimeFormat({zh:'zh-CN',en:'en-GB',id:'id-ID'}[lang],{
+            month:'long',day:'numeric',timeZone:'Asia/Jakarta',
+          }).format(starts);
+          const title=enrollmentClassTitle(first,lang);
+          return t(`建议先看 ${title}。首课是 ${date} ${first.firstLesson.slice(11)} WIB。`,
+            `I’d suggest ${title}. The first session is ${date} at ${first.firstLesson.slice(11)} WIB.`,
+            `Saya sarankan ${title}. Kelas pertama pada ${date}, pukul ${first.firstLesson.slice(11)} WIB.`);
+        }
+      }
       const sameClassType=first&&rows.every(row=>row.level===first.level&&row.format===first.format&&row.period===first.period);
       const option=sameClassType&&!action.inspection?enrollmentClassTitle({...first,batchNumber:undefined},lang):'';
       const recommendation=option&&budget?t(`按你的预算，可以先看 ${option}。下方班次的实付总价在 ${budget} 以内。`,
@@ -532,7 +555,7 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
         action.firstDateConflict?t('这个班次的首课日期超出了你给出的日期范围。','The first class date is outside the range you gave.',
           'Tanggal kelas pertama berada di luar rentang tanggal yang Anda berikan.'):'',
         difference,
-        sharedFacts.length?t(`两班共有以下信息。${formatFacts(sharedFacts)}`,`For both classes. ${formatFacts(sharedFacts)}`,`Informasi untuk kedua kelas. ${formatFacts(sharedFacts)}`):'',
+        sharedFacts.length?`${t('两班共有的信息','Shared details','Rincian yang sama')}\n\n${sharedFacts.map(fact=>'- '+fact).join('\n')}`:'',
         ...individual,firstDifference,missingClassNote,action.referenceUnavailable?unavailable:'',
         (question==='apply'||question==='reserve')&&!action.intakePaused&&hasRoom?apply:'',
         (question==='apply'||question==='reserve')&&!action.intakePaused&&!hasRoom&&rows.some(row=>row.availability==='full')
@@ -560,7 +583,8 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
         action.format==='small'?t('小班','Small group','Kelompok kecil'):
         action.format==='one-on-one'?t('一对一','One-to-one','Kelas privat'):'';
       const prefilled=[level||action.requestedLevel,formatLabel,schedule].filter(Boolean).join(' · ');
-      return [action.question==='reserve'?reserve:'',action.explicitDemand?'':result,conflictReason,
+      const opening=[action.question==='reserve'?reserve:'',action.explicitDemand?'':result,conflictReason].filter(Boolean).join(' ');
+      const formInstructions=[
         prefilled?t(`选课需求表已带入：${prefilled}。登记无需付款，也不会占用席位。`,
           `The course preferences form is prefilled: ${prefilled}. Submission requires no payment and does not hold a seat.`,
           `Formulir preferensi sudah terisi: ${prefilled}. Pengisian tidak memerlukan pembayaran dan tidak memesan tempat.`):
@@ -573,6 +597,7 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
           'Jika belum tahu level Anda, pilih “Belum yakin level saya”.'):'',
         action.explicitDemand&&!action.format?t('班型没想好，可以选「不限」。','You can choose “Any” if you’re flexible about class type.',
           'Pilih “Bebas” jika jenis kelasnya fleksibel.'):''].filter(Boolean).join(' ');
+      return [opening,formInstructions].filter(Boolean).join('\n\n');
     }
     case 'unavailable':return [action.question==='reserve'?reserve:'',
       (action.question==='compare_classes'||action.question==='price_difference')&&!action.referenceUnavailable

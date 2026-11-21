@@ -16,3 +16,30 @@ test('Consultation replies can request only the supported Chat workspace actions
   assert.equal(chatWorkspaceEntry('assessment', 'fr'), undefined);
   assert.equal(chatWorkspaceEntry(undefined, 'id'), undefined);
 });
+
+test('assessment navigation copy points directly to the action in each language', async () => {
+  const {assessmentWorkspaceReply}=await import('../src/utils/chatWorkspaceAction');
+  for(const [language,below] of [['zh','下方按钮'],['en','button below'],['id','tombol di bawah']] as const){
+    for(const action of ['assessment','assessment_result'] as const){
+      const text=assessmentWorkspaceReply({action,language});
+      assert.ok(text?.includes(below));
+    }
+  }
+});
+
+test('a retake replaces the previous class level and drops old class references', async () => {
+  const {assessmentEnrollmentSelection,normalizeEnrollmentIntent}=await import('../src/utils/enrollmentGuidance');
+  const selection=assessmentEnrollmentSelection(
+    {kind:'recommend',level:'HSK 3',referenceIds:['old-class']},
+    {level:'HSK 3',requestedLevel:'HSK 3',period:'weekend',format:'standard',days:[6,7]},
+    'HSK 1',1,
+  );
+  const intent=normalizeEnrollmentIntent(selection.value);
+  assert.equal(intent?.level,'HSK 1');
+  assert.equal(intent?.period,'weekend');
+  assert.equal(intent?.format,'standard');
+  assert.deepEqual(intent?.days,[6,7]);
+  assert.deepEqual(intent?.referenceIds,[]);
+  assert.equal(intent?.maxRecommendations,1);
+  assert.equal(selection.constraints.requestedLevel,undefined);
+});

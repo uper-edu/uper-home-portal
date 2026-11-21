@@ -106,12 +106,12 @@ export function ChatAssessmentSummary({result,lang,onDetails}:{
     {result.saveStatus!=='saved'&&<p className="chat-assessment-review" role="status">
       {t('结果暂未同步。','Results have not synced yet.','Hasil belum tersinkron.')}
     </p>}
-    <button type="button" onClick={onDetails}>{t('查看详细结果','View detailed results','Lihat hasil lengkap')}<ChevronRight size={15} aria-hidden="true"/></button>
+    <button type="button" className="chat-enrollment-next" onClick={onDetails}>{t('查看详细结果','View detailed results','Lihat hasil lengkap')}</button>
   </section>;
 }
 
 export function StandaloneChatDialog({title,closeLabel,onClose,children,wide=false,locked=false,variant}:{
-  title:string;closeLabel:string;onClose:()=>void;children:ReactNode;wide?:boolean;locked?:boolean;variant?:'retake';
+  title:string;closeLabel:string;onClose:()=>void;children:ReactNode;wide?:boolean;locked?:boolean;variant?:'retake'|'assessment-report';
 }){
   const dialog=useRef<HTMLDialogElement>(null);
   const label=useId();
