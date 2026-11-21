@@ -42,7 +42,8 @@ const stateWords:Record<string,[string,string,string]>={
   queued:['待发送／等待额度','Queued / waiting for quota','Dalam antrean / menunggu kuota'],
   cancelled:['已取消','Cancelled','Dibatalkan'],
   interest_no_longer_available:['班次或登记状态已变更','Class or request no longer eligible','Kelas atau permintaan tidak lagi memenuhi syarat'],
-  paused:['发信池暂停','Pool paused','Pool dijeda'],recipient_blocked:['收件人超出测试范围','Recipient outside test scope','Penerima di luar cakupan uji'],
+  paused:['发信池暂停','Pool paused','Pool dijeda'],recipient_blocked:['收件人被拒绝','Recipient rejected','Penerima ditolak'],
+  invalid_recipient:['收件邮箱格式无效','Invalid recipient address','Alamat penerima tidak valid'],
   shared_window:['共享频率已满','Shared rate reached','Batas frekuensi tercapai'],binding_pending:['首次路由待确认','Initial routing pending','Perutean awal tertunda'],
   pool_daily_recipient_limit:['发信池每日收件人数已达上限','Pool daily recipient limit reached','Batas penerima harian pool tercapai'],
   pool_daily_limit:['发信池日额度已满','Pool daily limit reached','Batas harian pool tercapai'],
@@ -55,7 +56,6 @@ const stateWords:Record<string,[string,string,string]>={
 };
 const readinessWords:Record<string,[string,string,string]>={
   service_disabled:['报名服务尚未启用','Enrollment service is disabled','Layanan pendaftaran belum aktif'],
-  bank_required:['请在报名规则中配置正式收款账户','Configure the payment account in Enrollment rules','Atur rekening pembayaran di Aturan pendaftaran'],
   mail_required:['请核对 SMTP 投递、发信池和发件账号','Check SMTP delivery, the sending pool, and sender accounts','Periksa pengiriman SMTP, pool, dan akun pengirim'],
 };
 
@@ -170,6 +170,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   };
   const activeView=result&&'config' in result?result:undefined;
   const business=result&&'rows' in result?result:undefined;
+  const readinessMessages=readiness?.reasons.flatMap(reason=>readinessWords[reason]?[t(...readinessWords[reason])]:[])??[];
   const settings=business&&(settingsDraft??{pool:business.selectedPool,sticky:business.sticky,revision:business.revision});
   const choiceDirty=!!business&&!!settings&&(settings.pool!==business.selectedPool||settings.sticky!==business.sticky);
   const settingsConflict=choiceDirty&&settings?.revision!==business?.revision;
@@ -569,8 +570,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
         </AdminField>
         <AdminStaticField label={t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')} value={word(business.mode)}/>
       </AdminFormGrid>
-        {readiness?.reasons.length?<AdminFormFeedback state="error" lang={lang}>
-          {readiness.reasons.map(reason=>readinessWords[reason]?t(...readinessWords[reason]):'').filter(Boolean).join(' · ')}
+        {readinessMessages.length?<AdminFormFeedback state="error" lang={lang}>
+          {readinessMessages.join(' · ')}
         </AdminFormFeedback>:null}
         <div data-admin-stack className="enrollment-mail-fixed-sender">
           <AdminField className="enrollment-mail-switch-row">{fixedSender}

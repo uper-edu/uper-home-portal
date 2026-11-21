@@ -16,10 +16,11 @@ import {mailCredentialKeyConfigured,mailPasswordFingerprint,resolveMailPassword,
 import {enrollmentMailPreset} from './enrollmentMailPresets.ts';
 import {mailPoolQuotaReason,selectMailAccount,type Usage} from './enrollmentMailRouting.ts';
 import {enrollmentInterestStillAvailable} from './enrollmentInterestDelivery.ts';
+import {smtpRecipientPolicy} from './enrollmentMailRecipientPolicy.ts';
 import {enrollmentServicePolicy} from './enrollmentRuntime.ts';
 
 type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
-type RouteReason='paused'|'recipient_blocked'|'shared_window'|'pool_daily_limit'|'pool_daily_recipient_limit'|'binding_pending'|'bound_account'|'no_capacity'|MailPoolStrategy|'existing'|'interest_no_longer_available';
+type RouteReason='paused'|'invalid_recipient'|'shared_window'|'pool_daily_limit'|'pool_daily_recipient_limit'|'binding_pending'|'bound_account'|'no_capacity'|MailPoolStrategy|'existing'|'interest_no_longer_available';
 type State='accepted'|'simulated'|'rejected'|'unknown'|'waiting'|'cancelled';
 type Mail={subject:string;text:string;html:string;language:string};
 const environment=()=>process.env.PORTAL_ENV||'unconfigured';
@@ -34,10 +35,6 @@ export function enrollmentMailMode(){
     return 'disabled';
   }
   return enrollmentSimulation()?'simulation':'disabled';
-}
-function permittedRecipient(recipient:string){
-  return enrollmentMailMode()==='simulation'||environment()==='prod'||
-    (process.env.PORTAL_ENROLLMENT_TEST_RECIPIENTS??'').split(',').map(s=>s.trim().toLowerCase()).includes(recipient);
 }
 function timeKeys(now:number){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:timezone(),year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
@@ -101,9 +98,10 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
     const {config}=await configuration(c,true);
     const [queued]=queueKey?(await c.query(`SELECT kind,subject_id,payload FROM enrollment_notification_receipts
       WHERE event_key=:p1 AND state='queued'`,[queueKey])).rows:[];
-    if(queueKey&&!queued)return {reason:'paused'} as const;
-    if(!config.enabled||enrollmentMailMode()==='disabled')return {reason:'paused'} as const;
-    if(!permittedRecipient(recipient))return {reason:'recipient_blocked'} as const;
+    const mode=enrollmentMailMode();
+    if(queueKey&&(!queued||(queued.payload?.smtpRecipientPolicy??'')!==(mode==='smtp'?smtpRecipientPolicy:'')))
+      return {reason:'paused'} as const;
+    if(!config.enabled||mode==='disabled')return {reason:'paused'} as const;
     const prior=(await c.query(`SELECT state,account,started_ms FROM enrollment_mail_attempts
       WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1`,[environment(),event])).rows[0];
     if(prior){
@@ -246,7 +244,7 @@ export async function reconcileLegacyEnrollmentMail(eventKeys:readonly string[],
           if(!preview)await c.query(`INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)
             VALUES(:p1,'email','payment_confirmed',:p2,:p3,'queued',UTC_TIMESTAMP(6))`,
           [replacement,row.subject_id,
-            {...content,...renderEnrollmentEmail('payment_confirmed',content),environment:environment()}]);
+            {...content,...renderEnrollmentEmail('payment_confirmed',content),environment:environment(),smtpRecipientPolicy:row.payload?.smtpRecipientPolicy}]);
           plannedOrders.add(row.subject_id);
           decisions[key]='replace';
           result.replaced++;
@@ -263,13 +261,14 @@ export async function reconcileLegacyEnrollmentMail(eventKeys:readonly string[],
 export async function dispatchEnrollmentMail(event:string,recipient:string,mail:Mail,{code,deliveryId=mailDeliveryId(event),queueKey}:{
   code?:string;deliveryId?:string;queueKey?:string;
 }={}):Promise<{state:State;account?:string;reason:RouteReason}>{
+  if(!validContactEmail(recipient))return {state:'rejected',reason:'invalid_recipient'};
   const excluded=new Set<string>();
   let lastRejected:string|undefined;
   for(;;){
     const plan=await reserve(event,recipient,code!==undefined,excluded,queueKey);
     if(!('id' in plan)&&'reason' in plan){
       if(plan.reason==='interest_no_longer_available')return {state:'cancelled',reason:plan.reason};
-      if(plan.reason==='recipient_blocked'||lastRejected)return {state:'rejected',account:lastRejected,reason:plan.reason};
+      if(lastRejected)return {state:'rejected',account:lastRejected,reason:plan.reason};
       return {state:'waiting',account:'waitingAccount' in plan?plan.waitingAccount:undefined,reason:plan.reason};
     }
     if('prior' in plan)return {state:plan.prior,account:plan.previousAccount,reason:'existing'};
@@ -496,8 +495,9 @@ export function startEnrollmentMail(){
       if((await restoreState())?.required)return;
       const {rows}=await pool.query(`SELECT event_key,payload FROM enrollment_notification_receipts
         WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1
+        AND COALESCE(payload->>'$.smtpRecipientPolicy','')=:p3
         AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2
-        ORDER BY recorded_at,event_key LIMIT 40`,[environment(),Date.now()]);
+        ORDER BY recorded_at,event_key LIMIT 40`,[environment(),Date.now(),mode==='smtp'?smtpRecipientPolicy:'']);
       for(const row of rows){
         const payload=row.payload;
         const {state,account,reason}=await dispatchEnrollmentMail(row.event_key,payload.recipient,payload,{deliveryId:payload.deliveryId,queueKey:row.event_key});

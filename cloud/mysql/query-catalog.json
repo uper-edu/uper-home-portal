@@ -2193,8 +2193,8 @@
       "server/portal/enrollmentNotices.ts"
     ]
   },
-  "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40": {
-    "sql": "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40",
+  "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(payload->>'$.smtpRecipientPolicy','')=:p3\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40": {
+    "sql": "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(payload->>'$.smtpRecipientPolicy','')=:p3\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40",
     "sources": [
       "server/portal/enrollmentMail.ts"
     ]
