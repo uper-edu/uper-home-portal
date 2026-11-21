@@ -9,15 +9,18 @@ const productionOrigins = new Set([productionOrigin, 'https://www.uperedu.com', 
 export const isProductionDeployment = (env = process.env) => env.PORTAL_ENV === 'prod' && env.PORTAL_DEPLOYMENT === 'production';
 /** Parse the explicit public-origin allowlist used by the HTTPS transport gate. */
 export function publicOrigins(env = process.env) {
-  const raw = env.ACCESS_ALLOWED_ORIGINS || env.ACCESS_PUBLIC_ORIGIN || '';
+  const raw = env.ACCESS_ALLOWED_ORIGINS || env.PORTAL_PUBLIC_ORIGIN || '';
   const values = raw.split(',').map(value => value.trim()).filter(Boolean);
   const origins = new Set<string>();
   for (const value of values) {
     let parsed: URL;
     try { parsed = new URL(value); } catch { throw Error('Public origins must be explicit HTTPS origins'); }
-    if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash)
+    const local = env.PORTAL_ENV === 'dev' && !env.ACCESS_ALLOWED_ORIGINS &&
+      !env.ACCESS_TRUSTED_PROXIES && parsed.origin === 'http://localhost:3000';
+    if ((!local && parsed.protocol !== 'https:') || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash)
       throw Error('Public origins must be explicit HTTPS origins');
     origins.add(parsed.origin);
+    if (local) origins.add('http://127.0.0.1:3000');
   }
   return [...origins];
 }
@@ -32,7 +35,7 @@ export function companyConfiguration(env = process.env) {
     throw Error('Company trial requires production transport, database accounts and an isolated synthetic dataset');
   if (['PORTAL_FAULT_TEST','TRIAL_MODEL_STUB','TRIAL_PRIMARY_FAILURE','TRIAL_CONTENT_FAILURE_ONCE','TRIAL_FOLLOWUP_FAILURE_ONCE'].some(k => env[k] === 'true'))
     throw Error('Local fault injection is forbidden in company deployment');
-  if (env.APP_URL !== companyOrigin || env.ACCESS_PUBLIC_ORIGIN !== companyOrigin)
+  if (env.APP_URL !== companyOrigin || env.PORTAL_PUBLIC_ORIGIN !== companyOrigin)
     throw Error('Company trial requires the approved canonical HTTPS origin');
   const direct=internalMysqlDirect(env);
   if (!env.ACCESS_TRUSTED_PROXIES ||
@@ -54,7 +57,7 @@ export function productionConfiguration(env = process.env) {
       env.ACCESS_ALLOW_TEST_PASSWORDS === 'true' || env.PORTAL_LOCAL_CUTOVER === 'true' ||
       env.PORTAL_MIGRATION_REHEARSAL === 'true')
     throw Error('Production deployment requires the production transport, database and release gates');
-  if (env.APP_URL !== productionOrigin || env.ACCESS_PUBLIC_ORIGIN !== productionOrigin)
+  if (env.APP_URL !== productionOrigin || env.PORTAL_PUBLIC_ORIGIN !== productionOrigin)
     throw Error('Production deployment requires the approved canonical HTTPS origin');
   const origins = publicOrigins(env);
   if (!env.ACCESS_ALLOWED_ORIGINS || !origins.includes(productionOrigin) || origins.some(origin => !productionOrigins.has(origin)))

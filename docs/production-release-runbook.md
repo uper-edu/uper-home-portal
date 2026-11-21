@@ -54,7 +54,7 @@
 | `PLATFORM_MODE` | 使用本站员工账号和本地身份模块。 模板值为 `local`。 |
 | `PORT` | 容器监听端口，须与反向代理一致。 模板值为 `8080`。 |
 | `APP_URL` | 正式站规范 HTTPS 地址。 模板值为 `https://uperedu.com`。 |
-| `UPER_PORTAL_PUBLIC_ORIGIN` | 生成招生邮件链接和校验 Lark 回调使用的正式 HTTPS 来源。 模板值为 `https://uperedu.com`。 |
+| `UPER_PORTAL_PUBLIC_ORIGIN` | 用于登录和写入的来源校验、生成招生邮件链接及校验 Lark 回调。 模板值为 `https://uperedu.com`。 |
 | `TRIAL_FRONTEND_DIRECTORY` | 由应用提供静态站点时，填实际前端构建目录。 |
 
 ### MySQL
@@ -71,7 +71,6 @@
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `ACCESS_PUBLIC_ORIGIN` | 受保护访问使用的正式 HTTPS 主站来源。 模板值为 `https://uperedu.com`。 |
 | `ACCESS_ALLOWED_ORIGINS` | 正式站获准的 HTTPS 来源清单，须包含主站。多个来源以逗号分隔。 模板值为 `https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com`。 |
 | `ACCESS_TRUSTED_PROXIES` | 可信反向代理的具体私网 IP，多个地址以逗号分隔。 |
 | `UPER_PORTAL_WORKER_ENABLED` | 后台 worker 开关。省略时正式站默认开启。首次部署核验或维护时显式设为 `false`。 模板值为 `true`。 |

@@ -23,7 +23,7 @@ test('migration and CRM mode changes apply immediately and cannot replay old que
     MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock',PORTAL_PUBLIC_ORIGIN:'http://localhost:3000',
     UPER_PORTAL_ENROLLMENT_MAIL_TRANSPORT:'smtp',PORTAL_ENROLLMENT_MAIL_TRANSPORT:'disabled',
     PORTAL_ENROLLMENT_SIMULATION_MAILBOX:directory,PORTAL_WORKER_ENABLED:'true',
-    PORTAL_ENROLLMENT_SMTP_TEST_GMAIL:'fixture-only',ACCESS_PUBLIC_ORIGIN:'',ACCESS_ALLOWED_ORIGINS:''};
+    PORTAL_ENROLLMENT_SMTP_TEST_GMAIL:'fixture-only',ACCESS_ALLOWED_ORIGINS:''};
   const original=Object.fromEntries(Object.keys(env).map(key=>[key,process.env[key]]));
   Object.assign(process.env,env);
   t.after(async()=>{

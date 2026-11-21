@@ -19,7 +19,7 @@ export function larkCallback(callback:string, env=process.env, enforceOrigin=tru
     if(url.username||url.password||url.search||url.hash||url.pathname!==larkCallbackPath)return;
     if(url.protocol!=='https:'&&!(url.protocol==='http:'&&['localhost','127.0.0.1'].includes(url.hostname)))return;
     if(enforceOrigin){
-      const configured=env.PORTAL_PUBLIC_ORIGIN||env.APP_URL;
+      const configured=env.PORTAL_PUBLIC_ORIGIN;
       if(!configured||url.origin!==new URL(configured).origin)return;
       if(url.protocol==='http:'&&env.PORTAL_ENV!=='dev')return;
       if(callback!==url.origin+larkCallbackPath)return;

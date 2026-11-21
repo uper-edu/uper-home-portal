@@ -16,8 +16,8 @@ import {configureAccessTransport} from '../server/portal/accessTransport.ts';
 import {openTrialDatabase} from '../cloud/mysql/database.mjs';
 import {resolveMetadata,publicPages} from '../src/utils/siteMetadata.ts';
 import {acquireCompanyRuntimeLease,companyRuntimeLock} from '../cloud/mysql/company-maintenance.mjs';
-const valid:any={PORTAL_DEPLOYMENT:'company-trial',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:companyOrigin,ACCESS_PUBLIC_ORIGIN:companyOrigin,ACCESS_TRUSTED_PROXIES:'172.20.0.10',TRIAL_FRONTEND_DIRECTORY:'/app/web',MYSQL_CA_PEM:'placeholder',PORTAL_WORKER_ENABLED:'false'};
-const production:any={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',PORTAL_PRODUCTION_READY:'true',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:productionOrigin,ACCESS_PUBLIC_ORIGIN:productionOrigin,ACCESS_ALLOWED_ORIGINS:'https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com',ACCESS_TRUSTED_PROXIES:'10.20.0.8',MYSQL_TLS_MODE:'disabled',MYSQL_TRIAL_URL:'mysql://Home:password@10.20.0.9:3306/prod_uper_trial_home',PORT:'8080',PORTAL_WORKER_ENABLED:'false'};
+const valid:any={PORTAL_DEPLOYMENT:'company-trial',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:companyOrigin,PORTAL_PUBLIC_ORIGIN:companyOrigin,ACCESS_TRUSTED_PROXIES:'172.20.0.10',TRIAL_FRONTEND_DIRECTORY:'/app/web',MYSQL_CA_PEM:'placeholder',PORTAL_WORKER_ENABLED:'false'};
+const production:any={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',PORTAL_PRODUCTION_READY:'true',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:productionOrigin,PORTAL_PUBLIC_ORIGIN:productionOrigin,ACCESS_ALLOWED_ORIGINS:'https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com',ACCESS_TRUSTED_PROXIES:'10.20.0.8',MYSQL_TLS_MODE:'disabled',MYSQL_TRIAL_URL:'mysql://Home:password@10.20.0.9:3306/prod_uper_trial_home',PORT:'8080',PORTAL_WORKER_ENABLED:'false'};
 test('company deployment gate preserves local safeguards and rejects unsafe configuration',()=>{
  assert.equal(companyConfiguration({} as any),null);assert.deepEqual(companyConfiguration(valid),{port:8080,host:'0.0.0.0'});
  for(const [key,value] of Object.entries({NODE_ENV:'development',APP_ENV:'test',TRIAL_DATASET:'local-crm',PLATFORM_MODE:'mock',PORTAL_LOCAL_CUTOVER:'true',PORTAL_FAULT_TEST:'true',ACCESS_ALLOW_TEST_PASSWORDS:'true',APP_URL:'http://home.prototype.uperedu.com',MYSQL_TRIAL_SOCKET:'/private/local.sock',MYSQL_CA_PEM:'',PORT:'3000',TRIAL_FRONTEND_DIRECTORY:''}))assert.throws(()=>companyConfiguration({...valid,[key]:value}),key);
@@ -39,11 +39,11 @@ test('production gate allows the approved internal no-TLS MySQL path and canonic
 test('production configuration and template use the apex, www and home hosts and reject unknown origins',async()=>{
  assert.equal(productionOrigin,'https://uperedu.com');
  const retired='https://legacy.uperedu.com';
- for(const key of ['APP_URL','ACCESS_PUBLIC_ORIGIN'])assert.throws(()=>productionConfiguration({...production,[key]:retired}),/canonical/);
+ for(const key of ['APP_URL','PORTAL_PUBLIC_ORIGIN'])assert.throws(()=>productionConfiguration({...production,[key]:retired}),/canonical/);
  for(const extra of [retired,'https://evil.example'])assert.throws(()=>productionConfiguration({...production,ACCESS_ALLOWED_ORIGINS:production.ACCESS_ALLOWED_ORIGINS+','+extra}),/allowlist/);
  const template=parseEnvironment(await fs.readFile(new URL('../.env.prod.example',import.meta.url)));
  assert.equal(template.APP_URL,productionOrigin);
- assert.equal(template.ACCESS_PUBLIC_ORIGIN,productionOrigin);
+ assert.equal(template.UPER_PORTAL_PUBLIC_ORIGIN,productionOrigin);
  assert.deepEqual(template.ACCESS_ALLOWED_ORIGINS.split(',').sort(),['https://uperedu.com','https://www.uperedu.com','https://home.uperedu.com'].sort());
 });
 test('company runtime lease loss fails closed and never returns a locked session to the pool',async()=>{
@@ -66,7 +66,7 @@ test('company proxy trust accepts exact private peers only, never networks or pu
  for(const v of ['0.0.0.0/0','172.20.0.0/16','true','*','8.8.8.8','0.0.0.0','nginx','::'])assert.equal(exactPrivateProxy(v),false,v);
  configureAccessTransport(express(),valid);
  assert.throws(()=>configureAccessTransport(express(),{...valid,ACCESS_TRUSTED_PROXIES:'172.20.0.0/16'}));
- assert.throws(()=>configureAccessTransport(express(),{ACCESS_TRUSTED_PROXIES:'172.20.0.10',ACCESS_PUBLIC_ORIGIN:companyOrigin}));
+ assert.throws(()=>configureAccessTransport(express(),{ACCESS_TRUSTED_PROXIES:'172.20.0.10',PORTAL_PUBLIC_ORIGIN:companyOrigin}));
 });
 test('company browser metadata stays noindex across public pages and all three languages',()=>{
  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'window');

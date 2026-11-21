@@ -5,7 +5,7 @@ import { enrollmentPreviewOrigin } from '../../src/utils/enrollmentAssistance.ts
 export { enrollmentPreviewOrigin };
 
 export function portalPublicOrigin(env=process.env){
-  const configured=env.PORTAL_PUBLIC_ORIGIN ?? env.PORTAL_ENROLLMENT_PUBLIC_ORIGIN;
+  const configured=env.PORTAL_PUBLIC_ORIGIN;
   if(!configured)return undefined;
   try {
     const url=new URL(configured);

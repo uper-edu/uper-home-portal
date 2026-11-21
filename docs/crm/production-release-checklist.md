@@ -68,7 +68,7 @@
   | --- | --- |
   | 正式运行环境 | 核对 `PORTAL_ENV=prod`、`PORTAL_DEPLOYMENT=production`。正式部署条件满足后，按发布方案设置 `PORTAL_PRODUCTION_READY=true`。 |
   | 企业应用和个人私信 | `LARK_APP_ID`、`LARK_APP_SECRET`。核对凭证属于正式环境使用的 CRM-Bot，并确认应用已发布且覆盖目标员工。 |
-  | 员工自助绑定 | `LARK_TENANT_KEY` 使用已核实的 UPER 企业标识。`LARK_OAUTH_REDIRECT_URI` 使用 `https://uperedu.com/api/crm/lark/callback`，与 Lark 控制台已发布的地址一致。`APP_URL`、`ACCESS_PUBLIC_ORIGIN` 使用 `https://uperedu.com`，并将该地址列入 `ACCESS_ALLOWED_ORIGINS`。核对 `ACCESS_TRUSTED_PROXIES` 和代理转发，确保 CRM 收到正式主机名及 HTTPS 协议，并能处理回调。 |
+  | 员工自助绑定 | `LARK_TENANT_KEY` 使用已核实的 UPER 企业标识。`LARK_OAUTH_REDIRECT_URI` 使用 `https://uperedu.com/api/crm/lark/callback`，与 Lark 控制台已发布的地址一致。`APP_URL`、`UPER_PORTAL_PUBLIC_ORIGIN` 使用 `https://uperedu.com`，并将该地址列入 `ACCESS_ALLOWED_ORIGINS`。核对 `ACCESS_TRUSTED_PROXIES` 和代理转发，确保 CRM 收到正式主机名及 HTTPS 协议，并能处理回调。 |
   | 群通知 | 使用环境变量方式时，由正式环境提供 `LARK_GROUP_CRM`，并确认正式 CRM 群渠道保存了对该变量的引用。核对 Webhook 对应的目标群。如果现有渠道使用加密保存的 Webhook，保留该配置及 `LARK_WEBHOOK_ENCRYPTION_KEY`。群机器人启用签名时，由正式环境提供 CRM 渠道所引用的签名密钥，并核对两端设置一致。 |
 
 - [ ] **在后台暂停状态下执行首次升级。** 首次启动前在正式运行配置中显式设 `PORTAL_WORKER_ENABLED=false`。正式库尚未迁移渠道模式时，保留旧版正式环境中实际生效的 `PORTAL_NOTIFICATION_MODE` 和 `LARK_PERSONAL_DELIVERY_ENABLED`。只有前者为 `configured`，原本为真实发送的群渠道才保留该模式。个人渠道只有在前者为 `configured` 且后者为 `true` 时才迁移为真实发送。缺少这些条件时，相关渠道迁移为模拟。迁移后对照升级前记录核对两个渠道的保存状态，通过后方可从运行配置移除这两项旧变量。回退备份仍保留原值。

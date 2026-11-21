@@ -14,7 +14,7 @@ test("forwarded headers require an explicit peer and canonical HTTPS origin", ()
     () =>
       configureAccessTransport(express(), {
         ACCESS_TRUSTED_PROXIES: "0.0.0.0/0",
-        ACCESS_PUBLIC_ORIGIN: "https://example.invalid",
+        PORTAL_PUBLIC_ORIGIN: "https://example.invalid",
       }),
     /explicit/,
   );
@@ -32,7 +32,7 @@ test("production transport accepts the approved public-origin aliases", async ()
     PORTAL_ENV: "prod",
     PORTAL_DEPLOYMENT: "production",
     ACCESS_TRUSTED_PROXIES: "127.0.0.1,::ffff:127.0.0.1",
-    ACCESS_PUBLIC_ORIGIN: "https://uperedu.com",
+    PORTAL_PUBLIC_ORIGIN: "https://uperedu.com",
     ACCESS_ALLOWED_ORIGINS: "https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com",
   });
   app.get("/api/check", (_q, r) => r.json({ ok: true }));
@@ -135,7 +135,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
   const proxyPort = (proxy.address() as any).port;
   Object.assign(process.env, {
     ACCESS_TRUSTED_PROXIES: "127.0.0.1",
-    ACCESS_PUBLIC_ORIGIN: "https://localhost:" + proxyPort,
+    PORTAL_PUBLIC_ORIGIN: "https://localhost:" + proxyPort,
     APP_ENV: "production",
     ACCESS_ALLOW_TEST_PASSWORDS: "false",
   });
@@ -244,7 +244,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     const untrustedApp = express();
     configureAccessTransport(untrustedApp, {
       ACCESS_TRUSTED_PROXIES: "",
-      ACCESS_PUBLIC_ORIGIN: "",
+      PORTAL_PUBLIC_ORIGIN: "",
     });
     untrustedApp.get("/api/check", (_q, r) => r.json({ ok: true }));
     const untrusted = untrustedApp.listen(0, "127.0.0.1");
