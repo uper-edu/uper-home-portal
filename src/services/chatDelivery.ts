@@ -1,6 +1,8 @@
+import type {EnrollmentChatSelection} from '../utils/enrollmentChatJourney';
+
 // Browser drafts are scoped by an opaque server visitor tag, never used as identity.
 export type Delivery = 'pending' | 'unsaved' | 'unknown' | 'saved' | 'failed' | 'interrupted';
-export interface PendingMessage { id:string; content:string; conversationId:string; timestamp:string; delivery:Delivery; action?:'handoff'|'booking'|'enrollment' }
+export interface PendingMessage { id:string; content:string; conversationId:string; timestamp:string; delivery:Delivery; action?:'handoff'|'booking'|'enrollment'; enrollmentContext?:EnrollmentChatSelection }
 let scope='';
 export function setDraftScope(value:string){scope=value;}
 function key(source:string){return `uper_chat_drafts:${scope}:${source}`;}
@@ -11,10 +13,11 @@ export function removeDraft(source:string,id:string){try{localStorage.setItem(ke
 export function deliveryText(status:Delivery,lang:string){
  const zh=lang.startsWith('zh'),en=lang.startsWith('en');
  if(status==='saved')return zh?'已保存':en?'Saved':'Tersimpan';
- if(status==='unsaved')return zh?'未保存，可重试':en?'Not saved · Retry available':'Belum tersimpan · Coba lagi';
+ if(status==='unsaved')return zh?'消息未保存':en?'Message not saved':'Pesan belum tersimpan';
  if(status==='pending')return zh?'正在保存…':en?'Saving…':'Menyimpan…';
- if(status==='failed'||status==='interrupted')return zh?'消息已保存，回复失败或中断，可重试':en?'Message saved · Reply failed or interrupted · Retry available':'Pesan tersimpan · Balasan gagal atau terputus · Coba lagi';
- return zh?'尚未确认保存，请重试确认':en?'Save not confirmed · Retry to confirm':'Penyimpanan belum dikonfirmasi · Coba lagi';
+ if(status==='failed')return zh?'消息已保存，回复失败':en?'Message saved · Reply failed':'Pesan tersimpan · Balasan gagal';
+ if(status==='interrupted')return zh?'消息已保存，回复中断':en?'Message saved · Reply interrupted':'Pesan tersimpan · Balasan terputus';
+ return zh?'尚未确认保存':en?'Save not confirmed':'Penyimpanan belum dikonfirmasi';
 }
 export async function readChatResponse(res:Response,onProgress:(e:any)=>void){
   if(!res.headers.get('content-type')?.includes('text/event-stream')){const data=await res.json();onProgress(data);if(data.error||data.status==='failed'||data.status==='interrupted')throw Error('Reply incomplete');return data;}

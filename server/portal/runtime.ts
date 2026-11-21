@@ -4,7 +4,7 @@ import {operationContext} from './operationContext.ts';
 import {mountIntegrationCredentials} from './integrationCredentialAdmin.ts';
 import {groupCredential,larkApplication} from './integrationCredentialTargets.ts';
 import {mountEnrollmentMail,startEnrollmentMail} from './enrollmentMail.ts';
-import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
+import {promotionEntryPoint,promotionEvidenceKeys} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import { mountEnrollmentManagement } from './enrollmentManagement.ts';
 import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
@@ -126,14 +126,24 @@ import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
 import { loadCampaigns } from "../campaignStorage.ts";
 import { mountHskAssessments } from "./assessments.ts";
 const cookieName = "uper_visitor";
+async function issueVisitor(res: Response) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const row = (await pool.query(
+    "INSERT INTO visitor_sessions(id,expires_at) VALUES(:p1,UTC_TIMESTAMP(6)+INTERVAL 30 day)",
+    [token],
+  )).rows[0];
+  res.append("Set-Cookie",
+    `${cookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
+  return row;
+}
 async function visitor(req: Request, res: Response) {
   if (res.locals.portalVisitor) return res.locals.portalVisitor;
-  let token = (req.headers.cookie || "")
+  const token = (req.headers.cookie || "")
     .split(";")
     .map((s) => s.trim())
     .find((s) => s.startsWith(cookieName + "="))
     ?.slice(cookieName.length + 1);
-  let row =
+  const existing =
     token &&
     (
       await pool.query(
@@ -141,19 +151,7 @@ async function visitor(req: Request, res: Response) {
         [token],
       )
     ).rows[0];
-  if (!row) {
-    token = crypto.randomBytes(32).toString("hex");
-    row = (
-      await pool.query(
-        "INSERT INTO visitor_sessions(id,expires_at) VALUES(:p1,UTC_TIMESTAMP(6)+INTERVAL 30 day)",
-        [token],
-      )
-    ).rows[0];
-    res.append(
-      "Set-Cookie",
-      `${cookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
-    );
-  }
+  const row = existing || await issueVisitor(res);
   const expected = req.headers['x-visitor-scope'];
   if (expected && expected !== crypto.createHash('sha256').update(row.id).digest('hex')) fail(409, 'Visitor identity changed');
   res.locals.portalVisitor = row;
@@ -189,6 +187,28 @@ async function own(req: Request, res: Response) {
   ).rows[0];
   if (!row) fail(404, "Conversation not found");
   return row;
+}
+async function currentVisitorChat(db: Pick<typeof pool, 'query'>, visitorId: string) {
+  return (await db.query(
+    "SELECT * FROM conversations WHERE visitor_id=:p1 AND source IN ('homepage_widget','standalone_chat') AND (attribution->>'$.chatStartOrder' IS NOT NULL OR EXISTS(SELECT 1 FROM messages WHERE conversation_id=conversations.id)) ORDER BY CAST(COALESCE(attribution->>'$.chatStartOrder','0') AS UNSIGNED) DESC, updated_at DESC, id DESC LIMIT 1",
+    [visitorId],
+  )).rows[0];
+}
+function sharedChatLanding(page: unknown) {
+  if (typeof page !== 'string' || !page.startsWith('/') || page.startsWith('//')) return '';
+  const url = new URL(page, 'https://portal.invalid');
+  if (url.origin !== 'https://portal.invalid') return '';
+  const params = new URLSearchParams();
+  const entries = promotionEvidenceKeys.flatMap(key => url.searchParams.getAll(key).map(value => [key,value.slice(0,191)] as const));
+  for (const [key,value] of entries.slice(0,24)) params.append(key,value);
+  return url.pathname.slice(0,300) + (params.size ? '?' + params : '');
+}
+async function chatEntrySurface(value: unknown, conv: {id:string;visitor_id:string;source:string}, db: Pick<typeof pool,'query'>) {
+  if (value === undefined) return conv.source;
+  if (value !== 'homepage_widget' && value !== 'standalone_chat') fail(400,'Invalid chat entry');
+  if ((await currentVisitorChat(db, conv.visitor_id))?.id !== conv.id)
+    throw Object.assign(Error('Current conversation changed'), {status:409, saved:false});
+  return value;
 }
 function requestPermission(req:Request,original:string){
  const path=req.originalUrl.split('?')[0];
@@ -428,7 +448,7 @@ export async function mountPortal(app: Express) {
   );
   app.post("/api/portal/new-person",wrap(async(req,res)=>{
     await visitor(req,res);
-    res.append("Set-Cookie",`${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+    await issueVisitor(res);
     res.json({success:true});
   }));
   app.post(
@@ -438,12 +458,17 @@ export async function mountPortal(app: Express) {
       const source = req.body.source;
       if (!["homepage_widget", "standalone_chat"].includes(source))
         fail(400, "Invalid source");
+      const shared = req.body.shared === true;
+      if (shared && req.body.newSession === true && typeof req.body.previousConversationId !== 'string')
+        fail(400, 'Current conversation required');
       const row = await tx(async (c) => {
-        await c.query(
-          "SELECT id FROM visitor_sessions WHERE id=:p1 FOR UPDATE",
+        const visitorRow = (await c.query(
+          "SELECT * FROM visitor_sessions WHERE id=:p1 FOR UPDATE",
           [v.id],
-        );
-        const old =
+        )).rows[0];
+        const current = shared ? await currentVisitorChat(c, v.id) : undefined;
+        const startFresh = req.body.newSession === true && current?.id === req.body.previousConversationId;
+        const old = shared ? (startFresh ? undefined : current) :
           !req.body.newSession &&
           (
             await c.query(
@@ -451,33 +476,44 @@ export async function mountPortal(app: Express) {
               [v.id, source],
             )
           ).rows[0];
-        if (old) return old;
+        if (old) {
+          // Pin the most recently active legacy chat on first use. Late work in
+          // another tab must not replace the current conversation after a reset.
+          if (shared && !old.attribution?.chatStartOrder)
+            await c.query("UPDATE conversations SET attribution=JSON_SET(attribution,'$.chatStartOrder',CAST(:p2 AS UNSIGNED)) WHERE id=:p1",
+              [old.id, Date.now()]);
+          return old;
+        }
+        const chatStartOrder = Math.max(Date.now(), Number(current?.attribution?.chatStartOrder ?? 0) + 1);
         const row = (
           await c.query(
             "INSERT INTO conversations(id,visitor_id,lead_id,source,attribution) VALUES(:p1,:p2,:p3,:p4,:p5)",
             [
               id(),
               v.id,
-              v.lead_id,
+              visitorRow.lead_id,
               source,
               {
-                page: String(req.body.page || "").slice(0, 300),
+                page: shared
+                  ? current?.attribution?.page ?? sharedChatLanding(req.body.page)
+                  : String(req.body.page || "").slice(0, 300),
+                ...(shared && {chatStartOrder, chatRestarted:startFresh, chatOriginSource:current?.attribution?.chatOriginSource ?? current?.source ?? source}),
               },
             ],
           )
         ).rows[0];
-        if (v.lead_id) {
+        if (visitorRow.lead_id) {
           const last = (
             await c.query(
               "SELECT updated_at FROM conversations WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND id<>:p2 ORDER BY updated_at DESC LIMIT 1",
-              [v.lead_id, row.id],
+              [visitorRow.lead_id, row.id],
             )
           ).rows[0];
           if (
             !last ||
             Date.now() - new Date(last.updated_at).getTime() > 86400000
           )
-            await event(c, "conversation.reactivated", v.lead_id, { source,conversationId:row.id });
+            await event(c, "conversation.reactivated", visitorRow.lead_id, { source,conversationId:row.id });
         }
         return row;
       });
@@ -488,8 +524,9 @@ export async function mountPortal(app: Express) {
     "/api/portal/conversations/:id",
     wrap(async (req, res) => {
       const c = await own(req, res);
+      res.setHeader('Cache-Control','no-store');
       res.json({
-        conversation: c,
+        conversation: {id:c.id, source:c.source, attribution:c.attribution},
         messages: (
           await pool.query(
             "SELECT * FROM messages WHERE conversation_id=:p1 ORDER BY sequence",
@@ -798,6 +835,7 @@ export async function mountPortal(app: Express) {
           const current = (
             await db.query("SELECT * FROM conversations WHERE id=:p1", [c.id])
           ).rows[0];
+          const entrySurface = await chatEntrySurface(req.body.entrySurface,c,db);
           const old = (
             await db.query(
               "SELECT * FROM messages WHERE conversation_id=:p1 AND request_id=:p2",
@@ -839,8 +877,8 @@ export async function mountPortal(app: Express) {
           if(action==='booking'&&bookingRequestSuppressed(content))
             fail(400,lang==='zh'?'当前文字是否定、历史引用或撤回预约，请作为普通咨询发送。':lang==='id'?'Pesan menyangkal, mengutip niat lama, atau menarik permintaan reservasi. Kirim sebagai konsultasi biasa.':'This message denies, quotes a past booking intention, or withdraws it. Send it as an ordinary consultation.');
           await db.query(
-            "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved')",
-            [id(), c.id, messageId, content],
+            "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p5)",
+            [id(), c.id, messageId, content, {entrySurface}],
           );
           const result = await ensureFollowup(
             db,
@@ -856,7 +894,7 @@ export async function mountPortal(app: Express) {
               c.id,
               messageId,
               result.reply,
-              { followupAction: action, taskId: result.taskId, language: lang, taskOperation: result.taskOperation },
+              { followupAction: action, taskId: result.taskId, language: lang, taskOperation: result.taskOperation, entrySurface },
             ],
           );
           await db.query(
@@ -2040,4 +2078,4 @@ export async function mountPortal(app: Express) {
       .catch((e) => r.status(e.status || 503).json({ error: e.message }));
   });
 }
-export { wrap, own, fail, visitor };
+export { wrap, own, fail, visitor, chatEntrySurface };

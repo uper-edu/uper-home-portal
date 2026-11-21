@@ -51,6 +51,11 @@ export function promotionJourneyUrl(target: string, input: URLSearchParams, entr
   return url.pathname + url.search + url.hash;
 }
 
+export function linkHubReturnUrl(input: URLSearchParams, language: 'en' | 'id' | 'zh') {
+  if (promotionEntryPoint(input.get('entry_point')) !== 'linkhub') return undefined;
+  return promotionJourneyUrl('/link?' + new URLSearchParams({lang:language}), input);
+}
+
 export function isWebsitePromotion(id: string) {
   return evergreenLinks.some(link => link.id === id && link.source === 'website');
 }

@@ -6,6 +6,8 @@ import { Link, Outlet, useLocation, useNavigationType, useNavigate } from 'react
 import { Globe2, ArrowRight, Menu, X, MapPin, User, Phone, MessageCircle, FileText, ChevronDown, GraduationCap, Palette, Settings2, Sliders, Check, RotateCcw, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import AIChatbot from './AIChatbot';
+import {useSiteChatBackground} from './SiteChatRoutes';
+import {readEnrollmentPosition} from '../utils/chatJourneyNavigation';
 import { BackToTop } from './ui/BackToTop';
 import { trackLanguageSwitch, trackEvent } from '../utils/analytics';
 import { useDesignStyle, useColorTheme } from '../utils/theme';
@@ -863,6 +865,7 @@ const MobileBottomBar = () => {
 };
 
 export default function Layout({learnerPreview=false}:{learnerPreview?:boolean}) {
+  const chatBackground = useSiteChatBackground();
   const { t, i18n } = useTranslation();
   const { isApple } = useDesignStyle();
   const location = useLocation();
@@ -884,6 +887,7 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
     // Language switching replaces the query string without leaving the page.
     if (scrollPath.current === pathname) return;
     scrollPath.current = pathname;
+    if (enrollmentScreen && readEnrollmentPosition(location.state)) return;
 
     const isCustomScrollRestoredPage = pathname === '/' || pathname === '/news' || pathname === '/faq';
     if (navType === 'POP') {
@@ -946,7 +950,7 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
       </main>
       {!enrollmentScreen && <>
         <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
-        <VisitorBoundary><AIChatbot /></VisitorBoundary>
+        <VisitorBoundary><AIChatbot expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}/></VisitorBoundary>
         <BackToTop />
         <MobileBottomBar />
       </>}

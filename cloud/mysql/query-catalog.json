@@ -608,26 +608,21 @@
       "server/portal/runtime.ts"
     ]
   },
-  "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p5)": {
-    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p5)",
-    "sources": [
-      "cloud/mysql/site.mjs"
-    ]
-  },
-  "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'assistant','','generating')": {
-    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'assistant','','generating')",
+  "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'assistant','','generating',:p4)": {
+    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'assistant','','generating',:p4)",
     "sources": [
       "server/portal/chat.ts"
     ]
   },
-  "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved')": {
-    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved')",
+  "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p5)": {
+    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p5)",
     "sources": [
-      "server/portal/runtime.ts"
+      "server/portal/runtime.ts",
+      "cloud/mysql/site.mjs"
     ]
   },
-  "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved'),(:p5,:p2,:p3,'assistant','','generating')": {
-    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved'),(:p5,:p2,:p3,'assistant','','generating')",
+  "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p6),(:p5,:p2,:p3,'assistant','','generating',:p6)": {
+    "sql": "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p6),(:p5,:p2,:p3,'assistant','','generating',:p6)",
     "sources": [
       "server/portal/chat.ts"
     ]
@@ -1263,6 +1258,12 @@
   },
   "SELECT * FROM conversations WHERE id=:p1 AND visitor_id=:p2": {
     "sql": "SELECT * FROM conversations WHERE id=:p1 AND visitor_id=:p2",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT * FROM conversations WHERE visitor_id=:p1 AND source IN ('homepage_widget','standalone_chat') AND (attribution->>'$.chatStartOrder' IS NOT NULL OR EXISTS(SELECT 1 FROM messages WHERE conversation_id=conversations.id)) ORDER BY CAST(COALESCE(attribution->>'$.chatStartOrder','0') AS UNSIGNED) DESC, updated_at DESC, id DESC LIMIT 1": {
+    "sql": "SELECT * FROM conversations WHERE visitor_id=:p1 AND source IN ('homepage_widget','standalone_chat') AND (attribution->>'$.chatStartOrder' IS NOT NULL OR EXISTS(SELECT 1 FROM messages WHERE conversation_id=conversations.id)) ORDER BY CAST(COALESCE(attribution->>'$.chatStartOrder','0') AS UNSIGNED) DESC, updated_at DESC, id DESC LIMIT 1",
     "sources": [
       "server/portal/runtime.ts"
     ]
@@ -3949,6 +3950,12 @@
     "sql": "UPDATE cms_collections SET items=?,items_text=?,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE name=?",
     "sources": [
       "cloud/mysql/site.mjs"
+    ]
+  },
+  "UPDATE conversations SET attribution=JSON_SET(attribution,'$.chatStartOrder',CAST(:p2 AS UNSIGNED)) WHERE id=:p1": {
+    "sql": "UPDATE conversations SET attribution=JSON_SET(attribution,'$.chatStartOrder',CAST(:p2 AS UNSIGNED)) WHERE id=:p1",
+    "sources": [
+      "server/portal/runtime.ts"
     ]
   },
   "UPDATE conversations SET lead_id=:p1 WHERE visitor_id=:p2": {

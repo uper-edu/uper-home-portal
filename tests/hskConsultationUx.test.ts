@@ -7,10 +7,20 @@ import { newHskAttempt, gradeHskAttempt } from '../src/data/hskAssessment';
 import { getVersionQuestions } from '../src/data/hskAssessmentVersions';
 import { learnerScreeningGuidance, learnerAssessmentGuidance } from '../src/data/hskLearnerGuidance';
 import { hskWhatsAppDraft } from '../src/services/hskWhatsApp';
-import { assessmentIntroOpening, consultationFocus, consultationProfile, profileIntroQuote, resolveRecommendationTiming } from '../server/portal/consultationGuidance';
+import { assessedBeginnerNextStep, assessmentIntroOpening, assessmentScopeNote, consultationFocus, consultationProfile, profileIntroQuote, resolveRecommendationTiming } from '../server/portal/consultationGuidance';
 import HskAssessmentReport from '../src/components/HskAssessmentReport';
 import HSKPlacementAssessment from '../src/components/HSKPlacementAssessment';
 import { getChatAssessmentStatus } from '../src/services/studentProfileStorage';
+
+test('the consultation states the actual assessment scope and validates next-step availability',()=>{
+  assert.match(assessmentScopeNote('zh'),/听力、阅读和汉字辨认，未测口语或手写/);
+  assert.match(assessmentScopeNote('en'),/does not assess speaking or handwriting/);
+  assert.match(assessmentScopeNote('id'),/berbicara dan menulis tangan tidak dinilai/);
+  const availability={evidence:'一周两天都能上课',maximumWeeklySessions:2};
+  assert.deepEqual(assessedBeginnerNextStep(availability,'我一周两天都能上课，下一步怎么选？'),availability);
+  assert.equal(assessedBeginnerNextStep(availability,'我的口语怎么样？'),undefined);
+  assert.equal(assessedBeginnerNextStep({...availability,maximumWeeklySessions:8},availability.evidence),undefined);
+});
 
 function sample(counts:number[]=[5,5,5],mode:'express'|'full'='express'){
   const attempt=newHskAttempt(mode,randomUUID());attempt.completedAt=new Date().toISOString();

@@ -40,6 +40,22 @@ export function assessmentIntroOpening(guidance:{level:string;start:string;revie
     `Your reported ${previous} comes from your questionnaire. The assessment offers a suggested starting point, and you can still explore ${previous} classes.`,
     `Level ${previous} yang Anda laporkan berasal dari kuesioner Anda. Hasil asesmen ini memberi saran titik awal. Anda tetap bisa melihat kelas ${previous}.`);
 }
+
+export function assessmentScopeNote(lang:EnrollmentGuideLanguage) {
+  return enrollmentGuideText(lang,
+    '这项测评涵盖听力、阅读和汉字辨认，未测口语或手写。结果用于建议学习起点。',
+    'This assessment covers listening, reading and character recognition. It does not assess speaking or handwriting. Use the result as a guide to where to start.',
+    'Asesmen ini mencakup menyimak, membaca, dan pengenalan aksara. Kemampuan berbicara dan menulis tangan tidak dinilai. Gunakan hasilnya sebagai panduan untuk menentukan titik awal belajar.');
+}
+
+export function assessedBeginnerNextStep(value:unknown,learnerMessage:string) {
+  if(!value||typeof value!=='object')return undefined;
+  const {evidence,maximumWeeklySessions}=value as Record<string,unknown>;
+  if(typeof evidence!=='string'||evidence.trim().length<2||!learnerMessage.includes(evidence.trim())||
+    typeof maximumWeeklySessions!=='number'||!Number.isInteger(maximumWeeklySessions)||maximumWeeklySessions<1||maximumWeeklySessions>7)
+    return undefined;
+  return {evidence:evidence.trim(),maximumWeeklySessions};
+}
 /** Whitelisted consultation context, without contacts, customer IDs or CRM ownership. */
 export function consultationProfile(profile: any, assessed=false) {
   if (!profile) return null;

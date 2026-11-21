@@ -3,7 +3,7 @@ import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import { enrollmentClassTitle } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof } from '../utils/enrollmentOrderStatus';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
@@ -41,12 +41,13 @@ export async function enrollmentPost(path: string, body: unknown) {
 type OrderSummary = Order & {level:string;firstLesson:string;classCancelled?:boolean;updatedAt?:string;needsPayment?:boolean;invitation?:{id:string;deadline:string}};
 type AssistedApplication={id:string;name:string;quote:{level:string;format:string;firstLesson:string;schedule:string;price:number};
   createdAt:string;expiresAt:string;active:boolean};
-type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string; listPath: string; fromWaitlist?: string };
+type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string; listPath: string; fromWaitlist?: string; navigationState?:unknown };
 type InterestRecord = { kind: 'waitlist' | 'demands'; id: string };
 
-export function EnrollmentApplication({ classId, language, full = false, demandOnly = false, paymentClasses, applicationClass, waitlistClass, mineClasses, record }: {
+export function EnrollmentApplication({ classId, language, full = false, demandOnly = false, paymentClasses, applicationClass, waitlistClass, mineClasses, record, returnAction }: {
   classId?: string; language: Language; full?: boolean; demandOnly?: boolean; paymentClasses?: PublicEnrollmentClass[];
   applicationClass?: ApplicationClass; waitlistClass?: PublicEnrollmentClass; mineClasses?: PublicEnrollmentClass[]; record?: InterestRecord;
+  returnAction?: ReactNode;
 }) {
   const t = (text: Copy) => enrollmentCopy(language,text);
   const [params,setParams] = useSearchParams();
@@ -350,7 +351,8 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     next.set('join','1');
     next.delete('waitlist');
     return <div className="enrollment-last-seat">
-      <Link className="enrollment-back" to={applicationClass.listPath}><ArrowLeft size={15} aria-hidden="true"/>
+      {returnAction}
+      <Link className="enrollment-back" to={applicationClass.listPath} state={applicationClass.navigationState}><ArrowLeft size={15} aria-hidden="true"/>
         {t(['返回课程报名','Back to classes','Kembali ke daftar kelas'])}</Link>
       <h1>{t(['本班已满','This class is full','Kelas ini penuh'])}</h1>
       <div className="enrollment-result-body">
@@ -359,18 +361,19 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
         {stillWaiting&&<p className="enrollment-journey-note">{t(['你的候补仍有效，无需重新加入。','Your waitlist entry is still active. You don’t need to join again.','Posisi daftar tunggu Anda masih aktif. Anda tidak perlu mendaftar ulang.'])}</p>}
       </div>
       <div className="enrollment-journey-actions">
-        <Link className="enrollment-quiet" to={applicationClass.listPath}>{t(['查看其他班次','Browse other classes','Lihat kelas lain'])}</Link>
-        {stillWaiting ? <Link className="enrollment-primary" to={applicationClass.detailsPath}>{t(['返回候补详情','Back to waitlist entry','Kembali ke detail daftar tunggu'])}</Link>
+        <Link className="enrollment-quiet" to={applicationClass.listPath} state={applicationClass.navigationState}>{t(['查看其他班次','Browse other classes','Lihat kelas lain'])}</Link>
+        {stillWaiting ? <Link className="enrollment-primary" to={applicationClass.detailsPath} state={applicationClass.navigationState}>{t(['返回候补详情','Back to waitlist entry','Kembali ke detail daftar tunggu'])}</Link>
           : <Link className="enrollment-primary" to={'/enrollment/'+encodeURIComponent(classId ?? '')+'?'+next.toString()}>{joinText}</Link>}
       </div>
     </div>;
   }
   if (applicationClass && !hasNoSeat) return <div>
+    {returnAction}
     {verificationStep
       ? <button type="button" className="enrollment-back" onClick={()=>{setVerificationStep(false);setError('');}} disabled={busy}>
         <ArrowLeft size={15} aria-hidden="true"/>{t(['返回申请表','Back to application','Kembali ke formulir'])}
       </button>
-      : <Link className="enrollment-back" to={applicationClass.detailsPath}>
+      : <Link className="enrollment-back" to={applicationClass.detailsPath} state={applicationClass.navigationState}>
         <ArrowLeft size={15} aria-hidden="true"/>{t(applicationClass.fromWaitlist
           ? ['返回候补详情','Back to waitlist entry','Kembali ke detail daftar tunggu']
           : ['返回班次详情','Back to class details','Kembali ke detail kelas'])}
@@ -475,7 +478,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
             {t(['返回课程报名','Back to classes','Kembali ke daftar kelas'])}
           </Link>}
         </div>
-      </form> : <EnrollmentDemandForm language={language} prefill={enrollmentDemandPrefill(params)} busy={busy} onSave={savePreferences}
+      </form> : <EnrollmentDemandForm language={language} prefill={enrollmentDemandPrefill(params,language)} busy={busy} onSave={savePreferences}
         verification={{email:emailField,code:codeField}} awaitingCode={awaitingCode}/>}
     </>;
   }

@@ -6,10 +6,29 @@ import { analyticsContext, createAnalyticsClient } from '../src/utils/analyticsP
 import { campaignPromotionUrl } from '../src/utils/campaignPromotion';
 import { instagramBioCampaign, linkHubConsultUrl } from '../src/utils/instagramBioCampaign';
 import { lookupPromotion } from '../src/utils/promotionLookup';
-import { promotionIdentity, promotionJourneyUrl, websitePromotionUrl, type PublicPromotion } from '../src/utils/promotionNavigation';
+import { linkHubReturnUrl, promotionIdentity, promotionJourneyUrl, websitePromotionUrl, type PublicPromotion } from '../src/utils/promotionNavigation';
+import { enrollmentGuideHref } from '../src/utils/enrollmentGuidance';
 import { campaignPromotionResults } from '../src/utils/crmCampaignMetrics';
 
 const origin = 'http://localhost:3000';
+
+test('Link hub return carries promotion evidence and language without leaking destination state', () => {
+  const landing = new URLSearchParams('p=bio-ig&utm_source=instagram&utm_medium=social&utm_campaign=social-bio&utm_content=profile&utm_id=qa&lang=id');
+  const enrollment = new URL(promotionJourneyUrl('/enrollment?lang=zh',landing,'linkhub'),origin);
+  const chat = new URL(linkHubConsultUrl(landing,'zh'),origin);
+  assert.equal(chat.search,enrollment.search);
+  const guided = new URL(enrollmentGuideHref({kind:'class',classId:'class-1',level:'HSK 1'},'zh','ai_chat',chat.searchParams),origin);
+  assert.equal(guided.searchParams.get('enrollment_via'),'ai_chat');
+  guided.searchParams.set('order','private-order');
+  for (const page of [enrollment,chat,guided]) {
+    const back = new URL(linkHubReturnUrl(page.searchParams,'zh')!,origin);
+    assert.equal(back.pathname,'/link');
+    assert.deepEqual(Object.fromEntries(back.searchParams),{...Object.fromEntries(landing),lang:'zh',entry_point:'linkhub'});
+  }
+  assert.equal(linkHubReturnUrl(new URLSearchParams('p=bio-ig&entry_point=direct'),'zh'),undefined);
+  assert.equal(linkHubReturnUrl(new URLSearchParams('entry_point=linkhub'),'id'),'/link?lang=id&entry_point=linkhub');
+});
+
 const examples = [
   ['bio-ig','instagram','social','social-bio','profile-bio','/link'],
   ['bio-yt','youtube','social','social-bio','channel-description','/link'],

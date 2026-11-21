@@ -1,3 +1,4 @@
+import type {ReactNode} from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
@@ -68,8 +69,8 @@ export function EnrollmentJoiningNote({firstLesson,now,language}:{
   ])}</Link></p>;
 }
 
-export function EnrollmentSupport({topic,language,level,appointment:selection,period,format,catalogPath,offline}:{
-  topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};period?:string;format?:string;catalogPath?:string;offline?:boolean;
+export function EnrollmentSupport({topic,language,level,appointment:selection,period,format,catalogPath,offline,returnAction,navigationState}:{
+  topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};period?:string;format?:string;catalogPath?:string;offline?:boolean;returnAction?:ReactNode;navigationState?:unknown;
 }) {
   const t = (value: Copy) => interestText(language,value);
   const info = Object.hasOwn(topics,topic) ? topics[topic as keyof typeof topics] : undefined;
@@ -105,7 +106,8 @@ export function EnrollmentSupport({topic,language,level,appointment:selection,pe
     ]));
   }
   return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
-    <Link className="enrollment-back" to={appointment?catalogPath??'/enrollment?lang='+language:'/enrollment/mine?lang='+language}><ArrowLeft size={15} aria-hidden="true"/>
+    {returnAction}
+    <Link className="enrollment-back" to={appointment?catalogPath??'/enrollment?lang='+language:'/enrollment/mine?lang='+language} state={navigationState}><ArrowLeft size={15} aria-hidden="true"/>
       {appointment?t(['返回课程报名','Back to course enrollment','Kembali ke pendaftaran kursus']):t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya'])}</Link>
     {info ? <>
       <h1>{t(info.title)}</h1>

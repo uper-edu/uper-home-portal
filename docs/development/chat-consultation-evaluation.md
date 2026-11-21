@@ -22,6 +22,49 @@ node --import tsx scripts/score-chat-consultation.mts /private/tmp/chat-review /
 
 默认中文桌面和一条夹用 beginner 的对话。英文、印尼文未来分别建基线。固定数据模拟满班等难复现状态，真实结果须标注当地目录是否有样本。浏览器补验独立 Chat、首页浮窗和关键落地页，阻止 GA 与非本机外发。只保留脱敏结果于评审目录，运行记录、数据库和私有配置留在 Git 之外。
 
+## 自动回归闭环
+
+原 39 题继续沿用原口径。`--with-regressions` 追加两道自由追问 F2、F3，第 01 题仍使用原题。自动门禁逐轮核对原班次对、重复转账、咨询对象切换。题库和测试依据在 [回归题与门禁](../../tests/fixtures/chat-consultation-regressions.json) 中维护。
+
+### 两个构建对照
+
+在本地 3000 加载要测的版本。每次用相同模型、推理强度和题单。对照已有证据时可直接运行如下命令。
+
+```sh
+node --import tsx scripts/run-chat-consultation-loop.mts \
+  --baseline /private/tmp/chat-before --candidate /private/tmp/chat-after \
+  --output /private/tmp/chat-comparison
+```
+
+录制证据用 `evaluate-chat-consultation.mts --live --build=确切构建号 --model=gpt-6.2-sol --cases=01,F2,F3 --repeat=2 --audit-verified-links --output 路径`。分别放在两个目录。每组用独立的模拟身份，对话后核对订单、席位和商机等记录。
+
+对照核验题单指纹、WIB 自然日、配置与回执模型、公开目录和报名状态。结果 `loop.json` 记录失败层级及证据，包括意图识别、条件保存、事实匹配、正文合成、链接和运行失败。报告会区分重复运行的结果。报价、时间和余位事实从同轮目录核对。
+
+### 自动生成并复验候选
+
+```sh
+node --import tsx scripts/run-chat-consultation-loop.mts \
+  --baseline-build 旧构建号 --model gpt-6.2-sol --cases 01,F2,F3 --repeat 2 \
+  --worker scripts/chat-consultation-codex-worker.mjs --output /private/tmp/chat-loop
+```
+
+先配置受信任的本地候选加载程序。将绝对路径提供给 `UPER_CHAT_EVAL_LOCAL_LOADER`，并用 `UPER_CHAT_EVAL_BASELINE_SOURCE` 指向基线构建对应的源码。受信任工具通过标准输入接收 `load_candidate` 对象，含 `baselineBuild`、`baseCommit`、`source`、`patch` 和 `touched`。加载程序核对基线、建立候选并在同一个本地 3000 加载，成功后在标准输出返回 `{"kind":"build","buildId":"候选构建号"}`。本地工具需遵循仓库的模拟验证和数据保护要求。
+
+候选生成器把咨询源码和模拟失败证据交给本机 Codex CLI。它先检查补丁涉及的文件和可应用性，再交给加载程序。评测程序按回读的确切构建号自动复验。评分工具和题库在候选可编辑范围之外。已有候选可使用相同的加载协议。
+
+候选构建、测试或门禁失败时，流程先恢复本轮基线，再把失败的答复、断言或构建诊断与上一版补丁交给同一生成器。最多再生成一次，第二次仍未通过则恢复基线并结束。加载程序收到 `{"kind":"restore_baseline","build":"基线构建号"}` 后应恢复运行版本及本轮候选涉及的源文件，读取本地服务版本后返回 `{"kind":"restored","buildId":"基线构建号"}`。恢复未确认时流程报告 `restore_failed`，保留失败证据。测试条件不一致时恢复基线并报告不可比较。
+
+遇到业务歧义时，`loop.json` 保留问题、基线指纹和运行参数，流程退出码为 3。答复后用原输出目录继续。
+
+```sh
+node --import tsx scripts/run-chat-consultation-loop.mts \
+  --output /private/tmp/chat-loop --resume --answer '已确认的业务口径'
+```
+
+`targeted_pass` 表示选中的门禁通过，`incomparable` 表示基线和候选的测试条件不一致，`rejected` 表示候选仍有失败或质量退化。
+
+完整质量比较可读取两份已有评审，或加 `--judge scripts/chat-consultation-codex-judge.mjs`。评审程序分别从学员和招生运营视角打分，有分歧时根据原文补做复核。输入省去构建和被测模型标识。保留分项分数、原始评审和复核理由，模型评审用于本地比较。自定义评审程序从标准输入接收 `grade` 请求，内含题目、预期、答复和公开事实，输出与评审模板同结构的数组。`quality_pass` 需要完整题单的质量证据。定向检查优先用 `--cases`，完整题单评分用 `--repeat 1`。基线和候选使用相同评审程序和配置。
+
 ## 评分怎么算
 
 | 维度 | 1 分 | 3 分 | 5 分 |

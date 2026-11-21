@@ -8,11 +8,14 @@ import {openTrialDatabase,transaction,validateTrialDatabase} from '../cloud/mysq
 import {newHskAttempt} from '../src/data/hskAssessment';
 import {getVersionQuestions} from '../src/data/hskAssessmentVersions';
 import {enrollmentGuideHref,type EnrollmentGuideAction} from '../src/utils/enrollmentGuidance';
+import {ai as aiDefaults} from '../src/data/system-defaults/index.ts';
+import {aiModelSlots,selectedReasoningEffort,type AiSelection} from '../src/utils/aiModelSelection.ts';
 
-type Case={id:string;name:string;turns:string[];expected:string[];source?:string;reported?:string;scores?:number[];
+type Case={id:string;name:string;turns:string[];clickPrompts?:number[];expected:string[];source?:string;reported?:string;scores?:number[];
   assessmentAfterTurns?:boolean;profileIntroduction?:boolean;buyingSignal?:string;interfaceLanguage?:'zh'|'en'|'id'};
 const suite=JSON.parse(await readFile(new URL('../tests/fixtures/chat-consultation-v1.json',import.meta.url),'utf8'));
-const cases=suite.cases as Case[];
+const regressions=JSON.parse(await readFile(new URL('../tests/fixtures/chat-consultation-regressions.json',import.meta.url),'utf8'));
+const cases=[...suite.cases,...regressions.cases] as Case[];
 assert.ok(cases.length>=30&&new Set(cases.map(test=>test.id)).size===cases.length);
 if(!process.argv.includes('--live')){
   const check=spawnSync(process.execPath,['--import','tsx','--test','tests/enrollmentGuidance.test.ts','tests/chatConsultationEval.test.ts'],{stdio:'inherit'});
@@ -25,7 +28,7 @@ const plan=selected?selected.map(key=>{
   const item=cases.find(test=>test.id===key);
   assert.ok(item,'Unknown case: '+key);
   return item;
-}):cases;
+}):process.argv.includes('--with-regressions')?cases:suite.cases as Case[];
 const repeat=Number(process.argv.find(arg=>arg.startsWith('--repeat='))?.slice(9)??1);
 assert.ok(Number.isInteger(repeat)&&repeat>=1&&repeat<=3);
 const auditVerifiedLinks=process.argv.includes('--audit-verified-links');
@@ -44,6 +47,7 @@ const version=await read('/api/version');
 assert.ok(version.consistent&&version.environment==='dev');
 const expectedBuild=process.argv.find(arg=>arg.startsWith('--build='))?.slice(8);
 assert.equal(version.backend.buildId,expectedBuild,'Pass the exact expected build with --build=');
+const expectedModel=process.argv.find(arg=>arg.startsWith('--model='))?.slice(8);
 const {values}=readEnvironment('dev');
 const config=validateTrialDatabase(values);
 assert.equal(config.name,'uper_local_crm');
@@ -113,8 +117,8 @@ async function run(item:Case,index:number){
       const messageId=randomUUID();
       const requestId=body.assessmentAttemptId?'hsk-intro-'+body.assessmentAttemptId:body.consultationStart?'profile-intro-'+lead:messageId;
       const response=await submit('/api/chat',{conversationId,lang:interfaceLanguage,messageId,...body});
-      const {reply,enrollment,modelUsed,status,error}=await response.json();
-      const turn={input,requestId,status:response.status,reply,error,modelUsed,state:status,elapsedMs:Date.now()-clock,
+      const {reply,enrollment,modelUsed,status,error,suggestedPrompts}=await response.json();
+      const turn={input,requestId,status:response.status,reply,error,modelUsed,state:status,elapsedMs:Date.now()-clock,suggestedPrompts,
         enrollment:enrollment as EnrollmentGuideAction|undefined,links:[] as unknown[]};
       transcript.turns.push(turn);
       if(enrollment){
@@ -145,12 +149,22 @@ async function run(item:Case,index:number){
     }
     if(item.profileIntroduction)await chat('【系统事件】学员完成问卷并关注学费',{consultationStart:true});
     if(item.scores&&!item.assessmentAfterTurns)await assess(item.scores);
-    for(const input of item.turns)await chat(input,{content:input});
+    for(const [index,input] of item.turns.entries()){
+      if(item.clickPrompts?.includes(index+1))
+        assert.ok(transcript.turns.at(-1)?.suggestedPrompts?.includes(input),'Expected follow-up prompt was not offered: '+input);
+      await chat(input,{content:input});
+    }
     if(item.scores&&item.assessmentAfterTurns)await assess(item.scores);
     const assistants=await rows("SELECT id,request_id FROM messages WHERE conversation_id=? AND role='assistant'",[conversationId]);
     for(const turn of transcript.turns)turn.assistantId=assistants.find(row=>row.request_id===turn.requestId)?.id;
     transcript.providerAttempts=await rows(
       'SELECT a.message_id,a.model,a.content,(a.error IS NOT NULL) AS failed FROM ai_attempts a JOIN messages m ON m.id=a.message_id WHERE m.conversation_id=? ORDER BY m.sequence,a.id',[conversationId]);
+    const savedContext=await rows(`SELECT request_id, JSON_EXTRACT(metadata, '$.consultationConstraints') AS criteria
+      FROM messages WHERE conversation_id=? AND role='assistant'`,[conversationId]);
+    for(const turn of transcript.turns){
+      const criteria=savedContext.find(row=>row.request_id===turn.requestId)?.criteria;
+      if(criteria!=null)turn.consultationConstraints=typeof criteria==='string'?JSON.parse(criteria):criteria;
+    }
     if(lead)transcript.opportunityCount=Number((await rows('SELECT COUNT(*) AS n FROM enrollment_opportunities WHERE lead_id=?',[lead]))[0].n);
     if(transcript.enrollmentAudit){
       transcript.enrollmentAudit.after=await enrollmentActivity(email,lead);
@@ -160,6 +174,7 @@ async function run(item:Case,index:number){
     }
     assert.equal(transcript.opportunityCount,0);
     assert.ok(transcript.turns.every(turn=>turn.status===200&&turn.state==='completed'),'One or more AI requests failed');
+    if(expectedModel)assert.ok(transcript.turns.every(turn=>turn.modelUsed===expectedModel),'Actual model differed from --model');
   }finally{
     await save(item.id+'-'+index+'.json',transcript);
     if(ready)await transaction(db,async c=>{
@@ -189,8 +204,19 @@ async function run(item:Case,index:number){
 try{
   await mkdir(output,{recursive:true,mode:0o700});
   const [catalog,intake]=await Promise.all([read('/api/enrollment/classes'),read('/api/enrollment/availability')]);
-  await save('run.json',{suite:suite.version,version,clock:'WIB',at:new Date().toISOString(),
-    catalog:{classes:catalog.classes,appointments:catalog.appointments},intake,cases:plan.map(item=>item.id),repeat,auditVerifiedLinks});
+  const at=new Date();
+  const jakartaDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Jakarta',dateStyle:'short'}).format(at);
+  const modelSelection=async()=>{
+    const settings=(await rows("SELECT value FROM portal_settings WHERE id='ai_service'"))[0]?.value;
+    const current:AiSelection=(typeof settings==='string'?JSON.parse(settings):settings)?.current??
+      {...aiDefaults,primary:values.OPENAI_MODEL||aiDefaults.primary};
+    return Object.fromEntries(aiModelSlots.map(role=>[role,{model:current[role],effort:selectedReasoningEffort(current,role)??null}]));
+  };
+  const selection=await modelSelection();
+  const fixtureDigest=createHash('sha256').update(JSON.stringify({base:suite.version,checks:regressions.checks,plan})).digest('hex');
+  await save('run.json',{suite:suite.version,regressions:regressions.version,fixtureDigest,version,clock:'WIB',at:at.toISOString(),jakartaDate,
+    catalog:{classes:catalog.classes,appointments:catalog.appointments},intake,cases:plan.map(item=>item.id),repeat,auditVerifiedLinks,
+    expectedModel,selection});
   const work=plan.flatMap(item=>Array.from({length:repeat},(_,i)=>({item,index:i+1})));
   const errors:{id:string;index:number;error:string}[]=[];
   await Promise.all(Array.from({length:3},async()=>{
@@ -199,6 +225,11 @@ try{
       catch(error){errors.push({id:job.item.id,index:job.index,error:error instanceof Error?error.name+': '+error.message:'Unknown error'});}
     }
   }));
+  const [endVersion,endSelection]=await Promise.all([read('/api/version'),modelSelection()]);
+  if(!endVersion.consistent||endVersion.backend.buildId!==version.backend.buildId||
+    JSON.stringify(selection)!==JSON.stringify(endSelection)){
+    errors.push({id:'run',index:0,error:'Build or model selection changed while running the evaluation'});
+  }
   await save('errors.json',errors);
   console.log('Consultation evidence: '+output);
   if(errors.length)process.exitCode=1;

@@ -1,9 +1,10 @@
 import {trackEvent,trackReceipt,trackConfirmedReceipt} from '../utils/analytics';
 import {registrationAnalyticsReceipt,assessmentAnalyticsReceipt,advisorAnalyticsReceipt,registrationAdvisorAnalyticsReceipts} from '../utils/analyticsReceipts';
 import {saveRegistration,hasPendingRegistration,RegistrationSaveError} from './registrationSave';
-import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope} from './visitorScope';
+import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope, VISITOR_MARKER} from './visitorScope';
 import {saveStudentContext} from './studentProfileStorage';
 import { mergeHskHistoryRows } from "./hskAttemptStorage";
+import {normalizeEnrollmentChatSelection} from '../utils/enrollmentChatJourney';
 import {promotionEvidenceKeys, promotionEntryPoint} from '../utils/promotionNavigation';
 import {
   setDraftScope,
@@ -14,6 +15,15 @@ import {
   readChatResponse,
 } from "./chatDelivery";
 export type ChatSource = "homepage_widget" | "standalone_chat";
+export const sharedChatDrafts = "shared_chat";
+export type ChatOrigin = {page?: string; source: ChatSource};
+export function chatPromotionParams(origin?: ChatOrigin, search = location.search) {
+  const page = origin?.page;
+  const original = page ? page.match(/\?.*$/)?.[0] : search;
+  const params = new URLSearchParams(original);
+  if (origin?.source === 'homepage_widget' && !params.has('entry_point')) params.set('entry_point', 'homepage_widget');
+  return params;
+}
 async function checked(res: Response) {
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
@@ -45,7 +55,7 @@ async function scopedJson(response: Response) {
   assertVisitorScope(expected);
   return data;
 }
-export async function conversation(source: ChatSource) {
+export async function conversation(source: ChatSource, newSession = false, shared?: {previous?: string; page?: string}) {
   const expected = visitorScope();
   await session();
   assertVisitorScope(expected);
@@ -53,17 +63,19 @@ export async function conversation(source: ChatSource) {
     await scopedFetch("/api/portal/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source, page: location.pathname + location.search }),
+      signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({ source, page: shared?.page ?? location.pathname + location.search,
+        ...(newSession && {newSession}), ...(shared && {shared:true, previousConversationId:shared.previous}) }),
     }),
   );
   return (await scopedJson(res)).conversationId as string;
 }
-export async function registerContact(profile: object,options:{queryOnly?:boolean;retryOriginal?:boolean}={}) {
+export async function registerContact(profile: object,options:{queryOnly?:boolean;retryOriginal?:boolean;chatOrigin?:ChatOrigin;contactConversion?:boolean}={}) {
   const began=Date.now();
   const expected = visitorScope();
   // Contact registration never submits grade claims; assessment answers have their own endpoint.
   const contact: Record<string, unknown> = { ...profile };
-  const params=new URLSearchParams(location.search);
+  const params=chatPromotionParams(options.chatOrigin);
   const promotionId = params.get('p');
   contact.promotionLinkId = promotionId ?? undefined;
   delete contact.campaignId;
@@ -75,7 +87,7 @@ export async function registerContact(profile: object,options:{queryOnly?:boolea
   }
   contact.utmCampaign = params.get('utm_campaign') || undefined;
   contact.promotionEntryPoint = promotionEntryPoint(params.get('entry_point'))
-    ?? (location.pathname.startsWith('/chat') || location.pathname.startsWith('/consult') ? 'direct' : 'homepage_widget');
+    ?? (options.chatOrigin?.source === 'standalone_chat' || location.pathname.startsWith('/chat') || location.pathname.startsWith('/consult') ? 'direct' : 'homepage_widget');
   for (const key of [
     "quizScore",
     "quizMaxScore",
@@ -99,12 +111,19 @@ export async function registerContact(profile: object,options:{queryOnly?:boolea
     if(!agreed)throw new RegistrationSaveError('failed',lang.startsWith('zh')?'未覆盖原客户，请核对联系方式。':lang.startsWith('id')?'Catatan lama tidak ditimpa. Periksa kontak.':'Existing customer was preserved. Review contact details.');
     await checked(await scopedFetch('/api/portal/new-person',{method:'POST'}));invalidateVisitorScope();await session();
     responseScope=visitorScope();
+    if (options.chatOrigin) {
+      delete contact.promotionLinkId;
+      delete contact.promotionParametersInvalid;
+      delete contact.promotionParameters;
+      delete contact.utmCampaign;
+      contact.promotionEntryPoint = location.pathname.startsWith('/chat') || location.pathname.startsWith('/consult') ? 'direct' : 'homepage_widget';
+    }
     data=await send();
   }else throw error;
   }
   assertVisitorScope(responseScope);
   const analyticsReceipt=registrationAnalyticsReceipt(data,String(location.pathname||'').startsWith('/chat')||String(location.pathname||'').startsWith('/consult')?'standalone_chat':'homepage_widget');
-  if(analyticsReceipt)trackConfirmedReceipt({...analyticsReceipt,params:{...analyticsReceipt.params,entry_point:contact.promotionEntryPoint,response_time_ms:Date.now()-began}});
+  if(analyticsReceipt&&options.contactConversion!==false)trackConfirmedReceipt({...analyticsReceipt,params:{...analyticsReceipt.params,entry_point:contact.promotionEntryPoint,response_time_ms:Date.now()-began}});
   for(const receipt of registrationAdvisorAnalyticsReceipts(data))trackConfirmedReceipt(receipt);
   saveStudentContext({leadProfile:data.lead});
   return data;
@@ -133,50 +152,59 @@ export async function contactInquiry(payload: Record<string,string>, language: s
   return Response.json(data,{status:response.status});
 }
 const responseStarts=new WeakMap<Response,number>();
-export async function chatFetch(url:string,init:RequestInit,source:ChatSource){
+const responseDraftSources=new WeakMap<Response,string>();
+export async function chatFetch(url:string,init:RequestInit,source:ChatSource,threadId?:string,shared=false){
  const began=Date.now(),owner=visitorScope();trackEvent('consultation_send',{entry_point:source,status:'attempt'});
- try{const response=await sendChatRequest(url,init,source);responseStarts.set(response,began);return response;}
+ try{const draftSource=shared ? sharedChatDrafts : source;
+   const response=await sendChatRequest(url,init,source,threadId,draftSource,shared);
+   responseDraftSources.set(response,draftSource);responseStarts.set(response,began);return response;}
  catch(error){if(visitorScope()===owner)trackEvent('consultation_result',{entry_point:source,status:'unknown',reason:'transport',response_time_ms:Date.now()-began});throw error;}
 }
 async function sendChatRequest(
   _url: string,
   init: RequestInit,
   source: ChatSource,
+  threadId?: string,
+  draftSource = source as string,
+  shared = false,
 ) {
   const expected = visitorScope();
   const old = JSON.parse(String(init.body));
   const user = [...old.messages].reverse().find((m) => m.role === "user");
   await session();
   assertVisitorScope(expected);
-  const previous = draft(source, user.id);
+  const previous = draft(draftSource, user.id);
+  if (previous?.conversationId && threadId && previous.conversationId !== threadId)
+    throw Error("Message belongs to another conversation");
   const messageId = user.id || crypto.randomUUID();
   const queued = {
     id: messageId,
     content: user.content,
-    conversationId: previous?.conversationId || "",
+    conversationId: previous?.conversationId || threadId || "",
     timestamp: previous?.timestamp || new Date().toISOString(),
     delivery: "unknown" as const,
   };
   if (old.action !== undefined && !['handoff','booking','enrollment'].includes(old.action)) throw Error('Invalid request action');
   // Explicit product controls do not depend on localized prose matching an intent regex.
   const action = previous?.action || old.action;
-  saveDraft(source, {...queued,action});
+  saveDraft(draftSource, {...queued,action});
   const conversationId =
-    previous?.conversationId || (await conversation(source));
+    queued.conversationId || (await conversation(source));
   if (action) {
-    const pending={...queued,conversationId,action};saveDraft(source,pending);
-    const res=await scopedFetch('/api/portal/actions',{...init,body:JSON.stringify({conversationId,messageId,content:user.content,action,language:old.language || 'en'})});
-    if(!res.ok){const error=await res.clone().json().catch(()=>({}));if(error.saved===false)saveDraft(source,{...pending,delivery:'unsaved'});await checked(res);}
+    const pending={...queued,conversationId,action};saveDraft(draftSource,pending);
+    const res=await scopedFetch('/api/portal/actions',{...init,body:JSON.stringify({conversationId,messageId,content:user.content,action,language:old.language || 'en',...(shared && {entrySurface:source})})});
+    if(!res.ok){const error=await res.clone().json().catch(()=>({}));if(error.saved===false)saveDraft(draftSource,{...pending,delivery:'unsaved'});await checked(res);}
     return res;
   }
   const pending = {
     id: messageId,
     content: user.content,
     conversationId,
+    enrollmentContext:previous?.enrollmentContext??normalizeEnrollmentChatSelection(old.enrollmentContext),
     timestamp: previous?.timestamp || new Date().toISOString(),
     delivery: "unknown" as const,
   };
-  saveDraft(source, pending);
+  saveDraft(draftSource, pending);
   try {
     const res = await scopedFetch("/api/chat", {
       ...init,
@@ -186,6 +214,8 @@ async function sendChatRequest(
         content: user.content,
         lang: old.language,
         stream: old.stream,
+        enrollmentContext:pending.enrollmentContext,
+        ...(shared && {entrySurface:source}),
       }),
     });
     if (!res.ok) {
@@ -194,9 +224,9 @@ async function sendChatRequest(
         .json()
         .catch(() => ({}));
       if (error.saved === false)
-        saveDraft(source, { ...pending, delivery: "unsaved" });
+        saveDraft(draftSource, { ...pending, delivery: "unsaved" });
       if (error.saved === true)
-        saveDraft(source, { ...pending, delivery: "interrupted" });
+        saveDraft(draftSource, { ...pending, delivery: "interrupted" });
       await checked(res);
     }
     return res;
@@ -205,56 +235,94 @@ async function sendChatRequest(
   }
 }
 
-export async function restoreChat(source: ChatSource) {
-  const owner=visitorScope();
+async function readChat(conversationId: string) {
+  return scopedJson(await checked(await scopedFetch(
+    "/api/portal/conversations/" + encodeURIComponent(conversationId),
+    {cache:"no-store", signal:AbortSignal.timeout(15000)},
+  )));
+}
+
+async function recoverRegistration(owner: string) {
   let storage:Storage|undefined;try{storage=window.sessionStorage;}catch{}
   if(hasPendingRegistration(owner,storage)){
-    try{await saveRegistration({scope:owner,payload:{},fetcher:scopedFetch as typeof fetch,storage,queryOnly:true});}catch{/* Keep an unconfirmed tab draft; recovery never submits it. */}
+    try{await saveRegistration({scope:owner,payload:{},fetcher:scopedFetch as typeof fetch,storage,queryOnly:true});}catch{/* Keep an unconfirmed tab draft. */}
     assertVisitorScope(owner);
   }
-  const conversationId = await conversation(source);
-  const expected = visitorScope();
-  const data = await scopedJson(await checked(await scopedFetch("/api/portal/conversations/" + conversationId)));
-  assertVisitorScope(expected);
-  for (const m of data.messages)
+}
+
+function chatSnapshot(data: any, conversationId: string, draftSource: string, boundOnly: boolean) {
+  for (const m of data.messages) {
     if (m.role === "user") {
-      const answer = data.messages.find(
-        (a: any) => a.request_id === m.request_id && a.role === "assistant",
-      );
+      const answer = data.messages.find((a: any) => a.request_id === m.request_id && a.role === "assistant");
       if (answer && ["failed", "interrupted"].includes(answer.status))
-        saveDraft(source, {
+        saveDraft(draftSource, {
           id: m.request_id,
           content: m.content,
-          conversationId: m.conversation_id,
+          conversationId,
           timestamp: m.created_at,
           delivery: answer.status,
+          action: answer.metadata?.followupAction || draft(draftSource, m.request_id)?.action,
+          enrollmentContext:normalizeEnrollmentChatSelection(m.metadata?.enrollmentContext) ??
+            draft(draftSource,m.request_id)?.enrollmentContext,
         });
     }
-  for (const m of data.messages)
-    if (m.role === "assistant" && m.status === "completed")
-      removeDraft(source, m.request_id);
+    if (m.role === "assistant" && m.status === "completed") removeDraft(draftSource, m.request_id);
+  }
   const rows = data.messages.map((m: any) => ({
     ...m,
     id: m.role === "user" ? m.request_id : "reply-" + m.request_id,
-    delivery:
-      m.role === "user"
-        ? draft(source, m.request_id)?.delivery || "saved"
-        : undefined,
+    delivery: m.role === "user" ? draft(draftSource, m.request_id)?.delivery || "saved" : undefined,
     timestamp: new Date(m.created_at),
-    action: m.role === 'user' ? data.messages.find((a:any) => a.request_id === m.request_id && ['handoff','booking','enrollment'].includes(a.metadata?.followupAction))?.metadata.followupAction : undefined,
+    action: m.role === 'user' ? draft(draftSource, m.request_id)?.action : undefined,
+    enrollmentContext:m.role==='user'?draft(draftSource,m.request_id)?.enrollmentContext:undefined,
     enrollment: m.role==='assistant'&&m.status==='completed'?m.metadata?.enrollment:undefined,
+    suggestedPrompts: m.role==='assistant'&&m.status==='completed'?m.metadata?.suggestedPrompts:undefined,
     content: m.status === "interrupted" ? "[回复中断，可重试]" : m.content,
   }));
-  return [
+  const messages = [
     ...rows,
-    ...drafts(source)
-      .filter((m) => !rows.some((x: any) => x.id === m.id))
-      .map((m) => ({
-        ...m,
-        role: "user" as const,
-        timestamp: new Date(m.timestamp),
-      })),
+    ...drafts(draftSource)
+      .filter(m => (m.conversationId === conversationId || (!boundOnly && !m.conversationId)) && !rows.some((row: {id: string}) => row.id === m.id))
+      .map(m => ({...m, role:"user" as const, timestamp:new Date(m.timestamp)})),
   ];
+  const page = data.conversation?.attribution?.page;
+  return {conversationId, messages, page: typeof page === "string" ? page : undefined};
+}
+
+export async function restoreChat(source: ChatSource, threadId?: string) {
+  const owner = visitorScope();
+  await recoverRegistration(owner);
+  const conversationId = threadId ?? await conversation(source);
+  if (threadId !== undefined) await session();
+  assertVisitorScope(owner);
+  const data = await readChat(conversationId);
+  if (threadId !== undefined && data.conversation?.source !== source) throw Error("Invalid conversation source");
+  return chatSnapshot(data, conversationId, source, threadId !== undefined);
+}
+
+export async function restoreCurrentChat(source: ChatSource, options: {previous?: string; legacyThreadId?: string; page?: string} = {}) {
+  const owner = visitorScope();
+  if (options.legacyThreadId !== undefined) {
+    if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(options.legacyThreadId))
+      throw Error("Invalid conversation reference");
+    const saved = await readChat(options.legacyThreadId);
+    if (saved.conversation?.source !== 'homepage_widget') throw Error("Invalid conversation source");
+  }
+  await recoverRegistration(owner);
+  assertVisitorScope(owner);
+  const conversationId = await conversation(source, options.previous !== undefined, options);
+  assertVisitorScope(owner);
+  const data = await readChat(conversationId);
+  for (const legacySource of ['homepage_widget','standalone_chat']) {
+    for (const message of drafts(legacySource)) {
+      if (message.conversationId !== conversationId) continue;
+      if (!draft(sharedChatDrafts, message.id)) saveDraft(sharedChatDrafts, message);
+      removeDraft(legacySource, message.id);
+    }
+  }
+  return {...chatSnapshot(data, conversationId, sharedChatDrafts, true),
+    source: (data.conversation.attribution?.chatOriginSource ?? data.conversation.source) as ChatSource,
+    restarted: data.conversation.attribution?.chatRestarted === true};
 }
 
 export async function saveHskAttempt(
@@ -291,19 +359,19 @@ export async function restoreHskAttempts() {
 }
 
 /** Idempotent system introduction. It does not fabricate a learner-authored message. */
-export async function assessmentConsultation(attemptId: string, lang: "zh" | "en" | "id") {
-  const conversationId = await conversation("standalone_chat");
+export async function assessmentConsultation(attemptId: string, lang: "zh" | "en" | "id", threadId?: string, entrySurface?: ChatSource) {
+  const conversationId = threadId ?? await conversation("standalone_chat");
   return checked(await scopedFetch("/api/chat", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({conversationId, assessmentAttemptId: attemptId, lang, stream: true}),
+    body: JSON.stringify({conversationId, assessmentAttemptId: attemptId, lang, stream: true, entrySurface}),
   }));
 }
 
-export async function profileConsultation(lang: "zh" | "en" | "id") {
-  const conversationId = await conversation("standalone_chat");
+export async function profileConsultation(lang: "zh" | "en" | "id", threadId?: string, entrySurface?: ChatSource) {
+  const conversationId = threadId ?? await conversation("standalone_chat");
   return checked(await scopedFetch('/api/chat', {
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({conversationId,consultationStart:true,lang,stream:true}),
+    body:JSON.stringify({conversationId,consultationStart:true,lang,stream:true,entrySurface}),
   }));
 }
 
@@ -315,7 +383,8 @@ export async function finishChat(
 ) {
   const owner = responseScopes.get(res) || visitorScope();
   assertVisitorScope(owner);
-  const m = draft(source, messageId);
+  const draftSource = responseDraftSources.get(res) || source;
+  const m = draft(draftSource, messageId);
   const began=responseStarts.get(res)||Date.now();let knownFailure=false;
   try {
     const result = await readChatResponse(res, (e) => {
@@ -323,7 +392,7 @@ export async function finishChat(
       if(e.saved&&m)trackReceipt("consultation_message_saved",messageId,{entry_point:source});
       if(e.error||e.status==='failed'){knownFailure=true;trackEvent("consultation_result",{status:"failed",reason:"provider_failure",entry_point:source,response_time_ms:Date.now()-began});}
       if (e.saved && m)
-        saveDraft(source, {
+        saveDraft(draftSource, {
           ...m,
           delivery: e.done && e.error ? "failed" : "saved",
         });
@@ -332,13 +401,13 @@ export async function finishChat(
     assertVisitorScope(owner);
     trackConfirmedReceipt(advisorAnalyticsReceipt(result,m));
     if(m&&result?.saved===true)trackReceipt("consultation_result",messageId,{entry_point:source,response_time_ms:Date.now()-began});
-    removeDraft(source, messageId);
+    removeDraft(draftSource, messageId);
     return result;
   } catch (e) {
     if(!knownFailure&&visitorScope()===owner)trackEvent("consultation_result",{status:"unknown",reason:"transport",entry_point:source,response_time_ms:Date.now()-began});
     if (m && visitorScope() === owner) {
-      const latest = draft(source, messageId);
-      saveDraft(source, {
+      const latest = draft(draftSource, messageId);
+      saveDraft(draftSource, {
         ...m,
         delivery:
           latest?.delivery === "saved"
@@ -351,11 +420,13 @@ export async function finishChat(
 }
 
 /** Explicit shared-device person switch; server records remain intact. */
-export async function startAnotherVisitor() {
+export async function startAnotherVisitor(continuationExit?: string) {
   await session();
   await checked(await scopedFetch('/api/portal/new-person', {method:'POST'}));
+  try { localStorage.removeItem(VISITOR_MARKER); } catch {}
   invalidateVisitorScope();
-  await session();
+  if (continuationExit) location.replace(continuationExit);
+  else await session();
 }
 
 /** Recovery reads one attempt owned by the active visitor; never returns another visitor's result. */

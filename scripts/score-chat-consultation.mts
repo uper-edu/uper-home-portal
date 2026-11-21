@@ -6,6 +6,8 @@ const directory=process.argv[2];
 assert.ok(directory,'Usage: node --import tsx scripts/score-chat-consultation.mts <run-directory> [reviews.json]');
 const read=async(file:string)=>JSON.parse(await readFile(file,'utf8'));
 const suite=await read(new URL('../tests/fixtures/chat-consultation-v1.json',import.meta.url).pathname);
+const regressions=await read(new URL('../tests/fixtures/chat-consultation-regressions.json',import.meta.url).pathname);
+const fixtures=[...suite.cases,...regressions.cases];
 const run=await read(join(directory,'run.json'));
 assert.equal(run.suite,suite.version);
 const learnerDimensions=['courtesy','clarity','context','accuracy','initiative'] as const;
@@ -21,11 +23,14 @@ const enrollmentAuditFields=['orders','orderSeats','transferHolds','waitlist','d
 let enrollmentAudits=0;
 const publicClasses=new Map<string,any>(run.catalog.classes.map((row:any)=>[row.id,row]));
 const publicAppointments=new Map<string,any>(run.catalog.appointments.map((row:any)=>[row.id,row]));
-for(const file of loaded.filter(file=>/^\d\d-\d+\.json$/.test(file))){
+for(const file of loaded.filter(file=>/^(?:\d\d|F\d+)-\d+\.json$/.test(file))){
   const record=await read(join(directory,file));
   const key=file.slice(0,-5);
   evidence.set(key,record);
   const note=(issue:string,turn?:number,severe=false)=>checks.push({case:key,turn,issue,severe});
+  const fixture=fixtures.find((item:any)=>item.id===record.id);
+  if(!fixture||record.turns.length!==fixture.turns.length+Number(!!fixture.scores)+Number(!!fixture.profileIntroduction))
+    note('Recorded turn count does not match the fixture');
   if(record.opportunityCount!==0)note('Unexpected opportunity write',undefined,true);
   if(run.auditVerifiedLinks){
     const proof=record.enrollmentAudit;
@@ -73,7 +78,7 @@ if(loaded.includes('errors.json')){
   }
 }
 const reviewRows=required.map((key:string)=>{
-  const item=suite.cases.find((candidate:any)=>candidate.id===key.split('-')[0]);
+  const item=fixtures.find((candidate:any)=>candidate.id===key.split('-')[0]);
   return {key,eligible:item.eligible!==false,expected:item.expected,reviewerA:null,reviewerB:null,adjudication:null};
 });
 const average=(numbers:number[])=>numbers.reduce((sum,value)=>sum+value,0)/numbers.length;
@@ -113,8 +118,8 @@ if(process.argv[3]){
   const eligibleResolution=eligibleCount?eligibleResolved/eligibleCount:null;
   const learnerMean=average(scored.map((row:any)=>row.learner));
   const businessMean=average(scored.map((row:any)=>row.business));
-  const complete=required.length===suite.cases.length&&run.repeat===1&&!missing.length&&base.length===8;
-  judgement={allScenarioResolution,eligibleResolution,learnerMean,businessMean,critical,causes,scored,
+  const complete=suite.cases.every((item:any)=>required.includes(item.id+'-1'))&&run.repeat===1&&!missing.length&&base.length===8;
+  judgement={complete,allScenarioResolution,eligibleResolution,learnerMean,businessMean,critical,causes,scored,
     meetsThreshold:complete&&checks.length===0&&critical===0&&eligibleResolution!==null&&eligibleResolution>=suite.thresholds.eligibleResolution&&
       learnerMean>=suite.thresholds.learnerMean&&businessMean>=suite.thresholds.businessMean&&
       base.every((row:any)=>row.learner>=suite.thresholds.baseCaseMinimum&&row.business>=suite.thresholds.baseCaseMinimum)};

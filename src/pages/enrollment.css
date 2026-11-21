@@ -764,3 +764,15 @@
   .enrollment-class-card .enrollment-class-bottom { flex-direction: column; align-items: stretch; }
   .enrollment-class-card .enrollment-primary { max-width: 100%; width: 100%; }
 }
+
+.enrollment-consult-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .65rem;
+  margin-bottom: .75rem;
+}
+.enrollment-consult-row .enrollment-subtitle { margin: 0; }
+.enrollment-consult-action { gap: .45rem; }
+.enrollment-chat-return:has(+ .enrollment-back) { margin-inline-end: 1rem; }

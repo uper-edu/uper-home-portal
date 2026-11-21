@@ -8,7 +8,7 @@ export function courseCatalogueInstruction(book: CourseBook, enrollmentManaged=f
     const names=book.courses.filter(course=>!course.enrollmentLevel).map(course=>course.id);
     return `
 Return exactly one compact JSON object, without Markdown or text outside it:
-{"reply":"","catalogue":null,"enrollment":null,"replyLanguage":"id"}
+{"reply":"","catalogue":null,"enrollment":null,"suggestedPrompts":[]}
 Set replyLanguage to the language chosen for this turn (zh, en, or id). An explicit request for a reply language takes priority over the language used in the question. For replies in other languages, omit replyLanguage.
 For Enrollment, keep catalogue null. Use reply for prose and enrollment for the action, with only the fields needed this turn.
 For a legacy course lookup only, use catalogue:{"courses":["exact published name"],"detail":"price"} with reply:"" and enrollment:null. Use "offerings" for course names and class counts, "all" only if all courses are requested, and an empty array when none match. Set unavailable:true when part of the request has no match.
@@ -16,7 +16,7 @@ Published legacy course names: ${JSON.stringify(names)}.
 `;
   }
   return `
-Return one JSON object with "reply" (string) and "catalogue" (null or an object).
+Return one JSON object with "reply" (string), "catalogue" (null or an object), and "suggestedPrompts" (array of strings).
 For an UPER course offering, class count, or published price question, set "reply" to "" and "catalogue" to
 {"courses":"all","detail":"price"} or {"courses":["exact published course name"],"detail":"offerings"}.
 Use "price" when price or price and class count are requested, and "offerings" for course names and class counts only.

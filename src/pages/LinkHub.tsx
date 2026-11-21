@@ -180,6 +180,7 @@ export default function LinkHub() {
     return () => { active = false; };
   }, [params, i18n]);
   const t = words[lang];
+  const homeUrl = promotionJourneyUrl("/", params);
   const enrollmentUrl = promotionJourneyUrl(`/enrollment?lang=${lang}`, params, 'linkhub');
   const consultUrl = linkHubConsultUrl(params, lang);
   const selectLanguage = (value: string) => {
@@ -253,7 +254,7 @@ export default function LinkHub() {
       </svg>
       <PageMetadata />
       <div className="linkhub-toolbar">
-        <a href="/" aria-label={t.home}>
+        <a href={homeUrl} aria-label={t.home}>
           <img src="/link-assets/avatar.png" alt="UPER" />
         </a>
         <nav className="linkhub-languages" aria-label={t.language}>
@@ -371,7 +372,7 @@ export default function LinkHub() {
           </div>
         </section>
         <footer className="linkhub-footer">
-          <a href={promotionJourneyUrl("/", params)}>UPER Education &amp; Technology</a>
+          <a href={homeUrl}>UPER Education &amp; Technology</a>
         </footer>
       </main>
       {documentOpen && (

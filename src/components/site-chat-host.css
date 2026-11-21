@@ -1,0 +1,29 @@
+.site-chat-host {
+  position: fixed;
+  inset: auto 24px 88px auto;
+  z-index: 60;
+  margin: 0;
+  padding: 0;
+  width: min(464px, calc(100vw - 48px));
+  height: min(640px, calc(100dvh - 112px));
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  border: 1px solid #c0d5ce;
+  border-radius: 18px;
+  box-shadow: 0 12px 38px #15332d36;
+  background: #f5f8f7;
+}
+
+.site-chat-host[data-fullscreen] {
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.site-chat-host[data-fullscreen]::backdrop { background: #f5f8f7; }
+html:has(.site-chat-host:modal) { overflow: hidden; }
+.site-chat-host .standalone-chat-page { height: 100%; }

@@ -48,8 +48,9 @@ export function writeHskDraft(draft: HskDraft): boolean {
     return false;
   }
 }
-export function clearHskDraft() {
+export function clearHskDraft(attemptId?:string) {
   try {
+    if (attemptId && readHskDraft()?.attempt.attemptId!==attemptId) return;
     localStorage.removeItem(visitorKey(DRAFT_KEY));
   } catch {}
 }

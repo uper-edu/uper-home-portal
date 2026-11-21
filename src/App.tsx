@@ -22,6 +22,7 @@ import { usePageTracking } from './utils/analytics';
 import { ThemeProvider } from './utils/theme';
 import Home from './pages/Home';
 import {learnerPreviewToken} from './utils/enrollmentLearnerPreview';
+import {SiteChatRoutes} from './components/SiteChatRoutes';
 
 // Robust dynamic import with automatic retry on chunk loading hiccups
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -90,7 +91,7 @@ export default function App() {
         <CmsContentStatus />
             <AnalyticsTracker />
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div></div>}>
-              <Routes>
+              <SiteChatRoutes><Routes>
                 {/* Standalone public link-in-bio hub */}
                 <Route path="link" element={<LinkHub />} />
                 {/* Standalone Seminar & Direct AI Advisory Portals */}
@@ -131,7 +132,7 @@ export default function App() {
                   <Route path="style-guide" element={<StyleGuide />} />
                   <Route path="*" element={<SiteNotFound/>}/>
                 </Route>
-              </Routes>
+              </Routes></SiteChatRoutes>
             </Suspense></MetadataProvider>
           </BrowserRouter>
         </ApplicationErrorBoundary>
