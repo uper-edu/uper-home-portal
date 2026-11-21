@@ -1021,6 +1021,7 @@
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",
     "sources": [
       "server/portal/enrollmentTemplates.ts",
+      "server/portal/gaSettings.ts",
       "server/portal/larkSelfService.ts",
       "server/portal/larkSettings.ts"
     ]
@@ -2523,10 +2524,22 @@
       "server/portal/chat.ts"
     ]
   },
+  "SELECT id FROM portal_leads WHERE JSON_CONTAINS(:p1,JSON_QUOTE(id)) ORDER BY id FOR UPDATE": {
+    "sql": "SELECT id FROM portal_leads WHERE JSON_CONTAINS(:p1,JSON_QUOTE(id)) ORDER BY id FOR UPDATE",
+    "sources": [
+      "server/portal/purchaseIntentSuggestions.ts"
+    ]
+  },
   "SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto' IN (:p1)": {
     "sql": "SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto' IN (:p1)",
     "sources": [
       "server/portal/payments.ts"
+    ]
+  },
+  "SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1": {
+    "sql": "SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1",
+    "sources": [
+      "server/portal/purchaseIntentSuggestions.ts"
     ]
   },
   "SELECT id FROM portal_leads WHERE profile->>'$.promotionLinkId'=:p1 OR profile->>'$.promotionReview.linkId'=:p1 OR JSON_CONTAINS(JSON_EXTRACT(profile,'$.identitySources[*].promotionLinkId'),JSON_QUOTE(:p1)) LIMIT 1": {
@@ -2994,6 +3007,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT ids.lead_id,m.sequence,j.id,j.output->'$.purchaseIntent' AS suggestion\n  FROM JSON_TABLE(:p1,'$[*]' COLUMNS (lead_id VARCHAR(191) PATH '$')) ids\n  JOIN LATERAL (SELECT m.id,m.sequence FROM conversations c\n    JOIN messages m ON m.conversation_id=c.id AND m.role='user' AND m.status='saved'\n    WHERE c.lead_id=ids.lead_id ORDER BY m.sequence DESC LIMIT 1) m ON TRUE\n  LEFT JOIN crm_ai_extractions j ON j.lead_id=ids.lead_id AND j.source_type='customer_message'\n    AND j.source_id=m.id AND j.status='completed' AND j.output->>'$.purchaseIntent.version'='chat-purchase-intent-v1'": {
+    "sql": "SELECT ids.lead_id,m.sequence,j.id,j.output->'$.purchaseIntent' AS suggestion\n  FROM JSON_TABLE(:p1,'$[*]' COLUMNS (lead_id VARCHAR(191) PATH '$')) ids\n  JOIN LATERAL (SELECT m.id,m.sequence FROM conversations c\n    JOIN messages m ON m.conversation_id=c.id AND m.role='user' AND m.status='saved'\n    WHERE c.lead_id=ids.lead_id ORDER BY m.sequence DESC LIMIT 1) m ON TRUE\n  LEFT JOIN crm_ai_extractions j ON j.lead_id=ids.lead_id AND j.source_type='customer_message'\n    AND j.source_id=m.id AND j.status='completed' AND j.output->>'$.purchaseIntent.version'='chat-purchase-intent-v1'",
+    "sources": [
+      "server/portal/purchaseIntentSuggestions.ts"
+    ]
+  },
   "SELECT input_hash,visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1": {
     "sql": "SELECT input_hash,visitor_id,lead_id,payload FROM site_submissions WHERE kind='registration' AND request_id=:p1",
     "sources": [
@@ -3042,6 +3061,12 @@
       "server/portal/worker.ts"
     ]
   },
+  "SELECT j.id,j.output->'$.purchaseIntent' AS suggestion\n    FROM messages m JOIN conversations c ON c.id=m.conversation_id\n    LEFT JOIN crm_ai_extractions j ON j.lead_id=c.lead_id AND j.source_type='customer_message'\n      AND j.source_id=m.id AND j.status='completed' AND j.output->>'$.purchaseIntent.version'='chat-purchase-intent-v1'\n    WHERE JSON_CONTAINS(:p1,JSON_QUOTE(c.lead_id)) AND m.role='user' AND m.status='saved'\n      AND m.created_at<=STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ')\n    ORDER BY m.sequence DESC LIMIT 1": {
+    "sql": "SELECT j.id,j.output->'$.purchaseIntent' AS suggestion\n    FROM messages m JOIN conversations c ON c.id=m.conversation_id\n    LEFT JOIN crm_ai_extractions j ON j.lead_id=c.lead_id AND j.source_type='customer_message'\n      AND j.source_id=m.id AND j.status='completed' AND j.output->>'$.purchaseIntent.version'='chat-purchase-intent-v1'\n    WHERE JSON_CONTAINS(:p1,JSON_QUOTE(c.lead_id)) AND m.role='user' AND m.status='saved'\n      AND m.created_at<=STR_TO_DATE(:p2,'%Y-%m-%dT%H:%i:%s.%fZ')\n    ORDER BY m.sequence DESC LIMIT 1",
+    "sources": [
+      "server/portal/purchaseIntentSuggestions.ts"
+    ]
+  },
   "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE (CASE WHEN JSON_TYPE(config->'$.groupIds')='ARRAY' THEN JSON_CONTAINS(config->'$.groupIds',JSON_QUOTE(:p1)) ELSE config->>'$.group'=:p1 END) AND (JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark')) OR JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark_group'))) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1": {
     "sql": "SELECT JSON_EXTRACT(config,'$.maxPerHour') AS value FROM notification_rules WHERE (CASE WHEN JSON_TYPE(config->'$.groupIds')='ARRAY' THEN JSON_CONTAINS(config->'$.groupIds',JSON_QUOTE(:p1)) ELSE config->>'$.group'=:p1 END) AND (JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark')) OR JSON_CONTAINS(config->'$.channels',JSON_QUOTE('lark_group'))) UNION ALL SELECT JSON_EXTRACT(snapshot,'$.rule.maxPerHour') AS value FROM notification_jobs WHERE channel='lark' AND recipient=:p1",
     "sources": [
@@ -3084,6 +3109,12 @@
       "server/portal/identityReview.ts"
     ]
   },
+  "SELECT lead_id,data FROM crm_facts\n  WHERE JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) AND kind='purchase_intent.reviewed'": {
+    "sql": "SELECT lead_id,data FROM crm_facts\n  WHERE JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) AND kind='purchase_intent.reviewed'",
+    "sources": [
+      "server/portal/purchaseIntentSuggestions.ts"
+    ]
+  },
   "SELECT lead_id,value FROM crm_payment_ledgers ORDER BY lead_id": {
     "sql": "SELECT lead_id,value FROM crm_payment_ledgers ORDER BY lead_id",
     "sources": [
@@ -3120,6 +3151,12 @@
     "sql": "SELECT m.content,m.created_at FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE m.conversation_id=:p1 AND (m.id=:p2 OR m.request_id=:p2) AND m.role='user' AND (c.lead_id=:p3 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p3)) ORDER BY m.created_at LIMIT 1",
     "sources": [
       "server/portal/larkNotificationV2.ts"
+    ]
+  },
+  "SELECT m.id,m.content,DATE_FORMAT(m.created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS received_at\n    FROM messages m JOIN conversations c ON c.id=m.conversation_id\n    WHERE JSON_CONTAINS(:p1,JSON_QUOTE(c.lead_id)) AND c.id=:p2 AND m.role='user' AND m.status='saved'\n      AND m.created_at<=STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ') AND JSON_CONTAINS(:p4,JSON_QUOTE(m.id))": {
+    "sql": "SELECT m.id,m.content,DATE_FORMAT(m.created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS received_at\n    FROM messages m JOIN conversations c ON c.id=m.conversation_id\n    WHERE JSON_CONTAINS(:p1,JSON_QUOTE(c.lead_id)) AND c.id=:p2 AND m.role='user' AND m.status='saved'\n      AND m.created_at<=STR_TO_DATE(:p3,'%Y-%m-%dT%H:%i:%s.%fZ') AND JSON_CONTAINS(:p4,JSON_QUOTE(m.id))",
+    "sources": [
+      "server/portal/purchaseIntentSuggestions.ts"
     ]
   },
   "SELECT m.id,m.content,m.created_at,m.conversation_id FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE (v.lead_id=:p1 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND m.role='user' ORDER BY m.created_at DESC,m.id DESC": {
@@ -3162,6 +3199,12 @@
     "sql": "SELECT m.id,m.role,m.content,m.status,m.created_at,c.source,c.lead_id,c.id AS conversation_id FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.lead_id=:p1 ORDER BY m.created_at DESC,m.id DESC LIMIT 50",
     "sources": [
       "server/portal/identityReview.ts"
+    ]
+  },
+  "SELECT m.id,m.role,m.conversation_id,LEFT(m.content,1200) AS content,DATE_FORMAT(m.created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS sent_at\n    FROM messages source JOIN conversations c ON c.id=source.conversation_id AND c.lead_id=:p2\n    JOIN messages m ON m.conversation_id=c.id AND m.sequence<=source.sequence\n    WHERE source.id=:p1 AND source.role='user' AND m.status IN ('saved','completed')\n    AND m.role IN ('user','assistant') AND m.content<>''\n    ORDER BY m.sequence DESC LIMIT 16": {
+    "sql": "SELECT m.id,m.role,m.conversation_id,LEFT(m.content,1200) AS content,DATE_FORMAT(m.created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS sent_at\n    FROM messages source JOIN conversations c ON c.id=source.conversation_id AND c.lead_id=:p2\n    JOIN messages m ON m.conversation_id=c.id AND m.sequence<=source.sequence\n    WHERE source.id=:p1 AND source.role='user' AND m.status IN ('saved','completed')\n    AND m.role IN ('user','assistant') AND m.content<>''\n    ORDER BY m.sequence DESC LIMIT 16",
+    "sources": [
+      "server/portal/purchaseIntentSuggestions.ts"
     ]
   },
   "SELECT m.id,m.role,m.created_at FROM messages m JOIN conversations v ON v.id=m.conversation_id WHERE m.id=:p1 AND (v.lead_id=:p2 OR v.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p2))": {
@@ -3410,6 +3453,12 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
+  "SELECT r.lead_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS submitted_at,\n    COALESCE(o.level,b.data->>'$.level',d.criteria->>'$.level') AS level,\n    (e.state IN ('partial','proof_review') OR (e.state='awaiting_payment' AND\n      (e.received>0 OR e.payment_due_at>=UTC_TIMESTAMP(6) OR e.upload_expires_at>=UTC_TIMESTAMP(6)))\n      OR w.state='waiting' OR d.state='active') AS in_progress\n  FROM enrollment_customer_records r\n  LEFT JOIN enrollment_opportunities o ON o.id=r.opportunity_id\n  LEFT JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id\n  LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id\n  LEFT JOIN enrollment_demands d ON r.kind='demand' AND d.id=r.record_id\n  LEFT JOIN enrollment_classes b ON b.id=COALESCE(e.class_id,w.class_id)\n  WHERE JSON_CONTAINS(:p1,JSON_QUOTE(r.lead_id))\n    AND (e.id IS NOT NULL OR w.id IS NOT NULL OR d.id IS NOT NULL)": {
+    "sql": "SELECT r.lead_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS submitted_at,\n    COALESCE(o.level,b.data->>'$.level',d.criteria->>'$.level') AS level,\n    (e.state IN ('partial','proof_review') OR (e.state='awaiting_payment' AND\n      (e.received>0 OR e.payment_due_at>=UTC_TIMESTAMP(6) OR e.upload_expires_at>=UTC_TIMESTAMP(6)))\n      OR w.state='waiting' OR d.state='active') AS in_progress\n  FROM enrollment_customer_records r\n  LEFT JOIN enrollment_opportunities o ON o.id=r.opportunity_id\n  LEFT JOIN enrollment_orders e ON r.kind='order' AND e.id=r.record_id\n  LEFT JOIN enrollment_waitlist w ON r.kind='waitlist' AND w.id=r.record_id\n  LEFT JOIN enrollment_demands d ON r.kind='demand' AND d.id=r.record_id\n  LEFT JOIN enrollment_classes b ON b.id=COALESCE(e.class_id,w.class_id)\n  WHERE JSON_CONTAINS(:p1,JSON_QUOTE(r.lead_id))\n    AND (e.id IS NOT NULL OR w.id IS NOT NULL OR d.id IS NOT NULL)",
+    "sources": [
+      "server/portal/purchaseIntentSuggestions.ts"
+    ]
+  },
   "SELECT r.lead_id,r.opportunity_id,o.level FROM enrollment_customer_records r\n    LEFT JOIN enrollment_opportunities o ON o.id=r.opportunity_id WHERE r.kind=:p1 AND r.record_id=:p2": {
     "sql": "SELECT r.lead_id,r.opportunity_id,o.level FROM enrollment_customer_records r\n    LEFT JOIN enrollment_opportunities o ON o.id=r.opportunity_id WHERE r.kind=:p1 AND r.record_id=:p2",
     "sources": [
@@ -3507,6 +3556,7 @@
       "server/portal/enrollmentResolution.ts",
       "server/portal/enrollmentRules.ts",
       "server/portal/enrollmentTemplates.ts",
+      "server/portal/notificationSettingsOperations.ts",
       "server/portal/payments.ts",
       "server/portal/trustRoutes.ts"
     ]
@@ -3727,6 +3777,7 @@
   "SELECT value FROM portal_settings WHERE id=:p1": {
     "sql": "SELECT value FROM portal_settings WHERE id=:p1",
     "sources": [
+      "server/portal/gaSettings.ts",
       "server/portal/larkChannelModes.ts",
       "server/portal/larkSelfService.ts",
       "server/portal/larkSettings.ts",
@@ -4081,8 +4132,8 @@
       "server/portal/enrollmentApplication.ts"
     ]
   },
-  "UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3\n          AND opportunity_id IS NULL": {
-    "sql": "UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3\n          AND opportunity_id IS NULL",
+  "UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3\n    AND opportunity_id IS NULL": {
+    "sql": "UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3\n    AND opportunity_id IS NULL",
     "sources": [
       "server/portal/enrollmentCrm.ts"
     ]

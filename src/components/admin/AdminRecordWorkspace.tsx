@@ -26,6 +26,35 @@ export function AdminRecordSidebarToggle({controls, expanded, label, onClick, re
   </button>;
 }
 
+export function useAdminRecordSidebarLayout({id,back,persistent,available=true,listOpen,setListOpen,lang}: {
+  id:string;back:AdminBackTarget;persistent:boolean;available?:boolean;listOpen:boolean;
+  setListOpen:(open:boolean)=>void;lang:CrmLanguage;
+}) {
+  const opener=useRef<HTMLButtonElement>(null);
+  const listOnly=available&&!persistent&&listOpen;
+  const sidebarVisible=available&&(persistent||listOnly);
+  const showLabel=lang==='zh'?'查看记录列表':lang==='id'?'Lihat daftar rekaman':'View record list';
+  const returnLabel=lang==='zh'?'返回详情':lang==='id'?'Kembali ke detail':'Back to details';
+  const navigationLabel=lang==='zh'?'记录导航':lang==='id'?'Navigasi rekaman':'Record navigation';
+  return {
+    listOnly,sidebarVisible,
+    sidebar:{id,back,hidden:!sidebarVisible},
+    headerBack:sidebarVisible?undefined:back,
+    browseAction:available&&!persistent?<AdminRecordSidebarToggle controls={id} expanded={listOnly} ref={opener}
+      label={showLabel} onClick={()=>{
+        setListOpen(true);
+        requestAnimationFrame(()=>{
+          const sidebar=document.getElementById(id);
+          (sidebar?.querySelector<HTMLElement>('input[type="search"]')??sidebar?.querySelector<HTMLElement>('.admin-record-back'))?.focus({preventScroll:true});
+        });
+      }}/>:null,
+    listNavigation:listOnly?<AdminRecordNavigation label={navigationLabel} back={{label:returnLabel,onClick:()=>{
+      setListOpen(false);
+      requestAnimationFrame(()=>opener.current?.focus({preventScroll:true}));
+    }}}/>:null,
+  };
+}
+
 export function AdminRecordTitle({title, status, meta, id, titleRef}: {
   title: ReactNode; status?: ReactNode; meta?: ReactNode; id?: string; titleRef?: Ref<HTMLHeadingElement>;
 }) {
@@ -42,9 +71,9 @@ export function AdminDetailActions({label, secondary, primary}: {
   return <div className="crm-record-actions" role="group" aria-label={label}>{secondary}{primary}</div>;
 }
 
-export function AdminRecordSidebar({id, title, count, selectedId, busy, busyLabel, hidden, filters, note, empty, footer, actions, children}: {
+export function AdminRecordSidebar({id, title, back, count, selectedId, busy, busyLabel, hidden, filters, note, empty, footer, children}: {
   id: string; title: string; count?: number; selectedId?: string; busy?: boolean; busyLabel: string; hidden?: boolean;
-  filters: ReactNode; note?: string; empty?: ReactNode; footer?: ReactNode; actions?: ReactNode; children?: ReactNode;
+  back: AdminBackTarget; filters: ReactNode; note?: string; empty?: ReactNode; footer?: ReactNode; children?: ReactNode;
 }) {
   const rows=useRef<HTMLDivElement>(null);
   useLayoutEffect(()=>{
@@ -54,8 +83,8 @@ export function AdminRecordSidebar({id, title, count, selectedId, busy, busyLabe
   return <aside id={id} className="crm-record-sidebar" aria-labelledby={id+'-heading'} hidden={hidden}>
     <div className="crm-record-sidebar-heading">
       <h2 id={id+'-heading'}>{title}{count!==undefined&&<span> · {count}</span>}</h2>
-      <span className={actions?'sr-only':'crm-record-sidebar-updating'} role="status" style={{visibility:busy?'visible':'hidden'}}>{busyLabel}</span>
-      {actions&&<div className="crm-record-sidebar-actions">{actions}</div>}
+      <span className="sr-only" role="status">{busy?busyLabel:''}</span>
+      <div className="crm-record-sidebar-actions"><AdminRecordBack target={back}/></div>
     </div>
     {filters}
     {note&&<p className="crm-record-sidebar-note" role="status">{note}</p>}

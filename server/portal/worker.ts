@@ -666,7 +666,7 @@ export function startWorker({paymentAnalytics=false} = {}) {
   log.info("worker.started");
   const timer = setInterval(() => {
     if (stopped) return;
-    if (paymentAnalytics && process.env.PORTAL_GA_DISPATCH_ENABLED==='true' && !paymentAnalyticsRunning) {
+    if (paymentAnalytics && !paymentAnalyticsRunning) {
       paymentAnalyticsRunning = (async () => {
         if ((await restoreState())?.required) return;
         await dispatchPaymentAnalytics({transaction:tx});

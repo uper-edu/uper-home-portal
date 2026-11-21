@@ -1,4 +1,5 @@
 import {CrmEnrollmentCorrectionAction} from './CrmEnrollmentCorrection';
+import {AdminDisclosure} from '../admin/AdminDisclosure';
 import { useCrmUiText,useCrmUiLanguage } from "./CrmUiLanguage";
 import { useEffect, useState } from "react";
 import { groupFactMilestones } from "../../utils/crmFactMilestones";
@@ -149,8 +150,8 @@ export function CrmFactMilestones({
       : group.records
     : [];
   return (
-    <section className="crm-fact-milestones" aria-label={ui("事实里程碑")}>
-      <h4>{ui("已完成")}</h4>
+    <section className="crm-followup-milestones" aria-label={ui("事实里程碑")}>
+      <AdminDisclosure density="compact" heading={ui("已完成")}>
       {error ? (
         <p role="alert">
           {ui("事实里程碑暂不可用。")}
@@ -172,6 +173,7 @@ export function CrmFactMilestones({
           onOpen={(g: any, id?: string) => setSelection({ key: g.key, id })}
         />
       )}
+      </AdminDisclosure>
       {group && (
         <CrmOperationLayer
           compose

@@ -12,7 +12,7 @@ import {CrmProfileValueChange} from './CrmProfileValueChange';
 import {CrmEvidenceAction} from './CrmEvidenceAction';
 import {crmSourcePresentation} from '../../utils/crmSourcePresentation';
 import {profileFields} from '../../utils/crmDynamicProfile';
-import {requestSourceLabel,salesRecentHints,hintOccurrenceTimes,sortFollowupOccurrences,followupWindowGroups,groupSameSourceChanges,profileChangeLabel,profileChangeValues} from '../../utils/crmFollowupPresentation';
+import {requestSourceLabel,salesRecentHints,hintOccurrenceTimes,sortFollowupOccurrences,followupWindowGroups,groupSameSourceChanges,profileChangeLabel,profileChangeValues,hasRecentFollowupGoal} from '../../utils/crmFollowupPresentation';
 import {CrmSalesBrief,profileDisplay} from './CrmSalesBrief';
 import {projectInteractionTimeline} from '../../utils/crmInteractionTimeline';
 import {useCrmExtractions} from './useCrmExtractions';
@@ -27,7 +27,7 @@ import {useCrmGoalReview} from './useCrmGoalReview';
 import {followupOverview} from '../../utils/crmFollowupOverview';
 import {crmMessageTimestamp} from '../../utils/crmMessageTime';
 import {agreementTime} from '../../utils/crmProgressDetails';
-export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children,feedback,onSource,onRefresh,onDirty,onBusy,modalSuspended,canEditProfile,recentSourceId,sourceFocus,onViewAssessment,onViewProfile,onViewStage,stageFeedback,focusTask,focusAgreement,now:clockNow}:any){
+export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children,feedback,onSource,onRefresh,onDirty,onBusy,modalSuspended,canEditProfile,recentSourceId,sourceFocus,onViewAssessment,onViewProfile,focusTask,focusAgreement,now:clockNow}:any){
  const ui=useCrmUiText(lang),openHistory=useContext(CrmHistoryAccess);
 
  const [clock,setClock]=useState(Date.now());const now=clockNow??clock;
@@ -62,10 +62,8 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  const buckets=followupWindowGroups(points,now);
  const sections=[{id:'recent',title:'近7天动态',items:groupFollowupInteractions(groupSameSourceChanges(buckets.recent,lead,factProjection.events),lead,factProjection.events,extraction.rows)},{id:'important',title:'持续重要信息',items:groupFollowupInteractions(groupSameSourceChanges(buckets.important,lead,factProjection.events),lead,factProjection.events,extraction.rows)},{id:'unknown',title:'发生时间未注明',items:groupFollowupInteractions(groupSameSourceChanges(buckets.unknown,lead,factProjection.events),lead,factProjection.events,extraction.rows)}];
  return <div className="crm-followup-focus"><div className="crm-followup-save-feedback">{feedback}{recentSourceId&&<button type="button" className="crm-work-link" onClick={()=>openRecord(recentSourceId)}>{ui("查看本次记录")}</button>}</div>
- {feedback&&recentSourceId&&onViewStage&&canEditProfile&&<button type="button" className="crm-work-link" onClick={()=>onViewStage(recentSourceId)}>{ui("基于本次记录更新阶段")}</button>}
- {stageFeedback&&<p role="status" className="crm-stage-saved-notice">{stageFeedback}</p>}
  {focusTask?.id&&data&&<section id={'crm-notification-task-'+focusTask.id} tabIndex={-1} data-notification-focused className="crm-notification-task-target">{taskView?<><h4>{taskView.action}</h4><p>{taskView.status}</p>{taskView.times.map((v:any,i:number)=><p key={i}>{v.label} · {taskView.formatTime(v.value)}</p>)}</>:<p role="alert">{targetUnavailable(lang)}</p>}</section>}
- <CrmSalesBrief showStage={!openHistory} evidenceEvents={factProjection.events} lead={lead} lang={lang} isLight={isLight} onEvidence={evidence} onProfile={onViewProfile} onStage={onViewStage} canEdit={canEditProfile} milestones={<CrmFactMilestones key={lead.id} lead={lead} lang={lang} isLight={isLight}/>}/>
+ <CrmSalesBrief showStage={false} showGoal={hasRecentFollowupGoal(lead,now)} evidenceEvents={factProjection.events} lead={lead} lang={lang} onEvidence={evidence} onProfile={onViewProfile}/>
  <section className="crm-followup-now" aria-label={ui("沟通动态与重要信息")}><div className="crm-followup-section-heading"><h3>{t('Communication and important information','Komunikasi dan informasi penting','沟通动态与重要信息')}</h3></div>
  <CrmListAgreements focusedId={focusAgreement} lead={lead} lang={lang} timezone={timezone} detail now={now} onCorrect={!disabled&&!editing&&!modalSuspended?(v:any)=>{const log=(lead.followUpLogs||[]).find((l:any)=>[l.id,l.requestId].includes(v.sourceId));if(log)evidence(log.id,'amend',v.id);}:undefined}/>
  <CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} summaryMode hideHeading/>
@@ -82,6 +80,7 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  {past.length>0&&<details className="crm-followup-secondary"><summary>{ui("客户约定历史 ·")}{past.length}</summary>{past.map((a:any)=><div key={a.id}><p>{a.action}</p><small>{agreementTime(a,timezone,lang)} · {ui(({active:'待处理',fulfilled:'已履行',cancelled:'已取消',rescheduled:'已改约',withdrawn:'误记已撤回'} as any)[a.status])}</small>{a.reason&&<p>{a.reason}</p>}{!disabled&&fulfilledAgreementRecord(lead,a.id)&&<button type="button" className="crm-work-link" disabled={modalSuspended} onClick={()=>setRestoreTarget(fulfilledAgreementRecord(lead,a.id))}>{ui('撤销误记履行')}</button>}{(a.fulfilmentCorrections||[]).map((c:any)=><p key={c.id}>{ui('撤销误记履行')} · {c.actor} · {c.reason}</p>)}</div>)}</details>}
  {lead.nextAction&&<details className="crm-followup-secondary"><summary>{ui("客户人工备注")}</summary><p className="crm-progress-original">{lead.nextAction}</p></details>}
  </section>
+ <CrmFactMilestones key={lead.id} lead={lead} lang={lang} isLight={isLight}/>
 
  {(!openHistory||focusRequest?.mode==='amend')&&<details className="crm-followup-source-section" open={ledgerOpen} ref={ledger} onToggle={e=>setLedgerOpen(e.currentTarget.open)}><summary><span>{ui("历史记录与依据")}</span><span>{ui("按原始互动追溯")}</span></summary><div className="crm-followup-source-body"><CrmFactLedger lang={lang} key={lead.id} onProjection={setFactProjection} hideHeading focusRequest={focusRequest} onEditing={setEditing} leadId={lead.id} lead={lead} onDirty={onDirty} onBusy={onBusy} suspended={modalSuspended} canEditProfile={canEditProfile} isLight={isLight} revision={lead.simpleRevision} timezone={timezone} disabled={disabled} onChanged={onRefresh} extractions={extraction.rows} extractionLoading={extraction.loading} extractionError={extraction.error} onReloadExtraction={extraction.reload} onViewAssessment={onViewAssessment} onSource={onSource} requests={data?.requests||[]}/></div></details>}
  {restoreTarget&&<CrmAgreementRestore lead={lead} target={restoreTarget} {...{lang,isLight,timezone,onDirty,onBusy}} onCancel={()=>setRestoreTarget(null)} onSaved={()=>{setRestoreTarget(null);onRefresh?.();}}/>}{children}

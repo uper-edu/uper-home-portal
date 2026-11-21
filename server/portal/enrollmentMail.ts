@@ -1,5 +1,6 @@
 import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
 import {integrationCredential} from './integrationCredentials.ts';
+import {hasConfiguredEnrollmentBank,readEnrollmentBank} from './enrollmentBank.ts';
 import {smtpTransportOptions,smtpCredentialTarget} from './integrationCredentialTargets.ts';
 import {enrollmentOrderEmailPath, portalPublicOrigin, renderEnrollmentEmail} from './enrollmentEmail.ts';
 import {createHash,randomUUID} from 'node:crypto';
@@ -8,7 +9,7 @@ import type {Express,Request,Response} from 'express';
 import {pool,tx} from './store.ts';
 import {validMutationOrigin} from './accessTransport.ts';
 import {invalid} from './trustWorkflow.ts';
-import {enrollmentSimulation} from './enrollmentSimulation.ts';
+import {enrollmentSimulation,isLocalEnrollmentRuntime} from './enrollmentSimulation.ts';
 import {validContactEmail} from '../../src/utils/contactEmail.ts';
 import {activeEnrollmentMailConfig,enrollmentMailPoolLimit,enrollmentSmtpLimit,isMailPoolStrategy,mailPoolDailyLimitMax,mailPoolMembers,mailSecretReferencePattern,mailSmtpEndpoint,mailSmtpHostPattern, type EnrollmentMailConfig, type MailAccount, type MailPoolStrategy} from '../../src/utils/enrollmentMailConfig.ts';
 import {mailCredentialKeyConfigured,mailPasswordFingerprint,resolveMailPassword,sealMailPassword,type StoredMailAccount} from './enrollmentMailCredentials.ts';
@@ -26,13 +27,9 @@ const timezone=()=>process.env.PORTAL_ENROLLMENT_MAIL_TIMEZONE||'Asia/Jakarta';
 
 const transact=<T>(work:(c:Client)=>Promise<T>):Promise<T>=>tx(work,{isolation:'READ COMMITTED'});
 
-const isLocalMailEnvironment=()=>environment()==='dev'&&process.env.TRIAL_DATASET==='local-crm'&&
-  process.env.PORTAL_LOCAL_CUTOVER==='true'&&process.env.PORTAL_DEPLOYMENT!=='remote-dev'&&
-  process.env.MYSQL_TRIAL_SOCKET==='/private/tmp/uper-crm-mysql-local3000.sock';
-
 export function enrollmentMailMode(){
   if(process.env.PORTAL_ENROLLMENT_MAIL_TRANSPORT==='smtp'){
-    if((environment()==='prod'&&process.env.PORTAL_DEPLOYMENT==='production'||environment()==='test'||isLocalMailEnvironment())&&
+    if((environment()==='prod'&&process.env.PORTAL_DEPLOYMENT==='production'||environment()==='test'||isLocalEnrollmentRuntime())&&
       portalPublicOrigin())return 'smtp';
     return 'disabled';
   }
@@ -114,7 +111,8 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
       return {prior:prior.state==='reserved'?'unknown':prior.state,previousAccount:prior.account} as const;
     }
     if(queued&&['waitlist_vacancy','demand_match'].includes(queued.kind)){
-      if(!enrollmentServicePolicy().acceptingNew)return {reason:'paused'} as const;
+      const policy=enrollmentServicePolicy();
+      if(!policy.servicing||!policy.simulation&&!hasConfiguredEnrollmentBank(await readEnrollmentBank(c)))return {reason:'paused'} as const;
       if(!await enrollmentInterestStillAvailable(c,event,recipient,queued))return {reason:'interest_no_longer_available'} as const;
     }
     const {rows:[clock]}=await c.query('SELECT FLOOR(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(6))*1000) AS now_ms');
@@ -181,7 +179,7 @@ async function deliver(account:StoredMailAccount,id:string,recipient:string,mail
     const origin=portalPublicOrigin();
     if(!origin)return 'rejected';
     const site=new URL(origin);
-    if((site.protocol!=='https:'&&!(isLocalMailEnvironment()&&site.origin==='http://localhost:3000')))return 'rejected';
+    if((site.protocol!=='https:'&&!(isLocalEnrollmentRuntime()&&site.origin==='http://localhost:3000')))return 'rejected';
     const transport=nodemailer.createTransport({
       ...options,
       auth:{user:account.address,pass:secret},connectionTimeout:10_000,greetingTimeout:10_000,socketTimeout:20_000,
@@ -484,7 +482,9 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
 // The business event and its pending email are inserted in the same transaction.
 // Only newly queued records are considered, so historical simulated rows are never replayed.
 export function startEnrollmentMail(){
-  if(enrollmentMailMode()==='disabled'||enrollmentMailMode()==='smtp'&&process.env.PORTAL_WORKER_ENABLED==='false')return;
+  const mode=enrollmentMailMode();
+  if(mode==='disabled'||mode==='simulation'&&!enrollmentServicePolicy().maintenance||
+    mode==='smtp'&&process.env.PORTAL_WORKER_ENABLED==='false')return;
   let active=false;
   const tick=async()=>{
     if(active)return;

@@ -1,3 +1,5 @@
+import "./helpers/mockPortalDatabase.mjs";
+
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {mountEnrollmentResolution} from '../server/portal/enrollmentResolution.ts';

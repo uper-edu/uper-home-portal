@@ -32,7 +32,6 @@ import {
   Upload, 
   ExternalLink, 
   Image as ImageIcon, 
-  RefreshCw,
   Award,
   Calendar,
   LayoutList,
@@ -64,7 +63,6 @@ export interface CmsSectionItem {
   icon: any;
   descEn: string;
   descZh: string;
-  defaultCount: number;
 }
 
 export interface CmsSectionGroup {
@@ -84,8 +82,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '合作院校库',
         icon: Building2,
         descEn: 'Chinese & global universities, school partners',
-        descZh: '中国及海外合作高校、国际教育伙伴与校区机构',
-        defaultCount: 54
+        descZh: '中国及海外合作高校、国际教育伙伴与校区机构'
       },
       {
         id: 'trendingPrograms',
@@ -93,8 +90,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '精选热门项目',
         icon: GraduationCap,
         descEn: 'HSK courses, study tours & scholarship tracks',
-        descZh: 'HSK考级班、名校游学营与奖学金直通班型',
-        defaultCount: 8
+        descZh: 'HSK考级班、名校游学营与奖学金直通班型'
       },
       {
         id: 'programGallery',
@@ -102,8 +98,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '首页项目图集',
         icon: LayoutList,
         descEn: 'Manage program images and display order',
-        descZh: '管理项目图片与展示顺序',
-        defaultCount: 0
+        descZh: '管理项目图片与展示顺序'
       },
       {
         id: 'admissionsList',
@@ -111,8 +106,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '录取捷报榜单',
         icon: Award,
         descEn: 'Offer notices, scholarship awards & certificates',
-        descZh: '清北浙大等中国名校录取通知与奖学金捷报',
-        defaultCount: 1
+        descZh: '清北浙大等中国名校录取通知与奖学金捷报'
       }
     ]
   },
@@ -126,8 +120,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '新闻动态资讯',
         icon: Newspaper,
         descEn: 'Education news, policy briefs & announcements',
-        descZh: '赴华留学政策、印尼华文教育前沿与官方公告',
-        defaultCount: 19
+        descZh: '赴华留学政策、印尼华文教育前沿与官方公告'
       },
       {
         id: 'campaigns',
@@ -135,8 +128,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '主题专案活动',
         icon: Calendar,
         descEn: 'Webinars, expos, admissions masterclasses',
-        descZh: '名师公开课、教育展会巡展与留学讲座',
-        defaultCount: 2
+        descZh: '名师公开课、教育展会巡展与留学讲座'
       },
       {
         id: 'newsPage',
@@ -144,8 +136,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '资讯频道栏目',
         icon: LayoutList,
         descEn: 'Channel classification metadata & landing banners',
-        descZh: '官网资讯中心栏目分类、封面图与频道元数据',
-        defaultCount: 7
+        descZh: '官网资讯中心栏目分类、封面图与频道元数据'
       }
     ]
   },
@@ -159,8 +150,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '优秀学员案例',
         icon: Sparkles,
         descEn: 'Alumni testimonials, exam scores & career paths',
-        descZh: '学员真实高分见证、就业转折与赴华学习感言',
-        defaultCount: 5
+        descZh: '学员真实高分见证、就业转折与赴华学习感言'
       }
     ]
   }
@@ -181,22 +171,17 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   const responsiveEditor = ['trendingPrograms', 'partners', 'news', 'admissionsList', 'campaigns', 'studentStories'].includes(activeSection);
   const DisplaySettingsLayout = responsiveEditor ? AdminFormGrid : 'div';
   const [items, setItems] = useState<any[]>([]);
-  const [sectionCounts, setSectionCounts] = useState<Record<CmsSection, number>>({
-    partners: 54,
-    news: 19,
-    trendingPrograms: 8,
-    studentStories: 5,
-    admissionsList: 1,
-    campaigns: 2,
-    newsPage: 7,
-    programGallery: 0
-  });
-  const [contentRead,setContentRead] = useState<{section:CmsSection;state:'loading'|'refreshing'|'ready'|'error'|'denied'}>();
+  const [sectionCounts, setSectionCounts] = useState<Partial<Record<CmsSection, number>>>({});
+  const [contentRead,setContentRead] = useState<{
+    section:CmsSection;state:'loading'|'refreshing'|'ready'|'error'|'denied';hasSnapshot?:boolean;
+  }>();
   const activeSectionRef=useRef(activeSection);
   activeSectionRef.current=activeSection;
   const contentRequests=useRef<Partial<Record<CmsSection,number>>>({});
   const contentState=contentRead?.section===activeSection?contentRead.state:'loading';
   const isLoading=contentState==='loading';
+  const hasSnapshot=contentRead?.section===activeSection&&!!contentRead.hasSnapshot;
+  const canChangeContent=contentState==='ready'&&!pendingCms;
   const [searchQuery, setSearchQuery] = useState('');
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -242,11 +227,15 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     const request=(contentRequests.current[section]??0)+1;
     contentRequests.current[section]=request;
     const current=()=>contentRequests.current[section]===request;
-    if(activeSectionRef.current===section)setContentRead({section,state:retainItems?'refreshing':'loading'});
+    if(activeSectionRef.current===section)setContentRead({section,state:retainItems?'refreshing':'loading',hasSnapshot:retainItems});
     try {
       const res = await fetch(`/api/cms/content/${section}`);
       if(res.status===401||res.status===403){
-        if(current()&&activeSectionRef.current===section)setContentRead({section,state:'denied'});
+        if(current()&&activeSectionRef.current===section){
+          setItems([]);
+          setSectionCounts(prev=>({...prev,[section]:undefined}));
+          setContentRead({section,state:'denied'});
+        }
         return;
       }
       if(!res.ok)throw Error();
@@ -256,10 +245,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       setSectionCounts(prev => ({...prev,[section]:data.items.length}));
       if(activeSectionRef.current===section){
         setItems(data.items);
-        setContentRead({section,state:'ready'});
+        setContentRead({section,state:'ready',hasSnapshot:true});
       }
     } catch {
-      if(current()&&activeSectionRef.current===section)setContentRead({section,state:'error'});
+      if(current()&&activeSectionRef.current===section)setContentRead({section,state:'error',hasSnapshot:retainItems});
     }
   };
 
@@ -271,7 +260,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         const res = await fetch(`/api/cms/content/${sec}`);
         const data = await res.json();
         if (data.success && Array.isArray(data.items)) {
-          setSectionCounts(prev => ({ ...prev, [sec]: data.items.length }));
+          setSectionCounts(prev => contentRequests.current[sec]?prev:{...prev,[sec]:data.items.length});
         }
       } catch {}
     });
@@ -282,7 +271,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   }, [activeSection]);
 
   const handleOpenAdd = () => {
-    if(pendingCms)return;setCmsResult('');
+    if(!canChangeContent)return;setCmsResult('');
     setNotification(null);
     cmsRequestId.current=crypto.randomUUID();
     let emptyItem: any = {};
@@ -380,7 +369,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   };
 
   const handleOpenEdit = (item: any) => {
-    if(pendingCms)return;setCmsResult('');
+    if(!canChangeContent)return;setCmsResult('');
     setNotification(null);
     cmsRequestId.current=crypto.randomUUID();
     cmsDraftBase.current=JSON.stringify(item);
@@ -389,6 +378,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   };
 
   const requestDelete = (item: any) => {
+    if(!canChangeContent)return;
     const id = item._id || item.id;
     const name = item.name || item.title || t('Untitled Item', '无标题内容');
     const subtitle = item.category || item.university || item.school || item.subtitle || '';
@@ -620,7 +610,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                     {group.items.map((sec) => {
                       const Icon = sec.icon;
                       const isActive = activeSection === sec.id;
-                      const count = sectionCounts[sec.id] ?? sec.defaultCount;
+                      const count = sectionCounts[sec.id];
                       return (
                         <button
                           key={sec.id}
@@ -656,13 +646,13 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             </div>
                           </div>
 
-                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 font-semibold ${
+                          {count!==undefined&&<span className={`text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 font-semibold ${
                             isActive
                               ? 'bg-primary-600 text-white'
                               : isLight ? 'bg-slate-200/70 text-slate-600' : 'bg-slate-800 text-slate-400'
                           }`}>
                             {count}
-                          </span>
+                          </span>}
                         </button>
                       );
                     })}
@@ -691,78 +681,31 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
         {/* RIGHT COLUMN: Detail Workspace Main Content Area */}
         <section aria-label={t("Content editing", "内容编辑")} className="flex-1 min-w-0 p-4 sm:p-6 flex flex-col">
-          {/* Active Category Header & Workspace Action Bar */}
-          {(() => {
-            const allItems = CMS_SECTION_GROUPS.flatMap(g => g.items);
-            const activeMeta = allItems.find(s => s.id === activeSection) || allItems[0];
-            const ActiveSectionIcon = activeMeta.icon;
+          <header className="admin-edit-header mb-3" data-theme={isLight?'light':'dark'}>
+            <div className="admin-edit-title">
+              <h2>{t(currentActiveMeta.titleEn,currentActiveMeta.titleZh)}</h2>
+              <p className="crm-work-muted">{t(currentActiveMeta.descEn,currentActiveMeta.descZh)}</p>
+            </div>
+            <div className="admin-page-actions">
+              {contentState!=='denied'&&<AdminRefreshAction label={t('Refresh data','刷新数据')}
+                loading={isLoading||contentState==='refreshing'} onClick={()=>void fetchItems(activeSection,hasSnapshot)}/>}
+              {hasSnapshot&&<CrmPageAction icon={Plus} variant="primary" disabled={!canChangeContent}
+                label={t('Add New Item','新增内容')} onClick={handleOpenAdd}/>}
+            </div>
+          </header>
 
-            return (
-              <header className={`p-4 rounded-xl border mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-950/60 border-slate-800'
-              }`}>
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-primary-600 text-white shadow-xs">
-                    <ActiveSectionIcon className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                        {t(activeMeta.titleEn, activeMeta.titleZh)}
-                      </h3>
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                        isLight ? 'bg-white border-slate-200 text-slate-600' : 'bg-slate-900 border-slate-700 text-slate-400'
-                      }`}>
-                        {items.length} {t('records', '条数据')}
-                      </span>
-                    </div>
-                    <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {t(activeMeta.descEn, activeMeta.descZh)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <AdminRefreshAction label={t('Refresh data','刷新数据')}
-                    loading={isLoading||contentState==='refreshing'}
-                    onClick={()=>void fetchItems(activeSection,contentState==='ready')}/>
-                  <CrmPageAction icon={Plus} variant="primary"
-                    label={t('Add New Item','新增内容')} onClick={handleOpenAdd}/>
-                </div>
-              </header>
-            );
-          })()}
-
-          <AdminSearchField className="mb-4 sm:w-60" label={t('Search in this table','搜索当前分类内容')}
+          {hasSnapshot&&<AdminSearchField className="mb-4 sm:w-60" label={t('Search in this table','搜索当前分类内容')}
             value={searchQuery} onChange={setSearchQuery}
-            placeholder={t('Search in this table...', '搜索当前分类内容...')}/>
+            placeholder={t('Search in this table...', '搜索当前分类内容...')}/>}
 
-          {/* Content Grid / List */}
           <div className="flex-1" aria-busy={isLoading||contentState==='refreshing'}>
-            {isLoading ? (
-              <div className="py-20 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-2">
-                <RefreshCw className="w-6 h-6 animate-spin text-primary-600" />
-                <span>{t('Loading local content...', '正在加载本地数据...')}</span>
-              </div>
-            ) : contentState==='error'||contentState==='denied' ? (
-              <AdminListState lang={lang} state={contentState}
-                message={contentState==='error'?t('Failed to load content','加载内容失败'):undefined}
-                onRetry={()=>void fetchItems(activeSection)}/>
-            ) : filteredItems.length === 0 ? (
-              <div className={`py-16 text-center text-xs rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 ${
-                isLight ? 'border-slate-200 text-slate-400 bg-slate-50/50' : 'border-slate-800 text-slate-500 bg-slate-950/20'
-              }`}>
-                <ImageIcon className="w-8 h-8 opacity-40" />
-                <span>{t('No matching items found in this section.', '未找到符合条件的内容条目。')}</span>
-                <button
-                  type="button"
-                  onClick={handleOpenAdd}
-                  className="mt-1 text-xs text-primary-600 hover:underline font-semibold cursor-pointer"
-                >
-                  + {t('Create first record', '创建第一条数据')}
-                </button>
-              </div>
-            ) : (
+            {isLoading&&<AdminListState lang={lang} state="loading"/>}
+            {(contentState==='error'||contentState==='denied')&&<AdminListState lang={lang} state={contentState}
+              message={contentState==='error'?t('Failed to load content','加载内容失败'):undefined}
+              compact={hasSnapshot} onRetry={()=>void fetchItems(activeSection,hasSnapshot)}/>}
+            {hasSnapshot&&(filteredItems.length===0
+              ? <AdminListState lang={lang} state="empty"/>
+              : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
                 {filteredItems.map((item, idx) => {
                   const itemId = item._id || item.id || `idx-${idx}`;
@@ -831,13 +774,14 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         </span>
 
                         <div className="flex items-center gap-1.5">
-                          <AdminRowAction onClick={() => handleOpenEdit(item)} aria-label={t('Edit','编辑')+' · '+title}>
+                          <AdminRowAction disabled={!canChangeContent} onClick={() => handleOpenEdit(item)} aria-label={t('Edit','编辑')+' · '+title}>
                             <Edit3 size={14} aria-hidden="true"/>
                             {t('Edit', '编辑')}
                           </AdminRowAction>
 
                           <button
                             type="button"
+                            disabled={!canChangeContent}
                             onClick={() => requestDelete(item)}
                             className="p-1.5 rounded-lg transition-colors text-rose-500 hover:bg-rose-500/10 cursor-pointer"
                             title={t('Delete item (double confirmation required)', '删除此项（需二次确认）')}
@@ -851,7 +795,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   );
                 })}
               </div>
-            )}
+            ))}
           </div>
         </section>
       </AdminTopicFrame>

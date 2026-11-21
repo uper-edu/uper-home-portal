@@ -5,8 +5,8 @@ import {PolicySaveError,policySaveResponseError} from './crmPolicyValidation';
 export async function savePolicyTopic(request:PolicyTopicRequest,fetcher:typeof fetch=fetch):Promise<CrmPolicyConfig>{
  try{
   const response=await fetcher('/api/crm/policy-config/topics/'+encodeURIComponent(request.topic),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base:request.base,patch:request.patch}),signal:AbortSignal.timeout(15000)});
-  const body=await response.json();if(!response.ok)throw policySaveResponseError(response.status,body);
-  if(body?.success===true&&body.policy&&policyEqual(topicPatch(body.policy,request.topic),request.patch))return body.policy;
+  const body=await response.json();if(response.status>=400&&response.status<500)throw policySaveResponseError(response.status,body);
+  if(response.ok&&body?.success===true&&body.policy&&policyEqual(topicPatch(body.policy,request.topic),request.patch))return body.policy;
  }catch(error){if(error instanceof PolicySaveError)throw error;}
  try{
   const response=await fetcher('/api/crm/policy-config',{signal:AbortSignal.timeout(15000)});

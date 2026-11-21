@@ -1,3 +1,4 @@
+import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {Plus,X} from 'lucide-react';
 import {AdminCalendarPicker, type AdminCalendarDayMark} from '../admin/AdminCalendarPicker';
 import {previewEnrollmentClassSchedule} from '../../utils/enrollmentClassSchedule';
@@ -239,20 +240,21 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       setDraft({ id: crypto.randomUUID(), revision: 0, state: 'draft', config: { ...initial } });
     }
   }
-  function chooseTemplate(id:string){
+  function chooseTemplate(id:string,{initial=false}={}){
     const template=catalog?.templates.find(item=>item.id===id);
     const course=catalog?.courses.find(item=>item.id===template?.courseId);
     const derived=template&&course&&enrollmentTemplateClassFields(template,course);
     if(!derived)return;
     setDraft(value=>value&&({...value,config:{...value.config,...derived,
       teacher:value.config.teacherType&&value.config.teacherType!==derived.teacherType?'':value.config.teacher}}));
-    setDirty(true);setError('');
+    if(!initial)setDirty(true);
+    setError('');
   }
   useEffect(()=>{
     if(!catalog||!createFrom||createOpened.current===createFrom)return;
     createOpened.current=createFrom;
     edit();
-    chooseTemplate(createFrom);
+    chooseTemplate(createFrom,{initial:true});
   },[catalog,createFrom]);
   function change(name: keyof EnrollmentClassConfig, value: string | number | null) {
     setDraft(current=>{
@@ -501,14 +503,12 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       {hint(name)}
     </AdminField>;
   return <section className="crm-course-catalog" ref={catalogPanel}>
-    <header className="admin-edit-header">
-      <div className="admin-edit-title"><h2>{title}</h2></div>
-      <div className="crm-ops-actions">
+    <AdminTopicHeader title={title} isLight={isLight}
+      subtitle={t(['Create classes from templates, set lesson schedules and preview before publishing.','Buat kelas dari templat, atur jadwal, dan lihat pratinjau sebelum menerbitkan.','从班型模板创建班次，维护上课时间并预览发布。'])} actions={<>
         {target&&<AdminRowAction onClick={onShowAll}>{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
         <AdminRefreshAction label={t(['Refresh', 'Segarkan', '刷新'])} loading={readState==='loading'} onClick={refresh}/>
         <CrmPageAction icon={Plus} variant="primary" label={t(['Create class','Buat kelas','创建班次'])} disabled={readState!=='ready'} onClick={()=>edit()}/>
-      </div>
-    </header>
+    </>}/>
     {!!error && !draft && !insertion && <p role="alert">{error}</p>}
     {saved && <CrmSaveFeedback state="saved" lang={lang}/>}
     {deleted && <CrmSaveFeedback state="saved" lang={lang}>{t(['Class draft deleted.','Draf kelas dihapus.','班次草稿已删除。'])}</CrmSaveFeedback>}

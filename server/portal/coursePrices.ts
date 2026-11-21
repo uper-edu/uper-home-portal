@@ -3,7 +3,18 @@ import { formatCurrency } from '../../src/utils/currency';
 type PublishedCourse = { id: string; sessions: number; total: number; enrollmentLevel?: string };
 type CourseBook = { courses: PublishedCourse[] };
 
-export function courseCatalogueInstruction(book: CourseBook, enrollmentManaged=false) {
+export function courseCatalogueInstruction(book: CourseBook, enrollmentManaged=false, compact=false) {
+  if(compact&&enrollmentManaged){
+    const names=book.courses.filter(course=>!course.enrollmentLevel).map(course=>course.id);
+    return `
+Return exactly one compact JSON object, without Markdown or text outside it:
+{"reply":"","catalogue":null,"enrollment":null,"replyLanguage":"id"}
+Set replyLanguage to the language chosen for this turn (zh, en, or id). An explicit request for a reply language takes priority over the language used in the question. For replies in other languages, omit replyLanguage.
+For Enrollment, keep catalogue null. Use reply for prose and enrollment for the action, with only the fields needed this turn.
+For a legacy course lookup only, use catalogue:{"courses":["exact published name"],"detail":"price"} with reply:"" and enrollment:null. Use "offerings" for course names and class counts, "all" only if all courses are requested, and an empty array when none match. Set unavailable:true when part of the request has no match.
+Published legacy course names: ${JSON.stringify(names)}.
+`;
+  }
   return `
 Return one JSON object with "reply" (string) and "catalogue" (null or an object).
 For an UPER course offering, class count, or published price question, set "reply" to "" and "catalogue" to

@@ -12,7 +12,7 @@ async function readReply(response: Response, onProgress: (progress: ReplyProgres
   let content = "", model: string | undefined, finish: string | undefined, done = false;
   const accept = (payload: any) => {
     if (payload.usage) onUsage(payload.usage);
-    if (payload.error) throw Error("Provider stream error");
+    if (payload.error) throw Error("Provider response error");
     model = payload.model || model;
     const choice = payload.choices?.[0];
     finish = choice?.finish_reason || finish;
@@ -48,27 +48,38 @@ async function readReply(response: Response, onProgress: (progress: ReplyProgres
   }
 
   if (finish === "length") throw Error("Answer truncated");
-  if (streamed && !done) throw Error("Incomplete answer");
-  return content;
+  if (streamed && !done) throw Error("Missing provider stream end marker");
+  if (finish && finish !== "stop") throw Error(`Provider stopped with finish_reason: ${finish}`);
+  return { streamed, content };
 }
 
 export async function readChatProviderReply(
-  send: () => Promise<Response>,
+  send: (stream: boolean) => Promise<Response>,
+  retryBlankStream: boolean,
   onProgress: (progress: ReplyProgress) => void,
-  onCall: (call: ProviderCall) => void,
+  onBlankStreamRetry: () => Promise<void>,
+  onCall?: (call: ProviderCall)=>void,
 ) {
-  const start = Date.now();
-  let model: string|undefined;
-  let usage = chatTokenUsage(null);
-  let status: ProviderCall['status'] = 'error';
-  try {
-    const content = await readReply(await send(), progress => {
-      model = progress.model;
-      onProgress(progress);
-    }, raw => { usage = chatTokenUsage(raw); });
-    status = content.trim() ? 'received' : 'blank';
-    if (status === 'blank') throw Error("Incomplete answer");
-  } finally {
-    onCall({stream:true,retry:false,status,model,usage,elapsedMs:Date.now()-start});
-  }
+  const readCall = async (stream: boolean, retry: boolean) => {
+    const start = Date.now();
+    let model: string|undefined;
+    let usage = chatTokenUsage(null);
+    let status: ProviderCall['status'] = 'error';
+    try {
+      const response = await readReply(await send(stream), progress => {
+        model = progress.model;
+        onProgress(progress);
+      }, raw => { usage = chatTokenUsage(raw); });
+      status = response.content.trim() ? 'received' : 'blank';
+      return response;
+    } finally {
+      onCall?.({stream,retry,status,model,usage,elapsedMs:Date.now()-start});
+    }
+  };
+  const first = await readCall(true,false);
+  if (first.content.trim()) return;
+  if (!retryBlankStream || !first.streamed) throw Error("Blank provider reply");
+  await onBlankStreamRetry();
+  const retry = await readCall(false,true);
+  if (!retry.content.trim()) throw Error("Blank provider reply after non-stream retry");
 }

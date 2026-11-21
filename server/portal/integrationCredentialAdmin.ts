@@ -1,3 +1,4 @@
+import {allowedGaMeasurementId,gaSettings,saveGaSettings} from './gaSettings.ts';
 import {createHash,createHmac,randomUUID} from 'node:crypto';
 import type {Express, Request, Response} from 'express';
 import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
@@ -9,7 +10,7 @@ import {
   type CredentialClient, type CredentialKind, type CredentialValues, type Slot, type CredentialVerificationFailure,
 } from './integrationCredentials.ts';
 import {
-  aiCredentialTarget, cosCredentialTarget, gaCredentialTarget, groupCredentialTarget,
+  aiCredentialTarget, cosCredentialTarget, groupCredentialTarget,
   legacyAiCredential, legacyCosCredential, legacyGaCredential, legacyGroupCredential,
   legacyLarkAppCredential, smtpCredentialTarget, validGroupCredential, verifySmtpCredential,
 } from './integrationCredentialTargets.ts';
@@ -20,7 +21,6 @@ import {resolveMailPassword} from './enrollmentMailCredentials.ts';
 import {LarkApp} from './larkApp.ts';
 import {larkSettings,larkSettingsTarget,larkIdentityLocked,saveLarkSettings} from './larkSettings.ts';
 import {cmsMediaConfiguration,verifyCmsStorageCredential} from '../../cloud/mysql/cms-media-storage.mjs';
-import analytics from '../../src/data/analyticsEnvironments.json';
 
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
 type VerificationResult=boolean|CredentialVerificationFailure;
@@ -81,11 +81,14 @@ async function targetFor(db: CredentialClient, slot: Slot, lock=false): Promise<
           return Boolean(await new LarkApp(env,undefined,async () => ({appId:settings.appId,key:values.key})).token());
         }};
     }
-    case 'ga':
-      if (id !== 'default') return fail(404,'credential_not_found');
-      return {id:gaCredentialTarget(),legacy:legacyGaCredential,fields:['key'],
-        context:[process.env.PORTAL_GA_MEASUREMENT_ID||''], validation:'manual',
-        validate:async () => process.env.PORTAL_GA_MEASUREMENT_ID===analytics.environments[slot.environment as keyof typeof analytics.environments].measurementId};
+    case 'ga': {
+      if(slot.resource!=='default')return fail(404,'credential_not_found');
+      const settings=await gaSettings(db);
+      return {id:credentialTarget([settings.measurementId]),fields:['key'],
+        legacy:()=>settings.measurementId===process.env.PORTAL_GA_MEASUREMENT_ID?legacyGaCredential():undefined,
+        context:[settings.measurementId],validation:'manual',
+        validate:async()=>Boolean(settings.measurementId&&settings.measurementId===allowedGaMeasurementId())};
+    }
     case 'cos': {
       if (id !== 'default') return fail(404,'credential_not_found');
       const {bucket,region,prefix} = cmsMediaConfiguration();
@@ -143,7 +146,24 @@ export function mountIntegrationCredentials(app: Express, {
     await requireAdministrator(q);
     r.json({environment:credentialSlot('ga','default').environment,keyringReady:keyringReady(),
       bootstrap:{database:!!process.env.MYSQL_TRIAL_URL,recovery:!!process.env.ACCESS_OPERATION_KEY},
-      gaEnabled:process.env.PORTAL_GA_DISPATCH_ENABLED==='true'});
+      gaEnabled:(await gaSettings(pool)).dispatchEnabled});
+  }));
+  const gaPath=path+'/ga-settings';
+  app.get(gaPath,route(async(q,r)=>{
+    await requireAdministrator(q);
+    r.json({settings:await gaSettings(pool),allowedMeasurementId:allowedGaMeasurementId()});
+  }));
+  app.post(gaPath,route(async(q,r)=>{
+    const actor=await requireAdministrator(q);
+    const settings=await tx(async db=>{
+      await db.query("SELECT value FROM access_state WHERE id='policy' FOR UPDATE");
+      if((await requireAdministrator(q)).id!==actor.id)return fail(403,'credential_forbidden');
+      const next=await saveGaSettings(db,q.body?.settings);
+      await db.query('INSERT INTO portal_audit(actor,action,data) VALUES(:p1,:p2,:p3)',
+        [actor.id,'access.integration.ga_settings',next]);
+      return next;
+    });
+    r.json({settings,allowedMeasurementId:allowedGaMeasurementId()});
   }));
   const settingsPath=path+'/lark-settings';
   const settingsResult=async(db:CredentialClient,actor:string,id:string)=>
@@ -244,6 +264,8 @@ export function mountIntegrationCredentials(app: Express, {
         if(!keyringReady())return fail(503,'credential_keyring_unavailable');
         if(action==='import'&&state.managed)return fail(403,'credential_forbidden');
         const values=parseValues(destination.fields,action==='import'?destination.legacy():q.body.values);
+        if(slot.type==='lark-group'&&!validGroupCredential(values,destination.fields.includes('signingKey')))
+          return fail(400,'credential_invalid');
         next.candidate=makeCredentialVersion(slot,destination.id,values);
       }else if(action==='verify'){
         const candidate=state.candidate;

@@ -1,14 +1,20 @@
+import {AdminTopicHeader} from './admin/AdminTopicHeader';
 import {AdminSecondaryActions} from './admin/AdminRecordActions';
 import {useEffect,useLayoutEffect,useRef,useState,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
+import {Activity, Bot, Cloud, Database, MessagesSquare, Save} from 'lucide-react';
 import type {CrmLanguage} from '../utils/crmLanguage';
-import {AdminField} from './AdminForm';
+import {AdminField,AdminForm,AdminRequiredNote} from './AdminForm';
 import {AdminFormActions,AdminFormFeedback,AdminFormGrid,AdminFormSection,AdminFormSummary,AdminStaticField} from './AdminFormLayout';
+import {AdminTopicFrame} from './AdminTopicFrame';
+import {AdminPageHeader} from './admin/AdminPageHeader';
+import {AiServicePanel} from './AiServicePanel';
 import {AdminConfirmation} from './admin/AdminConfirmation';
 import {AdminEditor} from './admin/AdminEditor';
 import {AdminListState,AdminListTable} from './admin/AdminList';
 import {AdminRecordEntry,AdminRowAction} from './admin/AdminListControl';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
+import {CrmPageAction} from './crm/CrmPageAction';
 import {AdminStatus} from './AdminStatus';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import {mailSmtpProvider} from '../utils/enrollmentMailConfig';
@@ -31,7 +37,7 @@ type Action='set'|'stage'|'import'|'verify'|'activate'|'revoke';
 
 export function IntegrationCredentialControl({kind,resource,lang,isLight,rowLabel,rowDetails,subject,onDismiss,onChange,renderSummary}:{
   kind:string;resource:string;lang:CrmLanguage;isLight:boolean;rowLabel?:string;rowDetails?:ReactNode;subject?:string;onDismiss?:()=>void;onChange?:()=>void;
-  renderSummary?:(state:{status:ReactNode;manage:ReactNode})=>ReactNode;
+  renderSummary?:(state:{status:ReactNode;manage:ReactNode;candidate?:string})=>ReactNode;
 }){
   const t=translate(lang);
   const smtp=kind==='smtp';
@@ -308,7 +314,7 @@ export function IntegrationCredentialControl({kind,resource,lang,isLight,rowLabe
   return <>
     {!onDismiss&&(renderSummary?renderSummary({
       status:currentStatus??<AdminListState compact lang={lang} state={failure??'loading'} onRetry={load}/>,
-      manage:manageAction,
+      manage:manageAction,candidate:candidate?candidateStatus:undefined,
     }):<AdminFormSection title={label} actions={manageAction}>
       {data?<dl className="access-record-facts">
         <div><dt>{statusLabel}</dt><dd>{currentStatus}</dd></div>
@@ -324,167 +330,363 @@ type LarkSettingsData={settings:LarkSettingsForm;locked:boolean;groups:{id:strin
 const larkSettingsPath=endpoint+'/lark-settings';
 const settingsPending='uper-lark-settings-operation';
 
-function LarkIntegration({lang,isLight}:{lang:CrmLanguage;isLight:boolean}){
-  const t=translate(lang),[data,setData]=useState<LarkSettingsData|null>(null);
-  const [draft,setDraft]=useState<LarkSettingsForm|null>(null),[discard,setDiscard]=useState(false);
+type IntegrationDisplayProps={lang:CrmLanguage;isLight:boolean};
+type IntegrationReadFailure='error'|'denied';
+
+function readFailure(error:unknown):IntegrationReadFailure {
+  return [401,403].includes((error as {status?:number})?.status??0)?'denied':'error';
+}
+
+function LarkIntegration({lang,isLight,onDraftChange,onBusyChange}:IntegrationDisplayProps&{
+  onDraftChange:(dirty:boolean)=>void;onBusyChange:(busy:boolean)=>void;
+}){
+  const t=translate(lang);
+  const [data,setData]=useState<LarkSettingsData|null>(null);
+  const [draft,setDraft]=useState<Partial<Omit<LarkSettingsForm,'revision'>>>({});
+  const [baseRevision,setBaseRevision]=useState<number>();
+  const [loading,setLoading]=useState(true),[failure,setFailure]=useState<IntegrationReadFailure>();
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false);
-  const [loadError,setLoadError]=useState(false);
   const [pending,setPending]=useState(()=>sessionStorage.getItem(settingsPending)||'');
   const load=async()=>{
-    try{setData(await request(larkSettingsPath));setLoadError(false);}
-    catch{setLoadError(true);}
+    setLoading(true);
+    try{setData(await request(larkSettingsPath));setFailure(undefined);}
+    catch(readError){
+      const state=readFailure(readError);
+      if(state==='denied'){setData(null);setDraft({});setBaseRevision(undefined);}
+      setFailure(state);
+    }finally{setLoading(false);}
   };
   useEffect(()=>{void load();},[]);
-  const dirty=!!draft&&JSON.stringify(draft)!==JSON.stringify(data?.settings);
-  useEffect(()=>{
-    if(!dirty)return;
-    const protect=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
-    window.addEventListener('beforeunload',protect);
-    return ()=>window.removeEventListener('beforeunload',protect);
-  },[dirty]);
-  const close=()=>{
-    if(pending||busy)return;
-    if(dirty)setDiscard(true);
-    else setDraft(null);
+  const fields=[['appId','App ID'],['tenant',t('Tenant key','Kunci tenant','租户标识')],
+    ['callback',t('OAuth callback URL','URL callback OAuth','OAuth 回调地址')]] as const;
+  const current=data?.settings;
+  const settings=current&&{...current,
+    ...(!data?.locked?{appId:draft.appId??current.appId,tenant:draft.tenant??current.tenant}:{}),
+    callback:draft.callback??current.callback,revision:baseRevision??current.revision,
   };
+  const dirty=!!settings&&fields.some(([key])=>settings[key]!==current?.[key]);
+  const conflict=dirty&&baseRevision!==current?.revision;
+  useEffect(()=>{
+    onDraftChange(dirty);
+    return ()=>onDraftChange(false);
+  },[dirty,onDraftChange]);
+  useEffect(()=>{
+    onBusyChange(busy);
+    return ()=>onBusyChange(false);
+  },[busy,onBusyChange]);
+
   const confirmSaved=async()=>{
-    sessionStorage.removeItem(settingsPending);setPending('');setDraft(null);setError('');setSaved(true);await load();
+    sessionStorage.removeItem(settingsPending);setPending('');setDraft({});setBaseRevision(undefined);
+    setError('');setSaved(true);await load();
   };
   const save=async(event:React.FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
-    if(!draft||!dirty||busy||pending)return;
+    if(!settings||!dirty||busy||pending||loading||failure||conflict||error==='credential_conflict')return;
     const requestId=crypto.randomUUID();
     sessionStorage.setItem(settingsPending,requestId);
-    setPending(requestId);setBusy(true);setError('');
-    try{await request(larkSettingsPath,{requestId,settings:draft});await confirmSaved();}
+    setPending(requestId);setBusy(true);setError('');setSaved(false);
+    try{await request(larkSettingsPath,{requestId,settings});await confirmSaved();}
     catch(e){
-      const failure=e as Error&{status?:number};
-      if(failure.status&&failure.status<500){sessionStorage.removeItem(settingsPending);setPending('');setError(failure.message);}
-      else setError('unknown');
+      const problem=e as Error&{status?:number};
+      if(problem.status&&problem.status<500){
+        sessionStorage.removeItem(settingsPending);setPending('');
+        if(readFailure(problem)==='denied'){setData(null);setDraft({});setBaseRevision(undefined);setFailure('denied');}
+        else setError(problem.message);
+      }else setError('unknown');
     }finally{setBusy(false);}
   };
   const check=async()=>{
+    if(!pending||busy)return;
     setBusy(true);
     try{
       const result=await request(larkSettingsPath+'/results/'+pending);
       if(result.state==='committed')await confirmSaved();
       else setError('unconfirmed');
-    }catch{setError('unknown');}
+    }catch(problem){
+      if(readFailure(problem)==='denied'){setData(null);setDraft({});setBaseRevision(undefined);setFailure('denied');}
+      else setError('unknown');
+    }
     finally{setBusy(false);}
   };
-  const fields=[['appId','App ID'],['tenant',t('Tenant key','Kunci tenant','租户标识')],
-    ['callback',t('OAuth callback URL','URL callback OAuth','OAuth 回调地址')]] as const;
+  const edit=(key:'appId'|'tenant'|'callback',value:string)=>{
+    setDraft(previous=>{
+      const next={...(dirty?previous:{}),[key]:value};
+      if(value===current?.[key])delete next[key];
+      return next;
+    });
+    if(!dirty)setBaseRevision(current?.revision);
+    if(!conflict&&error!=='credential_conflict')setError('');
+    setSaved(false);
+  };
   const app=t('App and employee binding','Aplikasi dan penautan staf','应用与员工绑定');
   const group=t('Group notifications','Notifikasi grup','群通知');
-  const edit=t('Edit app settings','Edit pengaturan aplikasi','编辑应用设置');
-  const cancel=t('Cancel','Batal','取消');
   const notes:Record<string,string>={
     credential_lark_settings_invalid:t('Check the App ID, tenant key, and the callback URL for this environment.','Periksa App ID, kunci tenant, dan URL callback lingkungan ini.','请核对 App ID、租户标识和当前环境的回调地址。'),
     credential_lark_identity_locked:t('Existing employee bindings lock the App ID and tenant key.','Penautan staf mengunci App ID dan kunci tenant.','已有员工绑定，App ID 和租户标识已锁定。'),
     credential_revoke_current_required:t('Revoke the current app key before changing the app or tenant.','Cabut kunci aplikasi sebelum mengganti aplikasi atau tenant.','更换应用或租户前，请先撤销当前应用密钥。'),
-    credential_conflict:t('Configuration changed. Reload and review before saving again.','Konfigurasi berubah. Muat ulang sebelum menyimpan lagi.','配置已更新，请重新打开并核对后保存。'),
+    credential_conflict:t('Settings changed elsewhere. Refresh and review the saved values.','Pengaturan berubah. Segarkan dan tinjau nilai tersimpan.','配置已在别处更新，请刷新并核对已保存值。'),
     unknown:t('Save result is still unknown. Check the operation result first.','Hasil simpan belum diketahui. Periksa hasil operasi dahulu.','保存结果待确认，请先核对操作结果。'),
     unconfirmed:t('No save receipt yet. Check again before editing.','Tanda terima belum tersedia. Periksa lagi sebelum mengedit.','尚未查到保存回执，请再次核对。'),
   };
-  const feedback=<>
-    {error&&<AdminFormFeedback lang={lang} state={pending?'unknown':'error'}>{notes[error]??t('Could not save app settings.','Pengaturan aplikasi gagal disimpan.','无法保存应用设置。')}</AdminFormFeedback>}
-    {pending&&<AdminFormActions><button type="button" disabled={busy} onClick={()=>void check()}>
-      {t('Check operation result','Periksa hasil operasi','核对操作结果')}</button>
-      {error==='unconfirmed'&&<button type="button" disabled={busy} onClick={()=>{
-        sessionStorage.removeItem(settingsPending);setPending('');setDraft(null);setError('');void load();
-      }}>{t('Reload current configuration','Muat ulang konfigurasi saat ini','重新读取当前配置')}</button>}
-    </AdminFormActions>}
-  </>;
-  return <AdminFormSection title={<><img src="/images/lark-mark.png" alt="" width={20} height={20}/>Lark</>} variant="card" className="lark-integration">
-    {!data||loadError?<AdminListState lang={lang} state={loadError?'error':'loading'} onRetry={load}/>:<>
-      <IntegrationCredentialControl key={data.settings.revision} kind="lark-app" resource="default" subject={app} lang={lang} isLight={isLight}
-        renderSummary={({status,manage})=><AdminFormSection variant="subgroup" title={app} actions={<div className="lark-app-actions">
-        <button type="button" className="crm-work-button" aria-haspopup="dialog" disabled={!!pending} onClick={()=>{
-        setDraft(data.settings);setError('');setSaved(false);
-        }}>{edit}</button>{manage}
-      </div>}>
-        <AdminFormSummary fields={[
-          [fields[0][1],data.settings.appId||'—'],
-          [fields[1][1],data.settings.tenant||'—'],
-          [t('Current credential','Kredensial saat ini','当前凭证'),status],
-          [fields[2][1],data.settings.callback||'—','wide'],
-        ]}/>
-        {data.locked&&<p className="integration-note">{notes.credential_lark_identity_locked}</p>}
-        {saved&&<AdminFormFeedback lang={lang} state="saved"/>}
-        {!draft&&feedback}
-      </AdminFormSection>}/>
-      <AdminFormSection variant="subgroup" title={group} className="lark-group-section" actions={<AdminRecordEntry href="/crm?tab=policy&policyTopic=notification-channels">
-        {t('Notification channels','Kanal notifikasi','通知渠道')}</AdminRecordEntry>}>
-        {data.groups.length?<AdminListTable label={group} headers={[t('Group','Grup','目标群'),t('Delivery mode','Mode pengiriman','投递方式'),
-          t('Current credential','Kredensial saat ini','当前凭证'),t('Actions','Tindakan','操作')]}>
-          {data.groups.map(row=><IntegrationCredentialControl key={row.id} kind="lark-group" resource={row.id} rowLabel={row.name}
-            rowDetails={row.mode==='live'?t('Live','Aktif','真实发送'):t('Simulation','Simulasi','模拟发送')} lang={lang} isLight={isLight}/>)}
-        </AdminListTable>:<AdminListState lang={lang} state="empty"/>}
-      </AdminFormSection>
-    </>}
-    {draft&&<AdminEditor variant="drawer" responsiveForm lang={lang} light={isLight} title={edit} required busy={busy} closeDisabled={!!pending}
-      onClose={close} onSubmit={save} footer={<><button type="button" disabled={busy||!!pending} onClick={close}>{cancel}</button>
-        <button type="submit" data-primary disabled={busy||!!pending||!dirty}>{t('Save','Simpan','保存')}</button></>}>
-      <div data-admin-stack>
+  const blocked=busy||loading||!!pending||!!failure;
+  const label=t('Save','Simpan','保存');
+  return <>
+    <AdminForm lang={lang} onSubmit={save} className="integration-settings-body">
+      <AdminTopicHeader isLight={isLight} title={<>Lark{data&&<AdminRequiredNote lang={lang} inline/>}</>}
+        subtitle={t('Set up the Lark app, employee binding and group notifications.','Kelola aplikasi Lark, penautan akun staf, dan notifikasi grup.','配置 Lark 应用，管理员工绑定和群通知凭证。')}
+        actions={failure!=='denied'&&<>
+          {pending&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void check()}>
+            {t('Check operation result','Periksa hasil operasi','核对操作结果')}</button>}
+          <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={loading} disabled={busy} onClick={()=>void load()}/>
+          {data&&!pending&&<CrmPageAction type="submit" icon={Save} label={label} variant="primary"
+            disabled={blocked||!dirty||conflict||error==='credential_conflict'}/>}
+        </>}/>
+      {(!data||failure)&&<AdminListState lang={lang} state={failure??'loading'} onRetry={load}/>}
+      {data&&settings&&<AdminFormSection title={app} variant="card">
         <AdminFormGrid>
-          {fields.map(([key,label])=>key!=='callback'&&data?.locked?
-            <AdminStaticField key={key} label={label} value={draft[key]}/>:
-            <AdminField key={key} required data-admin-full-width={key==='callback'||undefined}>{label}
-              <input className="admin-text-input" value={draft[key]}
-                type={key==='callback'?'url':'text'} disabled={busy||!!pending} onChange={event=>setDraft({...draft,[key]:event.target.value})}/>
+          {fields.map(([key,fieldLabel])=>key!=='callback'&&data.locked?
+            <AdminStaticField key={key} label={fieldLabel} value={settings[key]}/>:
+            <AdminField key={key} required data-admin-full-width={key==='callback'||undefined}>{fieldLabel}
+              <input className="admin-text-input" value={settings[key]} type={key==='callback'?'url':'text'}
+                disabled={blocked} onChange={event=>edit(key,event.target.value)}/>
             </AdminField>)}
         </AdminFormGrid>
-        {data?.locked&&<p className="integration-note">{notes.credential_lark_identity_locked}</p>}
-        {feedback}
-      </div>
-    </AdminEditor>}
-    {discard&&<AdminConfirmation light={isLight} title={t('Discard unsaved changes?','Buang perubahan?','放弃未保存的更改？')}
-      description={t('The stored app settings will stay as they are.','Pengaturan aplikasi yang tersimpan tetap berlaku.','已保存的应用设置保持原样。')}
-      cancelLabel={cancel} confirmLabel={t('Discard','Buang','放弃')} onCancel={()=>setDiscard(false)}
-      onConfirm={()=>{setDraft(null);setDiscard(false);}}/>}
-  </AdminFormSection>;
+        {data.locked&&<p className="integration-note">{notes.credential_lark_identity_locked}</p>}
+        {busy?<AdminFormFeedback lang={lang} state="saving"/>:
+          (error||pending)&&<AdminFormFeedback lang={lang} state={pending?'unknown':'error'}>
+            {notes[error||'unknown']??t('Could not save app settings.','Pengaturan aplikasi gagal disimpan.','无法保存应用设置。')}
+          </AdminFormFeedback>}
+        {pending&&error==='unconfirmed'&&<AdminFormActions><button type="button" disabled={busy} onClick={()=>{
+          sessionStorage.removeItem(settingsPending);setPending('');setDraft({});setBaseRevision(undefined);setError('');void load();
+        }}>{t('Reload current configuration','Muat ulang konfigurasi saat ini','重新读取当前配置')}</button></AdminFormActions>}
+        {conflict&&<AdminFormSection variant="subgroup" title={t('Review saved values','Tinjau nilai tersimpan','核对已保存值')}>
+          <AdminFormSummary fields={fields.map(([key,fieldLabel])=>[fieldLabel,data.settings[key]||'—',key==='callback'?'wide':undefined])}/>
+          <AdminFormActions><button type="button" disabled={blocked} onClick={()=>{setBaseRevision(data.settings.revision);setError('');}}>
+            {t('Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿')}</button></AdminFormActions>
+        </AdminFormSection>}
+        {saved&&!failure&&!dirty&&<AdminFormFeedback lang={lang} state="saved"/>}
+      </AdminFormSection>}
+    </AdminForm>
+    {data&&<IntegrationCredentialControl key={data.settings.revision} kind="lark-app" resource="default" subject="Lark" lang={lang} isLight={isLight}
+      renderSummary={({status,manage})=><AdminFormSection variant="card"
+        title={t('App credential','Kredensial aplikasi','应用凭证')}>
+        <div className="integration-setting-row">
+          <div><strong>{t('App secret','Rahasia aplikasi','应用密钥')}</strong>{status}</div>{manage}
+        </div>
+      </AdminFormSection>}/>}
+    {data&&<AdminFormSection title={group} variant="card" actions={<AdminRecordEntry href="/crm?tab=policy&policyTopic=notification-channels">
+      {t('Notification channels','Kanal notifikasi','通知渠道')}</AdminRecordEntry>}>
+      {data.groups.length?<AdminListTable label={group} headers={[t('Group','Grup','目标群'),t('Delivery mode','Mode pengiriman','投递方式'),
+        t('Credential status','Status kredensial','凭证状态'),t('Actions','Tindakan','操作')]}>
+        {data.groups.map(row=><IntegrationCredentialControl key={row.id} kind="lark-group" resource={row.id} rowLabel={row.name}
+          rowDetails={row.mode==='live'?t('Live','Aktif','真实发送'):t('Simulation','Simulasi','模拟发送')} lang={lang} isLight={isLight}/>)}
+      </AdminListTable>:<AdminListState lang={lang} state="empty"/>}
+    </AdminFormSection>}
+  </>;
 }
 
-export function IntegrationCredentialsOverview({lang,isLight}:{lang:CrmLanguage;isLight:boolean}){
-  const t=translate(lang);
-  const llmCredentials=t('LLM credentials','Kredensial LLM','LLM 凭证');
-  const [summary,setSummary]=useState<{environment:string;keyringReady:boolean;bootstrap:{database:boolean;recovery:boolean};gaEnabled:boolean}|null>(null);
-  const [busy,setBusy]=useState(true);
-  const load=async()=>{setBusy(true);try{setSummary(await request(endpoint));}catch{setSummary(null);}finally{setBusy(false);}};
+type GaConfiguration={measurementId:string;dispatchEnabled:boolean;revision:number};
+
+function GaIntegration({lang,isLight}:IntegrationDisplayProps){
+  const t=translate(lang),path=endpoint+'/ga-settings';
+  const [data,setData]=useState<{settings:GaConfiguration;allowedMeasurementId:string}>();
+  const [confirmEnable,setConfirmEnable]=useState(false);
+  const [loading,setLoading]=useState(true),[failure,setFailure]=useState<IntegrationReadFailure>();
+  const [busy,setBusy]=useState(false),[notice,setNotice]=useState('');
+  const load=async()=>{
+    setLoading(true);
+    try{setData(await request(path));setFailure(undefined);setNotice('');}
+    catch(error){
+      const state=readFailure(error);
+      if(state==='denied')setData(undefined);
+      setFailure(state);
+    }finally{setLoading(false);}
+  };
   useEffect(()=>{void load();},[]);
-  const ready=(on:boolean)=>on?t('Ready','Siap','就绪'):t('Not ready','Belum siap','未就绪');
-  return <div className="integration-credentials-overview">
-    <header className="admin-page-toolbar"><h1>{t('Integration credentials','Kredensial integrasi','集成凭证')}</h1>
-      <div className="integration-toolbar-actions">
-        <nav aria-label={t('Credentials by workspace','Kredensial per ruang kerja','业务配置入口')}>
-          <AdminRecordEntry href="/system?tab=ai">{t('AI services','Layanan AI','AI 服务配置')}</AdminRecordEntry>
-          <AdminRecordEntry href="/system?tab=mail">{t('Email configuration','Konfigurasi email','邮件配置')}</AdminRecordEntry>
-        </nav>
-        <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={busy} onClick={()=>void load()}/>
+  const reloadNeeded=notice==='unknown'||notice==='credential_conflict';
+  const update=async(dispatchEnabled:boolean)=>{
+    if(!data||!data.allowedMeasurementId||busy||loading||failure||reloadNeeded)return;
+    setConfirmEnable(false);setBusy(true);setNotice('');
+    const settings={...data.settings,measurementId:data.allowedMeasurementId,dispatchEnabled};
+    try{setData(await request(path,{settings}));setNotice('saved');}
+    catch(error){
+      const problem=error as Error&{status?:number};
+      if(readFailure(problem)==='denied'){setData(undefined);setFailure('denied');}
+      else setNotice(problem.status&&problem.status<500?problem.message:'unknown');
+    }finally{setBusy(false);}
+  };
+  const messages:Record<string,string>={
+    credential_ga_settings_invalid:t('Use the measurement ID assigned to this environment.','Gunakan ID pengukuran yang ditetapkan untuk lingkungan ini.','请使用当前环境分配的衡量 ID。'),
+    credential_ga_key_required:t('Save the API Secret for this data stream before enabling dispatch.','Simpan API Secret untuk aliran ini sebelum mengaktifkan pengiriman.','请先保存该数据流的 API Secret，再开启外发。'),
+    credential_conflict:t('Settings changed. Refresh to review the current setting.','Pengaturan berubah. Segarkan untuk meninjau pengaturan saat ini.','设置已变更，请刷新核对当前状态。'),
+  };
+  const needsSetup=!!data&&data.settings.measurementId!==data.allowedMeasurementId;
+  const enabled=!needsSetup&&data?.settings.dispatchEnabled;
+  const enable=t('Enable event delivery','Aktifkan pengiriman peristiwa','开启外发');
+  const action=enabled?t('Pause event delivery','Jeda pengiriman peristiwa','暂停外发'):enable;
+  const delivery=t('CRM event delivery','Pengiriman peristiwa CRM','CRM 事件外发');
+  const blocked=busy||loading||!!failure||reloadNeeded||!data?.allowedMeasurementId;
+  return <>
+    <AdminTopicHeader isLight={isLight} title="Google Analytics"
+      subtitle={t('Review the GA4 data stream and control delivery of CRM payment and refund events.','Tinjau aliran data GA4 serta atur pengiriman peristiwa pembayaran dan pengembalian dana CRM.','核对 GA4 数据流和凭证，管理 CRM 付款与退款事件外发。')} actions={failure!=='denied'&&
+      <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={loading} disabled={busy} onClick={()=>void load()}/>}/>
+    {(!data||failure)&&<AdminListState lang={lang} state={failure??'loading'} onRetry={load}/>}
+    {data&&<IntegrationCredentialControl key={data.settings.measurementId} kind="ga" resource="default" lang={lang} isLight={isLight}
+      subject="Google Analytics" renderSummary={({status,manage})=><AdminFormSection
+        title={t('Data stream','Aliran data','数据流')} variant="card">
+        <div className="integration-setting-row">
+          <AdminStaticField label={t('GA4 measurement ID','ID pengukuran GA4','GA4 衡量 ID')} value={data.allowedMeasurementId}/>
+          {needsSetup&&<button type="button" className="crm-work-button" disabled={blocked} onClick={()=>void update(false)}>
+            {t('Use this environment’s data stream','Gunakan aliran data lingkungan ini','应用当前环境的数据流')}</button>}
+        </div>
+        {needsSetup&&<p className="integration-note">{t('Applying this data stream leaves CRM event delivery off.',
+          'Menerapkan aliran data ini akan membiarkan pengiriman peristiwa CRM nonaktif.','应用数据流后，CRM 事件外发保持关闭。')}</p>}
+        <div className="integration-setting-row"><div><strong>API Secret</strong>{status}</div>{manage}</div>
+      </AdminFormSection>}/>}
+    {data&&<AdminFormSection title={delivery} variant="card">
+      <div className="integration-setting-row">
+        <div>
+          <AdminStatus tone={enabled?'success':'neutral'}>{enabled?t('Enabled','Aktif','已开启'):t('Off','Nonaktif','已关闭')}</AdminStatus>
+          <p className="integration-note">{t('Applies to CRM payment and refund events only.',
+            'Hanya berlaku untuk peristiwa pembayaran dan pengembalian dana CRM.','仅控制 CRM 付款和退款事件外发。')}</p>
+        </div>
+        {!needsSetup&&<button type="button" className="crm-work-button" aria-disabled={blocked||undefined}
+          aria-haspopup={!enabled?'dialog':undefined} onClick={event=>{
+            if(blocked)return;
+            if(enabled)void update(false);
+            else{event.currentTarget.focus({preventScroll:true});setConfirmEnable(true);}
+          }}>{action}</button>}
       </div>
-    </header>
-    <AdminFormSection variant="subgroup" title={t('Environment readiness','Kesiapan lingkungan','环境就绪状态')}>
-      {summary?<AdminFormSummary fields={[
+    </AdminFormSection>}
+    {(busy||notice)&&<AdminFormFeedback lang={lang} state={busy?'saving':notice==='saved'?'saved':notice==='unknown'?'unknown':'error'}>
+      {notice==='unknown'?t('The result is unconfirmed. Refresh to check the delivery status.',
+        'Hasil belum terkonfirmasi. Segarkan untuk memeriksa status pengiriman.','外发设置结果待确认，请刷新核对当前状态。'):messages[notice]}
+    </AdminFormFeedback>}
+    {confirmEnable&&<AdminConfirmation light={isLight} title={enable}
+      description={t('Eligible CRM payment and refund events will be sent to Google Analytics for this environment.',
+        'Peristiwa pembayaran dan pengembalian dana CRM yang memenuhi syarat akan dikirim ke Google Analytics untuk lingkungan ini.',
+        '开启后，符合条件的 CRM 付款和退款事件将发送到当前环境的 Google Analytics 数据流。')}
+      cancelLabel={t('Cancel','Batal','取消')} confirmLabel={enable}
+      onCancel={()=>setConfirmEnable(false)} onConfirm={()=>void update(true)}/>}
+  </>;
+}
+
+const integrationTopics={
+  llm:{icon:Bot,labels:['AI model services','Layanan model AI','AI 模型服务']},
+  lark:{icon:MessagesSquare,labels:['Lark','Lark','Lark']},
+  ga:{icon:Activity,labels:['Google Analytics','Google Analytics','Google Analytics']},
+  cos:{icon:Cloud,labels:['Object storage','Penyimpanan objek','对象存储']},
+  readiness:{icon:Database,labels:['Environment readiness','Kesiapan lingkungan','环境就绪状态']},
+} as const;
+export type IntegrationTopic=keyof typeof integrationTopics;
+export function resolveIntegrationTopic(value:string|null):IntegrationTopic{
+  return value&&Object.hasOwn(integrationTopics,value)?value as IntegrationTopic:'llm';
+}
+
+function IntegrationReadiness({lang,isLight}:IntegrationDisplayProps){
+  const t=translate(lang);
+  const [summary,setSummary]=useState<{environment:string;keyringReady:boolean;bootstrap:{database:boolean;recovery:boolean}}>();
+  const [loading,setLoading]=useState(true),[failure,setFailure]=useState<IntegrationReadFailure>();
+  const load=async()=>{
+    setLoading(true);
+    try{setSummary(await request(endpoint));setFailure(undefined);}
+    catch(error){
+      const state=readFailure(error);
+      if(state==='denied')setSummary(undefined);
+      setFailure(state);
+    }finally{setLoading(false);}
+  };
+  useEffect(()=>{void load();},[]);
+  const ready=(on:boolean)=><AdminStatus tone={on?'success':'neutral'}>
+    {on?t('Ready','Siap','就绪'):t('Not ready','Belum siap','未就绪')}
+  </AdminStatus>;
+  return <>
+    <AdminTopicHeader isLight={isLight} title={t(...integrationTopics.readiness.labels)}
+      subtitle={t('Check whether the database, credential keyring and recovery signing are ready in this environment.','Periksa kesiapan basis data, kumpulan kunci kredensial, dan penandatanganan pemulihan di lingkungan ini.','检查当前环境的数据库连接、凭证主密钥和恢复签名是否就绪。')} actions={failure!=='denied'&&
+      <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={loading} onClick={()=>void load()}/>}/>
+    {(!summary||failure)&&<AdminListState lang={lang} state={failure??'loading'} onRetry={load}/>}
+    {summary&&<AdminFormSection variant="card" title={t('Deployment checks','Pemeriksaan penerapan','部署检查')}>
+      <AdminFormSummary fields={[
         [t('Environment','Lingkungan','环境'),summary.environment],
         [t('Credential keyring','Keyring kredensial','凭证主密钥'),ready(summary.keyringReady)],
         [t('Database connection','Koneksi basis data','数据库连接'),ready(summary.bootstrap.database)],
         [t('Recovery signing','Tanda tangan pemulihan','恢复签名'),ready(summary.bootstrap.recovery)],
-        [t('GA event dispatch','Pengiriman peristiwa GA','GA 外发'),summary.gaEnabled?t('Enabled','Aktif','已启用'):t('Off','Nonaktif','关闭')],
-      ]}/>:<AdminListState lang={lang} state={busy?'loading':'error'}/>}
-    </AdminFormSection>
-    <AdminFormSection title={llmCredentials} variant="card">
-      <AdminListTable className="llm-credentials-table" label={llmCredentials}
-        headers={[t('Provider','Penyedia','供应商'),t('Current credential','Kredensial saat ini','当前凭证'),t('Actions','Tindakan','操作')]}>
-        <IntegrationCredentialControl kind="ai" resource="openai" rowLabel="OpenAI" lang={lang} isLight={isLight}/>
-        <IntegrationCredentialControl kind="ai" resource="deepseek" rowLabel="DeepSeek" lang={lang} isLight={isLight}/>
-      </AdminListTable>
-    </AdminFormSection>
-    <LarkIntegration lang={lang} isLight={isLight}/>
-    {([['ga','Google Analytics','Google Analytics','Google Analytics'],
-      ['cos','Object storage','Penyimpanan objek','对象存储']] as const).map(([kind,en,id,zh])=>
-      <AdminFormSection key={kind} title={t(en,id,zh)} variant="card">
-        <IntegrationCredentialControl kind={kind} resource="default" lang={lang} isLight={isLight}
-          subject={t(en,id,zh)}/>
-      </AdminFormSection>)}
-  </div>;
+      ]}/>
+    </AdminFormSection>}
+  </>;
+}
+
+export function IntegrationCredentialsOverview({lang,isLight,topic,onTopicChange,onDraftChange,onBusyChange}:IntegrationDisplayProps&{
+  topic:IntegrationTopic;onTopicChange:(topic:IntegrationTopic)=>void;
+  onDraftChange:(dirty:boolean)=>void;onBusyChange:(busy:boolean)=>void;
+}){
+  const t=translate(lang);
+  const languageIndex=lang==='zh'?2:lang==='id'?1:0;
+  const title=t('Integrations','Integrasi','集成配置');
+  const llm=t(...integrationTopics.llm.labels),cos=t(...integrationTopics.cos.labels);
+  const providerCredentials=t('Provider credentials','Kredensial penyedia','供应商凭证');
+  const credentialStatus=t('Credential status','Status kredensial','凭证状态');
+  const [visited,setVisited]=useState<IntegrationTopic[]>([topic]);
+  const [larkDraft,setLarkDraft]=useState(false);
+  const [aiDraft,setAiDraft]=useState(false);
+  const [larkBusy,setLarkBusy]=useState(false);
+  const [aiBusy,setAiBusy]=useState(false);
+  const dirty=larkDraft||aiDraft,busy=larkBusy||aiBusy;
+  useEffect(()=>{
+    setVisited(previous=>previous.includes(topic)?previous:[...previous,topic]);
+  },[topic]);
+  useEffect(()=>{
+    onDraftChange(dirty);
+    return ()=>onDraftChange(false);
+  },[dirty,onDraftChange]);
+  useEffect(()=>{
+    onBusyChange(busy);
+    return ()=>onBusyChange(false);
+  },[busy,onBusyChange]);
+  const show=(name:IntegrationTopic)=>topic===name||visited.includes(name);
+  return <section className="integration-credentials-overview crm-ops-workspace-sample" data-theme={isLight?'light':'dark'}>
+    <AdminPageHeader title={title} subtitle={t('Manage connections and credentials for AI, Lark, Google Analytics and object storage.','Kelola koneksi dan kredensial untuk AI, Lark, Google Analytics, dan penyimpanan objek.','管理 AI、Lark、Google Analytics 和对象存储的连接设置与凭证。')}/>
+    <AdminTopicFrame label={title} selection={topic} navigation={
+      <nav className="crm-ops-nav" aria-label={title}>
+        {(Object.entries(integrationTopics) as [IntegrationTopic,(typeof integrationTopics)[IntegrationTopic]][]).map(([id,{icon:Icon,labels}])=>
+          <button key={id} type="button" aria-current={id===topic?'page':undefined} onClick={()=>onTopicChange(id)}>
+            <Icon size={16} aria-hidden="true"/>{labels[languageIndex]}
+            {(id==='lark'&&larkDraft||id==='llm'&&aiDraft)&&<span aria-label={t('Unsaved changes','Perubahan belum disimpan','有未保存修改')}> ●</span>}
+          </button>)}
+      </nav>
+    }>
+      {show('llm')&&<div hidden={topic!=='llm'} className="integration-settings-body">
+        <AiServicePanel lang={lang} isLight={isLight} onDraftChange={setAiDraft} onBusyChange={setAiBusy}
+          renderHeading={(actions,required)=><AdminTopicHeader isLight={isLight} actions={actions}
+            subtitle={t('Choose primary and fallback models, verify provider credentials and review call history.','Pilih model utama dan cadangan, periksa kredensial penyedia, dan tinjau riwayat panggilan.','设置主备模型和推理强度，核对供应商凭证及调用记录。')}
+            title={<>{llm}{required&&<AdminRequiredNote lang={lang} inline/>}</>}/>}>
+          <AdminFormSection title={providerCredentials} variant="card">
+            <AdminListTable className="llm-credentials-table" label={providerCredentials}
+              headers={[t('Provider','Penyedia','供应商'),credentialStatus,t('Actions','Tindakan','操作')]}>
+              <IntegrationCredentialControl kind="ai" resource="openai" rowLabel="OpenAI" lang={lang} isLight={isLight}/>
+              <IntegrationCredentialControl kind="ai" resource="deepseek" rowLabel="DeepSeek" lang={lang} isLight={isLight}/>
+            </AdminListTable>
+          </AdminFormSection>
+        </AiServicePanel>
+      </div>}
+      {show('lark')&&<div hidden={topic!=='lark'} className="integration-settings-body">
+        <LarkIntegration lang={lang} isLight={isLight} onDraftChange={setLarkDraft} onBusyChange={setLarkBusy}/>
+      </div>}
+      {show('ga')&&<div hidden={topic!=='ga'} className="integration-settings-body">
+        <GaIntegration lang={lang} isLight={isLight}/>
+      </div>}
+      {show('cos')&&<div hidden={topic!=='cos'} className="integration-settings-body">
+        <AdminTopicHeader isLight={isLight} title={cos}
+          subtitle={t('Manage the credentials used to access CMS media storage.','Kelola kredensial untuk mengakses penyimpanan media CMS.','管理 CMS 媒体存储的访问凭证，查看配置和核验状态。')}/>
+        <IntegrationCredentialControl kind="cos" resource="default" lang={lang} isLight={isLight} subject={cos}
+          renderSummary={({status,manage,candidate})=><AdminFormSection title={t('Access credentials','Kredensial akses','访问凭证')} variant="card">
+            <div className="integration-setting-row"><div><strong>{credentialStatus}</strong>{status}</div>{manage}</div>
+            {candidate&&<AdminFormSummary fields={[[t('Candidate','Kredensial calon','候选凭证'),candidate]]}/>}
+          </AdminFormSection>}/>
+      </div>}
+      {show('readiness')&&<div hidden={topic!=='readiness'} className="integration-settings-body">
+        <IntegrationReadiness lang={lang} isLight={isLight}/>
+      </div>}
+    </AdminTopicFrame>
+  </section>;
 }

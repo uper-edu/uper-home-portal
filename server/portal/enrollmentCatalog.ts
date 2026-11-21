@@ -9,6 +9,7 @@ import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { enrollmentInstant, enrollmentScheduleReviewFields, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validEnrollmentHolidayDate, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
+import { enrollmentReadiness } from './enrollmentApplication.ts';
 import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
 
@@ -80,7 +81,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         id: row.id, name: row.value.name, active: row.value.active === true, sessions:row.value.sessions, teaching:row.value.teaching,
       }));
       const active = new Set(courses.filter(course=>course.active).map(course=>course.id));
-      const canOperate = enrollmentServicePolicy().acceptingNew;
+      const canOperate = (await enrollmentReadiness(c)).accepting;
       return { templates:await listEnrollmentTemplates(c), classes:classes.map(row=>({...row,canInsert:canOperate&&row.state==='published'&&active.has(row.courseId)&&isEnrollmentInsertionWindow(row)})), courses };
     });
     r.set('Cache-Control', 'no-store').json({ ...data, actorId: actor.id });
@@ -176,7 +177,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         [actor.id, { classId: body.id, state: body.state, revision }]);
       const breakDatesOnly=isPublished&&breakDatesChanged&&data.firstLesson===current.data.firstLesson&&
         data.enrollmentCloses===current.data.enrollmentCloses;
-      if (body.state === 'published' && !breakDatesOnly && enrollmentServicePolicy().servicing) await matchPublishedEnrollmentClass(c,body.id);
+      if (body.state === 'published' && !breakDatesOnly && enrollmentServicePolicy().maintenance) await matchPublishedEnrollmentClass(c,body.id);
       return { classId: body.id, revision };
     }));
     r.json(result);

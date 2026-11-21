@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import {renderToStaticMarkup as render} from 'react-dom/server';
 import {CrmLeadWorkspace} from '../src/components/crm/CrmLeadWorkspace';
-import {CrmCurrentSalesState} from '../src/components/crm/CrmCurrentSalesState';
+import {CrmCustomerContactRestrictions} from '../src/components/crm/CrmCurrentSalesState';
 import {CrmUiProvider} from '../src/components/crm/CrmUiLanguage';
 import {safeStorage} from '../src/utils/safeStorage';
 import {crmUiText} from '../src/utils/crmUiText';
@@ -26,9 +26,9 @@ test('nonreviewers see status and one brief explanation, never a disabled review
  const value={...lead,identityReview:{pending:true,canReview:false}};
  for(const view of ['worklist','table']){const html=workspace(value,view);assert.equal(actions(html),0);assert.equal(badges(html),1);assert.equal((html.match(/核实后可认领和联系/g)||[]).length,1);}
 });
-test('pending without a stage omits the dash, but actual historical stage and stopped restriction remain',()=>{
- const html=render(React.createElement(CrmCurrentSalesState,{lead,lang:'zh'}));assert.ok(!html.includes('crm-current-stage'));assert.equal(badges(html),1);
- const existing=render(React.createElement(CrmCurrentSalesState,{lead:{...lead,currentStage:'progress:enrolled',contactArrangement:{state:'stopped'}},lang:'zh'}));assert.ok(existing.includes('已报名'));assert.ok(existing.includes('已停止主动联系'));assert.equal(badges(existing),1);
+test('pending without a stage omits the dash, while stopped restriction stays independent of historical stage',()=>{
+ const html=render(React.createElement(CrmCustomerContactRestrictions,{lead,lang:'zh'}));assert.ok(!html.includes('crm-current-stage'));assert.equal(badges(html),1);
+ const existing=render(React.createElement(CrmCustomerContactRestrictions,{lead:{...lead,currentStage:'progress:enrolled',contactArrangement:{state:'stopped'}},lang:'zh'}));assert.doesNotMatch(existing,/已报名/);assert.ok(existing.includes('已停止主动联系'));assert.equal(badges(existing),1);
 });
 test('completed identity review leaves one relevant row action for unassigned and assigned customers',()=>{
  const value={...lead,currentStage:'progress:discovery',identityReview:{pending:false,canReview:true}};

@@ -1,3 +1,4 @@
+import {courseCatalogueInstruction} from '../server/portal/coursePrices';
 import {test} from 'node:test';import assert from 'node:assert/strict';
 import {courseDiscount,enrollmentQuoteError} from '../src/utils/crmCoursePricing';
 import {renderConsultationReply} from '../server/portal/coursePrices';
@@ -58,4 +59,15 @@ test('legacy catalogue selections cannot expose standard course totals as Enroll
   }
   assert.equal(managedEnrollmentCatalogueSelection({courses:['Other programme'],detail:'price'},managed),undefined);
   assert.doesNotMatch(courseCatalogueInstruction(managed,true),/新概念汉语/);
+});
+
+test('compact DeepSeek instructions keep a single Enrollment JSON shape and legacy lookup',()=>{
+  const book={courses:[{id:'HSK 1 internal',enrollmentLevel:'HSK 1',sessions:20,total:900000},
+    {id:'Legacy published course',sessions:5,total:250000}]};
+  const prompt=courseCatalogueInstruction(book,true,true);
+  assert.match(prompt,/\"reply\":\"\",\"catalogue\":null,\"enrollment\":null,\"replyLanguage\":\"id\"/);
+  assert.match(prompt,/explicit request for a reply language takes priority/);
+  assert.match(prompt,/Legacy published course/);
+  assert.doesNotMatch(prompt,/HSK 1 internal/);
+  assert.doesNotMatch(courseCatalogueInstruction(book,true),/exactly one compact JSON object/);
 });

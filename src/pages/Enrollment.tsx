@@ -1,3 +1,4 @@
+import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import { enrollmentClassTitle,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
 import { useEffect, useState } from 'react';
@@ -54,7 +55,6 @@ const copy = {
   details: ['Class details', 'Detail kelas', '班次详情'],
   back: ['Back to classes', 'Kembali ke daftar kelas', '返回课程报名'],
   unavailable: ['This class is unavailable.', 'Kelas ini tidak tersedia.', '此班次暂不可查看。'],
-  intakePaused: ['New applications are paused. You can still access existing orders from My enrollments.', 'Pendaftaran baru dijeda. Pesanan yang sudah ada tetap dapat dibuka di Pendaftaran saya.', '新报名暂时暂停。已有订单仍可在「我的报名」查看。'],
   mine: ['My enrollments', 'Pendaftaran saya', '我的报名'],
   waitlistDetail: ['Waitlist details', 'Detail daftar tunggu', '候补详情'],
   demandDetail: ['Course preference details', 'Detail preferensi kursus', '选课需求详情'],
@@ -97,7 +97,7 @@ export default function Enrollment() {
   const [liveClasses, setClasses] = useState<PublicEnrollmentClass[]>();
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
-  const [availability, setAvailability] = useState<{accepting:boolean;servicing:boolean}>();
+  const [availability, setAvailability] = useState<{accepting:boolean;servicing:boolean;reasons:string[]}>();
   const classes=previewToken?(previewRow?[previewRow]:undefined):liveClasses;
   const accepting=previewToken?!!previewRow?.price:availability?.accepting;
   const servicing=availability?.servicing;
@@ -122,11 +122,11 @@ export default function Enrollment() {
     if(previewToken)return;
     const abort = new AbortController();
     fetch('/api/enrollment/availability', { signal: abort.signal, cache: 'no-store' })
-      .then(response => response.ok ? response.json() : {})
-      .then((data: { accepting?: boolean; servicing?:boolean }) => {
-        if (!abort.signal.aborted) setAvailability({accepting:data.accepting===true,servicing:(data.servicing??data.accepting)===true});
+      .then(response => {if(!response.ok)throw Error();return response.json();})
+      .then((data: { accepting?: boolean; servicing?:boolean; reasons?:string[] }) => {
+        if (!abort.signal.aborted) setAvailability({accepting:data.accepting===true,servicing:(data.servicing??data.accepting)===true,reasons:data.reasons??['check_failed']});
       })
-      .catch(() => { if (!abort.signal.aborted) setAvailability({accepting:false,servicing:false}); });
+      .catch(() => { if (!abort.signal.aborted) setAvailability({accepting:false,servicing:true,reasons:['check_failed']}); });
     return () => abort.abort();
   }, [previewToken]);
   useEffect(()=>{
@@ -214,9 +214,12 @@ export default function Enrollment() {
     query.set('appointment',item.id);
     return '/enrollment/help/one-on-one?' + query.toString();
   };
+  const intakeNotice=accepting===false&&!previewToken&&<div role="status" className="enrollment-form-error">
+    {availability?.reasons.map(reason=><p key={reason}>{enrollmentReadinessMessage(reason,language)}</p>)}
+  </div>;
   const classCard=(row:PublicEnrollmentClass,inCatalog:boolean)=><EnrollmentClassPreview key={row.id} row={row} language={language}
     intakePaused={!previewToken&&accepting===false} titleLink={inCatalog?detailsPath(row.id):undefined}
-    actionLink={inCatalog&&accepting?detailsPath(row.id,true):undefined}/>;
+    actionLink={inCatalog&&accepting&&row.price>0?detailsPath(row.id,true):undefined}/>;
 
   if(previewToken&&!previewRow)return <p className="enrollment-screen" role="status">{t('loading')}</p>;
   if(previewToken&&previewView==='apply'&&previewRow)return <section className="enrollment-screen enrollment-apply-screen">
@@ -273,10 +276,10 @@ export default function Enrollment() {
     <Link className="enrollment-back" to={listPath}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>
     <h1>{t('interest')}</h1>
     {accepting === undefined ? <p role="status">{t('loading')}</p> :
-      accepting ? <EnrollmentApplication key={String(interest)} language={language} demandOnly={interest}/> : <p>{t('unavailable')}</p>}
+      accepting ? <EnrollmentApplication key={String(interest)} language={language} demandOnly={interest}/> : intakeNotice}
   </section>;
 
-  if (application && selected && (selected.availability === 'full' || params.get('join')==='1') && !params.has('order') && accepting) {
+  if (application && selected && (selected.availability === 'full' || params.get('join')==='1') && !params.has('order') && accepting && selected.price>0) {
     return <section className="enrollment-screen enrollment-apply-screen enrollment-intake">
       <Link className="enrollment-back" to={listPath}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>
       <h1>{t('join')}</h1>
@@ -284,7 +287,7 @@ export default function Enrollment() {
     </section>;
   }
 
-  if (application && selected && selected.availability !== 'full' && !params.has('order') && accepting) {
+  if (application && selected && selected.availability !== 'full' && !params.has('order') && accepting && selected.price>0) {
     return <section className="enrollment-screen enrollment-apply-screen">
       <EnrollmentApplication key={selected.id} classId={selected.id} language={language} applicationClass={{
         title: enrollmentClassTitle(selected,language),
@@ -305,14 +308,16 @@ export default function Enrollment() {
       : !selected ? <p>{t('unavailable')}</p>
       : application ? <div className="enrollment-apply-layout">
         {classCard(selected, false)}
-        {accepting && <EnrollmentApplication key={selected.id} classId={selected.id} language={language} full={selected.availability==='full'}/>}
-        {accepting===false&&servicing&&<Link className="enrollment-quiet" to={minePath}>{t('intakePaused')}</Link>}
+        {accepting && selected.price>0 && <EnrollmentApplication key={selected.id} classId={selected.id} language={language} full={selected.availability==='full'}/>}
+        {intakeNotice}
+        {accepting===false&&servicing&&<Link className="enrollment-quiet" to={minePath}>{t('mine')}</Link>}
       </div> : <div className="enrollment-detail-layout">
         <aside className="enrollment-detail-aside">
           {classCard(selected, false)}
+          {intakeNotice}
           <div className="enrollment-detail-actions">
             <Link className="enrollment-quiet" to={detailsPath(selected.id)+'&view=rules'}>{t('rules')}</Link>
-            {accepting && <Link className="enrollment-primary" to={detailsPath(selected.id, true)}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>}
+            {accepting && selected.price>0 && <Link className="enrollment-primary" to={detailsPath(selected.id, true)}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>}
           </div>
         </aside>
         <section className="enrollment-course">
@@ -339,6 +344,7 @@ export default function Enrollment() {
       {servicing && <Link className="enrollment-outline" to={minePath}>{t('mine')}<ChevronRight size={16} aria-hidden="true"/></Link>}
     </div>
     <p className="enrollment-subtitle">{t('online')}</p>
+    {intakeNotice}
     <div className="enrollment-catalog-controls">
       <div className="enrollment-levels" role="group" aria-label={t('level')}>
         {catalogLevels.map(value => <button key={value} type="button" aria-pressed={level === value} onClick={() => filter('level', value)}>

@@ -21,7 +21,7 @@ export function CrmPageAction({
 }: {
   label: string;
   icon: LucideIcon;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "warning";
   iconOnly?: boolean;
   loading?: boolean;
   keepFocusWhileLoading?: boolean;

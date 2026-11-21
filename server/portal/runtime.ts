@@ -1,3 +1,4 @@
+import {checkNotificationSettingsVersion,notificationGroupSettingsVersion,readNotificationSettingsReceipt,writeNotificationSettings} from './notificationSettingsOperations.ts';
 import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
 import {operationContext} from './operationContext.ts';
 import {mountIntegrationCredentials} from './integrationCredentialAdmin.ts';
@@ -50,6 +51,7 @@ import {validContactEmail, CONTACT_EMAIL_ERROR} from "../../src/utils/contactEma
 import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
 import {attachFactMilestones} from "./factMilestones.ts";
 import { attachBuyingEvidence } from "./buyingEvidence.ts";
+import { attachPurchaseIntentSuggestions } from "./purchaseIntentSuggestions.ts";
 import {mountTrustRoutes} from "./trustRoutes.ts";
 import {fact,contactsConflict,stageFact,engagement,normalizeContactPhone} from "./trustWorkflow.ts";
 import { mountAccessOperations } from "./accessOperations.ts";
@@ -245,6 +247,7 @@ async function visibleLeadProfiles(e: any) {
     .filter((p) => allowed(e, p)));
   await attachLeadAttention(e, leads, snapshot);
   await attachBuyingEvidence(pool,leads);
+  await attachPurchaseIntentSuggestions(pool,leads,e);
   await attachFactMilestones(pool,leads);
   await attachPaymentSummaries(pool,leads);
   return leads;
@@ -911,6 +914,8 @@ export async function mountPortal(app: Express) {
         ...settings.find((r) => r.id === "crm_policy")?.value,
       };
       const now = Date.now();
+      const servicing=enrollmentServicePolicy().servicing;
+      if(servicing&&filters.sort==="priority")await attachEnrollmentOpportunitySummaries(pool,leads);
       const result = filterAndSummarize(
         leads,
         filters,
@@ -919,7 +924,7 @@ export async function mountPortal(app: Express) {
         now,
         config,
       );
-      if(enrollmentServicePolicy().servicing)await attachEnrollmentOpportunitySummaries(pool,result.leads);
+      if(servicing&&filters.sort!=="priority")await attachEnrollmentOpportunitySummaries(pool,result.leads);
       res.json({
         ...result,
         notificationScope,
@@ -970,6 +975,7 @@ export async function mountPortal(app: Express) {
         ])
       ).rows;
       await attachBuyingEvidence(pool,[l.profile]);
+      await attachPurchaseIntentSuggestions(pool,[l.profile],e);
       await attachFactMilestones(pool,[l.profile]);
       await attachPaymentSummaries(pool,[l.profile]);
       res.json({
@@ -1317,6 +1323,11 @@ export async function mountPortal(app: Express) {
       res.json(globalWorkCalendar(value));
     }),
   );
+  app.get('/api/crm/notification-settings/results/:requestId',wrap(async(req,res)=>{
+    const employee=await staff(req,'notifications.manage');
+    if(!employee.permissions.includes('notifications.manage'))fail(403,'Permission denied');
+    res.set('Cache-Control','no-store').json(await readNotificationSettingsReceipt(pool,employee.id,String(req.params.requestId)));
+  }));
   app.get(
     "/api/crm/notification-rules",
     wrap(async (req, res) => {
@@ -1352,7 +1363,7 @@ export async function mountPortal(app: Express) {
       } catch (e) {
         fail(400, (e as Error).message);
       }
-      await tx(async (c) => {
+      await tx(c=>writeNotificationSettings(c,e.id,'rule',String(req.params.id),req.body,async()=>{
         const groupIds = notificationGroupIds(config);
         const groupRows = await lockNotificationGroupChannels(c, groupIds);
         if (groupRows.some(row => row.config.deleted) || (config.groupIds !== undefined && groupRows.length !== groupIds.length))
@@ -1362,6 +1373,7 @@ export async function mountPortal(app: Express) {
             req.params.id,
           ])
         ).rows[0];
+        checkNotificationSettingsVersion(req.body.expectedVersion,Number(old?.version??0));
         if (old?.config.deleted) fail(409, "This policy has been deleted. Use a new configuration ID.");
         if((old?.config.requiresRoutingReview || config.requiresRoutingReview) && req.body.confirmRoutingReset!==true){config.requiresRoutingReview=true;if(req.body.enabled===true)fail(409,"Confirm routing review before enabling");}
         if(req.body.confirmRoutingReset===true)delete config.requiresRoutingReview;
@@ -1380,7 +1392,8 @@ export async function mountPortal(app: Express) {
           [e.id, "rule.save", { id: req.params.id, version }],
         );
         auditLog(e.id, "rule.save");
-      });
+        return {success:true};
+      }));
       res.json({ success: true });
     }),
   );
@@ -1594,6 +1607,7 @@ export async function mountPortal(app: Express) {
               const linked = references.filter(ref => ref.channel === row.id);
               return {
               ...row,
+              settingsVersion:notificationGroupSettingsVersion(row.config),
               config: {
                 ...publicGroupChannelConfig(row.config),
                 ...(usesLegacyProductionGroupWebhook(row.config) ? { secretRef: row.config.secretRef } : {}),
@@ -1635,8 +1649,9 @@ export async function mountPortal(app: Express) {
       const app=mode==='live'?await larkApplication():undefined;
       if (mode === "live" && (isolatedLarkRuntime() || !app?.appId || !app.key))
         fail(409, "Live personal delivery is unavailable.");
-      const result = await tx(async c => {
+      const result = await tx(c=>writeNotificationSettings(c,employee.id,'personal',PERSONAL_CHANNEL_SETTING,req.body,async()=>{
         const current = await personalLarkChannel(c, true);
+        checkNotificationSettingsVersion(req.body.expectedVersion,current.revision);
         if (current.mode === mode) return current;
         if (current.revision !== revision) fail(409, "Channel settings changed. Refresh before saving.");
         const next = { mode, revision: revision + 1 };
@@ -1645,8 +1660,8 @@ export async function mountPortal(app: Express) {
           employee.id, "channel.save", { id: PERSONAL_CHANNEL_SETTING, mode, version: next.revision },
         ]);
         return next;
-      });
-      res.json(result);
+      }));
+      res.json({mode:result.mode,revision:result.revision});
     }),
   );
   app.post(
@@ -1754,13 +1769,14 @@ export async function mountPortal(app: Express) {
       if (webhook !== undefined && webhook !== null &&
           (typeof webhook !== "string" || webhook.length > 512 || !validWebhook(webhook.trim())))
         fail(400, "Enter a valid Lark group Webhook address");
-      await tx(async (c) => {
+      await tx(c=>writeNotificationSettings(c,e.id,'group',channelId,req.body,async()=>{
         const previous = (
           await c.query(
             "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE",
             [channelId],
           )
         ).rows[0]?.config;
+        checkNotificationSettingsVersion(req.body.expectedVersion,notificationGroupSettingsVersion(previous));
         if (previous?.deleted) fail(409, "Notification channel has been deleted.");
         const previousSigning = previous?.signingEnabled ?? Boolean(previous?.signingSecretRef);
         if (!isAiAdministrator(e) &&
@@ -1855,7 +1871,8 @@ export async function mountPortal(app: Express) {
             } : {}) },
           ],
         );
-      });
+        return {success:true};
+      }));
       auditLog(e.id, "channel.save");
       res.json({ success: true });
     }),
@@ -1990,12 +2007,12 @@ export async function mountPortal(app: Express) {
         ...DEFAULT_CRM_POLICY_CONFIG,
         ...settings.find((r) => r.id === "crm_policy")?.value,
       };
-      res
-        .attachment("leads.json")
-        .json(
-          filterAndSummarize(rows, filters, e.id, timezone, Date.now(), config)
-            .leads,
-        );
+      const useOpportunityPriority=filters.sort==="priority"&&enrollmentServicePolicy().servicing;
+      const rankingRows=useOpportunityPriority?rows.map(row=>({...row})):rows;
+      if(useOpportunityPriority)await attachEnrollmentOpportunitySummaries(pool,rankingRows);
+      const {leads}=filterAndSummarize(rankingRows,filters,e.id,timezone,Date.now(),config);
+      const originalRows=new Map(rows.map(row=>[row.id,row]));
+      res.attachment("leads.json").json(leads.map(lead=>originalRows.get(lead.id)));
     }),
   );
   app.get('/api/crm/campaign-save-results/:requestId',wrap(campaignSaveResultHandler(pool,req=>platform.authenticate(req))));

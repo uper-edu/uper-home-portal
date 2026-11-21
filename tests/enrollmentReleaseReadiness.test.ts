@@ -3,24 +3,33 @@ import test from 'node:test';
 import {enrollmentServicePolicy} from '../server/portal/enrollmentRuntime.ts';
 import {hasConfiguredEnrollmentBank} from '../server/portal/enrollmentBank.ts';
 
-test('deployment and intake require separate opt-ins, so pausing intake preserves servicing',()=>{
+test('only approved deployments can opt in to enrollment servicing',()=>{
   const prod={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production'};
-  assert.deepEqual(enrollmentServicePolicy({...prod,PORTAL_ENROLLMENT_ACCEPTING_NEW:'true'}),
-    {simulation:false,servicing:false,acceptingNew:false});
-  assert.deepEqual(enrollmentServicePolicy({...prod,PORTAL_ENROLLMENT_SERVICE_ENABLED:'true'}),
-    {simulation:false,servicing:true,acceptingNew:false});
-  const open={PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',PORTAL_ENROLLMENT_ACCEPTING_NEW:'true'};
-  assert.deepEqual(enrollmentServicePolicy({...prod,...open}),{simulation:false,servicing:true,acceptingNew:true});
-  assert.equal(enrollmentServicePolicy({...prod,...open,PORTAL_DEPLOYMENT:'remote-dev'}).servicing,false);
-  assert.equal(enrollmentServicePolicy({PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial',...open}).acceptingNew,true);
+  const enabled={PORTAL_ENROLLMENT_SERVICE_ENABLED:'true'};
+  assert.deepEqual(enrollmentServicePolicy(prod),{simulation:false,servicing:false,maintenance:false});
+  assert.deepEqual(enrollmentServicePolicy({...prod,...enabled}),{simulation:false,servicing:true,maintenance:true});
+  assert.equal(enrollmentServicePolicy({...prod,...enabled,PORTAL_DEPLOYMENT:'remote-dev'}).servicing,false);
+  assert.equal(enrollmentServicePolicy({PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial',...enabled}).servicing,true);
 });
 
-test('the protected local simulation can pause intake without losing existing order routes',()=>{
-  const local={PORTAL_ENV:'dev',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',PORTAL_WORKER_ENABLED:'false',
-    PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/tmp/test-mailbox',MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock'};
-  assert.deepEqual(enrollmentServicePolicy(local),{simulation:true,servicing:true,acceptingNew:true});
-  assert.deepEqual(enrollmentServicePolicy({...local,PORTAL_ENROLLMENT_ACCEPTING_NEW:'false'}),
-    {simulation:true,servicing:true,acceptingNew:false});
+const local={PORTAL_ENV:'dev',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',PORTAL_WORKER_ENABLED:'true',
+  MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock'};
+
+test('normal local startup serves existing orders without enabling mail simulation or automatic maintenance',()=>{
+  assert.deepEqual(enrollmentServicePolicy(local),{simulation:false,servicing:true,maintenance:false});
+  assert.equal(enrollmentServicePolicy({...local,PORTAL_DEPLOYMENT:'remote-dev'}).servicing,false);
+  assert.equal(enrollmentServicePolicy({...local,MYSQL_TRIAL_SOCKET:'/tmp/other.sock'}).servicing,false);
+});
+
+test('local mail simulation is independent of the CRM worker',()=>{
+  const simulation={...local,PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/tmp/test-mailbox'};
+  assert.deepEqual(enrollmentServicePolicy(simulation),{simulation:true,servicing:true,maintenance:false});
+  assert.deepEqual(enrollmentServicePolicy({...simulation,PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',PORTAL_WORKER_ENABLED:'false'}),
+    {simulation:true,servicing:true,maintenance:true});
+  for(const transport of ['smtp','disabled']){
+    assert.deepEqual(enrollmentServicePolicy({...simulation,PORTAL_ENROLLMENT_MAIL_TRANSPORT:transport}),
+      {simulation:false,servicing:true,maintenance:false});
+  }
 });
 
 test('a saved but partially replaced test bank is still ineligible for live payments',()=>{
@@ -30,4 +39,23 @@ test('a saved but partially replaced test bank is still ineligible for live paym
     assert.equal(hasConfiguredEnrollmentBank({bank:{...bank,...field},revision:1}),false);
   }
   assert.equal(hasConfiguredEnrollmentBank({bank,revision:1}),true);
+});
+
+test('live intake requires bank and OTP readiness while serving existing orders',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {enrollmentReadiness}=await import('../server/portal/enrollmentApplication.ts');
+  const bank={name:'Bank',accountName:'UPER',accountNumber:'12345678'};
+  const client=(configured:boolean)=>({query:async(sql:string)=>{
+    assert.match(sql,/enrollment_bank/);
+    return {rows:configured?[{value:{bank,revision:1}}]:[]};
+  }});
+  const servicing={servicing:true,simulation:false,maintenance:false};
+  assert.deepEqual(await enrollmentReadiness(client(false),servicing),
+    {accepting:false,servicing:true,reasons:['bank_required','mail_required']});
+  assert.deepEqual(await enrollmentReadiness(client(true),servicing),
+    {accepting:false,servicing:true,reasons:['mail_required']});
+  assert.deepEqual(await enrollmentReadiness(client(false),{...servicing,simulation:true}),
+    {accepting:true,servicing:true,reasons:[]});
+  assert.deepEqual(await enrollmentReadiness(client(false),{...servicing,servicing:false}),
+    {accepting:false,servicing:false,reasons:['service_disabled']});
 });

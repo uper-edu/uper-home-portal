@@ -29,7 +29,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.crm-page-action:not(.crm-page-action--primary):hover:not(:disabled):not([aria-disabled=true]) {
+.crm-page-action:not(.crm-page-action--primary,.crm-page-action--warning):hover:not(:disabled):not([aria-disabled=true]) {
   background: #f8fafc;
   border-color: #94a3b8;
 }
@@ -62,7 +62,7 @@
   border-color: #475569;
   color: #e2e8f0;
 }
-[data-theme="dark"] .crm-page-action:not(.crm-page-action--primary):hover:not(:disabled):not([aria-disabled=true]) {
+[data-theme="dark"] .crm-page-action:not(.crm-page-action--primary,.crm-page-action--warning):hover:not(:disabled):not([aria-disabled=true]) {
   background: #243247;
   border-color: #64748b;
 }
@@ -77,6 +77,15 @@
 }
 [data-theme="dark"] .crm-page-action:focus-visible {
   outline-color: #5eead4;
+}
+.crm-page-action--warning,
+[data-theme="dark"] .crm-page-action--warning {
+  background: var(--admin-warning-bg);
+  border-color: var(--admin-warning-border);
+  color: var(--admin-warning);
+}
+.crm-page-action--warning:hover:not(:disabled):not([aria-disabled=true]) {
+  box-shadow: inset 0 0 0 1px var(--admin-warning-border);
 }
 .crm-page-action-spinner {
   animation: crm-page-action-spin 1s linear infinite;

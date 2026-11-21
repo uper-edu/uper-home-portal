@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CrmPageIdentity } from './CrmPageIdentity';
+import { AdminPageHeader } from '../admin/AdminPageHeader';
 import { crmLocale, type CrmLanguage } from '../../utils/crmLanguage';
 import { useAdminTheme } from '../../utils/adminPreferences';
 import { formatCurrency } from '../../utils/currency';
@@ -58,7 +58,7 @@ export function CrmEnrollmentNoticeTarget({lang}:{lang:CrmLanguage}) {
       (data.pendingAmount!==null&&data.pendingUnknownCount?t(` · 另有 ${data.pendingUnknownCount} 笔金额未知`,` · ${data.pendingUnknownCount} more of unknown amount`,` · ${data.pendingUnknownCount} transfer lain belum diketahui jumlahnya`):'')]);
   return <main data-admin-workspace="crm" data-theme={isLight?'light':'dark'} className="crm-enrollment-notice-target">
     <a className="crm-work-link" href="/crm">{t('返回 CRM','Back to CRM','Kembali ke CRM')}</a>
-    <CrmPageIdentity title={title}/>
+    <AdminPageHeader title={title} subtitle={t('查看本条招生通知关联的报名和收款信息。','Review the enrollment and payment details linked to this notification.','Lihat detail pendaftaran dan pembayaran yang terkait dengan notifikasi ini.')}/>
     {error?<p role="alert">{error===403||error===401?t('无权查看此记录。','You cannot access this record.','Anda tidak dapat mengakses catatan ini.'):
       error===404?t('记录不存在。','Record not found.','Catatan tidak ditemukan.'):t('暂时无法读取，请刷新后重试。','Unable to load. Refresh to try again.','Belum dapat dimuat. Muat ulang untuk mencoba lagi.')}</p>:
       !data?<p role="status">{t('正在加载…','Loading…','Memuat…')}</p>:<>

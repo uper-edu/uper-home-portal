@@ -1,3 +1,5 @@
+import "./helpers/mockPortalDatabase.mjs";
+
 import test from'node:test';import assert from'node:assert/strict';import React from'react';import{renderToStaticMarkup}from'react-dom/server';
 import{CrmSimpleWorkflow}from'../src/components/crm/CrmSimpleWorkflow';import{contactOccurrence,projectInteractionTimeline}from'../src/utils/crmInteractionTimeline';import{contactDraftIncomplete,prepareProgressDraft,progressContactTime}from'../src/utils/crmProgressDraft';import{saveSimpleSalesWorkflow}from'../server/portal/simpleSalesWorkflow';
 const clock=new Date('2026-10-25T10:00:00Z'),base={recordKind:'contact',channel:'WhatsApp',connectStatus:'No Response',summary:'模拟联系，未回复',contactDirection:'sales',occurrenceMode:'unknown'};

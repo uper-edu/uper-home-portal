@@ -52,7 +52,6 @@ export async function larkApplication(db?:CredentialClient){
   return {...settings,key};
 }
 
-export const gaCredentialTarget = (env = process.env) => credentialTarget([env.PORTAL_GA_MEASUREMENT_ID || '']);
 export const legacyGaCredential = (env = process.env) => env.PORTAL_GA_API_SECRET?.trim() ? {key: env.PORTAL_GA_API_SECRET.trim()} : undefined;
 
 export const cosCredentialTarget = (env = process.env) => {

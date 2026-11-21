@@ -1,6 +1,8 @@
 import {IntegrationCredentialControl} from './IntegrationCredentials';
 import {AdminDateField,completeAdminDateTime} from './admin/AdminDateField';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
+import {AdminTopicHeader} from './admin/AdminTopicHeader';
+import {CrmPageAction} from './crm/CrmPageAction';
 import {AdminConfirmation} from './admin/AdminConfirmation';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminListPagination,AdminListState,AdminListTable} from './admin/AdminList';
@@ -13,7 +15,7 @@ import {larkNotificationColor} from '../utils/larkNotificationColors';
 import {dailyDigestPreview} from '../utils/larkDailyDigest';
 import {larkNotificationSample} from '../utils/larkNotificationSamples';
 import {standardLarkKinds,type LarkKind,larkNotificationPreview} from '../utils/larkNotificationPresentation';
-import {AdminFormFeedback,AdminFormSection} from './AdminFormLayout';
+import {AdminFormFeedback,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
 import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
 import { LarkChannelTestControls, type LarkChannelTest } from "./crm/LarkChannelTestControls";
 import {crmFormText} from '../utils/crmFormLanguage';
@@ -22,7 +24,7 @@ import {AdminField,AdminRequiredNote,AdminFieldLabel} from './AdminForm';
 import {notificationTopicIcons} from "./crm/notificationTopicIcons";
 import {createElement} from "react";
 import {AdminTopicFrame} from "./AdminTopicFrame";
-import {notificationTopics, operationGroups} from "./crm/operationsSections";
+import {notificationTopics} from "./crm/operationsSections";
 import { CrmSingleSelect } from "./crm/CrmSingleSelect";
 import { crmId } from "../utils/crmIndonesian";
 import { notificationPlanningSummary } from '../utils/notificationPlanning';
@@ -109,6 +111,7 @@ interface Row {
   config?: Rule & Channel;
   enabled?: boolean;
   version?: number;
+  settingsVersion?: string;
   [key: string]: any;
 }
 const initialRule: Rule = {
@@ -254,19 +257,30 @@ export default function NotificationCenter({
     if (editor) {
       editorPanel.current?.scrollIntoView({ block: "start" });
       editorHeading.current?.focus({ preventScroll: true });
-      return;
     }
-    if (!editorReturn.current) return;
-    const trigger = document.getElementById(editorReturn.current);
-    editorReturn.current = null;
-    trigger?.focus();
   }, [editor]);
+  useEffect(() => {
+    const id=editorReturn.current;
+    if (editor || busy || !active || !id) return;
+    const frame=requestAnimationFrame(()=>{
+      const trigger=document.getElementById(id)??panelRef.current?.querySelector<HTMLElement>('.crm-page-action');
+      trigger?.focus({preventScroll:true});
+      editorReturn.current=null;
+    });
+    return()=>cancelAnimationFrame(frame);
+  }, [editor,busy,active]);
   const channelNameInput = useRef<HTMLInputElement>(null);
   const signingRefInput = useRef<HTMLInputElement>(null);
   const webhookInput = useRef<HTMLInputElement>(null);
   const webhookAction = useRef<HTMLButtonElement>(null);
   const undoWebhookAction = useRef<HTMLButtonElement>(null);
   const editorBaseline=useRef<string|null>(null);
+  const editorVersion=useRef<number|string|null|undefined>(undefined);
+  const [confirmEnable,setConfirmEnable]=useState(false);
+  const [saveResult,setSaveResult]=useState<{requestId:string;enabled:boolean;lookup?:'missing'|'error'}>();
+  const [settingsConflict,setSettingsConflict]=useState(false);
+  const editorBlocked=busy||!!saveResult;
+
   const [discardEditor,setDiscardEditor]=useState<null|{run:()=>void}>(null);
   const editorSnapshot=JSON.stringify({key,config:editor==='rule'?rule:channel,routingReviewed,webhookEdited:webhookDraft!==undefined});
   const editorDirty=Boolean(editor&&editorBaseline.current!==null&&editorBaseline.current!==editorSnapshot);
@@ -276,7 +290,7 @@ export default function NotificationCenter({
     if (webhookDraft === null) undoWebhookAction.current?.focus();
   }, [webhookDraft]);
   useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(editorDirty||busy){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[editorDirty,busy]);
-  const leaveEditor=(run:()=>void)=>{if(busy)return;if(editorDirty)setDiscardEditor({run});else run();};
+  const leaveEditor=(run:()=>void)=>{if(editorBlocked)return;if(editorDirty)setDiscardEditor({run});else run();};
   const [filterOptions, setFilterOptions] = useState<Record<string, string[]>>({
     sources: [],
     tiers: [],
@@ -521,6 +535,9 @@ export default function NotificationCenter({
   const systemGroupEditor = editor === "channel" && !personalChannelEditor && rows.some(row => row.id === key && row.systemManaged);
   const selectedGroupIds = notificationGroupIds(rule);
   const ruleConfig = { ...rule, group: "", groupIds: selectedGroupIds };
+  const conflictRow=settingsConflict?rows.find(row=>row.id===key):undefined;
+  const freshConflict=conflictRow&&(editor==='rule'?conflictRow.version!==editorVersion.current:
+    personalChannelEditor?conflictRow.config?.revision!==editorVersion.current:conflictRow.settingsVersion!==editorVersion.current);
   const systemGroupLabel = t("Lark 群通知", "Lark group notifications");
   const isSystemGroupReference = (id: string) => {
     const row = channels.find(channel => channel.id === id);
@@ -623,7 +640,35 @@ export default function NotificationCenter({
       ? <AdminFormSection className="crm-form-section notification-form-section" title={title}>{fields}</AdminFormSection>
       : fields;
   };
+  const finishSettingsSave=async(enabled:boolean,receipt=false)=>{
+    setSaveResult(undefined);
+    setEditor(null);
+    setNotice(receipt?cancelText('已查到本次保存回执。','The save receipt was confirmed.','Bukti penyimpanan terkonfirmasi.'):
+      editor==='rule'?(enabled?t('策略已启用，仅影响新事件','Policy enabled for new events'):
+        t('策略已停用并保存为草稿','Policy saved as inactive draft')):t('渠道配置已保存','Channel saved'));
+    await load();
+  };
+  const checkSettingsSave=async()=>{
+    if(busy||!canEdit||!saveResult)return;
+    setBusy(true);
+    try{
+      const receipt=await api('notification-settings/results/'+encodeURIComponent(saveResult.requestId));
+      if(receipt?.success!==true)throw Error();
+      await finishSettingsSave(saveResult.enabled,true);
+    }catch(error){
+      setSaveResult({...saveResult,lookup:(error as {status?:number}).status===404?'missing':'error'});
+    }finally{setBusy(false);}
+  };
   async function save(enabled: boolean) {
+    if(!canEdit||editorBlocked||settingsConflict)return;
+    setConfirmEnable(false);
+    let submitted=false;
+    const requestId=crypto.randomUUID();
+    const expectedVersion=editorVersion.current;
+    const persist=(path:string,config:object)=>{
+      submitted=true;
+      return api(path,{...config,requestId,expectedVersion});
+    };
     setBusy(true);
     setError("");
     try {
@@ -642,22 +687,13 @@ export default function NotificationCenter({
             : selectedGroupIds.length > MAX_NOTIFICATION_GROUPS ? "Select up to 20 distinct Lark group channels."
             : "One or more Lark group channels are no longer available.");
         }
-        await api("notification-rules/" + encodeURIComponent(key), {
+        await persist("notification-rules/" + encodeURIComponent(key), {
           config: ruleConfig,
           enabled,
           confirmRoutingReset: routingReviewed,
         });
       } else if (personalChannelEditor) {
-        const target = { mode: channel.mode, revision: channel.revision };
-        try {
-          await api("notification-personal-channel", target);
-        } catch (error) {
-          const status = (error as {status?: number}).status;
-          if (status && status < 500) throw error;
-          const current = await api("notification-channels").catch(() => null);
-          if (current?.personalChannel?.mode !== target.mode)
-            throw Error("Channel save outcome is unknown. Refresh to check the current mode.");
-        }
+        await persist("notification-personal-channel",{mode:channel.mode,revision:channel.revision});
       } else {
         const config = { ...channel };
         if (!systemGroupEditor && !config.groupName?.trim()) {
@@ -686,22 +722,20 @@ export default function NotificationCenter({
         }
         if(managedCredentials||!canManageCredentials){delete config.signingSecretRef;delete config.secretRef;}
         if(!canManageCredentials)delete config.signingEnabled;
-        await api("notification-channels/" + encodeURIComponent(key), {
+        await persist("notification-channels/" + encodeURIComponent(key), {
           ...config,
           webhook: managedCredentials||!canManageCredentials ? undefined : typeof webhookDraft === "string" ? webhookDraft.trim() : webhookDraft,
         });
       }
-      setEditor(null);
-      setNotice(
-        editor === "rule"
-          ? enabled
-            ? t("策略已启用，仅影响新事件", "Policy enabled for new events")
-            : t("策略已停用并保存为草稿", "Policy saved as inactive draft")
-          : t("渠道配置已保存", "Channel saved"),
-      );
-      await load();
+      await finishSettingsSave(enabled);
     } catch (e) {
-      setError((e as Error).message);
+      const failure=e as Error&{status?:number};
+      if(submitted&&(!failure.status||failure.status>=500)){
+        setSaveResult({requestId,enabled});
+      }else if(failure.message==='notification_settings_conflict'){
+        setSettingsConflict(true);
+        await load();
+      }else setError(failure.message);
     } finally {
       setBusy(false);
     }
@@ -758,6 +792,10 @@ export default function NotificationCenter({
   function edit(row?: Row) {leaveEditor(()=>openEditor(row));}
   function openEditor(row?: Row) {
     editorBaseline.current=null;
+    editorVersion.current=tab==='notification-rules'?Number(row?.version??0):
+      row?.id===PERSONAL_CHANNEL_ROW?row.config?.revision:row?row.settingsVersion:null;
+    setSettingsConflict(false);
+    setSaveResult(undefined);
     setWebhookDraft(undefined);
     setEditingWebhook(false);
     setNotice("");
@@ -874,6 +912,14 @@ export default function NotificationCenter({
         />
       )}
       {ruleDeleteError && <p role="alert" className="notification-channel-delete-error" data-unknown={ruleDeleteError.startsWith("Policy deletion outcome")}>{crmError(ruleDeleteError, lang)}</p>}
+      {active&&confirmEnable&&<AdminConfirmation light={isLight}
+        title={editor==='rule'?cancelText('保存并启用策略？','Save and enable this policy?','Simpan dan aktifkan kebijakan ini?'):
+          cancelText('启用真实发送？','Enable live delivery?','Aktifkan pengiriman langsung?')}
+        description={editor==='rule'?
+          cancelText('保存后，新事件将按此策略和所选渠道处理。','New events will use this policy and the selected channels.','Peristiwa baru memakai kebijakan dan kanal yang dipilih.'):
+          cancelText('保存后，此渠道可向配置的 Lark 目标发送符合条件的通知。','This channel can send eligible notifications to its configured Lark destination.','Kanal ini dapat mengirim notifikasi yang memenuhi syarat ke tujuan Lark.')}
+        cancelLabel={cancelText('取消','Cancel','Batal')} confirmLabel={cancelText('确认启用','Enable','Aktifkan')}
+        onCancel={()=>setConfirmEnable(false)} onConfirm={()=>void save(true)}/>}
       {confirmWebhookClear && (
         <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
           title={t("清除群机器人地址？", "Clear the group bot address?")}
@@ -909,25 +955,13 @@ export default function NotificationCenter({
               ))}
             </div>
           </div>
-          <header className={`admin-topic-notification-heading${isChannelTopic ? " notification-channel-heading" : ""}`}>
-            <p className="crm-ops-note">{operationGroups[notificationHeading.group][languageIndex]}</p>
-            <div className="notification-config-heading-row">
-              <h2>{notificationHeading.title[languageIndex]}</h2>
-              {!editor && !denied && (
-                <div className="notification-topic-actions">
-                  <AdminRefreshAction label={t("刷新", "Refresh")} loading={loading} onClick={()=>void load()}/>
-                  {(isRuleTopic || (isChannelTopic && canEdit)) && (
-                    <button type="button" id={editorTriggerId(isRuleTopic ? "rule" : "channel", "")}
-                      className={`${primary} flex items-center gap-1`} disabled={!canEdit} onClick={() => edit()}>
-                      <Plus className="w-3.5 h-3.5" aria-hidden="true"/>
-                      {isRuleTopic ? t("新增策略", "Add policy") : t("新增渠道", "Add channel")}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-            <p>{notificationHeading.purpose[languageIndex]}</p>
-          </header>
+          <AdminTopicHeader isLight={isLight} title={notificationHeading.title[languageIndex]}
+            subtitle={notificationHeading.purpose[languageIndex]} actions={!editor&&!denied&&<>
+              <AdminRefreshAction label={t("刷新", "Refresh")} loading={loading} onClick={()=>void load()}/>
+              {(isRuleTopic||isChannelTopic)&&canEdit&&<CrmPageAction icon={Plus} variant="primary"
+                id={editorTriggerId(isRuleTopic?'rule':'channel','')}
+                label={isRuleTopic?t('新增策略','Add policy'):t('新增渠道','Add channel')} onClick={()=>edit()}/>}
+            </>}/>
           {error && !editor && (tab!=="notification-jobs"||cancelId) && (
             <p
               role="alert"
@@ -1028,36 +1062,47 @@ export default function NotificationCenter({
                       {editorDirty && <span className="crm-form-draft-status" role="status">{crmFormText(lang,'unsaved')}</span>}
                     </div>
                   <div className="admin-edit-actions">
-                    {editor === "rule" && (
-                      <button
-                        type="button"
-                        className="crm-work-button"
-                        disabled={!canEdit || busy}
-                        onClick={() => void save(false)}
-                      >
-                        {t("保存为停用草稿", "Save inactive draft")}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="crm-work-button"
-                      data-primary="true"
-                      disabled={!canEdit || busy}
-                      onClick={() => void save(true)}
-                    >
-                      {busy
-                        ? t("保存中…", "Saving…")
-                        : editor === "rule"
-                          ? t("保存并启用", "Save and enable")
-                          : t("保存", "Save")}
-                    </button>
+                    {saveResult?<button type="button" className="crm-work-button" disabled={!canEdit||busy} onClick={()=>void checkSettingsSave()}>
+                      {cancelText('查询保存结果','Check save result','Periksa hasil simpan')}</button>:<>
+                      {editor==='rule'&&<button type="button" className="crm-work-button" disabled={!canEdit||busy||settingsConflict}
+                        onClick={()=>void save(false)}>{t('保存为停用草稿','Save inactive draft')}</button>}
+                      <button type="button" className="crm-work-button" data-primary
+                        disabled={!canEdit||busy||settingsConflict} onClick={event=>{
+                          if(editor==='rule'||channel.mode==='live'&&rows.find(row=>row.id===key)?.config?.mode!=='live'){
+                            event.currentTarget.focus({preventScroll:true});
+                            setConfirmEnable(true);
+                          }else void save(true);
+                        }}>{busy?t('保存中…','Saving…'):editor==='rule'?t('保存并启用','Save and enable'):t('保存','Save')}</button>
+                    </>}
                   </div>
                     <button type="button" className="crm-work-button admin-edit-close"
-                      disabled={busy} onClick={() => leaveEditor(() => {setEditor(null);setError("");})}>
+                      disabled={editorBlocked} onClick={()=>leaveEditor(()=>{setEditor(null);setError('');})}>
                       <X className="w-4 h-4" aria-hidden="true"/><span className="sr-only">{t('关闭编辑','Close editor')}</span>
                     </button>
-                    {error&&<p role="alert" className="admin-edit-feedback">{crmError(error,lang)}</p>}
+                    {saveResult?<AdminFormFeedback state="unknown" lang={lang} className="admin-edit-feedback">
+                      {saveResult.lookup==='missing'?cancelText('暂未查到保存回执，草稿已保留。','No receipt yet. The draft is retained.','Belum ada bukti simpan. Draf tetap disimpan.'):
+                        saveResult.lookup==='error'?cancelText('查询失败，保存结果仍待确认。','Lookup failed. The save result remains unconfirmed.','Pencarian gagal. Hasil simpan belum terkonfirmasi.'):undefined}
+                    </AdminFormFeedback>:settingsConflict?<AdminFormFeedback state="error" lang={lang} className="admin-edit-feedback">
+                      {cancelText('此记录已在别处更新，草稿仍保留。请核对当前配置，再重新打开编辑。','This record changed elsewhere. The draft is retained. Review the current configuration before reopening the editor.','Catatan ini telah berubah. Draf tetap disimpan. Tinjau pengaturan terbaru sebelum membuka editor kembali.')}
+                    </AdminFormFeedback>:error&&<AdminFormFeedback state="error" lang={lang} className="admin-edit-feedback">{crmError(error,lang)}</AdminFormFeedback>}
                   </header>
+                  {settingsConflict&&<AdminFormSection variant="subgroup" title={cancelText('当前配置','Current configuration','Pengaturan terkini')}
+                    actions={<AdminRefreshAction loading={loading} disabled={busy}
+                      label={cancelText('刷新','Refresh','Segarkan')} onClick={()=>void load()}/>}>
+                    {freshConflict&&conflictRow.config?<AdminFormSummary fields={editor==='rule'?[
+                      [cancelText('版本','Version','Versi'),conflictRow.version],
+                      [t('状态','Status'),conflictRow.enabled?t('已启用','Enabled'):t('停用 / 草稿','Inactive / draft')],
+                      [t('业务事件','Business event'),label(conflictRow.config.event)],
+                      [t('通知渠道','Delivery channels'),policyDeliveryChannels(conflictRow.config).map(channelLabel).join(' · ')],
+                    ]:[
+                      [t('渠道名称','Channel name'),conflictRow.config.groupName??(personalChannelEditor?cancelText('Lark 个人渠道','Lark personal channel','Kanal pribadi Lark'):key)],
+                      [t('发送模式','Delivery mode'),conflictRow.config.mode==='live'?t('真实发送','Live delivery'):t('模拟发送','Simulation')],
+                      ...(!personalChannelEditor?[[t('每小时发送上限','Hourly delivery limit'),conflictRow.config.maxPerHour??LARK_DEFAULT_MAX_PER_HOUR] as const]:[]),
+                    ]}/>:<p className="notification-channel-help">
+                      {cancelText('当前未能读取新版配置。','The newer configuration is unavailable.','Pengaturan terbaru belum dapat dibaca.')}
+                    </p>}
+                  </AdminFormSection>}
+                  <fieldset className="notification-editor-fields" disabled={editorBlocked||!canEdit}>
                   {editor === "rule" ? (
                     <div className="notification-rule-body">
                       {section(
@@ -1714,6 +1759,7 @@ export default function NotificationCenter({
                     </div>
                   )}
 
+                  </fieldset>
                 </div>
               )}
               {!editor && (

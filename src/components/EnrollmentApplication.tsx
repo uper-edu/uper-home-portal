@@ -1,3 +1,4 @@
+import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import { enrollmentClassTitle } from '../utils/enrollmentCatalog';
@@ -283,7 +284,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     enrollment_priority_unavailable:['当前报名无法开启优先安排，请刷新核对状态。','Priority arrangements are unavailable for this enrollment. Refresh to check its status.','Pengaturan prioritas tidak tersedia untuk pendaftaran ini. Muat ulang untuk memeriksa status.'],
     enrollment_invalid_proof:['凭证上传失败。请检查文件后重试。','Upload failed. Check the file and retry.','Unggahan gagal. Periksa file dan coba lagi.'],
   };
-  const message=errors[error] || ['操作未完成，请核对后重试。','The action could not be completed. Please review and retry.','Tindakan belum selesai. Periksa dan coba lagi.'];
+  const message=enrollmentReadinessMessage(error.replace(/^enrollment_intake_/,''),language)??t(errors[error] || ['操作未完成，请核对后重试。','The action could not be completed. Please review and retry.','Tindakan belum selesai. Periksa dan coba lagi.']);
   function transfer(targetClassId:string,decision:'accept'|'decline',invitationId?:string) {
     if(!order) return;
     void run(async()=>{
@@ -375,7 +376,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
           : ['返回班次详情','Back to class details','Kembali ke detail kelas'])}
       </Link>}
     <h1 ref={applicationHeading} tabIndex={-1}>{verificationStep ? t(['验证邮箱','Verify your email','Verifikasi email']) : applyText}</h1>
-    {error && <p className="enrollment-form-error" role="alert">{t(message)}</p>}
+    {error && <p className="enrollment-form-error" role="alert">{message}</p>}
     {verificationStep ? <form className="enrollment-journey-form" onSubmit={event=>{event.preventDefault();void verifyApplication();}}>
       <p className="enrollment-journey-note">{t([
         '验证后，你可以用这个邮箱查看报名。转班邀请、班次取消等重要事项也会通过邮件通知你。',
@@ -439,7 +440,7 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
     const completed = joined || savedDemand;
     const waitlist = !!waitlistClass;
     return <>
-      {error && <p className="enrollment-form-error" role="alert">{t(message)}</p>}
+      {error && <p className="enrollment-form-error" role="alert">{message}</p>}
       {completed ? <div className="enrollment-intake-complete">
         <p className="enrollment-result-state" data-paid="true" role="status">{t(waitlist
           ? ['候补已登记。','You joined the waitlist.','Anda masuk daftar tunggu.']
@@ -676,11 +677,11 @@ export function EnrollmentApplication({ classId, language, full = false, demandO
   proofParams.set('proof','upload');
   if (!open) return <button className="enrollment-action" type="button" onClick={()=>setOpen(true)}>{hasNoSeat?joinText:applyText}</button>;
   return <section className={showAftercare || showOrderResult ? "enrollment-application enrollment-order-result-shell" : mineClasses && !order ? "enrollment-application enrollment-mine-content" : order && paymentClasses ? "enrollment-application enrollment-payment-content" : "enrollment-card enrollment-application"}>
-    {error && !(paymentClasses && order && ['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)) && <p role="alert">{t(message)}</p>}
+    {error && !(paymentClasses && order && ['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)) && <p role="alert">{message}</p>}
     <dialog className="enrollment-cancel-dialog" ref={cancelDialog} aria-labelledby="enrollment-cancel-title" onCancel={event=>{if(busy)event.preventDefault();}}>
       <h2 id="enrollment-cancel-title">{t(['取消这笔报名？','Cancel this enrollment?','Batalkan pendaftaran ini?'])}</h2>
       <p>{t(['取消后，付款入口会关闭，席位会释放。如果你已经转账，请先提交凭证。','Canceling closes the payment link and releases your seat. If you already transferred the money, submit the proof first.','Pembatalan menutup pembayaran dan melepas kursi. Jika sudah transfer, kirim bukti terlebih dahulu.'])}</p>
-      {error&&<p role="alert">{t(message)}</p>}
+      {error&&<p role="alert">{message}</p>}
       <div className="enrollment-cancel-actions">
         <button type="button" className="enrollment-quiet" autoFocus disabled={busy} onClick={()=>cancelDialog.current?.close()}>{t(['保留报名','Keep enrollment','Pertahankan pendaftaran'])}</button>
         <button type="button" className="enrollment-primary" disabled={busy} onClick={cancelEnrollment}>{t(['确认取消','Confirm cancellation','Konfirmasi pembatalan'])}</button>

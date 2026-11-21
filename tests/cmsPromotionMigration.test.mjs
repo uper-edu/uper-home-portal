@@ -150,7 +150,7 @@ test('COS-MERGE-02: existing COS v16 runs main promotion migrations and keeps as
 test('COS-MERGE-03: empty schema executes all 20 real migration stages in order',async()=>{
  const f=fixture([]);assert.equal((await run(f)).version,20);
  assert.deepEqual([...f.versions.keys()],range(20));assert.ok([...f.versions.values()].every(state=>state==='ready'));
- assert.deepEqual([...f.tables].sort(),[...bootstrapTables(),...enrollmentTables].sort());
+ assert.deepEqual([...f.tables].sort(),[...bootstrapTables(),...enrollmentTables,'integration_credentials'].sort());
  const before=f.queries.filter(sql=>sql.startsWith('ALTER TABLE')).length;
  await run(f);
  assert.equal(f.queries.filter(sql=>sql.startsWith('ALTER TABLE')).length,before);
@@ -195,6 +195,7 @@ test('GA migration adds an empty queue to v18 and reruns without creating or rew
  assert.equal(ddl(),1);
  assert.equal((await run(f)).alreadyApplied,true);
  assert.equal(ddl(),1);
+ assert.equal(f.queries.filter(sql=>sql.startsWith('CREATE TABLE IF NOT EXISTS integration_credentials')).length,2);
  assert.ok(!f.queries.some(sql=>/^(INSERT INTO|UPDATE|DELETE FROM) crm_payment_analytics/.test(sql)));
  assert.deepEqual(structuredClone({media:f.media,campaigns:f.campaigns,index:f.index,shortLinks:f.shortLinks}),existing);
 });

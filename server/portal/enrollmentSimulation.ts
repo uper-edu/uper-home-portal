@@ -1,12 +1,16 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve, isAbsolute } from 'node:path';
 
+export function isLocalEnrollmentRuntime(env = process.env) {
+  return env.PORTAL_ENV === 'dev' && env.TRIAL_DATASET === 'local-crm' &&
+    env.PORTAL_DEPLOYMENT !== 'remote-dev' && env.PORTAL_LOCAL_CUTOVER === 'true' &&
+    env.MYSQL_TRIAL_SOCKET === '/private/tmp/uper-crm-mysql-local3000.sock';
+}
+
 export function enrollmentSimulation(env = process.env) {
   const directory = env.PORTAL_ENROLLMENT_SIMULATION_MAILBOX;
-  if (env.PORTAL_ENV !== 'dev' || env.TRIAL_DATASET !== 'local-crm' ||
-      env.PORTAL_DEPLOYMENT === 'remote-dev' || env.PORTAL_LOCAL_CUTOVER !== 'true' ||
-      env.MYSQL_TRIAL_SOCKET !== '/private/tmp/uper-crm-mysql-local3000.sock' ||
-      env.PORTAL_WORKER_ENABLED !== 'false' || env.PORTAL_GA_API_SECRET ||
+  const transport = env.PORTAL_ENROLLMENT_MAIL_TRANSPORT;
+  if (!isLocalEnrollmentRuntime(env) || (transport && transport !== 'simulation') ||
       !directory || !isAbsolute(directory)) return null;
   type Message={subject:string;html:string;text:string;language:string};
   async function deliver(id:string,email:string,message:Message,code?:string){

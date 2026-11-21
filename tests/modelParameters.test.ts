@@ -19,3 +19,8 @@ test('each selectable reasoning effort reaches the request parameters',()=>{
     }
   }
 });
+
+test('new default models send provider-compatible parameters',()=>{
+  assert.deepEqual(modelParameters('gpt-6.2-sol',1200,0),{max_completion_tokens:4800,reasoning_effort:'low'});
+  assert.deepEqual(modelParameters('deepseek-v4-pro',1200,0),{max_tokens:1200,thinking:{type:'disabled'},temperature:0});
+});

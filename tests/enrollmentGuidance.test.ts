@@ -76,7 +76,7 @@ test('chat distinguishes paused intake, catalogue read failures and an explicit 
     PORTAL_ENV:'dev',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',
     MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock',PORTAL_WORKER_ENABLED:'false',
     PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/private/tmp/guide-unit-test',PORTAL_DEPLOYMENT:'',
-    PORTAL_GA_API_SECRET:'',PORTAL_ENROLLMENT_ACCEPTING_NEW:'false',
+    PORTAL_GA_API_SECRET:'',
   };
   const original=Object.fromEntries(Object.keys(settings).map(key=>[key,process.env[key]]));
   Object.assign(process.env,settings);
@@ -84,9 +84,10 @@ test('chat distinguishes paused intake, catalogue read failures and an explicit 
   const client={query:async()=>{reads++;throw Error('Simulated catalogue unavailable');}};
   try{
     const {chatEnrollmentAction}=await import('../server/portal/chatEnrollment');
+    process.env.PORTAL_DEPLOYMENT='remote-dev';
     assert.equal((await chatEnrollmentAction(client,normalized(),false,false))?.kind,'paused');
     assert.equal(reads,0);
-    process.env.PORTAL_ENROLLMENT_ACCEPTING_NEW='true';
+    process.env.PORTAL_DEPLOYMENT='';
     assert.equal((await chatEnrollmentAction(client,normalized(),false,false))?.kind,'unavailable');
     assert.equal(reads,1);
     assert.equal(await chatEnrollmentAction(client,null,true,false),undefined);

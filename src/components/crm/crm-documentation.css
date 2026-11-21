@@ -22,12 +22,12 @@
 .crm-docs [hidden] {
   display: none !important;
 }
-.crm-docs button,
+.crm-docs button:not(:where(.crm-page-action)),
 .crm-docs input {
   font: inherit;
   color: var(--doc-ink);
 }
-.crm-docs :focus-visible {
+.crm-docs :focus-visible:not(:where(.crm-page-action)) {
   outline: 3px solid var(--doc-accent);
   outline-offset: 3px;
 }
@@ -788,16 +788,6 @@
   }
 }
 
-.crm-doc-intro {
-  padding: 16px 20px;
-}
-.crm-doc-intro h2 {
-  font-size: 18px;
-  margin-bottom: 4px;
-}
-.crm-doc-intro .crm-doc-links {
-  margin-top: 6px;
-}
 .crm-doc-subchapters {
   list-style: none;
   padding: 0 0 0 16px;
@@ -1660,9 +1650,6 @@
 @media(max-width:600px){.crm-simple-guide-example{padding:12px}.crm-simple-guide-example .crm-learning-flow{grid-template-columns:minmax(0,1fr)}}
 
 /* Reading-first document shell: original content and interaction components retained. */
-.crm-doc-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border:0;border-radius:0;background:transparent}
-.crm-doc-intro>p{margin:0;max-width:82ch;font-size:13px;color:var(--doc-muted)}
-.crm-doc-intro .crm-doc-links{margin:0;display:flex;gap:12px;flex-shrink:0}
 .crm-doc-layout{margin-top:0}
 .crm-doc-search-results li{padding:12px 0}
 .crm-doc-search-results li p{margin:4px 0 0;color:var(--doc-muted);font-size:13px}
@@ -1672,7 +1659,6 @@
 .crm-doc-learning-detail{margin:12px 0}
 .crm-doc-learning-detail>summary{min-height:40px;display:list-item;align-content:center}
 .crm-doc-learning-detail>.crm-learning-figure{margin-top:8px}
-@media(max-width:1023px){.crm-doc-intro{flex-wrap:wrap}.crm-doc-intro .crm-doc-links{flex-wrap:wrap}}
 @media print{.crm-doc-search-return{display:none!important}.crm-doc-learning-detail>*{display:block!important}}
 
 /* Keep search and its related actions visible while only chapter entries scroll. */
@@ -1689,10 +1675,4 @@
  .crm-doc-nav{max-height:var(--doc-nav-available-height,calc(100dvh - var(--doc-header-height) - 32px));padding-bottom:24px}
 }
 
-/* The directory starts below global navigation; page identity belongs to the reading column. */
-.crm-doc-intro{display:block;padding:0;margin-bottom:16px}
-.crm-doc-intro .admin-page-toolbar{margin-bottom:8px}
-.crm-doc-intro .crm-page-identity h1{margin:0}
-.crm-doc-intro .crm-page-action{white-space:nowrap}
-@media print{.crm-doc-intro .admin-page-actions{display:none!important}}
-@media(min-width:1024px){.crm-document-main{padding-block:16px}}
+.crm-docs > .admin-page-header { margin-block-end: 16px; }

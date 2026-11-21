@@ -1,5 +1,5 @@
-import {integrationCredential} from './integrationCredentials.ts';
-import {gaCredentialTarget,legacyGaCredential} from './integrationCredentialTargets.ts';
+import {gaCredential,gaSettings} from './gaSettings.ts';
+import {legacyGaCredential} from './integrationCredentialTargets.ts';
 import {createHash} from 'node:crypto';
 import analytics from '../../src/data/analyticsEnvironments.json';
 
@@ -58,11 +58,10 @@ export async function dispatchPaymentAnalytics({
   request?: typeof fetch;
   clock?: Date;
 }) {
-  if (env === process.env && env.PORTAL_GA_DISPATCH_ENABLED !== 'true') return;
-  const secret = env === process.env
-    ? (await integrationCredential('ga','default',gaCredentialTarget(),legacyGaCredential))?.key
-    : legacyGaCredential(env)?.key;
-  const config = dispatchConfig(env, secret);
+  const settings=env===process.env?await gaSettings():undefined;
+  if(settings&&!settings.dispatchEnabled)return;
+  const secret=settings?(await gaCredential(settings))?.key:legacyGaCredential(env)?.key;
+  const config=dispatchConfig(settings?{...env,PORTAL_GA_MEASUREMENT_ID:settings.measurementId}:env,secret);
   if (!config) return;
 
   const {environment, endpoint} = config;

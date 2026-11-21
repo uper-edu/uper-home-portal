@@ -11,8 +11,9 @@ const label=(source:OpportunitySource,lang:CrmLanguage)=>{
   return copy(lang,words[0],words[1],words[2]);
 };
 
-export function CrmOpportunitySourcePicker({leadId,lang,disabled,selected,onChange}:{
+export function CrmOpportunitySourcePicker({leadId,lang,disabled,selected,onChange,showSelectionHint=true}:{
   leadId:string;lang:CrmLanguage;disabled:boolean;selected:OpportunitySourceRef[];onChange:(refs:OpportunitySourceRef[])=>void;
+  showSelectionHint?:boolean;
 }) {
   const [requested,setRequested]=useState(selected.length>0);
   const [sources,setSources]=useState<OpportunitySource[]>();
@@ -36,7 +37,7 @@ export function CrmOpportunitySourcePicker({leadId,lang,disabled,selected,onChan
       !sources?<p role="status">{copy(lang,'正在读取客户原文…','Loading customer records…','Memuat catatan pelanggan…')}</p>:
       !sources.length?<p>{copy(lang,'暂无可关联的客户原文。','No original customer records to link.','Belum ada catatan asli untuk ditautkan.')}</p>:
       <>
-        <p>{copy(lang,'最多选择 5 条与本次购课有关的原文。','Select up to 5 records relevant to this opportunity.','Pilih hingga 5 catatan yang relevan dengan peluang ini.')}</p>
+        {showSelectionHint&&<p>{copy(lang,'最多选择 5 条与本次购课有关的原文。','Select up to 5 records relevant to this opportunity.','Pilih hingga 5 catatan yang relevan dengan peluang ini.')}</p>}
         {sources.map(source=>{
           const checked=selected.some(ref=>ref.type===source.type&&ref.id===source.id);
           return <div key={`${source.type}:${source.id}`} className="crm-stage-basis-original">

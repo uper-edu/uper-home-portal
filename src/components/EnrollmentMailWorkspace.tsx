@@ -7,12 +7,13 @@ import {AdminSearchField} from './admin/AdminSearchField';
 import {AdminEditor} from './admin/AdminEditor';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminField} from './AdminForm';
-import {AdminStaticField,AdminFormActions,AdminFormGrid,AdminFormSection,AdminFormFeedback} from './AdminFormLayout';
+import {AdminStaticField,AdminFormActions,AdminFormGrid,AdminFormSection,AdminFormFeedback,AdminFormSummary} from './AdminFormLayout';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminRecordHeader} from './admin/AdminRecordHeader';
 import {AdminDetailActions,AdminRecordTitle} from './admin/AdminRecordWorkspace';
 import {CrmPageAction} from './crm/CrmPageAction';
-import {CrmPageIdentity} from './crm/CrmPageIdentity';
+import {AdminPageHeader} from './admin/AdminPageHeader';
+import {AdminTopicHeader} from './admin/AdminTopicHeader';
 import {CrmContentNav,CrmDiscardDialog} from './crm/CrmDetailWorkspace';
 import {CrmSingleSelect} from './crm/CrmSingleSelect';
 import {AdminStatus} from './AdminStatus';
@@ -54,7 +55,6 @@ const stateWords:Record<string,[string,string,string]>={
 };
 const readinessWords:Record<string,[string,string,string]>={
   service_disabled:['报名服务尚未启用','Enrollment service is disabled','Layanan pendaftaran belum aktif'],
-  paused:['新报名已暂停','New applications are paused','Pendaftaran baru dijeda'],
   bank_required:['请在报名规则中配置正式收款账户','Configure the payment account in Enrollment rules','Atur rekening pembayaran di Aturan pendaftaran'],
   mail_required:['请核对 SMTP 投递、发信池和发件账号','Check SMTP delivery, the sending pool, and sender accounts','Periksa pengiriman SMTP, pool, dan akun pengirim'],
 };
@@ -87,6 +87,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   const [adminConflict,setAdminConflict]=useState(false);
   const [revision,setRevision]=useState(0);
   const [settingsDraft,setSettingsDraft]=useState<{pool:string;sticky:boolean;revision:number}>();
+  const [settingsLookup,setSettingsLookup]=useState<'different'|'error'>();
   const [historySearch,setHistorySearch]=useState(''),[historyStatus,setHistoryStatus]=useState(''),[historyPage,setHistoryPage]=useState(1);
   const [replacement,setReplacement]=useState({recipient:'',account:'',reason:''});
   const listPosition=useRef<{id:string;view:typeof view;top:number}>(null);
@@ -163,16 +164,27 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   const settings=business&&(settingsDraft??{pool:business.selectedPool,sticky:business.sticky,revision:business.revision});
   const choiceDirty=!!business&&!!settings&&(settings.pool!==business.selectedPool||settings.sticky!==business.sticky);
   const settingsConflict=choiceDirty&&settings?.revision!==business?.revision;
-  useEffect(()=>{onDraft(dirty||choiceDirty||!admin&&busy);return()=>onDraft(false);},[admin,busy,dirty,choiceDirty,onDraft]);
+  const settingsPoolAvailable=!!business?.pools?.some(pool=>pool.id===settings?.pool);
+  const settingsUnknown=!admin&&feedback==='unknown';
+  useEffect(()=>{
+    onDraft(dirty||choiceDirty||!admin&&(busy||settingsUnknown));
+    return()=>onDraft(false);
+  },[admin,busy,dirty,choiceDirty,settingsUnknown,onDraft]);
+  useEffect(()=>{
+    if(admin||allowed&&failure!=='denied')return;
+    setSettingsDraft(undefined);
+    setSettingsLookup(undefined);
+    setFeedback(undefined);
+  },[admin,allowed,failure]);
   const changeSettings=(patch:Partial<{pool:string;sticky:boolean}>)=>{
-    if(!settings||!business)return;
+    if(!business||!settings||busy||settingsUnknown)return;
     const next={...settings,...patch};
     setSettingsDraft(next.pool===business.selectedPool&&next.sticky===business.sticky?undefined:next);
-    if(feedback!=='unknown')setFeedback(undefined);
+    setFeedback(undefined);
   };
   const saveChoice=async()=>{
-    if(!settings||!choiceDirty||settingsConflict||busy||loading||feedback==='unknown')return;
-    setBusy(true);setFeedback(undefined);
+    if(!settings||!settingsPoolAvailable||!choiceDirty||settingsConflict||busy||loading||failure||settingsUnknown)return;
+    setBusy(true);setFeedback(undefined);setSettingsLookup(undefined);
     try{
       const response=await fetch('/api/crm/enrollment/mail/pool',{method:'PUT',headers:{'Content-Type':'application/json'},
         body:JSON.stringify(settings)});
@@ -189,11 +201,15 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
     finally{setBusy(false);}
   };
   const checkSettings=async()=>{
-    if(!settingsDraft||loading)return;
+    if(!settings||loading||busy)return;
     const next=await refresh();
-    if(next&&'rows' in next&&next.selectedPool===settingsDraft.pool&&next.sticky===settingsDraft.sticky){
+    if(!next||!('rows' in next)){setSettingsLookup('error');return;}
+    if(next.selectedPool===settings.pool&&next.sticky===settings.sticky){
       setSettingsDraft(undefined);setFeedback('saved');
-    }
+    }else if(next.revision>settings.revision){
+      // A different revision has taken effect. The submitted revision can no longer be applied.
+      setFeedback('error');setSettingsLookup(undefined);
+    }else setSettingsLookup('different');
   };
   const close=useCallback(()=>{
     setPassword('');setClearPassword(false);setCredentialKeyError(false);
@@ -285,6 +301,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   };
   const heading=admin?t('邮件配置','Email configuration','Konfigurasi email'):t('招生邮件','Admissions email','Email penerimaan');
   const word=(state:string)=>stateWords[state]?t(...stateWords[state]):state;
+  const fixedSender=t('为同一报名邮箱固定发件账号','Keep the same sender for each enrollment email address','Gunakan pengirim yang sama untuk setiap alamat email pendaftaran');
   const historyTitle=t('招生邮件发送记录','Admissions email delivery history','Riwayat pengiriman email penerimaan');
   const searchTerm=historySearch.trim().toLowerCase();
   const filteredHistory=business?.rows.filter(row=>(!historyStatus||row.state===historyStatus)&&
@@ -372,9 +389,10 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
     [poolMembersLabel,savedPool.members.join(', ')||'—'],
   ]:undefined;
   return <section className="enrollment-mail-workspace" aria-label={heading}>
-    {admin&&!isDetail&&<header className="admin-page-toolbar" data-theme={isLight?'light':'dark'}>
-      <CrmPageIdentity title={heading} subtitle={t('管理当前环境的招生发信池、账号和限额。','Manage the admissions pool, accounts and quotas in this environment.','Kelola pool, akun, dan kuota penerimaan di lingkungan ini.')}/>
-      {allowed&&failure!=='denied'&&<div className="admin-page-actions">
+    {admin&&!isDetail&&<AdminPageHeader title={heading} subtitle={poolView
+      ?t('组合发件账号，设置发信池的额度和账号分配策略。','Group sending accounts and set pool quotas and account routing.','Kelompokkan akun pengirim serta atur kuota dan pembagian beban untuk setiap pool.')
+      :t('管理发件账号的连接参数、凭证和发送限额。','Manage sending accounts, connection settings, credentials and quotas.','Kelola akun pengirim, pengaturan koneksi, kredensial, dan kuota.')}
+      actions={allowed&&failure!=='denied'&&<>
         <AdminRefreshAction label={t('刷新','Refresh','Segarkan')} loading={loading} onClick={()=>void refresh()}/>
         {config&&view==='accounts'&&<CrmPageAction icon={Plus} variant="primary" label={t('新增账号','Add account','Tambah akun')} onClick={()=>edit(config.accounts.length)}/>}
         {config?.pools&&view==='pool'&&<CrmPageAction icon={Plus} variant="primary" label={addPoolLabel}
@@ -382,19 +400,16 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
           title={config.pools.length>=enrollmentMailPoolLimit?t(`最多可配置 ${enrollmentMailPoolLimit} 个发信池`,
             `Up to ${enrollmentMailPoolLimit} sending pools are allowed`,`Maksimal ${enrollmentMailPoolLimit} pool pengiriman`):undefined}
           onClick={()=>edit('new-pool')}/>}
-      </div>}
-    </header>}
-    {!admin&&<header className="admin-edit-header" data-theme={isLight?'light':'dark'}>
-      <div className="admin-edit-title"><h2>{heading}</h2></div>
-      <AdminFormActions className="admin-edit-actions">
-        {feedback==='unknown'&&<CrmPageAction icon={ClipboardCheck} label={t('核对保存结果','Check save result','Periksa hasil penyimpanan')}
+      </>}/>}
+    {!admin&&<AdminTopicHeader title={heading} isLight={isLight}
+      subtitle={t('选择招生发信池，设置发件账号规则，并查询发送记录。','Choose the admissions email pool, set sender rules and review delivery records.','Pilih pool email penerimaan, atur aturan pengirim, dan lihat riwayat pengiriman.')} actions={<>
+        {settingsUnknown&&<CrmPageAction icon={ClipboardCheck} label={t('核对保存结果','Check save result','Periksa hasil penyimpanan')}
           disabled={loading||busy} onClick={()=>void checkSettings()}/>}
         <AdminRefreshAction label={t('刷新','Refresh','Segarkan')} loading={loading} disabled={busy} onClick={()=>void refresh()}/>
-        {settings&&<CrmPageAction icon={Save} variant="primary" keepFocusWhileLoading loading={busy}
+        {settings&&!settingsUnknown&&<CrmPageAction icon={Save} variant="primary" keepFocusWhileLoading loading={busy}
           label={busy?t('正在保存…','Saving…','Menyimpan…'):t('保存发信设置','Save email settings','Simpan pengaturan email')}
-          disabled={!choiceDirty||settingsConflict||loading&&!busy||feedback==='unknown'} onClick={()=>void saveChoice()}/>}
-      </AdminFormActions>
-    </header>}
+          disabled={!choiceDirty||!settingsPoolAvailable||settingsConflict||loading&&!busy||!!failure} onClick={()=>void saveChoice()}/>}
+    </>}/>}
     {admin&&!isDetail&&allowed&&failure!=='denied'&&<CrmContentNav label={heading} items={[
       {href:accountListHref,label:t('发件账号','Sending accounts','Akun pengirim'),current:view==='accounts'},
       {href:poolListHref,label:t('发信池','Sending pool','Pool pengiriman'),current:view==='pool'},
@@ -522,24 +537,24 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
     {admin&&allowed&&canManageCredentials&&activeView?.managedCredentials&&!poolView&&!isDetail&&credentialAccount&&
       <IntegrationCredentialControl key={credentialAccount} kind="smtp" resource={credentialAccount} lang={lang} isLight={isLight}
         onDismiss={()=>setCredentialAccount(undefined)} onChange={()=>void refresh()}/>}
-    {business&&settings&&<div className="enrollment-mail-sections enrollment-mail-business" data-admin-form="">
+    {!admin&&allowed&&business&&settings&&<div className="enrollment-mail-sections enrollment-mail-business" data-admin-form="">
       <AdminFormSection variant="card" title={t('发信设置','Email settings','Pengaturan email')}>
-        <AdminFormGrid>
-          <AdminField as="div">
-            <label>{t('选用发信池','Select sending pool','Pilih pool pengiriman')}</label>
-            <CrmSingleSelect lang={lang} isLight={isLight} label={t('选用发信池','Select sending pool','Pilih pool pengiriman')}
-              disabled={busy||feedback==='unknown'} value={settings.pool} options={business.pools.map(pool=>({value:pool.id,
-                label:pool.enabled?pool.name:pool.name+' · '+word('disabled')}))} onChange={pool=>changeSettings({pool})}/>
-          </AdminField>
-          <AdminStaticField label={t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')} value={word(business.mode)}/>
-        </AdminFormGrid>
+      <AdminFormGrid>
+        <AdminField as="div" required>
+          <label htmlFor={stickyHelpId+'-pool'}>{t('选用发信池','Select sending pool','Pilih pool pengiriman')}</label>
+          <CrmSingleSelect controlId={stickyHelpId+'-pool'} required lang={lang} isLight={isLight} label={t('选用发信池','Select sending pool','Pilih pool pengiriman')}
+            disabled={busy||settingsUnknown||!!failure} value={settings.pool} options={(business.pools??[]).map(pool=>({value:pool.id,
+              label:pool.enabled?pool.name:pool.name+' · '+word('disabled')}))} onChange={pool=>changeSettings({pool})}/>
+        </AdminField>
+        <AdminStaticField label={t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')} value={word(business.mode)}/>
+      </AdminFormGrid>
         {readiness?.reasons.length?<AdminFormFeedback state="error" lang={lang}>
           {readiness.reasons.map(reason=>readinessWords[reason]?t(...readinessWords[reason]):'').filter(Boolean).join(' · ')}
         </AdminFormFeedback>:null}
         <div data-admin-stack className="enrollment-mail-fixed-sender">
-          <AdminField className="enrollment-mail-switch-row">{t('为同一报名邮箱固定发件账号','Keep the same sender for each enrollment email address','Gunakan pengirim yang sama untuk setiap alamat email pendaftaran')}
+          <AdminField className="enrollment-mail-switch-row">{fixedSender}
             <input className="admin-switch" type="checkbox" role="switch" aria-describedby={stickyHelpId}
-              checked={settings.sticky} disabled={busy||feedback==='unknown'}
+              checked={settings.sticky} disabled={busy||settingsUnknown||!!failure}
               onChange={event=>changeSettings({sticky:event.target.checked})}/></AdminField>
           <div id={stickyHelpId} className="crm-work-muted">
             <p>{t('开启后，同一个报名邮箱后续沿用首封被 SMTP 接收的发件账号。该账号额度用完时，业务邮件排队等待。',
@@ -550,12 +565,25 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
               'Jika nonaktif, akun pengirim dipilih untuk setiap email sesuai strategi pool yang dipilih.')}</p>
           </div>
         </div>
-        {settingsConflict&&feedback!=='unknown'?<AdminFormFeedback state="error" lang={lang}>
+      {settingsConflict&&!settingsUnknown&&failure!=='error'?<AdminFormSection variant="subgroup"
+        title={t('核对当前设置','Review current settings','Tinjau pengaturan terkini')}>
+        <AdminFormFeedback state="error" lang={lang}>
           {t('发信设置已在别处更新。','Email settings were updated elsewhere.','Pengaturan email telah diperbarui di tempat lain.')}
-          {' '}<AdminRowAction onClick={()=>{setSettingsDraft(undefined);setFeedback(undefined);}}>
-            {t('放弃草稿并查看最新设置','Discard draft and view current settings','Buang draf dan lihat pengaturan terkini')}
-          </AdminRowAction>
-        </AdminFormFeedback>:feedback&&feedback!=='saved'?<AdminFormFeedback state={feedback} lang={lang}/>:null}
+        </AdminFormFeedback>
+        <AdminFormSummary fields={[
+          [t('当前发信池','Current sending pool','Pool pengiriman saat ini'),business.name],
+          [fixedSender,business.sticky?t('已开启','Enabled','Aktif'):t('已关闭','Off','Nonaktif')],
+        ]}/>
+        <AdminFormActions>
+          <button type="button" className="crm-work-button" disabled={loading||busy||!!failure} onClick={()=>{
+            setSettingsDraft({...settings,revision:business.revision});setFeedback(undefined);
+          }}>{t('核对后保留草稿','Keep draft after review','Pertahankan draf setelah ditinjau')}</button>
+        </AdminFormActions>
+      </AdminFormSection>:busy?<AdminFormFeedback state="saving" lang={lang}/>:
+        settingsUnknown?<AdminFormFeedback state="unknown" lang={lang}>{settingsLookup==='error'?
+          t('无法读取当前设置，保存结果仍待确认。','Could not read current settings. The result is still unconfirmed.','Pengaturan terkini tidak dapat dibaca. Hasil masih belum terkonfirmasi.'):
+          settingsLookup==='different'?t('当前设置尚未与草稿一致，请稍后再次核对。','Current settings do not yet match the draft. Check again later.','Pengaturan terkini belum sesuai dengan draf. Periksa lagi nanti.'):undefined}
+        </AdminFormFeedback>:feedback==='error'?<AdminFormFeedback state="error" lang={lang}/>:null}
       </AdminFormSection>
       <AdminFormSection variant="card" title={historyTitle} description={t('最近 100 条业务邮件。SMTP 已接收表示邮件已交给邮件服务。','Latest 100 business emails. SMTP accepted means the mail service accepted the message.','100 email bisnis terakhir. Diterima SMTP berarti pesan diterima oleh layanan email.')}>
         <div className="enrollment-mail-history-controls">

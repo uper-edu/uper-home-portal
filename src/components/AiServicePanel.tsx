@@ -1,98 +1,268 @@
-import {AdminRefreshAction} from './admin/AdminRefreshAction';
-import {AdminFormSection,AdminFormActions,AdminFormFeedback} from './AdminFormLayout';
 import {useEffect,useRef,useState,type ReactNode} from 'react';
-import {aiModelSlots,defaultReasoningEffort,effortField,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection} from '../utils/aiModelSelection';
-import {testAndSaveAi} from '../utils/aiServiceSubmit';
-import type {CrmLanguage} from '../utils/crmLanguage';
-import {aiServiceText} from '../utils/aiServiceLanguage';
-import {AdminField,AdminRequiredNote} from './AdminForm';
-import {FlaskConical, Settings2, CheckCircle2, XCircle, LoaderCircle} from 'lucide-react';
+import {CheckCircle2,FlaskConical,LoaderCircle,Save,XCircle} from 'lucide-react';
+import {AdminEditor} from './admin/AdminEditor';
+import {AdminListState} from './admin/AdminList';
+import {AdminRefreshAction} from './admin/AdminRefreshAction';
+import {AdminField,AdminForm,AdminRequiredNote} from './AdminForm';
+import {AdminFormFeedback,AdminFormGrid,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
 import {CrmSingleSelect} from './crm/CrmSingleSelect';
 import {CrmDisclosure} from './crm/CrmDisclosure';
+import {CrmPageAction} from './crm/CrmPageAction';
+import {aiModelSlots,defaultReasoningEffort,effortField,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection} from '../utils/aiModelSelection';
+import {aiServiceText} from '../utils/aiServiceLanguage';
+import {testAndSaveAi} from '../utils/aiServiceSubmit';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
-export function AiServicePanel({lang,isLight,renderHeading}:{lang:CrmLanguage;isLight:boolean;renderHeading:(refresh:ReactNode)=>ReactNode}){
- const [data,setData]=useState<any>(null),[selection,setSelection]=useState<AiSelection>({primary:'',fallback:''}),[check,setCheck]=useState<any>(null),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[unresolved,setUnresolved]=useState(typeof sessionStorage!=='undefined'&&!!sessionStorage.getItem('uper-ai-pending'));
- const submitting=useRef(false);
- const [querying,setQuerying]=useState(false);
- const call=async(path='',body?:any)=>{const r=await fetch('/api/admin/ai-service'+path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(body?155000:15000)});const d=await r.json();if(!r.ok)throw Error(d.error);return d;};
- const load=async(initial=false)=>{try{const d=await call();setData(d);const recent=d.checks?.find((c:any)=>c.ok&&c.revision===d.revision&&c.expiresAt>Date.now()&&sameAiSelection(c.selection,selection));if(recent)setCheck(recent);if(initial){let draft;try{draft=JSON.parse(sessionStorage.getItem('uper-ai-draft')||'null')}catch{}setSelection(draft||d.current);}const pending=sessionStorage.getItem('uper-ai-pending');if(pending&&d.history?.some((v:any)=>v.requestId===pending)){setNotice('saved');setUnresolved(false);sessionStorage.removeItem('uper-ai-pending');sessionStorage.removeItem('uper-ai-draft');setSelection(d.current);setCheck(null);}
-  else if(pending)setNotice('unknown');
- }catch{
-  setNotice(sessionStorage.getItem('uper-ai-pending')?'queryPendingFailed':'error');
- }};
- useEffect(()=>{void load(true);},[]);
- const choose=(s:typeof selection)=>{setSelection(s);setCheck(null);sessionStorage.setItem('uper-ai-draft',JSON.stringify(s));};
- const submit=async()=>{
-  if(!data||submitting.current||unresolved)return;
-  if(selection.primary===selection.fallback){setNotice('required');return;}
-  submitting.current=true;setBusy(true);setNotice('');setCheck(null);
-  let activating=false;const requestId=crypto.randomUUID();
-  try{
-   const result=await testAndSaveAi({call,current:data.current,selection:{...selection},revision:data.revision,requestId,onChecked:setCheck,beforeActivate:()=>{activating=true;sessionStorage.setItem('uper-ai-pending',requestId);}});
-   if(result.unchanged)setNotice('verified');
-   if(result.saved){setNotice('saved');sessionStorage.removeItem('uper-ai-pending');sessionStorage.removeItem('uper-ai-draft');setUnresolved(false);await load();}
-  }catch(e){const message=(e as Error).message;setNotice(message==='conflict'?'conflict':activating?'unknown':'error');if(activating&&message!=='conflict'&&message!=='test_required')setUnresolved(true);else{sessionStorage.removeItem('uper-ai-pending');setUnresolved(false);}}
-  finally{submitting.current=false;setBusy(false);}
- };
+import type {CrmLanguage} from '../utils/crmLanguage';
 
- const query=async()=>{
-  setQuerying(true);
-  try{await load();}finally{setQuerying(false);}
- };
- return <>{renderHeading(<AdminRefreshAction label={aiServiceText.refresh[lang==='zh'?2:lang==='id'?1:0]}
-  loading={querying} disabled={busy} onClick={()=>void query()}/>)}
-  <AiServiceContent {...{lang,isLight,data,selection,check,busy,notice,unresolved}} onSelect={choose} onSubmit={submit}/>
- </>;
+type AiHistoryRecord={requestId:string;current:AiSelection;actor:string;at:string};
+type AiServiceData={
+  current:AiSelection;
+  revision:number;
+  models:string[];
+  history?:AiHistoryRecord[];
+  attempts?:{model:string;ok:boolean;at:string;fallbackModel?:string}[];
+  extractions?:{model:string;status:string;completed_at:string}[];
+};
+type AiServiceCheck={ok:boolean;results:{model:string;actualModel?:string;ok:boolean}[]};
+type Notice=''|'saved'|'verified'|'unknown'|'queryPendingFailed'|'error'|'conflict'|'required';
+type ReadFailure='error'|'denied';
+const pendingKey='uper-ai-pending',draftKey='uper-ai-draft';
+const emptySelection:AiSelection={primary:'',fallback:''};
+const words=(lang:CrmLanguage)=>(key:keyof typeof aiServiceText)=>aiServiceText[key][lang==='zh'?2:lang==='id'?1:0];
+
+async function call(path='',body?:object){
+  const response=await fetch('/api/admin/ai-service'+path,{
+    method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:undefined,
+    body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(body?155000:15000),
+  });
+  const data=await response.json();
+  if(!response.ok)throw Object.assign(Error(data.error),{status:response.status});
+  return data;
 }
-type ContentProps={lang:CrmLanguage;isLight:boolean;data:any;selection:AiSelection;check:any;busy:boolean;notice:string;unresolved:boolean;onSelect:(s:AiSelection)=>void;onSubmit:()=>void};
-export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,unresolved,onSelect,onSubmit}:ContentProps){
- const col=lang==='zh'?2:lang==='id'?1:0,t=(k:keyof typeof aiServiceText)=>aiServiceText[k][col];
- const status=(ok:boolean)=> <span className="ai-check" data-ok={ok}>{ok?<CheckCircle2 size={15} aria-hidden="true"/>:<XCircle size={15} aria-hidden="true"/>}{t(ok?'ready':'failed')}</span>;
- const describe=(value:AiSelection,role:typeof aiModelSlots[number])=>{
-  const effort=selectedReasoningEffort(value,role);
-  return effort?`${value[role]} · ${t(effort)}`:value[role];
- };
- const fields=(value:AiSelection)=> <dl className="ai-config-values">{aiModelSlots.map(k=><div key={k}><dt>{t(k)}</dt><dd>{describe(value,k)}</dd></div>)}</dl>;
- return <section data-admin-form="" className="ai-service-panel" aria-busy={busy}>
-  {notice&&<AdminFormFeedback className="ai-service-feedback" state={notice==='saved'||notice==='verified'?'saved':notice==='error'?'error':'unknown'} role="status">{t(notice as keyof typeof aiServiceText)}</AdminFormFeedback>}
-  {!data?<p role="status">{t(notice?'error':'busy')}</p>:<>
-   <div className="access-grid ai-service-grid">
-    <AdminFormSection variant="card" className="access-card ai-service-card" titleId="ai-model-heading" title={<><Settings2 size={19} aria-hidden="true"/>{t('models')}</>} actions={<AdminRequiredNote lang={lang}/>}>
-     <div className="ai-config-active"><span>{t('active')}</span>{fields(data.current)}</div>
-     <div data-admin-grid="" className="ai-service-fields">
-      {aiModelSlots.map(role=>{
-       const effort=selectedReasoningEffort(selection,role);
-       const modelId=`ai-${role}-model`,effortId=`ai-${role}-effort`,key=effortField[role];
-       return <div key={role}>
-        <AdminField as="div" required><label htmlFor={modelId}>{t(role)}</label>
-         <CrmSingleSelect controlId={modelId} label={t(role)} value={selection[role]} options={data.models.map((m:string)=>({value:m,label:m}))}
-          onChange={model=>onSelect({...selection,[role]:model,[key]:supportsReasoningEffort(model)?selection[key]:undefined})}
-          lang={lang} isLight={isLight} required disabled={busy}/>
-        </AdminField>
-        {effort?<AdminField as="div"><label htmlFor={effortId}>{t(key)}</label>
-         <CrmSingleSelect controlId={effortId} label={t(key)} value={effort} options={reasoningEfforts.map(value=>({value,label:t(value)}))}
-          onChange={value=>{const effort=reasoningEfforts.find(item=>item===value);if(effort)onSelect({...selection,[key]:effort===defaultReasoningEffort?undefined:effort});}}
-          lang={lang} isLight={isLight} disabled={busy}/>
-        </AdminField>:<span className="ai-service-muted">{t('reasoningUnavailable')}</span>}
-       </div>;
-      })}
-     </div>
-     <p className="ai-service-muted">{t('reasoningHint')}</p>
-    </AdminFormSection>
-    <AdminFormSection variant="card" className="access-card ai-service-card" titleId="ai-test-heading" title={<><FlaskConical size={19} aria-hidden="true"/>{t('testEnable')}</>}>
-     <div className="ai-test-body" role="status" aria-live="polite">
-      {busy?<p className="ai-service-progress"><LoaderCircle size={18} aria-hidden="true"/>{t('busy')}</p>:check?<div className="ai-test-results">{check.results.map((r:any)=><div className="ai-test-result" key={r.model}><div><strong>{r.model}</strong>{r.actualModel&&<span className="ai-service-muted">{t('actualModel')}: {r.actualModel}</span>}</div>{status(r.ok)}</div>)}<p className="ai-service-muted">{t(check.ok?'checksPassed':'testFailed')}</p></div>:<p className="ai-service-muted">{t('testHint')}</p>}
-     </div>
-     <AdminFormActions className="access-record-action ai-service-actions"><button type="button" className="ai-primary" disabled={busy||unresolved} onClick={onSubmit}><FlaskConical size={16} aria-hidden="true"/>{t(busy?'busy':'testSave')}</button></AdminFormActions>
-    </AdminFormSection>
-   </div>
-   <section className="access-card ai-service-support" aria-label={t('support')}>
-    <CrmDisclosure heading={t('actual')}><p className="ai-service-muted">{t('callNote')}</p><ul className="ai-service-records">{data.attempts.map((a:any,i:number)=><li key={i}><strong>{a.model}</strong>{status(a.ok)}<time>{formatCrmEventTime(a.at)}</time>{a.fallbackModel&&<span>{t('fallbackUsed')}: {a.fallbackModel}</span>}</li>)}{!data.attempts.length&&<li>{t('empty')}</li>}</ul></CrmDisclosure>
-    <CrmDisclosure heading={t('extract')}><ul className="ai-service-records">{data.extractions.map((a:any,i:number)=><li key={i}><strong>{a.model}</strong>{status(a.status==='completed')}<time>{formatCrmEventTime(a.completed_at)}</time></li>)}{!data.extractions.length&&<li>{t('empty')}</li>}</ul></CrmDisclosure>
+function readDraft():AiSelection|undefined{
+  if(typeof sessionStorage==='undefined')return;
+  try {
+    const draft=JSON.parse(sessionStorage.getItem(draftKey)??'null');
+    if(typeof draft?.primary==='string'&&typeof draft.fallback==='string')return draft;
+  }catch{/* Ignore invalid browser storage. */}
+}
+function isDenied(error:unknown){
+  return [401,403].includes((error as {status?:number}).status??0);
+}
 
-    <CrmDisclosure heading={t('history')}><ul className="ai-service-records">{data.history?.map((a:any)=><li key={a.requestId}><strong>{describe(a.current,'primary')} → {describe(a.current,'fallback')}</strong><span>{a.actor}</span><time>{formatCrmEventTime(a.at)}</time></li>)}{!data.history?.length&&<li>{t('empty')}</li>}</ul></CrmDisclosure>
-    <CrmDisclosure heading={t('help')}><p>{t('guide')}</p></CrmDisclosure>
-   </section>
-  </>}
- </section>;
+export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChange,onBusyChange}:{
+  lang:CrmLanguage;isLight:boolean;
+  renderHeading:(actions:ReactNode,required:boolean)=>ReactNode;
+  children:ReactNode;onDraftChange:(dirty:boolean)=>void;onBusyChange:(busy:boolean)=>void;
+}){
+  const [data,setData]=useState<AiServiceData>();
+  const [draft,setDraft]=useState<AiSelection|undefined>(readDraft);
+  const [check,setCheck]=useState<AiServiceCheck>();
+  const [busy,setBusy]=useState(false),[querying,setQuerying]=useState(false);
+  const [failure,setFailure]=useState<ReadFailure>(),[notice,setNotice]=useState<Notice>('');
+  const [unresolved,setUnresolved]=useState(()=>typeof sessionStorage!=='undefined'&&!!sessionStorage.getItem(pendingKey));
+  const [diagnosing,setDiagnosing]=useState(false);
+  const submitting=useRef(false),reading=useRef(false);
+  const selection=draft??data?.current??emptySelection;
+  const dirty=!!data&&!sameAiSelection(selection,data.current);
+  useEffect(()=>{
+    onDraftChange(dirty);
+    return ()=>onDraftChange(false);
+  },[dirty,onDraftChange]);
+  useEffect(()=>{
+    onBusyChange(busy);
+    return ()=>onBusyChange(false);
+  },[busy,onBusyChange]);
+
+  const clearPending=()=>{
+    sessionStorage.removeItem(pendingKey);
+    sessionStorage.removeItem(draftKey);
+    setUnresolved(false);
+  };
+  const clearDenied=()=>{
+    setData(undefined);setDraft(undefined);setCheck(undefined);setDiagnosing(false);setNotice('');
+    setFailure('denied');
+  };
+  const load=async()=>{
+    if(reading.current)return;
+    reading.current=true;setQuerying(true);
+    try{
+      const next:AiServiceData=await call();
+      setData(next);setFailure(undefined);
+      const pending=sessionStorage.getItem(pendingKey);
+      if(pending&&next.history?.some(record=>record.requestId===pending)){
+        clearPending();setDraft(undefined);setCheck(undefined);setNotice('saved');
+      }else if(pending)setNotice('unknown');
+      else if(notice==='conflict'||notice==='queryPendingFailed'){
+        setNotice('');setCheck(undefined);
+      }
+    }catch(error){
+      if(isDenied(error))clearDenied();
+      else if(sessionStorage.getItem(pendingKey)){
+        if(!data)setFailure('error');
+        setNotice('queryPendingFailed');
+      }
+      else setFailure('error');
+    }finally{reading.current=false;setQuerying(false);}
+  };
+  useEffect(()=>{
+    if(!sessionStorage.getItem(pendingKey))sessionStorage.removeItem(draftKey);
+    void load();
+  },[]);
+  const choose=(next:AiSelection)=>{
+    setDraft(data&&sameAiSelection(next,data.current)?undefined:next);
+    setCheck(undefined);setNotice('');
+  };
+  const submit=async(diagnostic=false)=>{
+    if(!data||submitting.current||reading.current||failure||unresolved||notice==='conflict')return;
+    const candidate=diagnostic?data.current:selection;
+    if(!candidate.primary||!candidate.fallback||candidate.primary===candidate.fallback){
+      setNotice('required');return;
+    }
+    if(!diagnostic&&!dirty)return;
+    submitting.current=true;setBusy(true);setNotice('');setCheck(undefined);
+    let activating=false;
+    const requestId=crypto.randomUUID();
+    try{
+      const result=await testAndSaveAi({
+        call,current:data.current,selection:candidate,revision:data.revision,requestId,onChecked:setCheck,
+        beforeActivate:()=>{
+          activating=true;
+          sessionStorage.setItem(draftKey,JSON.stringify(candidate));
+          sessionStorage.setItem(pendingKey,requestId);
+        },
+      });
+      if(result.unchanged)setNotice('verified');
+      if(result.saved){
+        clearPending();setDraft(undefined);setNotice('saved');
+        setData(previous=>previous&&{...previous,current:result.result.current,revision:result.result.revision});
+        await load();
+      }
+    }catch(error){
+      const message=(error as Error).message;
+      if(isDenied(error))clearDenied();
+      else if(message==='conflict'||message==='test_required'){
+        clearPending();setNotice('conflict');
+      }else if(activating){
+        setNotice('unknown');setUnresolved(true);
+      }else setNotice('error');
+    }finally{submitting.current=false;setBusy(false);}
+  };
+
+  return <AiServiceContent {...{lang,isLight,data,selection,check,busy,notice,unresolved,diagnosing,querying,failure,renderHeading}}
+    onSelect={choose} onSubmit={()=>void submit()} onQuery={()=>void load()}
+    onDiagnose={()=>{setCheck(undefined);setNotice('');setDiagnosing(true);}}
+    onTestCurrent={()=>void submit(true)}
+    onCloseDiagnostics={()=>{if(!busy){setDiagnosing(false);setCheck(undefined);setNotice('');}}}>
+    {children}
+  </AiServiceContent>;
+}
+
+type ContentProps={
+  lang:CrmLanguage;isLight:boolean;data?:AiServiceData;selection:AiSelection;check?:AiServiceCheck|null;
+  busy:boolean;notice:Notice;unresolved:boolean;diagnosing?:boolean;querying?:boolean;failure?:ReadFailure;
+  renderHeading:(actions:ReactNode,required:boolean)=>ReactNode;children?:ReactNode;
+  onSelect:(selection:AiSelection)=>void;onSubmit:()=>void;onQuery:()=>void;onDiagnose:()=>void;
+  onTestCurrent:()=>void;onCloseDiagnostics:()=>void;
+};
+export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,unresolved,diagnosing,querying,failure,
+  renderHeading,children,onSelect,onSubmit,onQuery,onDiagnose,onTestCurrent,onCloseDiagnostics}:ContentProps){
+  const t=words(lang);
+  const status=(ok:boolean)=><span className="ai-check" data-ok={ok}>
+    {ok?<CheckCircle2 size={15} aria-hidden="true"/>:<XCircle size={15} aria-hidden="true"/>}{t(ok?'ready':'failed')}
+  </span>;
+  const describe=(value:AiSelection,role:typeof aiModelSlots[number])=>{
+    const effort=selectedReasoningEffort(value,role);
+    return effort?value[role]+' · '+t(effort):value[role];
+  };
+  const feedback=notice&&<AdminFormFeedback lang={lang}
+    state={notice==='saved'||notice==='verified'?'saved':notice==='unknown'||notice==='queryPendingFailed'?'unknown':'error'}>
+    {t(notice)}
+  </AdminFormFeedback>;
+  const results=(busy||check)&&<div role="status" aria-live="polite">
+    {busy?<p className="ai-service-progress"><LoaderCircle size={18} aria-hidden="true"/>{t('busy')}</p>:
+      check&&<div className="ai-test-results">
+        {check.results.map(result=><div className="ai-test-result" key={result.model}>
+          <div><strong>{result.model}</strong>{result.actualModel&&<span className="ai-service-muted">{t('actualModel')} · {result.actualModel}</span>}</div>
+          {status(result.ok)}
+        </div>)}
+        <p className="ai-service-muted">{t(check.ok?'checksPassed':'testFailed')}</p>
+      </div>}
+  </div>;
+  const blocked=busy||!!querying||!!failure||unresolved||notice==='conflict';
+  const actionDisabled=!data||!selection.primary||!selection.fallback||sameAiSelection(selection,data.current);
+  const attempts=data?.attempts??[],extractions=data?.extractions??[],history=data?.history??[];
+  return <>
+    <AdminForm lang={lang} onSubmit={(event:React.FormEvent)=>{event.preventDefault();onSubmit();}}
+      className="integration-settings-body" aria-busy={!diagnosing&&busy||undefined}>
+      {renderHeading(failure!=='denied'&&<>
+        <AdminRefreshAction label={t(unresolved||notice==='conflict'?'checkOperation':'refresh')}
+          loading={querying} disabled={busy} onClick={onQuery}/>
+        {data&&!unresolved&&notice!=='conflict'&&<CrmPageAction icon={Save} type="submit" variant="primary"
+          label={t(busy&&!diagnosing?'busy':'testSave')} keepFocusWhileLoading loading={busy&&!diagnosing}
+          disabled={actionDisabled||(!busy&&blocked)||!!diagnosing} />}
+      </>,!!data)}
+      {(!data||failure)&&<AdminListState lang={lang} state={failure??'loading'} onRetry={onQuery}/>}
+      {!data&&!diagnosing&&feedback}
+      {data&&<AdminFormSection variant="card" title={t('models')} actions={<CrmPageAction icon={FlaskConical}
+        label={t('testCurrent')} onClick={onDiagnose} disabled={blocked}/>}>
+        <AdminFormGrid>
+          {aiModelSlots.map(role=>{
+            const effort=selectedReasoningEffort(selection,role);
+            const modelId='ai-'+role+'-model',effortId='ai-'+role+'-effort',key=effortField[role];
+            return <div key={role} data-admin-stack>
+              <AdminField as="div" required><label htmlFor={modelId}>{t(role)}</label>
+                <CrmSingleSelect controlId={modelId} label={t(role)} value={selection[role]}
+                  options={data.models.map(model=>({value:model,label:model}))}
+                  onChange={model=>onSelect({...selection,[role]:model,[key]:supportsReasoningEffort(model)?selection[key]:undefined})}
+                  lang={lang} isLight={isLight} required disabled={blocked}/>
+              </AdminField>
+              {effort?<AdminField as="div"><label htmlFor={effortId}>{t(key)}</label>
+                <CrmSingleSelect controlId={effortId} label={t(key)} value={effort} options={reasoningEfforts.map(value=>({value,label:t(value)}))}
+                  onChange={value=>{
+                    const effort=reasoningEfforts.find(item=>item===value);
+                    if(effort)onSelect({...selection,[key]:effort===defaultReasoningEffort?undefined:effort});
+                  }} lang={lang} isLight={isLight} disabled={blocked}/>
+              </AdminField>:<p className="ai-service-muted">{t('reasoningUnavailable')}</p>}
+            </div>;
+          })}
+        </AdminFormGrid>
+        <p className="ai-service-muted">{t('shortGuide')}</p>
+        {!diagnosing&&<>{feedback}{results}{!busy&&!notice&&!check&&!actionDisabled&&<AdminFormFeedback state="dirty" lang={lang}/>}</>}
+      </AdminFormSection>}
+    </AdminForm>
+    {children}
+    {data&&<AdminFormSection variant="card" title={t('support')}>
+      <div className="ai-service-support">
+        <CrmDisclosure heading={t('actual')}>
+          <p className="ai-service-muted">{t('callNote')}</p>
+          <ul className="ai-service-records">{attempts.map((attempt,i)=><li key={i}>
+            <strong>{attempt.model}</strong>{status(attempt.ok)}<time>{formatCrmEventTime(attempt.at)}</time>
+            {attempt.fallbackModel&&<span>{t('fallbackUsed')} · {attempt.fallbackModel}</span>}
+          </li>)}{!attempts.length&&<li>{t('empty')}</li>}</ul>
+        </CrmDisclosure>
+        <CrmDisclosure heading={t('extract')}>
+          <ul className="ai-service-records">{extractions.map((attempt,i)=><li key={i}>
+            <strong>{attempt.model}</strong>{status(attempt.status==='completed')}<time>{formatCrmEventTime(attempt.completed_at)}</time>
+          </li>)}{!extractions.length&&<li>{t('empty')}</li>}</ul>
+        </CrmDisclosure>
+        <CrmDisclosure heading={t('history')}>
+          <ul className="ai-service-records">{history.map(record=><li key={record.requestId}>
+            <strong>{describe(record.current,'primary')} → {describe(record.current,'fallback')}</strong>
+            <span>{record.actor}</span><time>{formatCrmEventTime(record.at)}</time>
+          </li>)}{!history.length&&<li>{t('empty')}</li>}</ul>
+        </CrmDisclosure>
+        <CrmDisclosure heading={t('help')}><p>{t('guide')}</p><p>{t('reasoningHint')}</p></CrmDisclosure>
+      </div>
+    </AdminFormSection>}
+    {data&&diagnosing&&<AdminEditor lang={lang} light={isLight} title={t('testCurrent')} busy={busy}
+      onClose={onCloseDiagnostics} footer={<>
+        <button type="button" onClick={onCloseDiagnostics} disabled={busy}>{t('close')}</button>
+        <button type="button" data-primary disabled={blocked} onClick={onTestCurrent}>{t('testCurrent')}</button>
+      </>}>
+      <AdminFormSummary title={t('active')} fields={aiModelSlots.map(role=>[t(role),describe(data.current,role)])}/>
+      {feedback}{results}
+      {notice==='conflict'&&<button type="button" className="crm-work-button" disabled={querying} onClick={onQuery}>{t('checkOperation')}</button>}
+    </AdminEditor>}
+  </>;
 }

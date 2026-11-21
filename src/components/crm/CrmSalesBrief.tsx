@@ -57,12 +57,14 @@ export function CrmSalesBrief({
   milestones,
   evidenceEvents = [],
   showStage = true,
+  showGoal = true,
 }: any) {
   const ui = useCrmUiText(lang),
     goal = lead.goal,
     hasGoal = typeof goal === "string" && !!goal.trim();
   const source = crmSourcePresentation(lead.profileFieldMeta?.goal?.sourceType),
     ids = goalEvidenceIds(lead, evidenceEvents);
+  if (!showStage && !showGoal && !milestones) return null;
   return (
     <section
       className="crm-sales-brief crm-sales-brief-compact crm-sales-brief-goal-only"
@@ -75,7 +77,7 @@ export function CrmSalesBrief({
         </h3>
       </div>}
       {milestones && <div className="crm-sales-brief-events">{milestones}</div>}
-      <section className="crm-sales-goal-context" aria-label={ui("学习目标")}>
+      {showGoal && <section className="crm-sales-goal-context" aria-label={ui("学习目标")}>
         <span className="crm-sales-goal-context-label">{ui("学习目标")}</span>
         <span
           className="crm-sales-goal-context-value"
@@ -110,7 +112,7 @@ export function CrmSalesBrief({
             <ArrowUpRight size={14} aria-hidden="true" />
           </button>
         )}
-      </section>
+      </section>}
       {showStage&&lead.contactArrangement?.state === "stopped" && (
         <aside className="crm-followup-restriction">
           <strong>

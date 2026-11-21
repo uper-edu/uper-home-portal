@@ -381,7 +381,9 @@ export default function AIChatbot() {
     if (lower.includes('gpt-6-luna') || lower.includes('luna')) return 'GPT-6 Luna';
     if (lower.includes('gpt-4o-mini')) return 'GPT-4o-mini';
     if (lower.includes('gpt-4o')) return 'GPT-4o';
-    if (lower.includes('deepseek')) return 'DeepSeek-V3';
+    if (lower.includes('deepseek-v4-pro')) return 'DeepSeek V4 Pro';
+    if (lower.includes('deepseek-flash')) return 'DeepSeek Flash';
+    if (lower.includes('deepseek')) return 'DeepSeek';
     return modelName;
   };
 

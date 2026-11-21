@@ -214,10 +214,8 @@ test("home page actions/subtitle, overview, review and save/discard feedback fol
       reviewing: false,
       canManage: true,
       isLight: true,
-      state: { pending: true, loading: false, unavailable: false },
       onOpen: () => {},
       onReturn: () => {},
-      showSubtitle: true,
       onCreate: () => {},
       onRefresh: () => {},
     };

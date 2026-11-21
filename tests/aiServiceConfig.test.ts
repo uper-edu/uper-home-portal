@@ -36,7 +36,8 @@ test('AI defaults use the confirmed primary while preserving environment and sav
  const empty={query:async()=>({rows:[]})};
  try {
   delete process.env.OPENAI_MODEL;
-  assert.deepEqual((await aiState(empty)).current,{primary:'gpt-6.1-sol',fallback:'deepseek-chat'});
+  assert.deepEqual((await aiState(empty)).current,{primary:'gpt-6.2-sol',fallback:'deepseek-v4-pro'});
+  assert.deepEqual(validateSelection((await aiState(empty)).current),(await aiState(empty)).current);
   process.env.OPENAI_MODEL='gpt-6.1-terra';
   assert.equal((await aiState(empty)).current.primary,'gpt-6.1-terra');
   const saved={revision:3,current:{primary:'gpt-6-luna',fallback:'deepseek-chat'}};
@@ -46,7 +47,7 @@ test('AI defaults use the confirmed primary while preserving environment and sav
  }
 });
 
-test('existing model identifiers resolve to the correct provider and credential source',()=>{
+test('new model candidates use their own provider credentials and endpoints',()=>{
  const overrides={OPENAI_API_KEY:'mock-openai',DEEPSEEK_API_KEY:'mock-deepseek',
   OPENAI_API_BASE_URL:'https://openai.invalid/chat/completions',DEEPSEEK_API_BASE_URL:'https://deepseek.invalid/chat/completions'};
  const prior=Object.fromEntries(Object.keys(overrides).map(key=>[key,process.env[key]]));

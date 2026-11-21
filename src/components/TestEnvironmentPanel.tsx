@@ -1,4 +1,5 @@
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
+import {AdminPageHeader} from './admin/AdminPageHeader';
 import { useEffect, useState } from "react";
 import { Copy } from "lucide-react";
 import {CrmPageAction} from './crm/CrmPageAction';
@@ -38,28 +39,19 @@ export function TestEnvironmentPanel({ lang }: { lang: CrmLanguage }) {
   }, [lang]);
   const text = data ? testDirectoryText(data, lang) : "";
   return (
-    <section
-      className="access-card test-directory"
-      aria-labelledby="test-directory-title"
-    >
-      <header className="access-section-heading">
-        <div>
-          <h2 id="test-directory-title">
-            {t(
+    <>
+      <AdminPageHeader headingId="test-directory-title"
+          title={t(
               "Test environment & accounts",
               "Lingkungan uji & akun",
               "测试环境和账号",
             )}
-          </h2>
-          <p>
-            {t(
+          subtitle={t(
               "Copy plain text for the authorized test team. User-created accounts are excluded.",
               "Salin teks biasa untuk tim penguji yang berwenang. Akun yang ditambahkan kemudian tidak disertakan.",
               "复制纯文本发送给授权测试团队；不列出管理员后来添加的账号。",
             )}
-          </p>
-        </div>
-        <div className="access-section-actions">
+          actions={<>
           <AdminRefreshAction label={t("Refresh", "Muat ulang", "刷新")} loading={loading} onClick={()=>void load()}/>
           <CrmPageAction icon={Copy} variant="primary" label={t("Copy all", "Salin semua", "复制全部")}
             disabled={!data || loading}
@@ -74,8 +66,8 @@ export function TestEnvironmentPanel({ lang }: { lang: CrmLanguage }) {
               }
             }}
           />
-        </div>
-      </header>
+          </>}/>
+    <section className="access-card test-directory" aria-labelledby="test-directory-title">
       {loading && <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>}
       {error && (
         <p role="alert">
@@ -121,6 +113,6 @@ export function TestEnvironmentPanel({ lang }: { lang: CrmLanguage }) {
           )}
         </p>
       )}
-    </section>
+    </section></>
   );
 }

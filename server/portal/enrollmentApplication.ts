@@ -100,14 +100,15 @@ function proofContent(raw: unknown, mime: unknown) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-export async function enrollmentReadiness(c:Client,explain=false,policy=enrollmentServicePolicy()) {
-    const reasons = policy.acceptingNew ? [] : [policy.servicing ? 'paused' : 'service_disabled'];
-    if (!policy.simulation && (policy.acceptingNew || explain)) {
-      if (!hasConfiguredEnrollmentBank(await readEnrollmentBank(c))) reasons.push('bank_required');
-      if (!await enrollmentSmtpReady(c)) reasons.push('mail_required');
-    }
-    return {accepting:reasons.length===0,servicing:policy.servicing,reasons};
+export async function enrollmentReadiness(c:Client,policy=enrollmentServicePolicy()) {
+  if(!policy.servicing)return {accepting:false,servicing:false,reasons:['service_disabled']};
+  const reasons:string[]=[];
+  if(!policy.simulation){
+    if(!hasConfiguredEnrollmentBank(await readEnrollmentBank(c)))reasons.push('bank_required');
+    if(!await enrollmentSmtpReady(c))reasons.push('mail_required');
   }
+  return {accepting:reasons.length===0,servicing:true,reasons};
+}
 
 export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   wrap: (fn: Route) => (q: Request, r: Response) => void;
@@ -121,18 +122,21 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   const finance = '/api/crm/enrollment/finance';
 
   async function requireNewEnrollment(c:Client) {
-    if (!(await enrollmentReadiness(c,false,policy)).accepting) invalid('enrollment_intake_paused',503);
+    const {reasons}=await enrollmentReadiness(c,policy);
+    if(reasons.length)invalid('enrollment_intake_'+reasons[0],503);
   }
   app.get(base + '/availability', wrap(async (_q,r) => {
-    const accepting=policy.acceptingNew&&await enrollTx(async c=>(await enrollmentReadiness(c,false,policy)).accepting).catch(()=>false);
-    r.set('Cache-Control','no-store').json({accepting,servicing:policy.servicing});
+    const readiness=await enrollTx(c=>enrollmentReadiness(c,policy)).catch(()=>({
+      accepting:false,servicing:policy.servicing,reasons:['check_failed'],
+    }));
+    r.set('Cache-Control','no-store').json(readiness);
   }));
   app.get('/api/crm/enrollment/readiness', wrap(async (q,r) => {
     await staff(q,'crm.operations.manage');
-    r.set('Cache-Control','no-store').json(await enrollTx(c=>enrollmentReadiness(c,true,policy)));
+    r.set('Cache-Control','no-store').json(await enrollTx(c=>enrollmentReadiness(c,policy)));
   }));
+  mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow,servicing:policy.servicing});
   if (!policy.servicing) return;
-  mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow});
 
   const post = (path: string, handler: Route) => app.post(path, wrap(async (q, r) => {
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected', 403);
@@ -155,9 +159,11 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     return actor;
   };
   mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
-  if(local) startEnrollmentWeeklySimulation(enrollTx);
-  startEnrollmentVacancySimulation(enrollTx,lockClass);
-  startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass});
+  if(local&&policy.maintenance) startEnrollmentWeeklySimulation(enrollTx);
+  if(policy.maintenance){
+    startEnrollmentVacancySimulation(enrollTx,lockClass);
+    startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass});
+  }
   mountEnrollmentResolution(app,{wrap,post,transact:moneyTx,read:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
 
   post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {
@@ -215,6 +221,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
 
   post(base + '/email/request', async (q, r) => {
     const email = contact(q.body.email);
+    if(enrollmentMailMode()==='disabled') invalid('enrollment_email_unavailable',503);
     const id = randomUUID();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const pending=await enrollTx(async (c: Client) => {
@@ -283,7 +290,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const {paymentHours}=await readEnrollmentRules(c);
     await requireNewEnrollment(c);
     const bankSettings=await readEnrollmentBank(c);
-    if(!policy.simulation&&!hasConfiguredEnrollmentBank(bankSettings))invalid('enrollment_intake_paused',503);
+    if(!policy.simulation&&!hasConfiguredEnrollmentBank(bankSettings))invalid('enrollment_intake_bank_required',503);
     const {bank}=bankSettings;
     await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
       VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)`,

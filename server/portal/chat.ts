@@ -3,7 +3,7 @@ import {enrollmentGuideText,enrollmentReplyLanguage,normalizeEnrollmentIntent,re
 import {managedCoursePrices} from './courseCatalog.ts';
 import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,parseConsultationReply,renderConsultationReply} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
-import {readChatProviderReply} from './chatProviderReply.ts';
+import {readChatProviderReply} from "./chatProviderReply.ts";
 import {runtimeProviders} from './aiServiceConfig.ts';
 import {modelParameters} from './modelParameters.ts';
 import {crmInstant} from '../../src/utils/crmOperatingTime.ts';
@@ -263,7 +263,7 @@ export function mountChat(app: Express) {
                       "\n" + chatEnrollmentInstruction + enrollmentConsultationPolicy +
                       (introduction?'':`\nAnswer in the language the learner used in their current message, regardless of the interface language, unless the learner explicitly requests a different reply language. An explicit request takes priority. With mixed-language input prefer the main language of the question, not isolated course names, borrowed words or quoted text. If the current message has no clear language, use the latest clear learner language, or the interface language (${lang}) if none. In the JSON response, include "replyLanguage": "zh", "en", or "id" matching the selected response language so the server can localize verified class facts and links. For other languages write the conversational reply in the requested language and omit replyLanguage.`) +
                       "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. A stored request is not a completed contact or booking. No new tasks are created." +
-                      courseCatalogueInstruction(currentPriceBook,true) +
+                      courseCatalogueInstruction(currentPriceBook,true,provider.provider==='deepseek') +
                       "\nCurrent date in Jakarta (WIB), for relative dates: "+
                       new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',dateStyle:'short'}).format(new Date()) +
                       "\nPreviously displayed Enrollment cards, in display order. Use only for references; their facts may have changed: "+
@@ -305,17 +305,26 @@ export function mountChat(app: Express) {
             };
             const requestReply = async (purpose:'consultation'|'reference',messages=requestBody.messages) => {
               const signal = AbortSignal.timeout(45000);
-              const send = () => fetch(provider.url, {
+              const send = (stream: boolean) => fetch(provider.url, {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${provider.key}`,
                   "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ ...requestBody, messages, stream:true, stream_options:{include_usage:true} }),
+                body: JSON.stringify({ ...requestBody, messages, stream, ...(stream ? {stream_options:{include_usage:true}} : {}) }),
                 signal,
               });
-              await readChatProviderReply(send,
+              await readChatProviderReply(send, provider.provider === 'deepseek',
                 ({content,model}) => { partial=content; actualModel=model||provider.model; },
+                async () => {
+                  log.warn("chat.provider_blank_stream_retry", {model:provider.model, conversationId:conv.id});
+                  await db.query(
+                    "INSERT INTO ai_attempts(message_id,model,content,error) VALUES(:p1,:p2,:p3,:p4)",
+                    [assistantId, provider.model, partial, "Blank provider stream; retrying without streaming"],
+                  );
+                  partial="";
+                  actualModel=provider.model;
+                },
                 call => log.info('chat.token_usage', {
                   conversationId:conv.id, messageId:assistantId,
                   provider:provider.provider, configuredModel:provider.model, role:providerIndex===0?'primary':'fallback',

@@ -1,8 +1,8 @@
-import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {AdminSearchField} from '../admin/AdminSearchField';
-import {AdminRecordHeader} from '../admin/AdminRecordHeader';
-import {CrmDetailActions,CrmRecordFilters,CrmRecordSearch,CrmRecordSidebar,CrmRecordSidebarToggle,CrmRecordTitle} from './CrmRecordWorkspace';
+import {AdminRecordBack,AdminRecordHeader} from '../admin/AdminRecordHeader';
+import {useAdminRecordSidebarLayout} from '../admin/AdminRecordWorkspace';
+import {CrmDetailActions,CrmRecordFilters,CrmRecordSearch,CrmRecordSidebar,CrmRecordTitle} from './CrmRecordWorkspace';
 import {CrmPageAction} from './CrmPageAction';
 import {formatCurrency} from '../../utils/currency';
 import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
@@ -107,6 +107,7 @@ import type { HookType, HookContextType } from "../../types/leadSystem";
 interface CrmCampaignHubProps {
   canManageCampaigns?: boolean;
   reviewCounts?: PromotionReviewCounts;
+  reviewPendingCount?: number;
   reviewCountsLoading?: boolean;
   onRefreshReviewCounts?: () => void;
   isLight: boolean;
@@ -118,6 +119,7 @@ interface CrmCampaignHubProps {
 export function CrmCampaignHub({
   canManageCampaigns = false,
   reviewCounts: promotionReviews = { available: false, counts: {} },
+  reviewPendingCount,
   reviewCountsLoading = false,
   onRefreshReviewCounts,
   isLight,
@@ -126,6 +128,7 @@ export function CrmCampaignHub({
   onSelectLeadInCrm,
   onNavigateTab,
 }: CrmCampaignHubProps) {
+  const reviewState=sourceReviewState(reviewPendingCount,reviewCountsLoading);
   const [refreshedLeads, setRefreshedLeads] = useState<CrmLeadRecord[] | null>(null);
   const leads = refreshedLeads ?? initialLeads;
   const u = campaignUi(lang);
@@ -192,8 +195,7 @@ export function CrmCampaignHub({
     setPageUrl(url.href);
     setShowCampaignOverview(true);
   }, [pageUrl]);
-  const [listCollapsed, setListCollapsed] = useState(false),
-    [mobileList, setMobileList] = useState(false);
+  const [mobileList, setMobileList] = useState(false);
   const [wide,setWide] = useState(()=>typeof window!=="undefined"&&window.innerWidth>=recordSplitMinWidth);
   useEffect(()=>{
     const media=window.matchMedia(`(min-width: ${recordSplitMinWidth}px)`);
@@ -202,9 +204,6 @@ export function CrmCampaignHub({
     media.addEventListener("change",sync);
     return ()=>media.removeEventListener("change",sync);
   },[]);
-  const sidebarVisible=wide?!listCollapsed:mobileList;
-  const listToggle=useRef<HTMLButtonElement>(null);
-  const sidebarSearch=useRef<HTMLInputElement>(null);
   const listSearch=useRef<HTMLInputElement>(null);
   const activeDetailCampaign =
     campaigns.find((c) => c.id === requestedCampaign) || null;
@@ -327,9 +326,11 @@ export function CrmCampaignHub({
     requestLeave(() => {
       setSaveNotice(false);
       setPromotionFormCampaignId(undefined);
-      setMobileList(true);
+      setMobileList(false);
       navigateCampaign(null);
     });
+  const recordLayout=useAdminRecordSidebarLayout({id:'crm-campaign-records',lang,persistent:wide,
+    listOpen:mobileList,setListOpen:setMobileList,back:{label:u("Back to campaign list"),onClick:closeCampaign}});
   const changeDetailTab = (tab: DetailTab, keyboard = false) => {
     if (activeDetailCampaign && tab !== detailTab)
       requestLeave(() => {
@@ -600,14 +601,12 @@ export function CrmCampaignHub({
           onRefreshReviewCounts?.();
         } : !requestedCampaign ? () => void fetchCampaigns() : undefined}
         refreshing={campaignArea === "sources" ? reviewsLoading : isLoading}
-        showSubtitle={!requestedCampaign}
         lang={lang}
         title={t("Marketing Campaigns", "营销活动中心")}
         reviewing={campaignArea === "sources"}
         canManage={canManageCampaigns}
         isLight={isLight}
-        state={sourceReviewState(promotionReviews, reviewCountsLoading)}
-        onOpen={campaignArea === "campaigns" && !requestedCampaign ? () => openSourceReview() : undefined}
+        onOpen={campaignArea === "campaigns" && !requestedCampaign && reviewState.pending ? () => openSourceReview() : undefined}
         onReturn={returnFromSourceReview}
         returnToDetail={Boolean(reviewReturn.current&&new URL(reviewReturn.current.url).searchParams.has("campaign"))}
         headingRef={workspaceHeading}
@@ -686,8 +685,7 @@ export function CrmCampaignHub({
             )}
           </p>
           {canManageCampaigns &&
-            !reviewCountsLoading &&
-            !promotionReviews.available && (
+            reviewState.unavailable && (
               <p className="campaign-hint" role="status">
                 {u("Promotion review counts unavailable.")}{" "}
                 <button
@@ -696,8 +694,7 @@ export function CrmCampaignHub({
                   onClick={onRefreshReviewCounts}
                 >
                   {u("Retry")}
-                </button>{" "}
-                {u("or open Promotion source exceptions to check.")}
+                </button>
               </p>
             )}
           {campaignError ? (
@@ -741,26 +738,14 @@ export function CrmCampaignHub({
       )}
       {campaignArea === "campaigns" && requestedCampaign && (
         <div className="campaign-records" data-record-detail="true" data-record-scroll={scrollMode}
-          data-sidebar-visible={sidebarVisible}>
-          {!wide&&mobileList&&<div className="crm-record-navigation">
-            <CrmRecordSidebarToggle controls="crm-campaign-records" expanded label={u("Return to selected campaign")}
-              onClick={()=>{
-                setMobileList(false);
-                requestAnimationFrame(()=>listToggle.current?.focus({preventScroll:true}));
-              }}/>
-          </div>}
-          <CrmRecordSidebar id="crm-campaign-records" title={u("Campaigns")} count={campaignError?undefined:filteredCampaigns.length}
-            selectedId={requestedCampaign} hidden={!sidebarVisible} busy={isLoading} busyLabel={u("Loading campaigns…")}
+          data-sidebar-visible={recordLayout.sidebarVisible}>
+          {recordLayout.listNavigation}
+          <CrmRecordSidebar {...recordLayout.sidebar} title={u("Campaigns")} count={campaignError?undefined:filteredCampaigns.length}
+            selectedId={requestedCampaign} busy={isLoading} busyLabel={u("Loading campaigns…")}
             note={activeDetailCampaign&&!isLoading&&!campaignError&&!filteredCampaigns.some(c=>c.id===requestedCampaign)
               ?u("The current campaign is outside these filters. Its details and draft stay open."):undefined}
-            actions={<>
-              <AdminRefreshAction label={u("Refresh campaigns")} loading={isLoading}
-                onClick={()=>void fetchCampaigns()}/>
-              {canManageCampaigns&&<CrmPageAction icon={Plus} label={u("Create campaign")}
-                variant="primary" onClick={handleOpenCreateWizard}/>}
-            </>}
             filters={<CrmRecordFilters lang={lang} count={Number(selectedStatus!=="All")+Number(selectedType!=="All")}
-                search={<CrmRecordSearch inputRef={sidebarSearch} label={u("Search campaigns")}
+                search={<CrmRecordSearch label={u("Search campaigns")}
                   placeholder={u("Search name or code…")} value={searchQuery} onChange={setSearchQuery}/>}>
                 <CrmSelect label={u("Campaign status filter")} lang={lang} isLight={isLight}
                   value={selectedStatus} onChange={setSelectedStatus}>
@@ -785,7 +770,7 @@ export function CrmCampaignHub({
               <CampaignSidebarRow key={c.id} campaign={c} lang={lang} selected={c.id===requestedCampaign}
                 onClick={()=>openCampaign(c)} reviewCount={promotionReviews.available?promotionReviews.counts[c.id]:undefined}/>)}
           </CrmRecordSidebar>
-          <div className="campaign-detail-column" hidden={!wide&&mobileList}>
+          <div className="campaign-detail-column" hidden={recordLayout.listOnly}>
             {requestedCampaign && !activeDetailCampaign && (
               <section aria-live="polite">
                 <p>
@@ -803,12 +788,7 @@ export function CrmCampaignHub({
                 >
                   {u("Retry")}
                 </button>
-                <button
-                  className="campaign-workspace-action"
-                  onClick={closeCampaign}
-                >
-                  {u("Back to campaign list")}
-                </button>
+                {recordLayout.headerBack&&<AdminRecordBack target={recordLayout.headerBack}/>}
               </section>
             )}
             {/* Dedicated campaign workspace; normal document scrolling, no overlay. */}
@@ -817,7 +797,7 @@ export function CrmCampaignHub({
                 className="campaign-workpage crm-detail-panel"
                 aria-labelledby="campaign-page-title"
               >
-                <AdminRecordHeader back={{label:u("Back to campaign list"),onClick:closeCampaign}}
+                <AdminRecordHeader back={recordLayout.headerBack}
                   title={<CrmRecordTitle id="campaign-page-title" titleRef={pageHeading}
                     title={organicDetail?organicCampaignName(lang):campaignName(activeDetailCampaign,lang)}
                     meta={<code>{activeDetailCampaign.code}</code>}
@@ -829,12 +809,7 @@ export function CrmCampaignHub({
                     </div>}/>}
                   actions={<CrmDetailActions label={u("Campaign actions")}
                     secondary={<>
-                      <CrmRecordSidebarToggle controls="crm-campaign-records" expanded={sidebarVisible} ref={listToggle}
-                        label={sidebarVisible?u("Collapse campaign list"):u("Show campaign sidebar")} onClick={()=>{
-                          if(wide){setListCollapsed(!listCollapsed);return;}
-                          setMobileList(true);
-                          requestAnimationFrame(()=>sidebarSearch.current?.focus({preventScroll:true}));
-                        }}/>
+                      {recordLayout.browseAction}
                       {canManageCampaigns&&!organicDetail&&!presetDetail&&<>
                         <CrmPageAction icon={Edit3} label={u("Edit information")} onClick={()=>handleOpenEditWizard(activeDetailCampaign)}/>
                         <CrmPageAction icon={Trash2} label={u("Delete campaign")} onClick={()=>{

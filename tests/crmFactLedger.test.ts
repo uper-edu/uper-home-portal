@@ -1,3 +1,5 @@
+import "./helpers/mockPortalDatabase.mjs";
+
 import test from 'node:test';import assert from 'node:assert/strict';
 import {ledgerMetadata,projectFactLedger} from '../src/utils/crmFactLedger.ts';
 import {projectBuyingEvidence} from '../src/utils/crmBuyingEvidence.ts';

@@ -3,6 +3,7 @@ import {
   interactionInstant,
   projectInteractionTimeline,
 } from "./crmInteractionTimeline";
+import {humanCommunicationLabels} from "./crmInteractionLabels";
 import { isSalesProgressStage } from "./crmSalesProgress";
 export const DAY = 86400000;
 export function metricTime(value: unknown, now = Infinity): number | null {
@@ -43,12 +44,8 @@ export const metricSelections = {
     "Customers with interactions · 7 days",
     "Pelanggan yang berinteraksi · 7 hari",
   ],
-  communication: ["有有效沟通记录", "With conversation", "Ada komunikasi"],
-  no_communication: [
-    "暂无有效沟通记录",
-    "No conversation recorded",
-    "Belum ada komunikasi",
-  ],
+  communication: humanCommunicationLabels.established,
+  no_communication: humanCommunicationLabels.unrecorded,
   sales_connected: [
     "最近销售联系：已接通／已回复",
     "Latest outreach: connected",
@@ -181,7 +178,7 @@ export function leadAnalyticRow(lead: any, now: number) {
     firstTimingUnknown: normal && onTime === null,
     recentCustomer: customerAt !== null && customerAt >= now - 7 * DAY,
     customerTimeUnknown: !!timeline.customer && customerAt === null,
-    engaged: connected.length > 0,
+    engaged: Boolean(timeline.communication),
     connectedRecords: connected.length,
     attempts: sales.length,
     contactMs: contact.ms,

@@ -1,3 +1,4 @@
+import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {Plus} from 'lucide-react';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminSearchField} from '../admin/AdminSearchField';
@@ -122,7 +123,10 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  };
  useEffect(()=>{if(deleting)onDraftChange(true);return()=>{if(deleting)onDraftChange(false);};},[deleting,onDraftChange]);
  return <div className="crm-course-catalog">
- <header className="admin-edit-header"><div className="admin-edit-title"><h2>{title}</h2><p className="crm-work-muted">{t('Maintain teaching content and course specifications.','Kelola materi dan spesifikasi kursus.','维护主教材、节数和学习成果。')}</p></div><div className="crm-ops-actions"><AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>{data?.canManage&&<CrmPageAction icon={Plus} variant="primary" label={t('Create course','Buat kursus','创建课程')} disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}/>}</div></header>
+ <AdminTopicHeader title={title} isLight={isLight}
+   subtitle={t('Maintain teaching content and course specifications.','Kelola materi dan spesifikasi kursus.','维护主教材、节数和学习成果。')}
+   actions={<><AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>
+     {data?.canManage&&<CrmPageAction icon={Plus} variant="primary" label={t('Create course','Buat kursus','创建课程')} disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}/>}</>}/>
  {!form&&unknown&&<div><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" className="crm-work-button" onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></div>}{!form&&state==='saved'&&<CrmSaveFeedback state="saved" lang={lang}/ >}{!form&&error&&<p role="alert">{error}</p>}
  {(listState!=='ready'||!data?.courses.length)&&<AdminListState lang={lang}
    state={listState==='ready'?'empty':listState}
@@ -158,7 +162,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
    <td>{c.teaching?.material??'—'}</td><td>{c.sessions}{c.teaching?' × '+c.teaching.minutes+' min':''}</td>
    <td><AdminStatus tone={c.active?'success':'neutral'}>{c.active?t('Published','Diterbitkan','已发布'):t('Draft','Draf','草稿')}</AdminStatus></td>
    <td>{data.canManage&&<div className="flex flex-wrap gap-x-3 gap-y-1">
-     <AdminRowAction disabled={busy||unknown} onClick={()=>edit(c)}>{t('Edit','Edit','编辑')}</AdminRowAction>
+     <AdminRowAction disabled={busy||unknown||readState!=='ready'} onClick={()=>edit(c)}>{t('Edit','Edit','编辑')}</AdminRowAction>
      {c.active&&c.teaching&&<AdminRowAction disabled={busy||unknown||readState!=='ready'} onClick={()=>onCreateTemplate(c.id)}>
        {t('Create template','Buat templat','创建模板')}</AdminRowAction>}
      {c.canDelete&&<AdminRowAction disabled={busy||unknown||readState!=='ready'} onClick={()=>{setDeleteError('');setDeleting({id:c.id,name:c.name,revision:c.revision,requestId:crypto.randomUUID()});}}>

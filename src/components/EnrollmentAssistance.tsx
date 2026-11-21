@@ -1,3 +1,4 @@
+import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import {enrollmentClassTitle,type EnrollmentClassIdentity} from '../utils/enrollmentCatalog';
 import {useEffect,useState} from 'react';
 import {Link,useLocation,useNavigate} from 'react-router-dom';
@@ -56,7 +57,7 @@ export function EnrollmentAssistance({language}:{language:InterestLanguage}){
   };
   return <section className="enrollment-screen enrollment-apply-screen">
     <h1>{t('确认课程报名','Confirm course enrollment','Konfirmasi pendaftaran kelas')}</h1>
-    {error&&<p className="enrollment-form-error" role="alert">{enrollmentCopy(language,errors[error]??[
+    {error&&<p className="enrollment-form-error" role="alert">{enrollmentReadinessMessage(error.replace(/^enrollment_intake_/,''),language)??enrollmentCopy(language,errors[error]??[
       '暂时无法继续，请核对邮箱、验证码或联系销售。','Check your email and verification code or contact your advisor.','Periksa email dan kode verifikasi, atau hubungi tim kami.'])}</p>}
     {offer&&<><article className="enrollment-record">
       <h2>{enrollmentClassTitle(offer.quote,language)}</h2>
