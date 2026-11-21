@@ -2,7 +2,6 @@ import {useRef, type ReactNode} from 'react';
 import {Globe2, Menu, X} from 'lucide-react';
 import {metadataWords, type SiteLanguage} from '../utils/siteMetadata';
 import {useDesignStyle} from '../utils/theme';
-import './public-header-menu.css';
 
 export const publicHeaderMenuButtonClass = 'public-header-menu-trigger inline-flex size-9 shrink-0 items-center justify-center rounded-full text-slate-800 active:scale-95 transition-all cursor-pointer';
 

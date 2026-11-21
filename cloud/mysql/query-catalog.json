@@ -118,7 +118,6 @@
     "sql": "INSERT INTO access_operations(actor_id,operation_id,action,fingerprint,result) VALUES(:p1,:p2,:p3,:p4,:p5)",
     "sources": [
       "server/portal/accessOperations.ts",
-      "server/portal/accessRecovery.ts",
       "server/portal/enrollmentMail.ts",
       "server/portal/integrationCredentialAdmin.ts"
     ]
@@ -744,12 +743,6 @@
       "server/portal/accessOperations.ts"
     ]
   },
-  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.recovery.authorize',:p2)": {
-    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.recovery.authorize',:p2)",
-    "sources": [
-      "server/portal/accessRecovery.ts"
-    ]
-  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'agreement.notifications.enabled',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'agreement.notifications.enabled',:p2)",
     "sources": [
@@ -1201,7 +1194,6 @@
     "sql": "SELECT * FROM access_operations WHERE actor_id=:p1 AND operation_id=:p2",
     "sources": [
       "server/portal/accessOperations.ts",
-      "server/portal/accessRecovery.ts",
       "server/portal/enrollmentMail.ts"
     ]
   },
@@ -1428,7 +1420,6 @@
     "sql": "SELECT * FROM crm_users WHERE id=:p1 FOR UPDATE",
     "sources": [
       "server/portal/accessManagement.ts",
-      "server/portal/accessRecovery.ts",
       "server/portal/localAuth.ts"
     ]
   },
@@ -1716,6 +1707,12 @@
       "cloud/mysql/site.mjs"
     ]
   },
+  "SELECT 1 FROM crm_sessions WHERE user_id=:p1 AND expires_at>UTC_TIMESTAMP(6) LIMIT 1": {
+    "sql": "SELECT 1 FROM crm_sessions WHERE user_id=:p1 AND expires_at>UTC_TIMESTAMP(6) LIMIT 1",
+    "sources": [
+      "server/portal/accessManagement.ts"
+    ]
+  },
   "SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1": {
     "sql": "SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1",
     "sources": [
@@ -1793,6 +1790,12 @@
     "sql": "SELECT business_number FROM portal_leads WHERE id=:p1",
     "sources": [
       "cloud/mysql/runtime.mjs"
+    ]
+  },
+  "SELECT c.config, a.data, s.short_code FROM portal_audit a\n    JOIN trial_campaigns c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(a.data,'$.campaignId'))\n    LEFT JOIN campaign_promotion_short_links s ON s.p=JSON_UNQUOTE(JSON_EXTRACT(a.data,'$.link.id'))\n    WHERE a.actor=:p1 AND a.action='campaign.promotion.create'\n      AND JSON_UNQUOTE(JSON_EXTRACT(a.data,'$.requestId'))=:p2 AND c.id=:p3\n    ORDER BY a.id DESC LIMIT 1": {
+    "sql": "SELECT c.config, a.data, s.short_code FROM portal_audit a\n    JOIN trial_campaigns c ON c.id=JSON_UNQUOTE(JSON_EXTRACT(a.data,'$.campaignId'))\n    LEFT JOIN campaign_promotion_short_links s ON s.p=JSON_UNQUOTE(JSON_EXTRACT(a.data,'$.link.id'))\n    WHERE a.actor=:p1 AND a.action='campaign.promotion.create'\n      AND JSON_UNQUOTE(JSON_EXTRACT(a.data,'$.requestId'))=:p2 AND c.id=:p3\n    ORDER BY a.id DESC LIMIT 1",
+    "sources": [
+      "server/portal/campaignPromotion.ts"
     ]
   },
   "SELECT c.lead_id,m.id AS message_id,m.content AS original_text,m.created_at AS message_at,m.metadata,c.id AS conversation_id,EXISTS(SELECT 1 FROM site_submissions prev WHERE prev.lead_id=s.lead_id AND prev.kind='inquiry' AND prev.created_at<s.created_at) AS prior_inquiry,EXISTS(SELECT 1 FROM crm_facts f WHERE f.lead_id=s.lead_id AND f.kind='questionnaire.submitted' AND f.created_at<=s.created_at) AS prior_questionnaire FROM messages m JOIN conversations c ON c.id=m.conversation_id JOIN site_submissions s ON s.id=JSON_UNQUOTE(JSON_EXTRACT(m.metadata,'$.submissionId')) AND s.lead_id=c.lead_id AND s.kind='inquiry' WHERE c.source='contact_form' AND m.role='user' AND m.status='saved' AND JSON_CONTAINS(:p1,JSON_QUOTE(c.lead_id))": {
@@ -3575,6 +3578,12 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT result FROM hsk_attempts WHERE visitor_id=:p1 ORDER BY created_at DESC,id DESC LIMIT 1": {
+    "sql": "SELECT result FROM hsk_attempts WHERE visitor_id=:p1 ORDER BY created_at DESC,id DESC LIMIT 1",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
   "SELECT result,created_at FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2": {
     "sql": "SELECT result,created_at FROM hsk_attempts WHERE id=:p1 AND visitor_id=:p2",
     "sources": [
@@ -3733,7 +3742,6 @@
     "sources": [
       "server/portal/accessManagement.ts",
       "server/portal/accessOperations.ts",
-      "server/portal/accessRecovery.ts",
       "server/portal/aiServiceConfig.ts",
       "server/portal/integrationCredentialAdmin.ts",
       "server/portal/larkSelfService.ts",
@@ -4491,8 +4499,8 @@
       "server/portal/integrationCredentials.ts"
     ]
   },
-  "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON)) WHERE id=:p1": {
-    "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON)) WHERE id=:p1",
+  "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON),'$.suggestedPrompts',CAST(:p10 AS JSON),'$.workspaceEntry',CAST(:p11 AS JSON)) WHERE id=:p1": {
+    "sql": "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON),'$.suggestedPrompts',CAST(:p10 AS JSON),'$.workspaceEntry',CAST(:p11 AS JSON)) WHERE id=:p1",
     "sources": [
       "server/portal/chat.ts"
     ]

@@ -105,7 +105,7 @@ test("learner report and WhatsApp merge deliberately skipped and timed out blank
     );
     assert.doesNotMatch(html, /Skipped|Dilewati|跳过/);
     assert.match(html, /13/);
-    assert.match(html, /未作答: 2|Unanswered: 2|Belum dijawab: 2/);
+    assert.match(html, /(?:未作答|Unanswered|Belum dijawab) <strong>2<\/strong>/);
   }
   assert.match(hskWhatsAppDraft(profile, r, "en").message, /Unanswered：2/);
   assert.doesNotMatch(hskWhatsAppDraft(profile, r, "en").message, /skipped/i);

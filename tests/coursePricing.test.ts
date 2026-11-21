@@ -65,7 +65,7 @@ test('compact DeepSeek instructions keep a single Enrollment JSON shape and lega
   const book={courses:[{id:'HSK 1 internal',enrollmentLevel:'HSK 1',sessions:20,total:900000},
     {id:'Legacy published course',sessions:5,total:250000}]};
   const prompt=courseCatalogueInstruction(book,true,true);
-  assert.match(prompt,/\"reply\":\"\",\"catalogue\":null,\"enrollment\":null,\"replyLanguage\":\"id\"/);
+  assert.match(prompt,/\"reply\":\"\",\"catalogue\":null,\"enrollment\":null,\"suggestedPrompts\":\[\]/);
   assert.match(prompt,/explicit request for a reply language takes priority/);
   assert.match(prompt,/Legacy published course/);
   assert.doesNotMatch(prompt,/HSK 1 internal/);

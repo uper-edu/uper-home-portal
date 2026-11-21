@@ -2,7 +2,6 @@ import {useEffect, useRef, useState, type ReactNode} from 'react';
 import {Bookmark, Check, ChevronDown, Copy, Monitor, Share2, Smartphone, X} from 'lucide-react';
 import {promotionJourneyUrl} from '../utils/promotionNavigation';
 import type {SiteLanguage} from '../utils/siteMetadata';
-import './public-link-actions.css';
 
 const words = {
   zh: {

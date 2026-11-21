@@ -170,10 +170,10 @@ test("learner results show explicit HSK question levels without grading badges, 
     const html = renderToStaticMarkup(
       React.createElement(HskAssessmentReport, { result: r, lang }),
     );
-    assert.match(html, /0\/15/);
-    assert.match(html, /scope="row"[^>]*>HSK 1/);
-    assert.match(html, /scope="row"[^>]*>HSK 2/);
-    assert.match(html, /scope="row"[^>]*>HSK 3/);
+    assert.match(html, /<strong>0<\/strong><span> \/ 15<\/span>/);
+    assert.match(html, /<span>HSK 1<\/span>/);
+    assert.match(html, /<span>HSK 2<\/span>/);
+    assert.match(html, /<span>HSK 3<\/span>/);
     assert.doesNotMatch(html, /★|原卷星级表现|By source star level|Per tingkat bintang/);
     assert.doesNotMatch(
       html,

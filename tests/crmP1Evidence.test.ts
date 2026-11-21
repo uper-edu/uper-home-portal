@@ -26,13 +26,14 @@ test('source projection uses only exact same-customer answers, preserves manual 
  assert.equal(questionnaireBasicSources(lead,[...facts,{id:'edit',lead_id:'a',kind:'profile.fields_updated',data:{changes:[{field:'fullName'}]}}]).profileFieldMeta.fullName,undefined);
 });
 const text='客户说长期居住地是雅加达，主要目标是申请中国大学奖学金';const goal={kind:'field',field:'goal',value:'申请中国大学奖学金',quote:'主要目标是申请中国大学奖学金',subject:'customer',temporality:'current',change:'state'};const city={kind:'field',field:'city',value:'Jakarta',quote:'客户说长期居住地是雅加达',subject:'customer',temporality:'current',change:'state'};
+const providers=[{model:'mock',key:'unit-only',url:'https://example.invalid'}];
 const response=(observations:any[])=>new Response(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({observations})}}]}));
 test('AI city coverage review recovers omitted field with exact source; conflicts, negation and uncertainty never become adopted facts',async()=>{
  const saved={key:process.env.OPENAI_API_KEY,secondary:process.env.DEEPSEEK_API_KEY};process.env.OPENAI_API_KEY='unit-only';delete process.env.DEEPSEEK_API_KEY;
- try{let calls=0;const request:any=async(_url:any,options:any)=>{calls++;if(calls===2)assert.match(JSON.parse(options.body).messages[0].content,/Coverage review/);return response(calls===1?[goal]:[city]);};const out=await extractWithAI(text,{},request);assert.equal(calls,2);assert.equal(out.coverageReview.recovered,1);const c=out.observations.find(x=>x.field==='city')!;assert.equal(text.slice(c.start,c.end),c.quote);assert.equal(c.value,'Jakarta');
+ try{let calls=0;const request:any=async(_url:any,options:any)=>{calls++;if(calls===2)assert.match(JSON.parse(options.body).messages[0].content,/Coverage review/);return response(calls===1?[goal]:[city]);};const out=await extractWithAI(text,{},request,providers);assert.equal(calls,2);assert.equal(out.coverageReview.recovered,1);const c=out.observations.find(x=>x.field==='city')!;assert.equal(text.slice(c.start,c.end),c.quote);assert.equal(c.value,'Jakarta');
  const current={city:'Bandung',profileFieldMeta:{city:{revision:1,effectiveAt:'2026-10-25T00:00:00Z'}}};assert.equal(extractionDecision(c,current,{city:1},'2026-10-26T00:00:00Z').decision,'difference');
  for(const temporality of ['negated','uncertain','future','past'])assert.equal(extractionDecision({...c,temporality} as any,current,{city:1},'2026-10-26T00:00:00Z').decision,'evidence');assert.equal(extractionDecision({...c,subject:'sales'},current,{city:1},'2026-10-26T00:00:00Z').decision,'evidence');
- let incomplete=0;await assert.rejects(()=>extractWithAI(text,{},(async()=>{incomplete++;return response([])}) as any));assert.equal(incomplete,2);
+ let incomplete=0;await assert.rejects(()=>extractWithAI(text,{},(async()=>{incomplete++;return response([])}) as any,providers));assert.equal(incomplete,2);
  assert.equal(needsResidenceReview('客户想去雅加达旅游',[]),false);assert.equal(needsResidenceReview(text,[city]),false);assert.equal(needsResidenceReview('我作为销售住在雅加达，客户没有说明住在哪里',[]),false);
  }finally{if(saved.key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=saved.key;if(saved.secondary===undefined)delete process.env.DEEPSEEK_API_KEY;else process.env.DEEPSEEK_API_KEY=saved.secondary;}
 });

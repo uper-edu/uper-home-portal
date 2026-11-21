@@ -36,7 +36,7 @@ test('14/15 stable start hides irrelevant unanswered warning without modifying g
   assert.equal(guidance.needsReview,false);assert.equal(guidance.review,'');assert.match(guidance.start,/HSK 3 consolidation and practical use/);
   const html=renderToStaticMarkup(React.createElement(HskAssessmentReport,{result,lang:'en'}));
   assert.doesNotMatch(html,/Tentative|verify the starting point|Saved|An initial starting-point/);
-  assert.match(html,/14\/15/);assert.match(html,/Unanswered: 1/);
+  assert.match(html,/<strong>14<\/strong><span> \/ 15<\/span>/);assert.match(html,/Unanswered <strong>1<\/strong>/);
   assert.doesNotMatch(hskWhatsAppDraft({goal:'Work in China'},result,'en').message,/Tentative|Some items were unanswered/);
   assert.equal(JSON.stringify(result),original);
 });
@@ -55,7 +55,7 @@ test('material missing answers, conflicting difficulty and audio failures retain
 test('successful reports hide routine status; failed synchronization keeps retry and Full denominators',()=>{
   const r={...gradeHskAttempt(sample([15,17,18],'full')),saveStatus:'saved' as const};
   const saved=renderToStaticMarkup(React.createElement(HskAssessmentReport,{result:r,lang:'en'}));
-  assert.match(saved,/50\/50/);assert.doesNotMatch(saved,/Saved|Retry saving/);
+  assert.match(saved,/<strong>50<\/strong><span> \/ 50<\/span>/);assert.doesNotMatch(saved,/Saved|Retry saving/);
   assert.match(learnerAssessmentGuidance(r,'en')!.start,/HSK 3 consolidation/);
   const local=renderToStaticMarkup(React.createElement(HskAssessmentReport,{result:{...r,saveStatus:'local'},lang:'en',onRetry:()=>{}}));
   assert.match(local,/Results have not synced/);assert.match(local,/Retry saving/);
