@@ -1,7 +1,7 @@
 import type {StoredMailAccount} from './enrollmentMailCredentials.ts';
-import {activeEnrollmentMailConfig,enrollmentMailDefaults,mailAccountDefaults,mailPoolDefaults,mailPoolMembers,type EnrollmentMailConfig,type MailAccount,type MailPool} from '../../src/utils/enrollmentMailConfig.ts';
+import {activeEnrollmentMailConfig,enrollmentMailDefaults,mailAccountDefaults,mailSmtpProviders,mailPoolDefaults,mailPoolMembers,type EnrollmentMailConfig,type MailAccount,type MailPool} from '../../src/utils/enrollmentMailConfig.ts';
 
-type SavedPool=Omit<MailPool,'dailyLimit'|'strategy'> & Partial<Pick<MailPool,'dailyLimit'|'strategy'>> & {sticky?:boolean;rate?:number;windowSeconds?:number};
+type SavedPool=Omit<MailPool,'dailyLimit'|'dailyRecipientLimit'|'strategy'> & Partial<Pick<MailPool,'dailyLimit'|'dailyRecipientLimit'|'strategy'>> & {sticky?:boolean;rate?:number;windowSeconds?:number};
 type SavedMailConfig=Omit<EnrollmentMailConfig,'accounts'|'pools'> & {
   accounts:(Omit<StoredMailAccount,'rate'|'windowSeconds'> & Partial<Pick<MailAccount,'rate'|'windowSeconds'>>)[];
   pools?:SavedPool[];rate?:number;windowSeconds?:number;
@@ -36,7 +36,8 @@ export function enrollmentMailPreset(environment:string,saved?:SavedMailConfig):
   }]:[]);
   const missingDevelopment=development.filter(preset=>!saved?.accounts.some(account=>account.address===preset.address));
   const pools=[...existingPools.map(pool=>({id:pool.id,enabled:pool.enabled,transport:'smtp' as const,
-    dailyLimit:pool.dailyLimit??mailPoolDefaults.dailyLimit,strategy:pool.strategy??mailPoolDefaults.strategy,
+    dailyLimit:pool.dailyLimit??mailPoolDefaults.dailyLimit,dailyRecipientLimit:pool.dailyRecipientLimit??mailPoolDefaults.dailyRecipientLimit,
+    strategy:pool.strategy??mailPoolDefaults.strategy,
     name:pool.id==='production'&&['UPER Admissions · Production','UPER Admissions - Production'].includes(pool.name)?productionPoolName:pool.name,
     members:[...new Set([
     ...pool.members,...missingDevelopment.filter(preset=>preset.pool===pool.id).map(preset=>preset.address),
@@ -48,7 +49,7 @@ export function enrollmentMailPreset(environment:string,saved?:SavedMailConfig):
       windowSeconds:account.windowSeconds??(inherited.length?Math.max(...inherited.map(pool=>pool.windowSeconds!)):mailAccountDefaults.windowSeconds)};
   })??[],...officialAccounts.filter(a=>!saved?.accounts.some(existing=>existing.address===a.address))
     .map(account=>({...mailAccountDefaults,...account})),
-    ...missingDevelopment.map(({address,secret})=>({...mailAccountDefaults,address,secret,host:'smtp.gmail.com',port:587 as const}))];
+    ...missingDevelopment.map(({address,secret})=>({...mailAccountDefaults,address,secret,...mailSmtpProviders.gmail}))];
   const selectedPool=pools.some(p=>p.id===saved?.selectedPool)?saved!.selectedPool!:defaultId;
   const sticky=existingPools.find(pool=>pool.id===selectedPool)?.sticky??saved?.sticky??enrollmentMailDefaults.sticky;
   return {...activeEnrollmentMailConfig({...enrollmentMailDefaults,sticky,accounts,pools,selectedPool}),accounts};

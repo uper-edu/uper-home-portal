@@ -1,3 +1,4 @@
+import {IntegrationCredentialControl} from './IntegrationCredentials';
 import {useCallback,useEffect,useId,useLayoutEffect,useRef,useState,type MouseEvent} from 'react';
 import {ArrowDown,ArrowRightLeft,ArrowUp,ClipboardCheck,Pencil,Plus,Save} from 'lucide-react';
 import {AdminRecordEntry,AdminRowAction} from './admin/AdminListControl';
@@ -16,16 +17,16 @@ import {CrmContentNav,CrmDiscardDialog} from './crm/CrmDetailWorkspace';
 import {CrmSingleSelect} from './crm/CrmSingleSelect';
 import {AdminStatus} from './AdminStatus';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
-import {enrollmentMailDefaults,enrollmentMailPoolLimit,mailAccountDefaults,mailPoolDailyLimitMax,mailPoolDefaults,mailPoolMembers,mailSmtpHostPattern,type EnrollmentMailConfig,type MailAccount,type MailPool} from '../utils/enrollmentMailConfig';
+import {enrollmentMailDefaults,enrollmentMailPoolLimit,isMailPoolStrategy,mailAccountDefaults,mailPoolDailyLimitMax,mailPoolDefaults,mailPoolMembers,mailSmtpEndpoint,mailSmtpProvider,mailSmtpProviders,type EnrollmentMailConfig,type MailAccount,type MailPool} from '../utils/enrollmentMailConfig';
 import {contactEmailText,validContactEmail} from '../utils/contactEmail';
 import type {CrmLanguage} from '../utils/crmLanguage';
 import './enrollment-mail-workspace.css';
 
 type Usage={daily:number;external:number;monthly:number};
 type MailEditorTarget='new-pool'|'reassign'|number|{pool:MailPool};
-type AdminView={config:EnrollmentMailConfig;revision:number;environment:string;mode:string;timezone:string;
-  usage:Record<string,Usage>;poolUsage:Record<string,number>;configured:{address:string;configured:boolean}[]};
-type MailEditorDraft=EnrollmentMailConfig & Partial<Pick<MailPool,'dailyLimit'|'strategy'>>;
+type AdminView={config:EnrollmentMailConfig;revision:number;environment:string;mode:string;timezone:string;managedCredentials?:boolean;
+  usage:Record<string,Usage>;poolUsage:Record<string,number>;poolRecipientUsage?:Record<string,number>;configured:{address:string;configured:boolean}[]};
+type MailEditorDraft=EnrollmentMailConfig & Partial<Pick<MailPool,'dailyLimit'|'dailyRecipientLimit'|'strategy'>>;
 type BusinessView={revision:number;selectedPool:string;sticky:boolean;pools:Pick<MailPool,'id'|'name'|'enabled'>[];name:string;enabled:boolean;mode:string;rows:{id:string;subject:string;sender:string;routeReason?:string;state:string;recordedAt:string}[]};
 type EnrollmentReadiness={accepting:boolean;reasons:string[]};
 const adminPath='/api/admin/enrollment-mail';
@@ -42,9 +43,12 @@ const stateWords:Record<string,[string,string,string]>={
   interest_no_longer_available:['班次或登记状态已变更','Class or request no longer eligible','Kelas atau permintaan tidak lagi memenuhi syarat'],
   paused:['发信池暂停','Pool paused','Pool dijeda'],recipient_blocked:['收件人超出测试范围','Recipient outside test scope','Penerima di luar cakupan uji'],
   shared_window:['共享频率已满','Shared rate reached','Batas frekuensi tercapai'],binding_pending:['首次路由待确认','Initial routing pending','Perutean awal tertunda'],
+  pool_daily_recipient_limit:['发信池每日收件人数已达上限','Pool daily recipient limit reached','Batas penerima harian pool tercapai'],
   pool_daily_limit:['发信池日额度已满','Pool daily limit reached','Batas harian pool tercapai'],
   bound_account:['固定发件账号','Fixed sender','Pengirim tetap'],no_capacity:['无账号可用额度','No account quota available','Kuota akun tidak tersedia'],
   balanced:['按可用额度选号','Selected by available quota','Dipilih menurut kuota'],existing:['沿用原记录','Existing result','Hasil sebelumnya'],
+  message_count:['按发信封数选号','Selected by send volume','Dipilih menurut jumlah email'],
+  recipient_count:['按去重收件人数选号','Selected by unique recipients','Dipilih menurut jumlah penerima unik'],
   priority:['按账号优先级选号','Selected by account priority','Dipilih menurut prioritas akun'],
   disabled:['未启用','Disabled','Nonaktif'],simulation:['模拟 SMTP','Simulated SMTP','SMTP simulasi'],smtp:['正式 SMTP','Live SMTP','SMTP aktif'],
 };
@@ -55,8 +59,8 @@ const readinessWords:Record<string,[string,string,string]>={
   mail_required:['请核对 SMTP 投递、发信池和发件账号','Check SMTP delivery, the sending pool, and sender accounts','Periksa pengiriman SMTP, pool, dan akun pengirim'],
 };
 
-export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='accounts',recordId='',returnPoolId='',onNavigate=noop,onDraft=noop,onBusy=noop}:{
-  lang:CrmLanguage;isLight:boolean;admin?:boolean;allowed?:boolean;
+export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canManageCredentials=false,view='accounts',recordId='',returnPoolId='',onNavigate=noop,onDraft=noop,onBusy=noop}:{
+  lang:CrmLanguage;isLight:boolean;admin?:boolean;allowed?:boolean;canManageCredentials?:boolean;
   view?:'accounts'|'pool';recordId?:string;returnPoolId?:string;onNavigate?:(href:string)=>void;
   onDraft?:(dirty:boolean)=>void;onBusy?:(busy:boolean)=>void;
 }){
@@ -67,12 +71,15 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   const [readiness,setReadiness]=useState<EnrollmentReadiness>();
   const [loading,setLoading]=useState(false),[failure,setFailure]=useState<'error'|'denied'>();
   const [draft,setDraft]=useState<MailEditorDraft>(),[account,setAccount]=useState<MailAccount>();
-  const [portInput,setPortInput]=useState('');
-  const validPort=portInput==='465'||portInput==='587';
+  const accountEndpoint=account&&mailSmtpEndpoint(account);
+  const [credentialAccount,setCredentialAccount]=useState<string>();
+  useEffect(()=>setCredentialAccount(undefined),[view,recordId]);
   const [editing,setEditing]=useState<MailEditorTarget>(),[dirty,setDirty]=useState(false),[busy,setBusy]=useState(false);
   const isPoolEditor=editing==='new-pool'||typeof editing==='object';
-  const validPoolLimit=draft?.dailyLimit==null||
-    Number.isInteger(draft.dailyLimit)&&draft.dailyLimit>=1&&draft.dailyLimit<=mailPoolDailyLimitMax;
+  const validLimit=(value:number|null|undefined)=>value==null||Number.isInteger(value)&&value>=1&&value<=mailPoolDailyLimitMax;
+  const validDailyLimit=validLimit(draft?.dailyLimit);
+  const validRecipientLimit=validLimit(draft?.dailyRecipientLimit);
+  const validPoolLimit=validDailyLimit&&validRecipientLimit;
   const [discard,setDiscard]=useState(false),[feedback,setFeedback]=useState<'saved'|'error'|'unknown'>();
   const [password,setPassword]=useState(''),[clearPassword,setClearPassword]=useState(false);
   const [credentialKeyError,setCredentialKeyError]=useState(false);
@@ -204,8 +211,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
       {...enrollmentMailDefaults,...mailPoolDefaults,name:'',members:[],accounts:current.config.accounts}:undefined;
     setDraft({...current.config,...fields});
     setReplacement({recipient:'',account:'',reason:''});
-    setPortInput(typeof target==='number'?String((current.config.accounts[target]??mailAccountDefaults).port):'');
-    setAccount(typeof target==='number'?{...(current.config.accounts[target]??mailAccountDefaults)}:undefined);
+    setAccount(typeof target==='number'?{...(current.config.accounts[target]??{...mailAccountDefaults,host:''})}:undefined);
   };
   const validMonthly=account?.monthly==null||
     Number.isInteger(account.monthly)&&account.monthly>=1&&account.monthly<=10000000;
@@ -243,15 +249,15 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   };
   const save=async()=>{
     if(!draft||busy||pendingOperation||adminConflict||isPoolEditor&&!validPoolLimit||
-      typeof editing==='number'&&(!validPort||!validMonthly||!validAccountEmail||duplicateAccount)||
+      typeof editing==='number'&&(!accountEndpoint||!validMonthly||!validAccountEmail||duplicateAccount)||
       editing==='reassign'&&(!validRecipient||!replacement.account||!replacement.reason.trim()))return;
-    const {dailyLimit,strategy,...base}=draft;
+    const {dailyLimit,dailyRecipientLimit,strategy,...base}=draft;
     const next={...base,accounts:[...base.accounts],members:mailPoolMembers(base)};
-    if(typeof editing==='number'&&account)next.accounts[editing]={...account,port:portInput==='587'?587:465};
+    if(typeof editing==='number'&&account)next.accounts[editing]=account;
     if(isPoolEditor){
       const pool:MailPool={id:typeof editing==='object'?editing.pool.id:crypto.randomUUID(),
         transport:'smtp',name:draft.name.trim(),enabled:draft.enabled,members:mailPoolMembers(draft),
-        dailyLimit:dailyLimit??null,strategy:strategy??'balanced'};
+        dailyLimit:dailyLimit??null,dailyRecipientLimit:dailyRecipientLimit??null,strategy:strategy??'balanced'};
       const pools=draft.pools??[];
       next.pools=editing==='new-pool'?[...pools,pool]:pools.map(existing=>existing.id===pool.id?pool:existing);
     }
@@ -308,6 +314,10 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   const canReplace=!!config&&config.accounts.some(a=>!a.enabled||!members.includes(a.address))&&
     config.accounts.some(a=>a.enabled&&members.includes(a.address));
 
+  const smtpProviderLabel=t('邮件服务商','Email provider','Penyedia email');
+  const smtpEncryptionLabel=t('连接加密','Connection encryption','Enkripsi koneksi');
+  const smtpProviderOptions=[{value:'lark',label:'Lark'},{value:'gmail',label:'Gmail'}];
+  const smtpProviderName=(host:string)=>smtpProviderOptions.find(option=>option.value===mailSmtpProvider(host))?.label;
   const smtpPortLabel=t('SMTP 端口','SMTP port','Port SMTP');
   const smtpHostLabel=t('SMTP 主机','SMTP host','Host SMTP');
   const quotaLabel=t('账号额度','Account quotas','Kuota akun');
@@ -324,6 +334,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   const cancel=t('取消','Cancel','Batal');
   const addPoolLabel=t('新增发信池','Add sending pool','Tambah pool pengiriman');
   const poolLimitLabel=t('每日发信上限','Daily sending limit','Batas pengiriman harian');
+  const poolRecipientLimitLabel=t('每日收件人数上限','Daily unique recipient limit','Batas penerima unik harian');
+  const poolRecipientUsageLabel=t('今日收件人数','Recipients today','Penerima hari ini');
   const poolUsageLabel=t('今日占用','Used today','Terpakai hari ini');
   const strategyLabel=t('发件账号选择策略','Sender selection strategy','Strategi pemilihan pengirim');
   const priorityLabel=t('优先级','Priority','Prioritas');
@@ -332,11 +344,18 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
   const statusLabel=t('状态','Status','Status');
   const credentialLabel=t('凭证','Credential','Kredensial');
   const strategyOptions=[
-    {value:'balanced',label:t('按额度均衡','Balance by quota','Seimbangkan menurut kuota')},
+    {value:'balanced',label:t('综合额度均衡','Balance across quotas','Seimbangkan semua kuota')},
+    {value:'message_count',label:t('按发信封数均衡','Balance by send volume','Seimbangkan jumlah email')},
+    {value:'recipient_count',label:t('按去重收件人数均衡','Balance by unique recipients','Seimbangkan penerima unik')},
     {value:'priority',label:t('按优先级使用','Use priority order','Gunakan urutan prioritas')},
   ] as const;
   const strategyName=(strategy:MailPool['strategy'])=>strategyOptions.find(option=>option.value===strategy)?.label;
-  const poolLimit=(pool:MailPool)=>pool.dailyLimit??t('不限','Unlimited','Tanpa batas');
+  const unlimited=t('不限','Unlimited','Tanpa batas');
+  const poolLimit=(pool:MailPool)=>pool.dailyLimit??unlimited;
+  const poolRecipientLimit=(pool:MailPool)=>pool.dailyRecipientLimit??unlimited;
+  const poolLimitError=t(`请输入 1–${mailPoolDailyLimitMax} 的整数，或留空。`,
+    `Enter a whole number from 1 to ${mailPoolDailyLimitMax}, or leave blank.`,
+    `Masukkan bilangan bulat 1–${mailPoolDailyLimitMax}, atau kosongkan.`);
   const savedAccount=adminConflict&&typeof editing==='number'&&draft?.accounts[editing]?
     config?.accounts.find(item=>item.address===draft.accounts[editing].address):undefined;
   const savedPool=adminConflict&&typeof editing==='object'?config?.pools?.find(item=>item.id===editing.pool.id):undefined;
@@ -349,6 +368,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
     [t('发信池名称','Pool name','Nama pool'),savedPool.name],
     [statusLabel,savedPool.enabled?t('已启用','Enabled','Aktif'):word('disabled')],
     [strategyLabel,strategyName(savedPool.strategy)],[poolLimitLabel,poolLimit(savedPool)],
+    [poolRecipientLimitLabel,poolRecipientLimit(savedPool)],
     [poolMembersLabel,savedPool.members.join(', ')||'—'],
   ]:undefined;
   return <section className="enrollment-mail-workspace" aria-label={heading}>
@@ -408,6 +428,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
             <dl className="access-record-facts">
               <div><dt>{poolLimitLabel}</dt><dd>{poolLimit(detailPool)}</dd></div>
               <div><dt>{poolUsageLabel}</dt><dd>{activeView.poolUsage[detailPool.id]??0}</dd></div>
+              <div><dt>{poolRecipientLimitLabel}</dt><dd>{poolRecipientLimit(detailPool)}</dd></div>
+              <div><dt>{poolRecipientUsageLabel}</dt><dd>{activeView.poolRecipientUsage?.[detailPool.id]??0}</dd></div>
               <div><dt>{t('日额度结算时区','Daily quota time zone','Zona waktu kuota harian')}</dt><dd>{activeView.timezone}</dd></div>
             </dl>
           </AdminFormSection><AdminFormSection title={poolMembersLabel}>
@@ -432,12 +454,14 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
           </AdminFormSection></>:detailAccount?<>
             <AdminFormSection title={t('SMTP 参数','SMTP settings','Pengaturan SMTP')}>
               <dl className="access-record-facts">
+                <div><dt>{smtpProviderLabel}</dt><dd>{smtpProviderName(detailAccount.host)??t('不支持','Unsupported','Tidak didukung')}</dd></div>
                 <div><dt>{smtpHostLabel}</dt><dd>{detailAccount.host}</dd></div>
                 <div><dt>{smtpPortLabel}</dt><dd>{detailAccount.port}</dd></div>
-                <div><dt>{t('连接加密','Connection encryption','Enkripsi koneksi')}</dt><dd>{detailAccount.port===465?'TLS':'STARTTLS'}</dd></div>
-                <div><dt>{t('凭证','Credential','Kredensial')}</dt><dd>{credentialStatus(detailAccount.address)}</dd></div>
+                <div><dt>{smtpEncryptionLabel}</dt><dd>{mailSmtpEndpoint(detailAccount)?.encryption??'—'}</dd></div>
+                {!(canManageCredentials&&activeView?.managedCredentials)&&<div><dt>{t('凭证','Credential','Kredensial')}</dt><dd>{credentialStatus(detailAccount.address)}</dd></div>}
               </dl>
             </AdminFormSection>
+            {canManageCredentials&&activeView?.managedCredentials&&<IntegrationCredentialControl key={detailAccount.address} kind="smtp" resource={detailAccount.address} lang={lang} isLight={isLight} onChange={()=>void refresh()}/>}
             <AdminFormSection title={quotaLabel}>
               <dl className="access-record-facts">
                 <div><dt>{dailyLabel}</dt><dd>{detailAccount.daily}</dd></div>
@@ -456,7 +480,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
       {poolView&&!isDetail&&
       <AdminListTable label={t('发信池列表','Sending pools','Daftar pool pengiriman')} busy={loading} headers={[
         t('发信池','Sending pool','Pool pengiriman'),t('状态','Status','Status'),t('账号数量','Account count','Jumlah akun'),
-        poolUsageLabel,poolLimitLabel,strategyLabel,
+        poolUsageLabel,poolLimitLabel,poolRecipientUsageLabel,strategyLabel,
         t('操作','Actions','Tindakan'),
       ]}>
         {(config.pools??[]).map(pool=><tr key={pool.id}>
@@ -465,6 +489,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
           <td>{pool.members.length}</td>
           <td>{activeView.poolUsage[pool.id]??0}</td>
           <td>{poolLimit(pool)}</td>
+          <td>{activeView.poolRecipientUsage?.[pool.id]??0} / {poolRecipientLimit(pool)}</td>
           <td>{strategyName(pool.strategy)}</td>
           <td><AdminRowAction onClick={()=>edit({pool})}>{t('编辑','Edit','Edit')}</AdminRowAction></td>
         </tr>)}
@@ -483,11 +508,20 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
               <td>{activeView.usage[a.address]?.monthly??0} / {a.monthly??'—'}</td>
               <td>{a.rate} / {a.windowSeconds} {t('秒','seconds','detik')}</td>
               <td>{credentialStatus(a.address)}</td>
-              <td><AdminRowAction onClick={()=>edit(index)}>{t('编辑','Edit','Edit')}</AdminRowAction></td>
+              <td><div className="admin-row-actions">
+                <AdminRowAction onClick={()=>edit(index)}>{t('编辑','Edit','Edit')}</AdminRowAction>
+                {canManageCredentials&&activeView.managedCredentials&&<AdminRowAction aria-haspopup="dialog" onClick={event=>{
+                  event.currentTarget.focus({preventScroll:true});
+                  setCredentialAccount(a.address);
+                }}>{t('管理凭证','Manage credentials','Kelola kredensial')}</AdminRowAction>}
+              </div></td>
             </tr>)}
           </AdminListTable>}
       </AdminFormSection>}
     </div>}
+    {admin&&allowed&&canManageCredentials&&activeView?.managedCredentials&&!poolView&&!isDetail&&credentialAccount&&
+      <IntegrationCredentialControl key={credentialAccount} kind="smtp" resource={credentialAccount} lang={lang} isLight={isLight}
+        onDismiss={()=>setCredentialAccount(undefined)} onChange={()=>void refresh()}/>}
     {business&&settings&&<div className="enrollment-mail-sections enrollment-mail-business" data-admin-form="">
       <AdminFormSection variant="card" title={t('发信设置','Email settings','Pengaturan email')}>
         <AdminFormGrid>
@@ -555,7 +589,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
           disabled={busy} onClick={()=>void checkAdminResult()}/>}
         <button type="submit" data-primary
           disabled={busy||!dirty||!!pendingOperation||adminConflict||isPoolEditor&&(!draft.name.trim()||!validPoolLimit)||
-            typeof editing==='number'&&(!validPort||!validMonthly||duplicateAccount)||
+            typeof editing==='number'&&(!accountEndpoint||!validMonthly||duplicateAccount)||
             editing==='reassign'&&(!validRecipient||!replacement.account||!replacement.reason.trim())}>{t('保存','Save','Simpan')}</button></>}>
       {adminConflict?<AdminFormFeedback state="error" lang={lang}>
         {t('邮件设置已在别处更新，当前草稿仍保留。','Email settings were updated elsewhere. Your draft is retained.',
@@ -576,7 +610,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
         {operationCheck==='error'?t('暂时无法核对保存结果，请稍后再查。','The save result could not be checked. Try again later.','Hasil penyimpanan belum bisa diperiksa. Coba lagi nanti.'):
           t('暂未查到保存回执，草稿已保留，可稍后再次核对。','No save receipt yet. Your draft is retained. Check again later.','Belum ada bukti penyimpanan. Draf tetap tersimpan. Periksa kembali nanti.')}
       </AdminFormFeedback>}
-      <fieldset className="enrollment-mail-editor-fields" disabled={busy||!!pendingOperation}>
+      <fieldset className={isPoolEditor?undefined:'enrollment-mail-editor-fields'}
+        data-admin-section-stack={isPoolEditor?'open':undefined} disabled={busy||!!pendingOperation}>
       {editing==='reassign'?<AdminFormSection title={t('选择新发件账号','Select the replacement sender','Pilih pengirim pengganti')}
         description={t('仅可更换绑定到停用或已移出发信池账号的报名邮箱，操作会记入变更审计。','Only an address bound to a disabled or removed pool member can be reassigned. Each change is audited.','Hanya alamat yang terikat akun nonaktif atau yang dikeluarkan dari pool dapat dipindahkan. Perubahan dicatat dalam audit.')}>
         <AdminField required>{t('报名邮箱','Enrollment address','Alamat pendaftaran')}
@@ -590,30 +625,44 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
             onChange={account=>changeReplacement({account})}/>
         </AdminField>
         <AdminField required>{t('更换原因','Reason for reassignment','Alasan penggantian')}<textarea required maxLength={500} value={replacement.reason} onChange={e=>changeReplacement({reason:e.target.value})}/></AdminField>
-      </AdminFormSection>:isPoolEditor?<><AdminFormSection title={t('基本设置','General settings','Pengaturan umum')}>
+      </AdminFormSection>:isPoolEditor?<><AdminFormSection variant="subgroup" title={t('基本设置','General settings','Pengaturan umum')}>
         <AdminField required>{t('发信池名称','Pool name','Nama pool')}<input required maxLength={80} value={draft.name} onChange={e=>changePool({name:e.target.value})}/></AdminField>
         <AdminField>
           <input className="admin-switch" type="checkbox" role="switch" checked={draft.enabled} disabled={busy}
             onChange={e=>changePool({enabled:e.target.checked})}/>
           {t('启用发信池','Enable sending pool','Aktifkan pool')}
         </AdminField>
-      </AdminFormSection><AdminFormSection className="enrollment-mail-pool-rules" title={t('发信规则','Sending rules','Aturan pengiriman')}>
+      </AdminFormSection><AdminFormSection variant="subgroup" className="enrollment-mail-pool-rules" title={t('发信规则','Sending rules','Aturan pengiriman')}>
         <AdminFormGrid>
           <AdminField>{poolLimitLabel}
-            <input type="number" min="1" max={mailPoolDailyLimitMax} placeholder={t('不限','Unlimited','Tanpa batas')}
-              aria-invalid={!validPoolLimit||undefined}
+            <input type="number" min="1" max={mailPoolDailyLimitMax} placeholder={unlimited}
+              aria-invalid={!validDailyLimit||undefined}
               value={draft.dailyLimit??''} onChange={event=>changePool({dailyLimit:event.target.value===''?null:Number(event.target.value)})}/>
-            {!validPoolLimit&&<small>{t(`请输入 1–${mailPoolDailyLimitMax} 的整数，或留空。`,
-              `Enter a whole number from 1 to ${mailPoolDailyLimitMax}, or leave blank.`,`Masukkan bilangan bulat 1–${mailPoolDailyLimitMax}, atau kosongkan.`)}</small>}
+            {!validDailyLimit&&<small>{poolLimitError}</small>}
           </AdminField>
+          <AdminField>{poolRecipientLimitLabel}
+            <input type="number" min="1" max={mailPoolDailyLimitMax} placeholder={unlimited}
+              aria-invalid={!validRecipientLimit||undefined}
+              value={draft.dailyRecipientLimit??''} onChange={event=>changePool({dailyRecipientLimit:event.target.value===''?null:Number(event.target.value)})}/>
+            <small>{validRecipientLimit?t('同一天内，同一邮箱只计一次。','Each email address is counted once per day.',
+              'Setiap alamat email dihitung sekali per hari.'):poolLimitError}</small>
+          </AdminField>
+        </AdminFormGrid>
+        <AdminFormGrid>
           <AdminField as="div">
             <label>{strategyLabel}</label>
             <CrmSingleSelect lang={lang} isLight={isLight} label={strategyLabel} disabled={busy}
               value={draft.strategy??'balanced'} options={[...strategyOptions]}
-              onChange={strategy=>changePool({strategy:strategy==='priority'?'priority':'balanced'})}/>
+              onChange={strategy=>{if(isMailPoolStrategy(strategy))changePool({strategy});}}/>
+            {draft.strategy==='message_count'&&<small>{t('优先选择发出后每日封数额度占比较低的账号。',
+              'Prefers the sender with the lowest projected share of its daily email limit.',
+              'Memprioritaskan akun dengan persentase penggunaan batas email harian terendah setelah pengiriman.')}</small>}
+            {draft.strategy==='recipient_count'&&<small>{t('优先选择发出后当天去重收件人数较少的账号。',
+              'Prefers the sender with the fewest unique recipients for the day after sending.',
+              'Memprioritaskan akun dengan jumlah penerima unik harian paling sedikit setelah pengiriman.')}</small>}
           </AdminField>
         </AdminFormGrid>
-      </AdminFormSection><AdminFormSection title={poolMembersLabel}
+      </AdminFormSection><AdminFormSection variant="subgroup" title={poolMembersLabel}
         description={draft.strategy==='priority'?t('按顺序尝试已加入的账号。','Selected accounts are tried in priority order.','Akun yang dipilih dicoba sesuai urutan prioritas.'):undefined}>
         {draft.accounts.length===0?<AdminListState lang={lang} state="empty"
           message={t('请先在发件账号页新增账号。','Add an account on the Sending accounts tab first.','Tambahkan akun di tab Akun pengirim terlebih dahulu.')}/>:
@@ -653,16 +702,25 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
             {duplicateAccount?<small>{t('此发件邮箱已存在。','This sender address already exists.','Alamat pengirim ini sudah ada.')}</small>:
               !!account.address&&!validAccountEmail&&<small>{contactEmailText(lang).error}</small>}
           </AdminField>}
-          <AdminFormGrid>
-            <AdminField required>{smtpHostLabel}<input required pattern={mailSmtpHostPattern} value={account.host} onChange={e=>changeAccount({host:e.target.value})}/></AdminField>
-            <AdminField required>{smtpPortLabel}
-              <input required type="text" inputMode="numeric" pattern="465|587" maxLength={3}
-                value={portInput} onChange={event=>{setPortInput(event.target.value.replace(/[^0-9]/g,''));setDirty(true);}}
-                aria-invalid={portInput&&!validPort?true:undefined}/>
-              <small>{t('支持 465 或 587。','Enter 465 or 587.','Masukkan 465 atau 587.')}</small>
-            </AdminField>
-          </AdminFormGrid>
-          <AdminField>{t('SMTP 密码','SMTP password','Kata sandi SMTP')}
+          <AdminField required as="div">
+            <label>{smtpProviderLabel}</label>
+            <CrmSingleSelect lang={lang} isLight={isLight} label={smtpProviderLabel}
+              value={mailSmtpProvider(account.host)??''} options={smtpProviderOptions} disabled={busy}
+              onChange={provider=>{
+                if((provider==='lark'||provider==='gmail')&&provider!==mailSmtpProvider(account.host))
+                  changeAccount(mailSmtpProviders[provider]);
+              }}/>
+            {account.host&&!accountEndpoint&&<small>{t('请选择受支持的邮件服务商。','Select a supported email provider.','Pilih penyedia email yang didukung.')}</small>}
+          </AdminField>
+          {accountEndpoint&&<AdminFormGrid>
+            <AdminStaticField label={smtpHostLabel} value={accountEndpoint.host}/>
+            <AdminStaticField label={smtpPortLabel} value={accountEndpoint.port}/>
+            <AdminStaticField label={smtpEncryptionLabel} value={accountEndpoint.encryption}/>
+          </AdminFormGrid>}
+          {typeof editing==='number'&&draft.accounts[editing]?.host.toLowerCase()!==account.host.toLowerCase()&&draft.accounts[editing]&&
+            <small>{t('更换服务商后，需要重新配置 SMTP 凭证。','Configure a new SMTP credential after changing providers.',
+              'Konfigurasikan kredensial SMTP baru setelah mengganti penyedia.')}</small>}
+          {canManageCredentials&&!activeView?.managedCredentials&&<><AdminField>{t('SMTP 密码','SMTP password','Kata sandi SMTP')}
             <input type="password" autoComplete="new-password" maxLength={1024} value={password}
               disabled={clearPassword}
               onChange={e=>{setPassword(e.target.value);setCredentialKeyError(false);setDirty(true);}}/>
@@ -675,7 +733,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,view='a
               setClearPassword(e.target.checked);setPassword('');setCredentialKeyError(false);setDirty(true);
             }}/>
             {t('保存时清除凭证','Clear credential when saving','Hapus kredensial saat menyimpan')}
-          </AdminField>}
+          </AdminField>}</>}
         </AdminFormSection>
         <AdminFormSection title={quotaLabel}>
           <AdminFormGrid>{inputNumber(rateLabel,account.rate,rate=>changeAccount({rate}),100000)}

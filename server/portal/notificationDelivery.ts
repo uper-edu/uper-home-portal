@@ -196,12 +196,12 @@ export function dailyDigestCard(input:DailyDigestInput,secret:string|undefined,n
   return body;
 }
 
-export function channelConnection(id: string, config: any) {
-  const url = resolveGroupWebhook(id, config);
+export function channelConnection(id: string, config: any, credentials?: {webhook?:string;signingKey?:string}) {
+  const url = credentials ? credentials.webhook : resolveGroupWebhook(id, config);
   const webhookConfigured = Boolean(url);
   const signingSecretConfigured =
     !(config.signingEnabled ?? !!config.signingSecretRef) ||
-    !!process.env[config.signingSecretRef];
+    Boolean(credentials ? credentials.signingKey : process.env[config.signingSecretRef]);
   const status =
     config.mode !== "live"
       ? "simulation"
@@ -213,7 +213,7 @@ export function channelConnection(id: string, config: any) {
   return {
     status,
     webhookConfigured,
-    webhookStored: groupWebhookUsesEnvironment() ? webhookConfigured :
+    webhookStored: credentials ? webhookConfigured : groupWebhookUsesEnvironment() ? webhookConfigured :
       Boolean(config.encryptedWebhook) || usesLegacyProductionGroupWebhook(config),
     signingSecretConfigured,
     realReceiptVerified: false,

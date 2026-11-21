@@ -1,3 +1,4 @@
+import {IntegrationCredentialsOverview} from '../components/IntegrationCredentials';
 import {EnrollmentMailWorkspace} from '../components/EnrollmentMailWorkspace';
 import {SystemAccessGuide} from '../components/SystemAccessGuide';
 import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
@@ -29,7 +30,7 @@ import '../components/crm/crm-detail-workspace.css';
 import '../components/crm/crm-record-workspace.css';
 import { accessError } from "../utils/accessLanguage";
 import { Fragment, type MouseEvent, useEffect, useRef, useState } from "react";
-import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail } from "lucide-react";
+import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail, KeyRound } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
@@ -52,6 +53,7 @@ const moduleIcons = {
   test: FlaskConical,
   ai: FlaskConical,
   mail: Mail,
+  credentials: KeyRound,
 };
 type User = {
   id: string;
@@ -494,6 +496,13 @@ export function AccessWorkspace({
     system: ["Access administration", "Administrasi akses", "权限管理"],
   };
   const auditLabels: Record<string, [string, string, string]> = {
+    "access.integration.set": ["Credential setup checked","Pengaturan kredensial diperiksa","已记录凭证设置核验"],
+    "access.integration.stage": ["Credential candidate saved","Kredensial calon disimpan","候选凭证已保存"],
+    "access.integration.import": ["Legacy credential imported","Kredensial lama diimpor","已导入旧凭证"],
+    "access.integration.verify": ["Credential verification recorded","Verifikasi kredensial dicatat","已记录凭证核验"],
+    "access.integration.activate": ["Credential activated","Kredensial diaktifkan","凭证已启用"],
+    "access.integration.revoke": ["Credential revoked","Kredensial dicabut","凭证已撤销"],
+    "access.integration.lark_settings": ["Lark application settings saved","Pengaturan aplikasi Lark disimpan","已保存 Lark 应用设置"],
     "ai.configuration": ["AI model configuration", "Konfigurasi model AI", "AI模型配置"],
     "access.recovery.emergency_authorize": [
       "Emergency recovery authorization recorded",
@@ -670,10 +679,12 @@ export function AccessWorkspace({
               ["ai", "AI services", "Layanan AI", "AI服务配置"],
               ["users", "Users & access", "Pengguna & akses", "用户与权限"],
               ["mail", "Email configuration", "Konfigurasi email", "邮件配置"],
+              ["credentials", "Integration credentials", "Kredensial integrasi", "集成凭证"],
               ["guide", "Guide", "Panduan", "使用指南"],
               ["test", "Test environment & accounts", "Lingkungan uji & akun", "测试环境和账号"],
             ]
               .filter((a) => a[0] !== "ai" || isAiAdministrator(employee))
+              .filter((a) => a[0] !== "credentials" || isAiAdministrator(employee))
               .filter((a) => a[0] !== "mail" || canUseAccessRecovery(employee))
               .filter((a) => a[0] !== "test" || data?.testDirectoryAvailable)
               .map((a) => {
@@ -722,7 +733,7 @@ export function AccessWorkspace({
               <p>{t("Manage AI models across consultation and CRM.","Kelola model AI untuk konsultasi dan CRM.","管理咨询及CRM共用的AI服务。")}</p></div>
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")} secondary={refresh}/>
           </div>}/>
-          :tab!=='guide'&&tab!=='mail'&&!recoveryView&&(!recordTab||!recordId)&&<div className="admin-page-toolbar">
+          :tab!=='guide'&&tab!=='mail'&&tab!=='credentials'&&!recoveryView&&(!recordTab||!recordId)&&<div className="admin-page-toolbar">
           <div>
             <h1>{tab === "ai" ? t("System management", "Manajemen sistem", "系统管理") : t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
             <p>
@@ -778,7 +789,11 @@ export function AccessWorkspace({
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
             {tab === 'test' && data?.testDirectoryAvailable && <TestEnvironmentPanel lang={lang}/>}
-            {tab==='mail'&&<EnrollmentMailWorkspace lang={lang} isLight={isLight} admin allowed={canUseAccessRecovery(employee)}
+            {tab==='credentials'&&(isAiAdministrator(employee)?<IntegrationCredentialsOverview lang={lang} isLight={isLight}/>:
+              <AdminListState lang={lang} state="denied"/>)}
+            {tab==='mail'&&!canUseAccessRecovery(employee)&&<AdminListState lang={lang} state="denied"/>}
+            {tab==='mail'&&canUseAccessRecovery(employee)&&<EnrollmentMailWorkspace lang={lang} isLight={isLight} admin allowed
+              canManageCredentials={isAiAdministrator(employee)}
               view={mailView} recordId={mailRecordId} returnPoolId={mailReturnPool} onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}
               onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>}
             {tab==='guide'&&<SystemAccessGuide lang={lang} canAudit={can('access.audit')}

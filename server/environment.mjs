@@ -40,11 +40,25 @@ export function frontendEnvironment(target, directory = process.cwd()) {
   const { values } = readEnvironment(target, directory);
   return Object.fromEntries(Object.entries(values).filter(([key]) => key.startsWith('VITE_')));
 }
+const bootstrapKeys = new Set(['MYSQL_TRIAL_URL','ACCESS_OPERATION_KEY','ACCESS_INITIAL_PASSWORD','ACCESS_INITIAL_PASSWORDS_FILE']);
+
+export function readBootstrapSecrets(file){
+  if(!path.isAbsolute(file))throw Error('Bootstrap secret file must have an absolute path');
+  const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);
+  try{
+    const stat=fs.fstatSync(fd);
+    if(!stat.isFile()||stat.size>65536||(stat.mode&0o177))throw Error('Bootstrap secret file requires private owner permissions');
+    const values=dotenv.parse(fs.readFileSync(fd));
+    if(Object.keys(values).some(key=>!bootstrapKeys.has(key)))throw Error('Unexpected bootstrap secret name');
+    return values;
+  }finally{fs.closeSync(fd);}
+}
+/** @param {{env?: NodeJS.ProcessEnv, directory?: string, target?: string, file?: string}} [options] */
 export function loadPortalEnvironment({ env = process.env, directory = process.cwd(), target, file } = {}) {
   const selected = target || env.PORTAL_ENV;
   const explicitFile = file || env.PORTAL_ENV_FILE;
   // Container env_file and isolated test fixtures already provide a complete runtime environment.
-  const injected = env.PORTAL_ENV_SOURCE === 'injected' || (!selected && !explicitFile && !!env.MYSQL_TRIAL_URL);
+  const injected = env.PORTAL_ENV_SOURCE === 'injected' || (!selected && !explicitFile && !!(env.MYSQL_TRIAL_URL || env.PORTAL_BOOTSTRAP_SECRET_FILE));
   let name = selected ? environmentName(selected) : undefined;
   if (!injected || explicitFile) {
     let values;
@@ -69,6 +83,7 @@ export function loadPortalEnvironment({ env = process.env, directory = process.c
     env.PORTAL_ENV_FILE = file;
   }
   if (name) env.PORTAL_ENV = name;
+  if(env.PORTAL_BOOTSTRAP_SECRET_FILE)Object.assign(env,readBootstrapSecrets(env.PORTAL_BOOTSTRAP_SECRET_FILE));
   if (env.PORTAL_PACKAGE_ENV && name && env.PORTAL_PACKAGE_ENV !== name) throw Error('Package and runtime environment mismatch');
   if (name === 'prod' && env.PORTAL_PRODUCTION_READY !== 'true') throw Error('Production environment has not been provisioned');
   return { target: name, injected };

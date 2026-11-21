@@ -39,110 +39,84 @@
 
 ## 3. 生产环境变量
 
-按用途列出生产模板中的变量。表中填写的是配置说明，私有值由运维通过正式应用的运行配置提供。
+与 `.env.prod.example` 对照填写。私有值由运维通过正式应用的运行配置提供。
 
-### 运行环境与站点
-
-| 变量 | 用途与配置时机 |
-| --- | --- |
-| `PORTAL_ENV` | 选择 dev、test 或 prod。后端读取对应私有文件，部署时也用它校验构建包目标。 模板值为 `prod`。 |
-| `PORTAL_ENV_SOURCE` | **按需**。部署系统注入完整环境时设为 `injected`，由启动器读取私有环境文件时省略。 模板值为 `injected`。 |
-| `PORTAL_DEPLOYMENT` | 选择公司测试或正式站的部署校验规则；常规本地开发留空。 模板值为 `production`。 |
-| `PORTAL_PRODUCTION_READY` | 正式站启动门禁。完成正式环境配置和验收后才设为 true。 模板值为 `false`。 |
-| `NODE_ENV` | 控制 Node.js 及依赖的开发／生产运行模式。 模板值为 `production`。 |
-| `APP_ENV` | 标识应用运行场景，本地通常用 local；测试站和正式站用 production，以启用对应的访问保护。 模板值为 `production`。 |
-| `PLATFORM_MODE` | 选择员工身份来源。local 使用本站员工账号；mock 仅供隔离测试使用。 模板值为 `local`。 |
-| `PORT` | 后端监听端口。本地通常为 3000，部署时由容器和反向代理约定。 模板值为 `8080`。 |
-| `APP_URL` | 站点对外访问的主地址，用于生成站内链接及站点元信息；部署时须符合环境校验。 模板值为 `https://uperedu.com`。 |
-| `PORTAL_PUBLIC_ORIGIN` | 生成招生邮件中的公开链接及验证回跳地址。发布前核对正式 HTTPS 域名。 模板值为 `https://uperedu.com`。 |
-| `TRIAL_FRONTEND_DIRECTORY` | 后端提供静态页面时读取的前端构建目录，填写当前环境的实际路径。 |
-| `PORTAL_LOG_LEVEL` | **按需**。需要调整日志级别时配置，接受程序默认值时可省略。 模板值为 `info`。 |
-
-### MySQL 与数据库工具
+### 运行与站点
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `PORTAL_DATABASE_DRIVER` | 选择后端数据库驱动。当前 CRM、CMS 的 MySQL 运行方式使用 mysql。 模板值为 `mysql`。 |
-| `TRIAL_DATASET` | 数据库安全场景标识。local-crm 用于本地 CRM；部署使用 synthetic 标识以通过当前校验，它不会初始化或清除数据。 模板值为 `synthetic`。 |
-| `MYSQL_TRIAL_URL` | MySQL 连接地址，包含数据库账号、密码、主机和库名。只在对应环境的私有配置填写。 |
-| `MYSQL_TLS_MODE` | 正式应用使用经批准的内网 MySQL TCP 直连，启动校验要求 disabled。 模板值为 `disabled`。 |
-| `MYSQL_BIN_DIRECTORY` | **按需**。仅在备份或恢复工具无法从系统路径找到 MySQL 客户端时指定其目录。 |
+| `PORTAL_ENV` | 生产环境标识，须与构建包目标一致。 模板值为 `prod`。 |
+| `PORTAL_ENV_SOURCE` | 容器注入完整配置时用 `injected`。由启动器读取私有环境文件时可省略。 模板值为 `injected`。 |
+| `PORTAL_DEPLOYMENT` | 启用正式站部署校验。 模板值为 `production`。 |
+| `PORTAL_PRODUCTION_READY` | 正式配置和发布验收完成后才设为 `true`。 模板值为 `false`。 |
+| `NODE_ENV` | Node.js 正式运行模式。 模板值为 `production`。 |
+| `APP_ENV` | 启用正式环境访问保护。 模板值为 `production`。 |
+| `PLATFORM_MODE` | 使用本站员工账号和本地身份模块。 模板值为 `local`。 |
+| `PORT` | 容器监听端口，须与反向代理一致。 模板值为 `8080`。 |
+| `APP_URL` | 正式站规范 HTTPS 地址。 模板值为 `https://uperedu.com`。 |
+| `PORTAL_PUBLIC_ORIGIN` | 生成招生邮件链接和校验 Lark 回调使用的正式 HTTPS 来源。 模板值为 `https://uperedu.com`。 |
+| `TRIAL_FRONTEND_DIRECTORY` | 由应用提供静态站点时，填实际前端构建目录。 |
 
-### 员工登录、权限与访问保护
-
-| 变量 | 用途与配置时机 |
-| --- | --- |
-| `ACCESS_OPERATION_KEY` | 为账号恢复和受保护操作签名的服务端密钥，部署时至少 32 字符，按环境独立保管。 |
-| `ACCESS_PUBLIC_ORIGIN` | 指定受保护访问的主站点来源，部署时填写对应的规范 HTTPS 地址。 模板值为 `https://uperedu.com`。 |
-| `ACCESS_ALLOWED_ORIGINS` | 允许访问受保护页面和接口的 HTTPS 来源清单，用逗号分隔。 模板值为 `https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com`。 |
-| `ACCESS_TRUSTED_PROXIES` | 填写可信反向代理的具体私网 IP，用逗号分隔；用于判断代理传入的连接信息。 |
-
-### 首次初始化预置员工
+### MySQL
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `ACCESS_INITIAL_PASSWORD` | 首次初始化预置员工时，通过私有运行配置提供 UPER 已约定的统一初始密码。首次登录必须改密。已有账号升级时无需填写。 |
+| `PORTAL_DATABASE_DRIVER` | 后端使用 MySQL。 模板值为 `mysql`。 |
+| `TRIAL_DATASET` | 正式连接的校验标识，设置此值不会初始化或清除数据。 模板值为 `synthetic`。 |
+| `MYSQL_TRIAL_URL` | 正式数据库私有连接地址，使用经批准的生产库和内网端点。 |
+| `MYSQL_TLS_MODE` | 正式站启动校验要求经批准的内网 MySQL 直连模式 `disabled`。 模板值为 `disabled`。 |
 
-### 通知后台与 Lark
-
-| 变量 | 用途与配置时机 |
-| --- | --- |
-| `PORTAL_WORKER_ENABLED` | 默认启动后台任务。首次部署核验或维护时显式设为 false。 模板值为 `true`。 |
-| `LARK_GROUP_CRM` | 供仍引用 LARK_GROUP_CRM 的生产群渠道读取。实际 Webhook 仅填入私有环境文件。 |
-| `LARK_APP_ID` | Lark 企业自建应用的 App ID，用于员工授权绑定和应用机器人身份。 |
-| `LARK_APP_SECRET` | 与 App ID 配对的应用密钥，后端用它获取访问令牌及处理授权。 |
-| `LARK_OAUTH_REDIRECT_URI` | 员工完成 Lark 授权后返回本环境 CRM 的回调地址，须与 Lark 控制台登记值完全一致。 模板值为 `https://uperedu.com/api/crm/lark/callback`。 |
-| `LARK_TENANT_KEY` | 用于核验授权员工是否属于预期的 Lark 企业。 |
-
-### 招生邮件
+### 访问保护与后台任务
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `PORTAL_ENROLLMENT_MAIL_CREDENTIAL_KEY` | 加密和解密数据库中的 SMTP 密码。首次保存密码前在正式私有配置提供 32 字节随机值的 64 位十六进制编码。已有凭证时沿用对应密钥。 |
-| `PORTAL_ENROLLMENT_MAIL_TRANSPORT` | 默认留空，正式环境不启用 SMTP。旧队列、发信池和凭证核对通过并获发信授权后设为 smtp。 |
-| `PORTAL_ENROLLMENT_SERVICE_ENABLED` | 默认 `false`。完成权限和存量服务联调后启用报名服务，包括查询、补交凭证、核款和退款处理。 |
-| `PORTAL_ENROLLMENT_ACCEPTING_NEW` | 默认 `false`。只有报名服务已启用、正式收款资料和招生邮件配置已就绪时，才允许创建新的订单、候补、选课需求和协助申请。暂停招生只关闭这一项。 |
+| `ACCESS_PUBLIC_ORIGIN` | 受保护访问使用的正式 HTTPS 主站来源。 模板值为 `https://uperedu.com`。 |
+| `ACCESS_ALLOWED_ORIGINS` | 正式站获准的 HTTPS 来源清单，须包含主站。多个来源以逗号分隔。 模板值为 `https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com`。 |
+| `ACCESS_TRUSTED_PROXIES` | 可信反向代理的具体私网 IP，多个地址以逗号分隔。 |
+| `ACCESS_OPERATION_KEY` | 至少 32 字符的管理员恢复签名密钥，按环境独立保管。 |
+| `PORTAL_WORKER_ENABLED` | 后台 worker 开关。省略时正式站默认开启。首次部署核验或维护时按发布步骤显式控制。 模板值为 `true`。 |
 
-旧 SMTP 账号密码变量仅在对应账号仍引用环境变量凭证时按需保留。在系统管理中保存加密密码并确认可解密后，移除该账号的旧变量。
-
-### AI 咨询
-
-| 变量 | 用途与配置时机 |
-| --- | --- |
-| `OPENAI_API_KEY` | 服务端调用 OpenAI 的凭证，供 AI 咨询等功能使用。 |
-| `OPENAI_MODEL` | 系统尚未保存主模型配置时使用的默认 OpenAI 模型；已保存配置优先。 模板值为 `gpt-6.1-sol`。 |
-| `DEEPSEEK_API_KEY` | **按需**。仅在选择 DeepSeek 作为主模型或备用模型时提供私有凭证。 |
-
-### Google Analytics
+### 集成凭证与浏览器统计
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `VITE_UPER_MEASUREMENT_ID` | 前端构建所用的公开 GA4 衡量 ID。按目标环境填入 src/data/analyticsEnvironments.json 指定的值。 模板值为 `G-SZCY9WLK8X`。 |
-| `PORTAL_GA_MEASUREMENT_ID` | **按需**。仅在获准启用服务端购买和退款上报时填写，匹配正式 Web 数据流。 模板值为 `G-SZCY9WLK8X`。 |
-| `PORTAL_GA_API_SECRET` | **按需**。仅在获准启用服务端上报时提供同一数据流的 Measurement Protocol 密钥，未获准时保持未注入。 |
+| `PORTAL_CREDENTIAL_KEYRING_FILE` | 后台集成凭证使用的生产专用密钥环。迁移前提供容器内可读的绝对路径，文件权限为 `0600`，与数据库独立备份。 |
+| `VITE_UPER_MEASUREMENT_ID` | 前端构建使用的公开 GA4 衡量 ID，须匹配已分配的正式数据流。 模板值为 `G-SZCY9WLK8X`。 |
 
-### CMS 图片与腾讯云 COS
+### 报名与招生邮件
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `PORTAL_COS_BUCKET` | 存储 CMS 图片的 COS 桶名，使用对应环境的桶。 |
-| `PORTAL_COS_REGION` | 上述 COS 桶所在地域，用于构造请求及资源地址。 |
-| `PORTAL_COS_PREFIX` | **按需**。用于指定 CMS 图片对象路径，接受默认的 `cms/` 时可省略。 模板值为 `cms/`。 |
-| `PORTAL_COS_SECRET_ID` | 服务端访问 COS 的凭证 ID，用于签名图片上传等请求。 |
-| `PORTAL_COS_SECRET_KEY` | 与 COS 凭证 ID 配对的私钥，仅服务端用于请求签名。 |
-| `PORTAL_COS_SECURITY_TOKEN` | **按需**。仅在使用腾讯云临时凭证时提供对应会话令牌，长期凭证可省略。 |
+| `PORTAL_ENROLLMENT_SERVICE_ENABLED` | 默认关闭。权限和存量订单服务联调通过后启用，包括查单、补交凭证、核款和退款。 模板值为 `false`。 |
+| `PORTAL_ENROLLMENT_ACCEPTING_NEW` | 默认关闭。报名服务、正式收款资料和验证码投递均就绪后再开启。暂停新报名时仅关闭此项。 模板值为 `false`。 |
+| `PORTAL_ENROLLMENT_MAIL_TRANSPORT` | 默认留空。核对旧队列、发信池和凭证并获发信授权后才设置 `smtp`。 |
 
+### 按需配置
+
+| 变量 | 用途与配置时机 |
+| --- | --- |
+| `PORTAL_LOG_LEVEL` | 调整日志级别时填写。 模板值为 `info`。 |
+| `MYSQL_BIN_DIRECTORY` | 备份或恢复工具找不到 MySQL 客户端时填写。 |
+| `ACCESS_INITIAL_PASSWORD` | 首次初始化预置员工时，通过私有配置提供已约定的统一初始密码。首次登录须修改。已有账号的日常启动可省略。 |
+| `PORTAL_BOOTSTRAP_SECRET_FILE` | 部署层按需提供数据库连接、恢复签名和初始化配置的私有文件。 |
+| `PORTAL_CREDENTIAL_PROVIDER_CHECKS` | 仅获准调用真实供应商核验时启用。 模板值为 `false`。 |
+| `OPENAI_MODEL` | 后台尚无模型配置时可覆盖默认 OpenAI 模型。 模板值为 `gpt-6.1-sol`。 |
+| `PORTAL_COS_BUCKET` | 按需核对 COS 桶。 |
+| `PORTAL_COS_REGION` | 按需核对 COS 桶所在区域。 |
+| `PORTAL_COS_PREFIX` | 采用默认对象前缀 `cms/` 时可省略。 模板值为 `cms/`。 |
 
 ### 旧版升级兼容
 
-仅在沿用尚未迁移 Lark 渠道发送模式的旧生产库时，在首次启动前保留旧生产进程的原值。
+按[集成凭证运维手册](integration-credentials-runbook.md)逐项迁移。未验收的集成继续保留正式环境原值和适用的旧密文。先保留回退材料，再重启确认当前生效来源，最后逐项退役。
 
-| 变量 | 首次升级用途 |
-| --- | --- |
-| `PORTAL_NOTIFICATION_MODE` | 读取旧通知模式，用于迁移群渠道的发送模式。 |
-| `LARK_PERSONAL_DELIVERY_ENABLED` | 结合旧通知模式，将个人通知开关迁移为 Lark 个人渠道的发送模式。 |
-
-首次升级后进入 **CRM → 销售运营 → 通知与审计 → 通知渠道**，核对群和个人渠道已保存的发送模式与升级前一致。确认两类渠道模式均已迁移完成后，从正式运行配置移除这两项。新库及已迁移的生产库可直接省略。
+| 集成 | 兼容变量 | 移除条件 |
+| --- | --- | --- |
+| OpenAI 与 DeepSeek | `OPENAI_API_KEY`、`DEEPSEEK_API_KEY` | 逐家迁入后台，确认主备配置读取相应凭证，重启后对应模型调用通过并确认回退来源，再移除该家的旧变量。 |
+| Lark 应用和群 | `LARK_APP_ID`、`LARK_APP_SECRET`、`LARK_OAUTH_REDIRECT_URI`、`LARK_TENANT_KEY`、`LARK_GROUP_CRM`、`LARK_WEBHOOK_ENCRYPTION_KEY` | 核对应用、租户、回调、现有员工绑定和群渠道。仍有旧加密 Webhook 时保留对应解密密钥。重启后确认后台凭证和配置有效、回退材料可用，再清理旧值。 |
+| 服务端 GA | `PORTAL_GA_MEASUREMENT_ID`、`PORTAL_GA_API_SECRET`、`PORTAL_GA_DISPATCH_ENABLED` | 核对后台正式数据流、凭证和外发状态，重启后确认生效，按批准范围验收事件投递后移除旧变量。 |
+| SMTP | `PORTAL_ENROLLMENT_MAIL_CREDENTIAL_KEY` | 同时保留仍被发件账号引用的旧密码变量。逐账号确认后台解密、重启回读、按授权投递和回退条件后，才移除该账号的旧来源。最后一个依赖迁移后再移除旧密文解密密钥。 |
+| COS | `PORTAL_COS_SECRET_ID`、`PORTAL_COS_SECRET_KEY`、`PORTAL_COS_SECURITY_TOKEN` | 确认后台凭证接管同一目标，重启后验证 CMS 媒体读取和所需操作，并确认回退后移除。会话令牌仅用于临时凭证。 |
+| 旧 Lark 发送模式 | `PORTAL_NOTIFICATION_MODE`、`LARK_PERSONAL_DELIVERY_ENABLED` | 只在沿用尚未迁移模式的旧生产库时保留原值。首次升级后，核对 CRM → 销售运营 → 通知与审计 → 通知渠道，确认群及个人模式均已迁移后移除。 |
 
 ## 4. 软件系统默认设置
 

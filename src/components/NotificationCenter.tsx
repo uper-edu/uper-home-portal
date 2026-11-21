@@ -1,3 +1,4 @@
+import {IntegrationCredentialControl} from './IntegrationCredentials';
 import {AdminDateField,completeAdminDateTime} from './admin/AdminDateField';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminConfirmation} from './admin/AdminConfirmation';
@@ -95,6 +96,7 @@ interface Channel {
   webhookRevision?: string | null;
   mode: string;
   signingEnabled?: boolean;
+  secretRef?: string;
   signingSecretRef?: string;
 }
 const PERSONAL_CHANNEL_ROW = "lark:personal";
@@ -237,6 +239,8 @@ export default function NotificationCenter({
   const [webhookStored, setWebhookStored] = useState(false);
   const [webhookConfigured, setWebhookConfigured] = useState(false);
   const [environmentGroupWebhook, setEnvironmentGroupWebhook] = useState(false);
+  const [managedCredentials,setManagedCredentials]=useState(false);
+  const [canManageCredentials,setCanManageCredentials]=useState(false);
   const [editingWebhook, setEditingWebhook] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<{id: string; name: string; version: string} | null>(null);
   const [channelDeleteError, setChannelDeleteError] = useState("");
@@ -373,7 +377,11 @@ export default function NotificationCenter({
         if(!Array.isArray(data))throw Error('Invalid notification history response');
         setAuditRead('ready');
       }
-      if (tab === "notification-channels") setEnvironmentGroupWebhook(data.groupWebhookUsesEnvironment === true);
+      if (tab === "notification-channels") {
+        setEnvironmentGroupWebhook(data.groupWebhookUsesEnvironment === true);
+        setManagedCredentials(data.managedCredentials === true);
+        setCanManageCredentials(data.canManageCredentials === true);
+      }
       setRows(
         tab === "integration-readiness"
           ? [{ id: "status", ...data }]
@@ -663,22 +671,24 @@ export default function NotificationCenter({
           webhookInput.current?.focus();
           throw Error("Paste the Lark group bot Webhook address.");
         }
-        if (config.mode === "simulation") {
+        if (config.mode === "simulation" && !managedCredentials) {
           delete config.signingSecretRef;
           delete config.signingEnabled;
-        } else {
+        } else if (config.mode === "live") {
           if (!webhookStored && !webhookDraft && (!existing || rows.find(row => row.id === key)?.config?.mode !== "live"))
             throw Error("Save a Webhook before enabling live delivery.");
           config.signingEnabled = !!config.signingEnabled;
-          if (config.signingEnabled && !config.signingSecretRef?.trim()) {
+          if (canManageCredentials && !managedCredentials && config.signingEnabled && !config.signingSecretRef?.trim()) {
             signingRefInput.current?.focus();
             throw Error("Signing requires a secret reference");
           }
           if (!config.signingEnabled) delete config.signingSecretRef;
         }
+        if(managedCredentials||!canManageCredentials){delete config.signingSecretRef;delete config.secretRef;}
+        if(!canManageCredentials)delete config.signingEnabled;
         await api("notification-channels/" + encodeURIComponent(key), {
           ...config,
-          webhook: typeof webhookDraft === "string" ? webhookDraft.trim() : webhookDraft,
+          webhook: managedCredentials||!canManageCredentials ? undefined : typeof webhookDraft === "string" ? webhookDraft.trim() : webhookDraft,
         });
       }
       setEditor(null);
@@ -1616,7 +1626,7 @@ export default function NotificationCenter({
                                   : webhookStored ? t("已保存，暂不可用", "Saved, currently unavailable")
                                     : t("未配置", "Not configured")}
                             </p>
-                            {!environmentGroupWebhook && <div className="admin-form-actions">
+                            {canManageCredentials&&!managedCredentials&&!environmentGroupWebhook && <div className="admin-form-actions">
                               {editingWebhook || webhookDraft === null ? (
                                 <button ref={undoWebhookAction} type="button" className="crm-work-button" disabled={busy || !canEdit}
                                   onClick={() => {
@@ -1643,7 +1653,7 @@ export default function NotificationCenter({
                             </div>}
                           </div>
                         </div>
-                        {environmentGroupWebhook && <p className="notification-channel-help">
+                        {!managedCredentials&&environmentGroupWebhook && <p className="notification-channel-help">
                           {t("群地址由服务端维护。", "The group address is managed on the server.")}
                         </p>}
                         {editingWebhook && (
@@ -1672,13 +1682,13 @@ export default function NotificationCenter({
                           />
                           <small>{t("0 表示暂停，超出上限的通知顺延。", "0 pauses delivery. Excess notifications are deferred.")}</small>
                         </AdminField>
-                        {channel.mode === "live" && <>
+                        {(channel.mode === "live" || managedCredentials) && <>
                             <div className="notification-channel-row">
                               <span className="notification-channel-label" aria-hidden="true">{t("签名验证", "Signature verification")}</span>
                               <div className="notification-channel-mode">
                                 <AdminField className="notification-channel-signing">
                                   <input type="checkbox" aria-label={t("启用签名验证", "Enable signature verification")}
-                                    checked={!!channel.signingEnabled} disabled={busy || !canEdit}
+                                    checked={!!channel.signingEnabled} disabled={busy || !canEdit || !canManageCredentials}
                                     onChange={e => setChannel({ ...channel, signingEnabled: e.target.checked })}
                                   />
                                   {t("启用", "Enable")}
@@ -1688,7 +1698,7 @@ export default function NotificationCenter({
                                 </p>
                               </div>
                             </div>
-                            {channel.signingEnabled && (
+                            {canManageCredentials&&!managedCredentials&&channel.signingEnabled && (
                               <AdminField className="notification-channel-row" required>
                                 {t("签名密钥引用", "Signing secret reference")}
                                 <input ref={signingRefInput} className={input} required disabled={busy || !canEdit}
@@ -1863,6 +1873,8 @@ export default function NotificationCenter({
                                 </dd>
                               </div>
                             </dl>
+                            {canManageCredentials&&managedCredentials&&<IntegrationCredentialControl kind="lark-group" resource={row.id} lang={lang} isLight={isLight} subject={name}
+                              onChange={()=>void load()}/>}
                             {canEdit && (
                               <div className="notification-channel-card-actions">
                                 <AdminRowAction id={editorTriggerId("channel", row.id)} disabled={busy} onClick={() => edit(row)}>

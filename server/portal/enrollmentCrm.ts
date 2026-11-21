@@ -20,7 +20,7 @@ import { salesProgressContext } from './salesProgress.ts';
 import { enrollmentOpportunityLevels } from '../../src/utils/enrollmentCatalog.ts';
 import { latestAssistanceMail } from './enrollmentNotices.ts';
 
-type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[]}> };
+type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[];rowCount?:number}> };
 type RecordKind = 'order' | 'waitlist' | 'demand';
 type Submission = { kind: RecordKind; id: string; email: string; phone: string; name?: string; level?: string; emailVerified?: boolean };
 
@@ -131,7 +131,9 @@ function displayRecord(row: any) {
     class:row.class_data ? {id:row.class_id,level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,
-    attribution:row.attribution?{entry:row.attribution.entry,via:row.attribution.via,source:row.attribution.source,campaign:row.attribution.campaign,verified:row.attribution.verified}:null,
+    attribution:row.attribution?{entry:row.attribution.entry,via:row.attribution.via,source:row.attribution.source,campaign:row.attribution.campaign,
+      campaignId:row.attribution.campaignId,promotionId:row.attribution.promotionId,
+      promotionName:row.attribution.promotionName,verified:row.attribution.verified}:null,
     latestNotice:row.latest_notice,
   };
 }
@@ -139,6 +141,44 @@ function displayRecord(row: any) {
 function recordOpportunityLevel(row:any):string|undefined {
   const level=row.class_data?.level??row.criteria?.level;
   if(enrollmentOpportunityLevels.includes(level))return level;
+}
+
+async function attachUnassignedEnrollmentRecord(c:Client,customerId:string,actor:string,row:{kind:RecordKind;record_id:string},opportunityId:string,via?:'identity_review'|'purchase_intent'){
+  const changed=await c.query(`UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3
+    AND opportunity_id IS NULL`,[opportunityId,row.kind,row.record_id]);
+  if(changed.rowCount!==1)invalid('enrollment_opportunity_already_linked',409);
+  await c.query('UPDATE enrollment_opportunities SET revision=revision+1 WHERE id=:p1',[opportunityId]);
+  await fact(c,customerId,'enrollment.opportunity.linked',actor,{opportunityId,recordId:row.record_id,kind:row.kind,...(via?{via}:{})});
+}
+
+/** Call from a transaction holding the identity registry lock. */
+async function reconcileEnrollmentRecords(c:Client,customerId:string,actor:string,intentLevel?:string){
+  const customer=await canonicalIdentity(c,customerId);
+  if(!customer||customer.profile.identityLifecycle==='pending')return;
+  const rows=(await c.query(courseRecords+` JOIN portal_leads l ON l.id=r.lead_id
+    WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND r.opportunity_id IS NULL
+    ORDER BY r.created_at,r.record_id`,[customer.id])).rows;
+  const byLevel=new Map<string,typeof rows>();
+  for(const row of rows){
+    const level=recordOpportunityLevel(row);
+    if(!level||!row.state||intentLevel&&(level!==intentLevel||row.kind!=='order'))continue;
+    const group=byLevel.get(level)??[];
+    group.push(row);
+    byLevel.set(level,group);
+  }
+  for(const [level,unlinked] of byLevel){
+    const candidates=await activeOpportunityCandidates(c,customer,level);
+    if(candidates.length!==1)continue;
+    const [{id}]=candidates;
+    const prior=await recordsForOpportunity(c,id);
+    // Several standalone orders can represent separate purchases at one level.
+    if([...prior,...unlinked].filter(row=>row.kind==='order').length>1)continue;
+    for(const row of unlinked)await attachUnassignedEnrollmentRecord(c,customer.id,actor,row,id,intentLevel?'purchase_intent':'identity_review');
+  }
+}
+
+export async function reconcileEnrollmentAfterIdentityReview(c:Client,customerId:string,actor:string){
+  await reconcileEnrollmentRecords(c,customerId,actor);
 }
 
 function projectOpportunity(row: any, records: ReturnType<typeof displayRecord>[], profile: any) {
@@ -433,6 +473,7 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
           workflowVersion:3,requestId,summary:note,recordKind:'internal',expectedRevision:customer.profile.simpleRevision||0,
           opportunityLink:{id,revision:Number(active[0]?.revision??0),sourceRefs},
         },profile=>readProfile(actor,profile)&&canProgress(actor,profile));
+        await reconcileEnrollmentRecords(c,customer.id,actor.id,level);
         return {opportunityId:id,created,logId:saved.logId};
       });
     });

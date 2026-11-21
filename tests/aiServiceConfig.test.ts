@@ -45,3 +45,16 @@ test('AI defaults use the confirmed primary while preserving environment and sav
   if(previous===undefined)delete process.env.OPENAI_MODEL;else process.env.OPENAI_MODEL=previous;
  }
 });
+
+test('existing model identifiers resolve to the correct provider and credential source',()=>{
+ const overrides={OPENAI_API_KEY:'mock-openai',DEEPSEEK_API_KEY:'mock-deepseek',
+  OPENAI_API_BASE_URL:'https://openai.invalid/chat/completions',DEEPSEEK_API_BASE_URL:'https://deepseek.invalid/chat/completions'};
+ const prior=Object.fromEntries(Object.keys(overrides).map(key=>[key,process.env[key]]));
+ Object.assign(process.env,overrides);
+ try{
+  assert.deepEqual(providerFor('gpt-6.2-sol'),{model:'gpt-6.2-sol',provider:'openai',key:overrides.OPENAI_API_KEY,url:overrides.OPENAI_API_BASE_URL});
+  assert.deepEqual(providerFor('deepseek-v4-pro'),{model:'deepseek-v4-pro',provider:'deepseek',key:overrides.DEEPSEEK_API_KEY,url:overrides.DEEPSEEK_API_BASE_URL});
+ }finally{
+  for(const [key,value] of Object.entries(prior))if(value===undefined)delete process.env[key];else process.env[key]=value;
+ }
+});

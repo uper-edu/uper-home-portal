@@ -4,7 +4,8 @@ import {isolatedLarkRuntime} from './larkChannelModes.ts';
 import {personalNotificationPreferences,personalNotificationAllowed,personalNotificationLanguage} from './personalNotificationPreferences.ts';
 import {processLarkBindingConfirmations} from './larkSelfService.ts';
 import {larkApp,larkBindings} from './larkApp.ts';
-import {resolveGroupWebhook} from './larkGroupWebhook.ts';
+import {larkSettings} from './larkSettings.ts';
+import {groupCredential} from './integrationCredentialTargets.ts';
 import {assignmentNoticeTargets, currentAssignmentRecipient, LEAD_ASSIGNED_EVENT} from '../../src/utils/leadAssignmentNotification.ts';
 import {processExtractionBatch} from './aiExtraction.ts';
 import {auditLog} from './audit.ts';
@@ -110,6 +111,7 @@ export async function tick(clock = new Date()) {
       )
     ).rows;
     const employees = await platform.employees();
+    const appId=events.length?(await larkSettings(c)).appId:'';
     for (const ev of events) {
       const exclusions: {ruleId: string; reason: string}[] = [];
       const recordPlan = async (reason: string) => {
@@ -195,7 +197,7 @@ export async function tick(clock = new Date()) {
             && (route ?? resolveRecipients(r,lead,employees,ev.lead_id)).ids.includes(lead.owner)
             ? lead.owner : undefined;
           const binding = personalOwner ? (await larkBindings(c))[personalOwner] : undefined;
-          const canSendPersonal = !!(personalOwner && binding?.openId && binding.appId === process.env.LARK_APP_ID &&
+          const canSendPersonal = !!(personalOwner && binding?.openId && binding.appId === appId &&
             new Date(binding.updatedAt) <= new Date(ev.created_at) &&
             personalNotificationAllowed(await personalNotificationPreferences(c,personalOwner),ev.type));
           const targets = assignmentNotice
@@ -470,7 +472,7 @@ export async function tick(clock = new Date()) {
       )
     ).rows[0].count;
     const personalBinding=personalEmployee?(await larkBindings(pool))[personalEmployee]:null;
-    if(personalEmployee && (!personalBinding?.openId || personalBinding.appId!==process.env.LARK_APP_ID || new Date(personalBinding.updatedAt)>new Date(job.snapshot.eventRecordedAt || 0) || personalEmployee!==lead.owner || !recipients(r,lead,await platform.employees(),job.snapshot.leadId).includes(personalEmployee))){
+    if(personalEmployee && (!personalBinding?.openId || personalBinding.appId!==(await larkSettings()).appId || new Date(personalBinding.updatedAt)>new Date(job.snapshot.eventRecordedAt || 0) || personalEmployee!==lead.owner || !recipients(r,lead,await platform.employees(),job.snapshot.leadId).includes(personalEmployee))){
       await pool.query("UPDATE notification_jobs SET state='cancelled',result='Personal recipient changed or unauthorized',completed_at=:p2 WHERE id=:p1",[job.id,clock]);return;
     }
     const config = await policyLarkChannelConfig(pool, r, job.recipient, Boolean(personalEmployee));
@@ -500,11 +502,13 @@ export async function tick(clock = new Date()) {
       );
       return;
     }
-    const url = personalEmployee ? undefined : resolveGroupWebhook(job.recipient, config);
+    const credential = personalEmployee ? undefined : await groupCredential(job.recipient, config);
+    const url = credential?.webhook;
+    const signingKey = (config.signingEnabled ?? !!config.signingSecretRef) ? credential?.signingKey : undefined;
     if (
       (!personalEmployee && !url) ||
       ((!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef)) &&
-        !process.env[config.signingSecretRef])
+        !signingKey)
     ) {
       await tx(async (c) => {
         await c.query(
@@ -536,7 +540,7 @@ export async function tick(clock = new Date()) {
       const deadlineStatus=content.due?notificationDeadlineStatus(deadlineAt,clock.toISOString(),r.language):undefined;
       let designedCard:any;
       if(job.snapshot.payload.notificationPolicyVersion===2 && job.snapshot.event==='daily.digest'){
-        designedCard=dailyDigestCard({jobId:job.id,language:r.language,date:job.snapshot.payload.date,timezone:r.timezone,counts:job.snapshot.payload.counts,filtered:!!(r.tiers.length||r.states.length||r.sources.length)},(!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef))?process.env[config.signingSecretRef]:undefined,clock);
+        designedCard=dailyDigestCard({jobId:job.id,language:r.language,date:job.snapshot.payload.date,timezone:r.timezone,counts:job.snapshot.payload.counts,filtered:!!(r.tiers.length||r.states.length||r.sources.length)},(!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef))?signingKey:undefined,clock);
       }
       if(job.snapshot.payload.notificationPolicyVersion===2 && standardLarkKinds.includes(job.snapshot.event) && (['lead.created','handoff.requested','assessment.completed','commitment.due'].includes(job.snapshot.event)||job.snapshot.payload.notificationContentVersion===3)){
         const attempt=job.snapshot.event==='assessment.completed' && job.snapshot.payload.attemptId
@@ -553,7 +557,7 @@ export async function tick(clock = new Date()) {
         const payload=job.snapshot.payload;
         const target:LarkCardInput['target']=assignmentNotice&&payload.factId?{kind:'fact',id:payload.factId}:agreement?{kind:'agreement',id:agreement.id}:job.snapshot.event==='assessment.completed'?{kind:'assessment',id:payload.attemptId}:['handoff.requested','booking.requested','enrollment.requested'].includes(job.snapshot.event)?{kind:'request',id:payload.requestEvidenceId}:job.snapshot.event==='task.overdue'?{kind:'task',id:payload.taskId}:job.snapshot.event==='ai.failed'&&payload.messageId?{kind:'message',id:payload.messageId}:job.snapshot.event==='conversation.reactivated'&&payload.conversationId?{kind:'conversation',id:payload.conversationId}:job.snapshot.event==='lead.created'&&payload.questionnaireFactId?{kind:'fact',id:payload.questionnaireFactId}:job.snapshot.event==='lead.created'&&payload.submissionId?{kind:'submission',id:payload.submissionId}:undefined;
         const standardInput:LarkCardInput={target,agreementAction:agreement?.action,jobId:job.snapshot.event==='notification.failed'?payload.jobId:undefined,kind:job.snapshot.event,language:r.language,name:content.name,owner:(await platform.employees()).find(e=>e.id===lead.owner)?.displayName || (lead.owner ? (r.language==='zh'?'负责人待核对':r.language==='id'?'Periksa penanggung jawab':'Owner needs review') : (r.language==='zh'?'未分配':r.language==='id'?'Belum ditugaskan':'Unassigned')),excerpt:source && 'excerpt' in source ? source.excerpt:undefined,excerptRestricted:source && 'excerptRestricted' in source ? source.excerptRestricted:false,reportedLevel:source && 'reportedLevel' in source ? source.reportedLevel:undefined,mode:source && 'mode' in source ? source.mode:undefined,city:source && 'city' in source ? source.city:undefined,assessmentResult:attempt?.result,time:formatTime(occurrence),recordedAt:formatTime(attempt?.created_at||source?.recordedAt||failureSource?.recordedAt||job.snapshot.eventRecordedAt),goals:source && 'goals' in source ? source.goals as string[] : undefined,internalReview:!!internalHandling,source:attempt?'assessment':source?.source,score:attempt?.result?.score,maxScore:attempt?.result?.maxScore,due:agreement||job.snapshot.event==='task.overdue'||sourceRequest?.data?.dueAt?content.due:undefined,dueAt:deadlineAt,failedEvent:failureSource?.failedEvent,failedChannel:failureSource?.failedChannel,attempts:failureSource?.attempts,failure:failureSource?.failure};
-        designedCard=standardLarkCard(standardInput,job.snapshot.leadId,(!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef))?process.env[config.signingSecretRef]:undefined,clock);
+        designedCard=standardLarkCard(standardInput,job.snapshot.leadId,(!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef))?signingKey:undefined,clock);
       }
       if (assignmentNotice) {
         const latest = (await pool.query("SELECT profile FROM portal_leads WHERE id=:p1",[job.snapshot.leadId])).rows[0]?.profile;
@@ -563,7 +567,7 @@ export async function tick(clock = new Date()) {
           return;
         }
       }
-      const sendRequest:typeof fetch=personalEmployee?async(_url,options)=>larkApp.send(personalBinding.openId,JSON.parse(String(options?.body)),job.id,config.mode):fetch;
+      const sendRequest:typeof fetch=personalEmployee?async(_url,options)=>larkApp.send(personalBinding.openId,JSON.parse(String(options?.body)),job.id,config.mode,personalBinding.appId):fetch;
       const response = await sendRequest(url || 'https://open.larksuite.com', {
         method: "POST",
         redirect: "error",
@@ -588,7 +592,7 @@ export async function tick(clock = new Date()) {
                 : ""),
             job.snapshot.leadId,
             (!personalEmployee && (config.signingEnabled ?? !!config.signingSecretRef))
-              ? process.env[config.signingSecretRef]
+              ? signingKey
               : undefined,
             clock,
             agreement?{kind:'agreement',id:agreement.id}:task?{kind:'task',id:task.id}:undefined,
@@ -662,7 +666,7 @@ export function startWorker({paymentAnalytics=false} = {}) {
   log.info("worker.started");
   const timer = setInterval(() => {
     if (stopped) return;
-    if (paymentAnalytics && !paymentAnalyticsRunning) {
+    if (paymentAnalytics && process.env.PORTAL_GA_DISPATCH_ENABLED==='true' && !paymentAnalyticsRunning) {
       paymentAnalyticsRunning = (async () => {
         if ((await restoreState())?.required) return;
         await dispatchPaymentAnalytics({transaction:tx});

@@ -21,10 +21,10 @@ type GroupTestConfig = {
   signingEnabled?: boolean;
 };
 
-export function planGroupChannelTest(id: string, config: GroupTestConfig, env = process.env) {
-  const url = resolveGroupWebhook(id, config, env);
+export function planGroupChannelTest(id: string, config: GroupTestConfig, env = process.env, credentials?: {webhook?:string;signingKey?:string}) {
+  const url = credentials ? credentials.webhook : resolveGroupWebhook(id, config, env);
   const signingEnabled = config.signingEnabled ?? Boolean(config.signingSecretRef);
-  const signingSecret = signingEnabled && config.signingSecretRef ? env[config.signingSecretRef] : undefined;
+  const signingSecret = signingEnabled ? (credentials ? credentials.signingKey : config.signingSecretRef ? env[config.signingSecretRef] : undefined) : undefined;
   const { simulated, liveUnavailable } = larkTestDeliveryMode(config.mode, env);
   const blocked = liveUnavailable ? "live_unavailable"
     : !url ? "missing_webhook"

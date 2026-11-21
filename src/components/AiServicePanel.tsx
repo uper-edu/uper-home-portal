@@ -54,7 +54,6 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
  };
  const fields=(value:AiSelection)=> <dl className="ai-config-values">{aiModelSlots.map(k=><div key={k}><dt>{t(k)}</dt><dd>{describe(value,k)}</dd></div>)}</dl>;
  return <section data-admin-form="" className="ai-service-panel" aria-busy={busy}>
-  <p className="ai-service-guide">{t('shortGuide')}</p>
   {notice&&<AdminFormFeedback className="ai-service-feedback" state={notice==='saved'||notice==='verified'?'saved':notice==='error'?'error':'unknown'} role="status">{t(notice as keyof typeof aiServiceText)}</AdminFormFeedback>}
   {!data?<p role="status">{t(notice?'error':'busy')}</p>:<>
    <div className="access-grid ai-service-grid">
@@ -92,7 +91,7 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
     <CrmDisclosure heading={t('extract')}><ul className="ai-service-records">{data.extractions.map((a:any,i:number)=><li key={i}><strong>{a.model}</strong>{status(a.status==='completed')}<time>{formatCrmEventTime(a.completed_at)}</time></li>)}{!data.extractions.length&&<li>{t('empty')}</li>}</ul></CrmDisclosure>
 
     <CrmDisclosure heading={t('history')}><ul className="ai-service-records">{data.history?.map((a:any)=><li key={a.requestId}><strong>{describe(a.current,'primary')} → {describe(a.current,'fallback')}</strong><span>{a.actor}</span><time>{formatCrmEventTime(a.at)}</time></li>)}{!data.history?.length&&<li>{t('empty')}</li>}</ul></CrmDisclosure>
-    <CrmDisclosure heading={t('help')}><p>{t('guide')}</p><dl className="ai-config-values">{Object.entries(data.keys).map(([provider,configured])=><div key={provider}><dt>{provider==='openai'?'OpenAI':'DeepSeek'}</dt><dd>{t(configured?'configured':'missing')}</dd></div>)}</dl></CrmDisclosure>
+    <CrmDisclosure heading={t('help')}><p>{t('guide')}</p></CrmDisclosure>
    </section>
   </>}
  </section>;

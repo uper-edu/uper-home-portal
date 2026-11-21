@@ -1,5 +1,6 @@
 import {enrollCourse} from './courseCatalog.ts';
 import {enrollmentServicePolicy} from './enrollmentRuntime.ts';
+import {reconcileEnrollmentAfterIdentityReview} from './enrollmentCrm.ts';
 import {auditLog} from './audit.ts';
 import {randomUUID} from 'node:crypto';
 import {restoreMistakenFulfilment} from './agreementRestore.ts';
@@ -397,6 +398,7 @@ export function mountTrustRoutes(
               await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[subjectId,released]);
               await activateIdentityLead(c,released,e.id);
             }
+            if(!remaining.length)await reconcileEnrollmentAfterIdentityReview(c,resolution.canonicalLeadId,e.id);
             return { saved: true, leadId: l.id,remainingCandidates:remaining.length,nextCandidateId:remaining[0]?.candidate_id,...resolution };
           });
         }),

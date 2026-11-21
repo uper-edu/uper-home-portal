@@ -1,3 +1,6 @@
+import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
+import {integrationCredential} from './integrationCredentials.ts';
+import {smtpTransportOptions,smtpCredentialTarget} from './integrationCredentialTargets.ts';
 import {enrollmentOrderEmailPath, portalPublicOrigin, renderEnrollmentEmail} from './enrollmentEmail.ts';
 import {createHash,randomUUID} from 'node:crypto';
 import nodemailer from 'nodemailer';
@@ -7,15 +10,15 @@ import {validMutationOrigin} from './accessTransport.ts';
 import {invalid} from './trustWorkflow.ts';
 import {enrollmentSimulation} from './enrollmentSimulation.ts';
 import {validContactEmail} from '../../src/utils/contactEmail.ts';
-import {activeEnrollmentMailConfig,enrollmentMailPoolLimit,enrollmentSmtpLimit,mailPoolDailyLimitMax,mailPoolMembers,mailSecretReferencePattern,mailSmtpHostPattern, type EnrollmentMailConfig, type MailAccount} from '../../src/utils/enrollmentMailConfig.ts';
+import {activeEnrollmentMailConfig,enrollmentMailPoolLimit,enrollmentSmtpLimit,isMailPoolStrategy,mailPoolDailyLimitMax,mailPoolMembers,mailSecretReferencePattern,mailSmtpEndpoint,mailSmtpHostPattern, type EnrollmentMailConfig, type MailAccount, type MailPoolStrategy} from '../../src/utils/enrollmentMailConfig.ts';
 import {mailCredentialKeyConfigured,mailPasswordFingerprint,resolveMailPassword,sealMailPassword,type StoredMailAccount} from './enrollmentMailCredentials.ts';
 import {enrollmentMailPreset} from './enrollmentMailPresets.ts';
-import {selectMailAccount,type Usage} from './enrollmentMailRouting.ts';
+import {mailPoolQuotaReason,selectMailAccount,type Usage} from './enrollmentMailRouting.ts';
 import {enrollmentInterestStillAvailable} from './enrollmentInterestDelivery.ts';
 import {enrollmentServicePolicy} from './enrollmentRuntime.ts';
 
 type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
-type RouteReason='paused'|'recipient_blocked'|'shared_window'|'pool_daily_limit'|'binding_pending'|'bound_account'|'no_capacity'|'balanced'|'priority'|'existing'|'interest_no_longer_available';
+type RouteReason='paused'|'recipient_blocked'|'shared_window'|'pool_daily_limit'|'pool_daily_recipient_limit'|'binding_pending'|'bound_account'|'no_capacity'|MailPoolStrategy|'existing'|'interest_no_longer_available';
 type State='accepted'|'simulated'|'rejected'|'unknown'|'waiting'|'cancelled';
 type Mail={subject:string;text:string;html:string;language:string};
 const environment=()=>process.env.PORTAL_ENV||'unconfigured';
@@ -60,28 +63,38 @@ export async function enrollmentMailEnabled(c:Client){
   return enrollmentMailMode()!=='disabled'&&(await configuration(c)).config.enabled;
 }
 
-function smtpAccountAllowed(account:StoredMailAccount){
-  return (process.env.PORTAL_ENROLLMENT_SMTP_ALLOWED_HOSTS||'smtp.larksuite.com').split(',')
-    .some(host=>host.trim().toLowerCase()===account.host.toLowerCase());
+export async function configuredSmtpAccount(c:Client,address:string,lock=false){
+  const {config}=await configuration(c,lock);
+  return config.accounts.find(account=>account.address===address);
+}
+function smtpPassword(account:StoredMailAccount,c?:Client){
+  return integrationCredential('smtp',account.address,smtpCredentialTarget(account),()=>{
+    const password=resolveMailPassword(environment(),account);
+    return password?{password}:undefined;
+  },c).then(value=>value?.password);
 }
 
 export async function enrollmentSmtpReady(c:Client){
   if(enrollmentMailMode()!=='smtp'||process.env.PORTAL_WORKER_ENABLED==='false')return false;
   const {config,revision}=await configuration(c);
   const members=new Set(mailPoolMembers(config));
-  return revision>0&&config.enabled&&config.accounts.some(account=>account.enabled&&members.has(account.address)&&
-    smtpAccountAllowed(account)&&Boolean(resolveMailPassword(environment(),account)));
+  if(!revision||!config.enabled)return false;
+  for(const account of config.accounts){
+    if(account.enabled&&members.has(account.address)&&mailSmtpEndpoint(account)&&await smtpPassword(account,c))return true;
+  }
+  return false;
 }
 async function counters(c:Client,now:number,recipient=''){
   const {day,month}=timeKeys(now);
   const usage:Record<string,Usage>=Object.create(null);
   const rows=(await c.query(`SELECT account,
-    SUM(day_key=:p2) AS daily,COUNT(DISTINCT IF(day_key=:p2 AND is_external,recipient,NULL)) AS external,
-    COUNT(*) AS monthly,MAX(day_key=:p2 AND recipient=:p4) AS seen
+    SUM(day_key=:p2) AS daily,COUNT(DISTINCT IF(day_key=:p2 AND is_external,LOWER(TRIM(recipient)),NULL)) AS external,
+    COUNT(*) AS monthly,COUNT(DISTINCT IF(day_key=:p2,LOWER(TRIM(recipient)),NULL)) AS recipients,
+    MAX(day_key=:p2 AND LOWER(TRIM(recipient))=LOWER(TRIM(:p4))) AS seen
     FROM enrollment_mail_attempts WHERE environment=:p1 AND month_key=:p3 AND state<>'rejected'
     GROUP BY account`,[environment(),day,month,recipient])).rows;
   for(const row of rows)usage[row.account]={daily:Number(row.daily),external:Number(row.external),
-    monthly:Number(row.monthly),seen:!!Number(row.seen)};
+    monthly:Number(row.monthly),recipients:Number(row.recipients),seen:!!Number(row.seen)};
   return {usage,day,month};
 }
 const isExternal=(recipient:string)=>!(process.env.PORTAL_ENROLLMENT_MAIL_INTERNAL_DOMAINS??'')
@@ -108,10 +121,13 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
     const now=Number(clock.now_ms);
     const {day,month}=timeKeys(now);
     const selected=config.pools?.find(pool=>pool.id===config.selectedPool);
-    if(selected&&selected.dailyLimit!==null){
-      const {rows:[used]}=await c.query("SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id=:p3 AND state<>'rejected'",
-        [environment(),day,selected.id]);
-      if(Number(used.total)>=selected.dailyLimit)return {reason:'pool_daily_limit'} as const;
+    if(selected&&(selected.dailyLimit!==null||selected.dailyRecipientLimit!==null)){
+      const {rows:[used]}=await c.query(`SELECT COUNT(*) AS total,COUNT(DISTINCT LOWER(TRIM(recipient))) AS recipients,
+        MAX(LOWER(TRIM(recipient))=LOWER(TRIM(:p4))) AS seen
+        FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id=:p3 AND state<>'rejected'`,
+        [environment(),day,selected.id,recipient]);
+      const reason=mailPoolQuotaReason(selected,{total:Number(used.total),recipients:Number(used.recipients),seen:!!Number(used.seen)});
+      if(reason)return {reason} as const;
     }
     const recent=(await c.query('SELECT COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2',
       [environment(),now-enrollmentSmtpLimit.windowSeconds*1000])).rows[0];
@@ -123,8 +139,11 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
     const {usage}=await counters(c,now,recipient);
     const external=isExternal(recipient);
     const members=new Set(mailPoolMembers(config));
-    const candidates=config.accounts.filter(a=>a.enabled&&members.has(a.address)&&(!bound||a.address===bound)&&
-      !excluded.has(a.address)&&(enrollmentMailMode()==='simulation'||smtpAccountAllowed(a)&&resolveMailPassword(environment(),a)));
+    const candidates:StoredMailAccount[]=[];
+    for(const account of config.accounts){
+      if(!account.enabled||!members.has(account.address)||bound&&bound!==account.address||excluded.has(account.address))continue;
+      if(enrollmentMailMode()==='simulation'||mailSmtpEndpoint(account)&&await smtpPassword(account,c))candidates.push(account);
+    }
     const eligible=new Set<string>();
     for(const window of new Set(candidates.map(a=>a.windowSeconds))){
       const rows=(await c.query('SELECT account,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND started_ms>:p2 GROUP BY account',
@@ -153,15 +172,18 @@ async function deliver(account:StoredMailAccount,id:string,recipient:string,mail
       return 'simulated';
     }catch{return 'unknown';}
   }
-  const secret=resolveMailPassword(environment(),account);
-  if(!secret||enrollmentMailMode()!=='smtp')return 'rejected';
+  const options=smtpTransportOptions(account);
+  if(!options||enrollmentMailMode()!=='smtp')return 'rejected';
+  const current=await configuredSmtpAccount(pool,account.address);
+  const secret=current?.enabled&&smtpCredentialTarget(current)===smtpCredentialTarget(account)?await smtpPassword(current,pool):undefined;
+  if(!secret)return 'rejected';
   try{
     const origin=portalPublicOrigin();
     if(!origin)return 'rejected';
     const site=new URL(origin);
-    if((site.protocol!=='https:'&&!(isLocalMailEnvironment()&&site.origin==='http://localhost:3000'))||!smtpAccountAllowed(account))return 'rejected';
+    if((site.protocol!=='https:'&&!(isLocalMailEnvironment()&&site.origin==='http://localhost:3000')))return 'rejected';
     const transport=nodemailer.createTransport({
-      host:account.host,port:account.port,secure:account.port===465,requireTLS:account.port===587,
+      ...options,
       auth:{user:account.address,pass:secret},connectionTimeout:10_000,greetingTimeout:10_000,socketTimeout:20_000,
     });
     const result=await transport.sendMail({from:{name:'UPER Admissions',address:account.address},to:recipient,
@@ -294,11 +316,12 @@ function parseConfig(value:any):Omit<EnrollmentMailConfig,'sticky'>{
   if(pools!==undefined&&(!Array.isArray(pools)||pools.length<1||pools.length>enrollmentMailPoolLimit||new Set(pools.map(p=>p?.id)).size!==pools.length||
     !pools.some(p=>p?.id===value.selectedPool)||pools.some(p=>!p||typeof p.id!=='string'||!/^[a-z0-9-]{1,40}$/.test(p.id)||
       typeof p.name!=='string'||!p.name.trim()||p.name.length>80||typeof p.enabled!=='boolean'||!validMembers(p.members)||
-      p.dailyLimit!==null&&!integer(p.dailyLimit,1,mailPoolDailyLimitMax)||!['balanced','priority'].includes(p.strategy))))invalid('enrollment_mail_invalid',400);
+      p.dailyLimit!==null&&!integer(p.dailyLimit,1,mailPoolDailyLimitMax)||
+      p.dailyRecipientLimit!=null&&!integer(p.dailyRecipientLimit,1,mailPoolDailyLimitMax)||!isMailPoolStrategy(p.strategy))))invalid('enrollment_mail_invalid',400);
   const config:Omit<EnrollmentMailConfig,'sticky'>={name:value.name.trim(),enabled:value.enabled,accounts,members:value.members};
   if(pools!==undefined){
     config.pools=pools.map((p:any)=>({id:p.id,transport:'smtp',name:p.name.trim(),enabled:p.enabled,members:p.members,
-      dailyLimit:p.dailyLimit,strategy:p.strategy}));
+      dailyLimit:p.dailyLimit,dailyRecipientLimit:p.dailyRecipientLimit??null,strategy:p.strategy}));
     config.selectedPool=value.selectedPool;
   }
   return config;
@@ -341,12 +364,14 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
   const view=async()=>{
     const {config,revision}=await configuration(pool);
     const {usage,day}=await counters(pool,Date.now());
-    const {rows:poolCounts}=await pool.query("SELECT pool_id,COUNT(*) AS total FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id IS NOT NULL AND state<>'rejected' GROUP BY pool_id",
+    const {rows:poolCounts}=await pool.query("SELECT pool_id,COUNT(*) AS total,COUNT(DISTINCT LOWER(TRIM(recipient))) AS recipients FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id IS NOT NULL AND state<>'rejected' GROUP BY pool_id",
       [environment(),day]);
     const poolUsage=Object.fromEntries(poolCounts.map(row=>[row.pool_id,Number(row.total)]));
+    const poolRecipientUsage=Object.fromEntries(poolCounts.map(row=>[row.pool_id,Number(row.recipients)]));
     const accounts=config.accounts.map(({encryptedPassword,secret,...account})=>account);
-    return {config:{...config,accounts},revision,environment:environment(),mode:enrollmentMailMode(),usage,poolUsage,timezone:timezone(),
-      configured:config.accounts.map(a=>({address:a.address,configured:!!resolveMailPassword(environment(),a)}))};
+    return {config:{...config,accounts},revision,environment:environment(),mode:enrollmentMailMode(),usage,poolUsage,poolRecipientUsage,timezone:timezone(),
+      managedCredentials:!!process.env.PORTAL_CREDENTIAL_KEYRING_FILE,
+      configured:await Promise.all(config.accounts.map(async a=>({address:a.address,configured:!!await smtpPassword(a,pool)})))};
   };
   app.get(path,wrap(async(q,r)=>{
     await authorize(q);
@@ -365,6 +390,8 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
     const input=q.body?.credential;
     let credential:{address:string;password:string|null}|undefined;
     if(input!==undefined){
+      if(!isAiAdministrator(actor))invalid('enrollment_mail_forbidden',403);
+      if(process.env.PORTAL_CREDENTIAL_KEYRING_FILE)invalid('use_integration_credentials',409);
       if(!input||typeof input.address!=='string'||!edited.accounts.some(account=>account.address===input.address)||
         !(input.password===null||typeof input.password==='string'&&input.password.length>0&&input.password.length<=1024))
         invalid('enrollment_mail_invalid',400);
@@ -378,12 +405,15 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
       return mailOperation(c,actor.id,q.body?.requestId,'access.enrollment_mail.configured',credentialReceipt?[q.body?.revision,edited,credentialReceipt]:[q.body?.revision,edited],async()=>{
         if(before.revision!==q.body?.revision)invalid('enrollment_mail_conflict',409);
         const accounts=edited.accounts.map((account):StoredMailAccount=>{
+          const previous=before.config.accounts.find(item=>item.address===account.address);
+          const sameEndpoint=previous&&smtpCredentialTarget(previous)===smtpCredentialTarget(account);
+          if(!mailSmtpEndpoint(account)&&(!sameEndpoint||credential?.address===account.address))
+            invalid('enrollment_mail_invalid',400);
           if(credential?.address===account.address){
             if(credential.password===null)return {...account,secret:''};
             return {...account,secret:'',encryptedPassword:sealMailPassword(environment(),account.address,credential.password)};
           }
-          const previous=before.config.accounts.find(item=>item.address===account.address);
-          return {...account,secret:previous?.secret??'',encryptedPassword:previous?.encryptedPassword};
+          return {...account,secret:sameEndpoint?previous.secret:'',encryptedPassword:sameEndpoint?previous.encryptedPassword:undefined};
         });
         const config=activeEnrollmentMailConfig({...edited,accounts,sticky:before.config.sticky});
         const revision=before.revision+1;

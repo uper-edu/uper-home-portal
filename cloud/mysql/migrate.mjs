@@ -28,6 +28,8 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
       const result=await addPaymentAnalyticsDispatch(connection);
       await addPaymentAnalyticsOccurrence(connection);
       if(includeEnrollment){
+        const credentialsDdl = await readFile(new URL('./schema-credentials-20261119162447.sql', import.meta.url), 'utf8');
+        await connection.query(credentialsDdl);
         await applyEnrollmentCatalogMigration(connection);
         await applyEnrollmentOrdersMigration(connection);
       }

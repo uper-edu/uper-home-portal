@@ -3,6 +3,8 @@
 [data-admin-form] .admin-field:not(.admin-field--choice):not(.admin-field--annotation){display:grid;gap:var(--admin-form-label-gap);margin:0;min-width:0;align-content:start;font-size:14px;line-height:1.6}
 [data-admin-form] .admin-field:not(.admin-field--choice)>.admin-field-label,[data-admin-form] .admin-field:not(.admin-field--choice)>label{margin:0;font-size:14px;line-height:1.6;font-weight:500;color:var(--af-text)}
 [data-admin-form] .admin-field :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]),textarea,select){box-sizing:border-box;max-width:100%;min-width:0;min-height:40px;font-size:14px;line-height:1.6;border-radius:10px}
+[data-admin-form] .admin-text-input{width:100%;padding:8px 12px;border:1px solid var(--af-border);background:var(--af-surface);color:var(--af-text)}
+[data-admin-form] .admin-text-input:focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
 [data-admin-form] .admin-field--choice{display:flex;align-items:flex-start;gap:8px;margin:0;min-width:0;font-size:14px;line-height:1.6}
 [data-admin-form] .admin-field--choice input:is([type=checkbox],[type=radio]):not(.admin-switch){flex:0 0 auto;align-self:start;max-width:20px;width:auto}
 [data-admin-form] .admin-field--choice .admin-field-label{font-weight:400}
@@ -44,6 +46,7 @@
 .admin-form-feedback[data-tone=warning]{color:var(--admin-warning);background:var(--admin-warning-bg);border-color:var(--admin-warning-border)}
 .admin-editor-layout{--admin-editor-padding:24px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .admin-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;padding:16px var(--admin-editor-padding);border-bottom:1px solid var(--af-border);background:var(--af-surface)}
+.admin-editor-heading-actions{display:flex;align-items:center;gap:8px;flex:none}
 .admin-editor-heading :is(h2,h3){margin:0;font-size:16px;font-weight:600;line-height:1.5}
 .admin-editor-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding:16px;padding:var(--admin-editor-padding)}
 .admin-editor-footer{flex:none;padding:12px var(--admin-editor-padding);border-top:1px solid var(--af-border);background:var(--af-surface)}

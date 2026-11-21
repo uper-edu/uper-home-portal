@@ -6,10 +6,10 @@ import {AdminDialog} from './AdminDialog';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
 export function AdminEditor({
-  children,footer,title,description,lang,light,onClose,onSubmit,busy=false,closeDisabled=false,
+  children,footer,title,description,headerActions,lang,light,onClose,onSubmit,busy=false,closeDisabled=false,
   required=false,variant='modal',responsiveForm=false,className='',bodyClassName='',dialogRef,
 }:{
-  children:ReactNode;footer:ReactNode;title:ReactNode;description?:ReactNode;lang:CrmLanguage;light:boolean;
+  children:ReactNode;footer:ReactNode;title:ReactNode;description?:ReactNode;headerActions?:ReactNode;lang:CrmLanguage;light:boolean;
   onClose:()=>void;onSubmit?:FormEventHandler<HTMLFormElement>;busy?:boolean;closeDisabled?:boolean;
   required?:boolean;variant?:'modal'|'drawer';responsiveForm?:boolean;className?:string;bodyClassName?:string;
   dialogRef?:RefObject<HTMLDialogElement|null>;
@@ -25,7 +25,7 @@ export function AdminEditor({
         </div>
         {description&&<div className="admin-editor-description">{description}</div>}
       </div>
-      <button type="button" className="admin-editor-close" disabled={busy||closeDisabled} aria-label={closeLabel} onClick={onClose}><X size={20} aria-hidden="true"/></button>
+      <div className="admin-editor-heading-actions">{headerActions}<button type="button" className="admin-editor-close" disabled={busy||closeDisabled} aria-label={closeLabel} onClick={onClose}><X size={20} aria-hidden="true"/></button></div>
     </header>
     <div className={`admin-editor-body ${bodyClassName}`.trim()}>{validationFeedback}{children}</div>
     <AdminFormActions className="admin-editor-footer">{footer}</AdminFormActions>

@@ -41,7 +41,7 @@ type CourseRecord = {
   class:{id?:string;level:string;firstLesson:string;schedule:string;opened:boolean}|null;
   criteria:{level:string;period:string;format:string;notes:string}|null;
   price:number|null;received:number|null;learnerName?:string|null;paymentDueAt?:string|null;firstReviewDueAt?:string|null;
-  attribution?:{entry:string;source?:string;campaign?:string;verified:boolean}|null;
+  attribution?:{entry:string;via?:string;source?:string;campaign?:string;campaignId?:string;promotionId?:string;promotionName?:string;verified:boolean}|null;
   latestNotice?:string;
   enrollmentEmail?:string;
   canLinkOpportunity?:boolean;
@@ -303,6 +303,20 @@ function sourceLabel(attribution:CourseRecord['attribution'],lang:CrmLanguage) {
     ?t(lang,['官网','Website','Situs web']):t(lang,['直接访问','Direct','Langsung']);
   return [entry,attribution.verified?attribution.source:null,attribution.campaign].filter(Boolean).join(' · ');
 }
+function CourseRecordAttribution({ attribution, lang }: {
+  attribution:NonNullable<CourseRecord['attribution']>;
+  lang:CrmLanguage;
+}) {
+  const promotion = attribution.verified && attribution.promotionId;
+  const guidance = attribution.via === 'ai_chat' ? 'AI Chat' : attribution.via === 'whatsapp' ? 'WhatsApp' : null;
+  return <>
+    <p>{t(lang,['报名来源','Enrollment source','Sumber pendaftaran'])} · {sourceLabel(attribution,lang)}</p>
+    {attribution.campaignId && <p>{t(lang,['活动编码','Campaign code','Kode kampanye'])} · {attribution.campaignId}</p>}
+    {promotion && <p>{t(lang,['推广链接','Promotion link','Tautan promosi'])} · {attribution.promotionName
+      ? `${attribution.promotionName} (${promotion})` : promotion}</p>}
+    {guidance && <p>{t(lang,['报名引导','Enrollment guidance','Panduan pendaftaran'])} · {guidance}</p>}
+  </>;
+}
 function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref, onChangeEmail, onLinkOpportunity }: {
   records:CourseRecord[];link:boolean;lang:CrmLanguage;emails?:EnrollmentEmail[];assistanceDueAt?:string;targetRecord?:string|null;
   paymentHref?:(row:CourseRecord)=>string;
@@ -328,7 +342,7 @@ function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref,
       {row.criteria&&<p>{[row.criteria.level,row.criteria.period,row.criteria.format].map(value=>interestOption(lang,value)).join(' · ')}{row.criteria.notes?' — '+row.criteria.notes:''}</p>}
       {row.price!==null&&row.received!==null&&<p>{t(lang,['核实实收／应收','Verified receipts / amount due','Dana terverifikasi / tagihan'])} {formatCurrency(row.received,lang)} / {formatCurrency(row.price,lang)}</p>}
       {row.firstReviewDueAt&&<CrmEnrollmentReviewDeadline dueAt={row.firstReviewDueAt} lang={lang}/>}
-      {row.attribution&&<p>{t(lang,['报名来源','Enrollment source','Sumber pendaftaran'])} · {sourceLabel(row.attribution,lang)}</p>}
+      {row.attribution&&<CourseRecordAttribution attribution={row.attribution} lang={lang}/>}
       {link&&row.latestNotice&&<p>{t(lang,['最近一封邮件记录','Latest email record','Catatan email terakhir'])} · {row.latestNotice}</p>}
       {link&&row.opportunityId&&<a className="crm-work-link" href={crmHref({tab:'opportunities',opportunity:row.opportunityId,enrollmentRecord:row.id})}>{t(lang,['查看商机','View opportunity','Lihat peluang'])}</a>}
       {onLinkOpportunity&&row.canLinkOpportunity&&<p><button type="button" className="crm-work-link" onClick={()=>onLinkOpportunity(row)}>

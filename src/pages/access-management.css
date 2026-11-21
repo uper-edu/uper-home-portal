@@ -336,6 +336,7 @@
 .access-page .access-record-status[data-active=true]{color:var(--admin-success);background:var(--admin-success-bg)}
 .access-page .access-record-status:not([data-active=true]){color:var(--admin-muted)}
 .ai-service-panel {display:grid;gap:16px;min-width:0;font-size:14px;line-height:1.5;}
+.llm-credentials-table {--admin-list-table-min:320px;}
 .ai-service-guide {margin:0;color:var(--admin-muted);}
 .ai-service-panel button {display:inline-flex;align-items:center;justify-content:center;gap:8px;}
 .ai-service-grid {grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);}
@@ -394,6 +395,20 @@
 .access-record-facts dd, .access-record-permissions dd { margin: 0; overflow-wrap: anywhere; }
 .access-record-facts dd a + a { margin-inline-start: 12px; }
 .access-record-facts dt, .access-record-permissions dd { color: var(--admin-muted); }
+
+.integration-credentials-overview {display:grid;min-width:0;gap:16px}
+.integration-credentials-overview > .admin-page-toolbar {margin:0}
+.integration-credentials-overview > .admin-form-section {margin:0}
+.integration-toolbar-actions,
+.integration-toolbar-actions nav,
+.lark-app-actions {display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.integration-toolbar-actions {justify-content:flex-end;gap:16px}
+.integration-toolbar-actions nav {gap:16px}
+.lark-integration > .admin-form-section-body {gap:16px}
+.lark-integration .admin-form-section[data-admin-section=subgroup] {margin:0}
+.lark-integration .admin-form-section-tools {min-width:0;flex:0 1 auto}
+.lark-group-section {padding-top:16px;border-top:1px solid var(--af-border)}
+.integration-note {margin:0;color:var(--admin-muted);font-size:13px;line-height:1.6}
 .access-record-permissions { margin-block: 16px; }
 @media (min-width:1120px) {
   .access-record-split { grid-template-columns: var(--admin-record-sidebar-width) minmax(0,1fr); }

@@ -20,6 +20,7 @@ export async function recordEnrollmentAttribution(c:Client, kind:string, id:stri
     entry,via:via==='ai_chat'||via==='whatsapp'?via:undefined,lang:['zh','id','en'].includes(language??'')?language:undefined,
     campaignId:attribution.campaignId,campaign:attribution.campaign,
     promotionId:attribution.promotionLinkId,verified:attribution.promotionLinkStatus==='verified',
+    promotionName:attribution.promotionSnapshot?.name,
     source:attribution.promotionSnapshot?.source,medium:attribution.promotionSnapshot?.medium,
     evidence:promotionEvidenceKeys.flatMap(key=>params.getAll(key).slice(0,4).map(value=>({key,value:value.slice(0,191)}))),
   }]);

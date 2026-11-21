@@ -1,3 +1,7 @@
+import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
+import {operationContext} from './operationContext.ts';
+import {mountIntegrationCredentials} from './integrationCredentialAdmin.ts';
+import {groupCredential,larkApplication} from './integrationCredentialTargets.ts';
 import {mountEnrollmentMail,startEnrollmentMail} from './enrollmentMail.ts';
 import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
@@ -82,7 +86,7 @@ import {deleteNotificationGroupChannel, lockNotificationGroupChannels, notificat
 import {deleteNotificationPolicy} from "./notificationPolicyDeletion.ts";
 import {findSystemLarkGroup, isSystemLarkGroup, readSystemLarkGroupIds, systemLarkGroupName} from "./larkSystemChannels.ts";
 import {isolatedLarkRuntime,migrateLarkChannelModes,personalLarkChannel,PERSONAL_CHANNEL_SETTING} from "./larkChannelModes.ts";
-import { encryptGroupWebhook, groupWebhookUsesEnvironment, publicGroupChannelConfig, resolveGroupWebhook, usesEnvironmentGroupWebhook, usesLegacyProductionGroupWebhook, validWebhook } from "./larkGroupWebhook.ts";
+import { encryptGroupWebhook, groupWebhookUsesEnvironment, publicGroupChannelConfig, usesEnvironmentGroupWebhook, usesLegacyProductionGroupWebhook, validWebhook } from "./larkGroupWebhook.ts";
 import { findLarkChannelTest, planGroupChannelTest, recordLarkChannelTest, sendGroupChannelTest, type LarkChannelTestReceipt } from "./larkGroupChannelTest.ts";
 import { larkBindings } from "./larkApp.ts";
 import { planPersonalChannelTest, sendPersonalChannelTest } from "./larkPersonalChannelTest.ts";
@@ -368,6 +372,7 @@ export async function mountPortal(app: Express) {
   mountAccessManagement(app);
   mountLarkSelfService(app);
   mountAiServiceConfig(app);
+  mountIntegrationCredentials(app,{pool,tx: work => tx((db: any)=>operationContext.run(db,()=>work(db)))});
   mountGoalReviewRoute(app,{wrap,leadAccess});
   app.use("/api", (req, res, next) => {
     if (
@@ -1493,11 +1498,11 @@ export async function mountPortal(app: Express) {
     "/api/crm/integration-readiness",
     wrap(async (req, res) => {
       await staff(req, "notifications.manage");
-      const channels = (
+      const channels = await Promise.all((
         await pool.query("SELECT * FROM notification_channels")
-      ).rows.filter(row => !row.config.deleted).map((row) => {
+      ).rows.filter(row => !row.config.deleted).map(async (row) => {
         const config = row.config;
-        const connection = channelConnection(row.id, config);
+        const connection = channelConnection(row.id, config, await groupCredential(row.id, config) ?? {});
         return {
           id: row.id,
           groupName: config.groupName,
@@ -1509,7 +1514,7 @@ export async function mountPortal(app: Express) {
           status: connection.status,
           realReceiptVerified: false,
         };
-      });
+      }));
       const channelIds = new Set(channels.map(channel => channel.id));
       const missingReferences = (await notificationGroupPolicyReferences(pool)).filter(ref => !channelIds.has(ref.channel));
       res.json({
@@ -1558,7 +1563,8 @@ export async function mountPortal(app: Express) {
     if (lock) await db.query("SELECT value FROM access_state WHERE id='policy' FOR UPDATE");
     const channel = await personalLarkChannel(db, lock);
     const binding = (await larkBindings(db))[employeeId];
-    return { channel, ...planPersonalChannelTest(channel, binding) };
+    const app=await larkApplication(db);
+    return { channel, ...planPersonalChannelTest(channel, binding, {...process.env,LARK_APP_ID:app.appId,LARK_APP_SECRET:app.key}) };
   }
   async function lockedChannelTestPlan(db: Pick<typeof pool, "query">, channelId: string, employeeId: string) {
     if (channelId === personalTestChannelId)
@@ -1567,7 +1573,7 @@ export async function mountPortal(app: Express) {
       "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE", [channelId],
     )).rows[0];
     if (!channel || channel.config.deleted) fail(404, "Notification channel not found.");
-    return { kind: "group" as const, plan: planGroupChannelTest(channelId, channel.config) };
+    return { kind: "group" as const, plan: planGroupChannelTest(channelId, channel.config, process.env, await groupCredential(channelId, channel.config, db) ?? {}) };
   }
   app.get(
     "/api/crm/notification-channels",
@@ -1582,7 +1588,8 @@ export async function mountPortal(app: Express) {
         channels: await Promise.all(
           (await pool.query("SELECT * FROM notification_channels")).rows.filter(row => !row.config.deleted).map(
             async (row) => {
-              const { blocked, simulated, version } = planGroupChannelTest(row.id, row.config);
+              const credential = await groupCredential(row.id, row.config) ?? {};
+              const { blocked, simulated, version } = planGroupChannelTest(row.id, row.config, process.env, credential);
               const latest = await findLarkChannelTest(pool, row.id, null);
               const linked = references.filter(ref => ref.channel === row.id);
               return {
@@ -1592,7 +1599,7 @@ export async function mountPortal(app: Express) {
                 ...(usesLegacyProductionGroupWebhook(row.config) ? { secretRef: row.config.secretRef } : {}),
               },
               systemManaged: isSystemLarkGroup(row.id, row.config),
-              connection: channelConnection(row.id, row.config),
+              connection: channelConnection(row.id, row.config, credential),
               testDelivery: {
                 blocked, simulated, version,
                 latest: latest?.data.version === version ? latest.data : null,
@@ -1605,6 +1612,8 @@ export async function mountPortal(app: Express) {
         ),
         unconnected: ["email", "sms"],
         groupWebhookUsesEnvironment: groupWebhookUsesEnvironment(),
+        managedCredentials: Boolean(process.env.PORTAL_CREDENTIAL_KEYRING_FILE),
+        canManageCredentials: isAiAdministrator(employee),
         personalChannel: {
           ...personal.channel, systemManaged: true, appConfigured: personal.appConfigured,
           testDelivery: {
@@ -1623,7 +1632,8 @@ export async function mountPortal(app: Express) {
       const { mode, revision } = req.body;
       if (!["simulation", "live"].includes(mode) || !Number.isSafeInteger(revision) || revision < 1)
         fail(400, "Invalid channel config");
-      if (mode === "live" && (isolatedLarkRuntime() || !process.env.LARK_APP_ID || !process.env.LARK_APP_SECRET))
+      const app=mode==='live'?await larkApplication():undefined;
+      if (mode === "live" && (isolatedLarkRuntime() || !app?.appId || !app.key))
         fail(409, "Live personal delivery is unavailable.");
       const result = await tx(async c => {
         const current = await personalLarkChannel(c, true);
@@ -1732,6 +1742,9 @@ export async function mountPortal(app: Express) {
       } = req.body;
       const channelId = String(req.params.id);
       const changingWebhook = webhook !== undefined;
+      if (changingWebhook && !isAiAdministrator(e)) fail(403, "Permission denied");
+      if (process.env.PORTAL_CREDENTIAL_KEYRING_FILE && (changingWebhook || secretRef !== undefined || signingSecretRef !== undefined))
+        fail(409, "Use the credential editor for group Webhook and signing credentials.");
       if (changingWebhook && groupWebhookUsesEnvironment())
         fail(409, "The group Webhook is managed in the server environment.");
       if (!/^[A-Za-z0-9._-]{1,100}$/.test(channelId) ||
@@ -1749,6 +1762,12 @@ export async function mountPortal(app: Express) {
           )
         ).rows[0]?.config;
         if (previous?.deleted) fail(409, "Notification channel has been deleted.");
+        const previousSigning = previous?.signingEnabled ?? Boolean(previous?.signingSecretRef);
+        if (!isAiAdministrator(e) &&
+          (secretRef !== undefined && secretRef !== previous?.secretRef ||
+           signingSecretRef !== undefined && signingSecretRef !== previous?.signingSecretRef ||
+           signingEnabled !== undefined && signingEnabled !== previousSigning))
+          fail(403, "Permission denied");
         if (secretRef !== undefined && previous?.encryptedWebhook !== undefined)
           fail(409, "Webhook configuration changed. Reopen the channel and try again.");
         if (changingWebhook && (previous?.webhookRevision ?? null) !== (webhookRevision ?? null))
@@ -1762,16 +1781,23 @@ export async function mountPortal(app: Express) {
           (usesEnvironmentGroupWebhook(previous) || usesLegacyProductionGroupWebhook(previous))
           ? previous.secretRef : undefined;
         const savedRef = secretRef ?? retainedRef;
+        const targetConfig = {...previous, team:team ?? previous?.team,
+          groupName:systemLarkGroupName(channelId, previous, groupName), signingEnabled:signing,
+          signingSecretRef:signingRef, secretRef:savedRef};
+        const currentCredential = changingWebhook ? undefined : await groupCredential(channelId,targetConfig,c);
+        const requiresManagedSigning = Boolean(process.env.PORTAL_CREDENTIAL_KEYRING_FILE && mode === "live" &&
+          signing && !currentCredential?.signingKey);
         if (
-          !["simulation", "live"].includes(mode) ||
+          !["simulation", "live"].includes(mode) || requiresManagedSigning ||
           (mode === "live" && previous?.mode !== "live" &&
-            !(changingWebhook ? webhook : resolveGroupWebhook(channelId, { ...previous, secretRef: savedRef }))) ||
+            !(changingWebhook ? webhook : currentCredential?.webhook)) ||
           (signingSecretRef !== undefined &&
             (typeof signingSecretRef !== "string" ||
               !/^[A-Z0-9_]{1,80}$/.test(signingSecretRef))) ||
           (signingEnabled !== undefined && typeof signingEnabled !== "boolean") ||
           (mode === "live" &&
             signing &&
+            !currentCredential?.signingKey &&
             (typeof signingRef !== "string" ||
               !/^[A-Z0-9_]{1,80}$/.test(signingRef))) ||
           (maxPerHour !== undefined &&
