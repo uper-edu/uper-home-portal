@@ -51,7 +51,7 @@ export function mountAccessOperations(app: any) {
       if (!actor) fail(401, "Login required");
       const target =
         typeof q.query.actor === "string" ? q.query.actor : actor.id;
-      if (target !== actor.id && !fullAdministrator(actor))
+      if (target !== actor.id && (actor.passwordChangeRequired || !fullAdministrator(actor)))
         fail(403, "Permission denied");
       const row = (
         await pool.query(
@@ -61,6 +61,8 @@ export function mountAccessOperations(app: any) {
       ).rows[0];
       r.setHeader("Cache-Control", "no-store");
       if (!row) return r.json({ state: "unconfirmed" });
+      if (actor.passwordChangeRequired && row.action !== "/api/crm/auth/password")
+        fail(403, "password_change_required");
       const required = actionFor(row.action)?.permission;
       if (
         required &&
@@ -119,6 +121,8 @@ export function mountAccessOperations(app: any) {
             );
             const fresh = await platform.authenticate(q);
             if (!fresh) fail(401, "Login required");
+            if (fresh.passwordChangeRequired && originalPath !== "/api/crm/auth/password")
+              fail(403, "password_change_required");
             if (
               action.permission &&
               !fresh.permissions.includes(action.permission)
