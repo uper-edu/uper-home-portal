@@ -1,3 +1,4 @@
+import {chatWorkspaceEntry,type ChatWorkspaceEntry} from '../../src/utils/chatWorkspaceAction.ts';
 import {resolveChatLocalSchedule} from './chatLocalSchedule';
 import {chineseChatInput} from '../../src/utils/chatLanguage.ts';
 import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionFollowUp,refundConsultationIntent} from './chatEnrollment.ts';
@@ -154,6 +155,7 @@ export function mountChat(app: Express) {
               status: answer.status,
               enrollment: answer.metadata?.enrollment ?? undefined,
               suggestedPrompts: chatFollowupPrompts(answer.metadata?.suggestedPrompts),
+              workspaceEntry:answer.metadata?.workspaceEntry,
             });
             return;
           }
@@ -284,6 +286,7 @@ export function mountChat(app: Express) {
         let consultationConstraints:ConsultationConstraints|undefined;
         let recommendationDeferral:DeferredRecommendation|undefined;
         let suggestedPrompts: string[] = [];
+        let workspaceEntry:ChatWorkspaceEntry|undefined;
         let reply = "", modelUsed: string | null = null;
         const chineseInput = !introduction && chineseChatInput(content);
         const providers = await runtimeProviders();
@@ -344,6 +347,8 @@ export function mountChat(app: Express) {
                         },
                       ]
                     : []),
+                  {role:"system",content:
+                    'In both Chat surfaces, free HSK placement and learning profile are in the More menu. Answer the current question directly in prose first. When the learner asks how to take or resume the placement assessment, where to view their own result, or how to add or update learning details, return workspaceAction as assessment, assessment_result, or learning_profile respectively. The interface renders the correct button based on current state. Do not invent URLs, claim anything was opened or saved, assume a result exists, or require registration before assessment. The placement assessment suggests a learning starting point. Learning details are optional for consultation. For these navigation requests return catalogue and enrollment as null, do not redirect to enrollment or an external HSK page, and use no suggested prompts. Omit workspaceAction for unrelated requests.'},
                   {role:"system",content:
                     'Always include "suggestedPrompts" in the same JSON response. For an ongoing consultation, give 1 or 2 short example messages the learner can send next in the language of your reply. Use the latest learner and their current conditions only. Give useful follow-ups or answers to the one question you asked. Once specific availability is given, do not ask the learner to restate it or suggest they change it unless no match is found. Any new timing option must be an explicit question or hypothetical, not a statement about the learner. Never repeat an answered question, include personal details, prices, dates, URLs, or suggest submitting, booking, paying or contacting someone as a chat message. If there is no useful follow-up, or they ask to stop, use []. When asked about Chat itself (including the follow-up controls), answer the feature question and set followupScope to "none"; never revive an earlier topic. If the learner updates their goal, suggest only the new current task; do not ask them to repeat a decision already answered in this turn. Example: "suggestedPrompts":["周末下午方便","上午下午都可以"].'},
                 ],
@@ -417,6 +422,7 @@ export function mountChat(app: Express) {
               if(wrongLanguage(parsed))throw Error('Consultation response did not follow the current learner language');
             }
             const replyLang=enrollmentReplyLanguage(languageInstruction?requiredLanguage:introduction?undefined:parsed?.replyLanguage,lang);
+            workspaceEntry=introduction?undefined:chatWorkspaceEntry(parsed?.workspaceAction,replyLang);
             const useProfileQuote=profileQuote&&(!additionalTopics||!parsed?.enrollment||parsed.enrollment.kind==='quote');
             const modelIntent=(useProfileQuote?profileQuote:undefined) || (assessmentGuidance?.needsReview?{kind:'advisor'}:undefined) || refundConsultationIntent(parsed.policyTopic,parsed.enrollment) || parsed?.enrollment||
               (managedEnrollmentCatalogueSelection(parsed?.catalogue,currentPriceBook)??parsed?.enrollment);
@@ -485,7 +491,7 @@ export function mountChat(app: Express) {
               ?{...normalized.value,referenceIds:fallbackReferences}
               :normalized.value;
             const learningAdvice=parsed.learningAdvice==='fluency_expectations';
-            const rawAction=held||learningAdvice||(priorPrice&&!priorPrice.appointment)?undefined:await chatEnrollmentAction(
+            const rawAction=workspaceEntry||held||learningAdvice||(priorPrice&&!priorPrice.appointment)?undefined:await chatEnrollmentAction(
               db,priorPrice?.appointment??actionIntent,assessmentIntroduction,profileIntroduction,
               [...referenceContext.map(row=>row.id),...pairIds,...(previousActions[0]?.rows?.map(row=>row.id)??[]),
                 ...(enrollmentContext?.kind==='class'?[enrollmentContext.classId]:[])],
@@ -542,7 +548,7 @@ export function mountChat(app: Express) {
                 if(quote)reply=[enrollmentReply(quote,replyLang),reply].filter(Boolean).join('\n\n');
               }
             }
-            if (parsed.followupScope === 'none' || enrollment?.kind === 'unavailable' || enrollment?.kind === 'paused' ||
+            if (workspaceEntry || parsed.followupScope === 'none' || enrollment?.kind === 'unavailable' || enrollment?.kind === 'paused' ||
                 enrollment?.kind === 'class' && enrollment.inspection && enrollment.detailFields?.includes('class_size') && enrollment.question !== 'price_difference') {
               suggestedPrompts = [];
             } else if (enrollment?.kind === 'class' && enrollment.question === 'price_difference') {
@@ -578,6 +584,7 @@ export function mountChat(app: Express) {
             recommendationDeferral=timing.waiting;
             break;
           } catch (e) {
+            workspaceEntry=undefined;
             if (stream && !res.destroyed)
               res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
             log.warn("chat.provider_failed", { model: provider.model, conversationId: conv.id, error: e as Error });
@@ -589,7 +596,7 @@ export function mountChat(app: Express) {
         }
         await transaction(async (c) => {
           await c.query(
-            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON),'$.suggestedPrompts',CAST(:p10 AS JSON)) WHERE id=:p1",
+            "UPDATE messages SET content=:p2,status=:p3,model=:p4,error=:p5,metadata=JSON_SET(metadata,'$.priceCatalogueVersion',:p6,'$.enrollment',CAST(:p7 AS JSON),'$.consultationConstraints',CAST(:p8 AS JSON),'$.recommendationDeferral',CAST(:p9 AS JSON),'$.suggestedPrompts',CAST(:p10 AS JSON),'$.workspaceEntry',CAST(:p11 AS JSON)) WHERE id=:p1",
             [
               assistantId,
               reply,
@@ -601,6 +608,7 @@ export function mountChat(app: Express) {
               consultationConstraints??null,
               recommendationDeferral??null,
               JSON.stringify(modelUsed ? suggestedPrompts : []),
+              JSON.stringify(modelUsed ? workspaceEntry??null : null),
             ],
           );
           if (!modelUsed) {
@@ -611,6 +619,7 @@ export function mountChat(app: Express) {
         const result = {
           reply: modelUsed ? reply : "AI 回复失败，消息已保存。请稍后重试。",
           suggestedPrompts: modelUsed ? suggestedPrompts : [],
+          workspaceEntry:modelUsed?workspaceEntry:undefined,
           enrollment:modelUsed?enrollment:undefined,
           modelUsed,
           saved: true,

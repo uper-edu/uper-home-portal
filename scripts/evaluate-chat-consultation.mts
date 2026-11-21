@@ -32,6 +32,9 @@ const plan=selected?selected.map(key=>{
 const repeat=Number(process.argv.find(arg=>arg.startsWith('--repeat='))?.slice(9)??1);
 assert.ok(Number.isInteger(repeat)&&repeat>=1&&repeat<=3);
 const auditVerifiedLinks=process.argv.includes('--audit-verified-links');
+const anonymousAssessments=process.env.UPER_CHAT_EVAL_ANONYMOUS_ASSESSMENTS==='1';
+if(anonymousAssessments)assert.ok(plan.every(item=>!item.reported||(item.scores&&!item.profileIntroduction)),
+  'Anonymous assessment mode requires a saved assessment and cannot exercise profile introductions.');
 const origin='http://localhost:3000';
 const request=async(path:string,options?:RequestInit)=>{
   const target=new URL(path,origin);
@@ -72,7 +75,7 @@ async function enrollmentActivity(email:string,lead:string|null){
 async function run(item:Case,index:number){
   const visitor=randomBytes(32).toString('hex');
   const scope=createHash('sha256').update(visitor).digest('hex');
-  const lead=item.reported?randomUUID():null;
+  const lead=item.reported&&!anonymousAssessments?randomUUID():null;
   const email=`chateval-${visitor}@example.invalid`;
   const token=auditVerifiedLinks?randomBytes(32).toString('hex'):undefined;
   const digest=token?createHash('sha256').update(token).digest('hex'):undefined;
@@ -213,7 +216,7 @@ try{
     return Object.fromEntries(aiModelSlots.map(role=>[role,{model:current[role],effort:selectedReasoningEffort(current,role)??null}]));
   };
   const selection=await modelSelection();
-  const fixtureDigest=createHash('sha256').update(JSON.stringify({base:suite.version,checks:regressions.checks,plan})).digest('hex');
+  const fixtureDigest=createHash('sha256').update(JSON.stringify({base:suite.version,checks:regressions.checks,plan,anonymousAssessments})).digest('hex');
   await save('run.json',{suite:suite.version,regressions:regressions.version,fixtureDigest,version,clock:'WIB',at:at.toISOString(),jakartaDate,
     catalog:{classes:catalog.classes,appointments:catalog.appointments},intake,cases:plan.map(item=>item.id),repeat,auditVerifiedLinks,
     expectedModel,selection});

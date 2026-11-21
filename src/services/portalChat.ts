@@ -276,6 +276,7 @@ function chatSnapshot(data: any, conversationId: string, draftSource: string, bo
     action: m.role === 'user' ? draft(draftSource, m.request_id)?.action : undefined,
     enrollmentContext:m.role==='user'?draft(draftSource,m.request_id)?.enrollmentContext:undefined,
     enrollment: m.role==='assistant'&&m.status==='completed'?m.metadata?.enrollment:undefined,
+    workspaceEntry: m.role==='assistant'&&m.status==='completed'?m.metadata?.workspaceEntry:undefined,
     suggestedPrompts: m.role==='assistant'&&m.status==='completed'?m.metadata?.suggestedPrompts:undefined,
     content: m.status === "interrupted" ? "[回复中断，可重试]" : m.content,
   }));

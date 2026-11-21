@@ -77,6 +77,29 @@
       ]
     },
     {
+      "id": "F8",
+      "name": "显式一对一周末偏好",
+      "turns": [
+        "我想约 HSK 1 一对一，只方便周末。每节多少钱？怎么约？"
+      ],
+      "expected": [
+        "公开单价和一对一预约入口",
+        "一对一明确的周末偏好传给顾问，不保证排期"
+      ]
+    },
+    {
+      "id": "F9",
+      "name": "换人但条件不足",
+      "turns": [
+        "我零基础，只能周末下午，想看 HSK 1。",
+        "现在帮我姐姐问，她只说以前学过一点中文。她该从哪级开始？"
+      ],
+      "expected": [
+        "提供谨慎的起点建议或澄清关键基础",
+        "不继承原学员的周末时段，不擅自推荐具体班"
+      ]
+    },
+    {
       "id": "F10",
       "name": "当前语言和话题切换后解释班型差价",
       "turns": [
@@ -308,6 +331,62 @@
       "case": "F7",
       "turn": 1,
       "rule": "strict_local_time_match",
+      "critical": false
+    },
+    {
+      "id": "assessment_scope",
+      "case": "02",
+      "turn": 1,
+      "rule": "assessment_scope",
+      "critical": false
+    },
+    {
+      "id": "assessment_next_step",
+      "case": "02",
+      "turn": 4,
+      "rule": "assessment_next_step",
+      "critical": false
+    },
+    {
+      "id": "advisor_weekend_preference",
+      "case": "23",
+      "turn": 2,
+      "rule": "advisor_weekend_preference",
+      "critical": false
+    },
+    {
+      "id": "advisor_send_status",
+      "case": "23",
+      "turn": 3,
+      "rule": "advisor_send_status",
+      "critical": false
+    },
+    {
+      "id": "private_quote_without_group_period",
+      "case": "10",
+      "turn": 3,
+      "rule": "private_quote_without_group_period",
+      "critical": false
+    },
+    {
+      "id": "new_learner_direct_schedule",
+      "case": "F3",
+      "turn": 2,
+      "rule": "new_learner_direct_schedule",
+      "critical": false
+    },
+    {
+      "id": "private_explicit_weekend",
+      "case": "F8",
+      "turn": 1,
+      "rule": "private_explicit_weekend",
+      "critical": false
+    },
+    {
+      "id": "new_learner_unknown_constraints",
+      "case": "F9",
+      "turn": 2,
+      "rule": "new_learner_unknown_constraints",
       "critical": false
     },
     {

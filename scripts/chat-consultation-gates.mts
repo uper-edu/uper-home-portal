@@ -108,6 +108,55 @@ function strictLocalTimeMatch(turn:Turn):Outcome{
   return ok('严格时段确实有匹配时返回真实班次。');
 }
 
+function assessmentScope(turn:Turn):Outcome{
+  const reply=turn.reply??'';
+  if(!/口语/.test(reply)||!/书写|手写/.test(reply)||!/未测|不测|不评估|没有测|没测|不包括|未评估/.test(reply))
+    return fail('reply','测评后的首答未明确口语和手写均未测。');
+  return ok('测评首答说明口语和手写均未测。');
+}
+
+function assessmentNextStep(turn:Turn):Outcome{
+  const reply=turn.reply??'';
+  if(!/打开|点开|进入|点击|核对|先看|申请|选一个/.test(reply)||
+    !turn.enrollment?.rows?.some(row=>row.level==='HSK 1'&&accessible(turn,'/enrollment/'+row.id)))
+    return fail('reply','正文需先给出可执行的看班或申请步骤，再附 HSK 1 班次详情。');
+  return ok('正文给出下一步并附 HSK 1 班次详情。');
+}
+
+function advisorWeekendPreference(turn:Turn):Outcome{
+  if(!/HSK\s*2/i.test(turn.reply??'')||!(turn.reply??'').includes('周末'))
+    return fail('reply','正文没有回应明确的 HSK 2 周末偏好。');
+  const correct=turn.links?.some(link=>{
+    const url=new URL(link.href,'http://localhost:3000');
+    return link.status===200&&url.pathname==='/enrollment/help/consultation'&&url.searchParams.get('level')==='2'&&url.searchParams.get('period')==='weekend';
+  });
+  return correct?ok('正文和顾问入口均带 HSK 2 周末偏好。'):fail('link','顾问入口未保留 HSK 2 和周末条件。');
+}
+
+function privateAppointmentPeriod(turn:Turn,explicitWeekend:boolean):Outcome{
+  const appointment=turn.links?.find(link=>link.status===200&&new URL(link.href,'http://localhost:3000').pathname==='/enrollment/help/one-on-one');
+  if(!appointment)return fail('link','缺少可达的一对一预约入口。');
+  const url=new URL(appointment.href,'http://localhost:3000');
+  if(explicitWeekend?url.searchParams.get('period')!=='weekend':url.searchParams.has('period'))
+    return fail('link',explicitWeekend?'明确的一对一周末偏好未带到预约入口。':'把上一轮标准班的时段带进了一对一预约入口。');
+  return ok(explicitWeekend?'保留显式的一对一周末偏好。':'一对一预约入口未继承团班时段。');
+}
+
+function newLearnerDirectSchedule(turn:Turn):Outcome{
+  const reply=turn.reply??'';
+  if(!/(?:没有|暂无|未找到|未查到)[^。！？\n]{0,50}(?:符合|匹配|班次|班课|课程)/.test(reply)||
+    /要不要|要先按|要我|是否要|想不想|要不要我/.test(reply))
+    return fail('reply','姐姐的时间已经明确，需本轮给出按 HSK 2 起点查询的结果。');
+  if(turn.enrollment?.rows?.length)return fail('matching','无匹配时不能推荐冲突班次。');
+  return ok('换人后直接给出严格时段的查询结论。');
+}
+
+function newLearnerUnknownConstraints(turn:Turn):Outcome{
+  if(turn.enrollment?.rows?.length||turn.links?.some(link=>new URL(link.href,'http://localhost:3000').searchParams.get('period')==='weekend'))
+    return fail('context','只有历史学员说过周末，不应套给新学员或擅自推荐班次。');
+  return ok('新学员条件不足时未继承旧时段或推荐班次。');
+}
+
 function comparePair(turn:Turn,history:Turn[],raw?:RawIntent):Outcome{
   const pair=history.findLast(item=>item.enrollment?.rows?.length===2)?.enrollment?.rows??[];
   if(pair.length!==2)return fail('context','这条会话在比较前未展示两个班次。');
@@ -204,6 +253,13 @@ export function evaluateGates(run:Run,records:Map<string,Transcript>,gates:Gate[
             outcome=/4[–—-]6\s*人/.test(turn.reply??'')&&/10[–—-]15\s*人/.test(turn.reply??'')
               ?ok('点气泡后正文回答原两班的公开规模。'):fail('reply','原两班的公开规模没有一次答齐。');
             break;
+          case 'assessment_scope':outcome=assessmentScope(turn);break;
+          case 'assessment_next_step':outcome=assessmentNextStep(turn);break;
+          case 'advisor_weekend_preference':outcome=advisorWeekendPreference(turn);break;
+          case 'private_quote_without_group_period':outcome=privateAppointmentPeriod(turn,false);break;
+          case 'private_explicit_weekend':outcome=privateAppointmentPeriod(turn,true);break;
+          case 'new_learner_direct_schedule':outcome=newLearnerDirectSchedule(turn);break;
+          case 'new_learner_unknown_constraints':outcome=newLearnerUnknownConstraints(turn);break;
           case 'seat_hold_only_after_allocation':outcome=seatHoldOnlyAfterAllocation(turn);break;
           case 'strict_local_time_no_match':outcome=strictLocalTimeNoMatch(turn);break;
           case 'browse_without_holding':outcome=browseWithoutHolding(turn);break;

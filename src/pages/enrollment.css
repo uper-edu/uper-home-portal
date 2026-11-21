@@ -108,10 +108,11 @@
 .enrollment-outline { border: 1px solid var(--enrollment-border); color: var(--enrollment-accent); gap: 4px; }
 .enrollment-outline svg { flex: none; }
 .enrollment-screen :focus-visible { outline: 2px solid var(--enrollment-accent); outline-offset: 3px; }
-.enrollment-title-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.enrollment-title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 13px; }
 .enrollment-title-row h1 { margin: 0; }
-.enrollment-title-row .enrollment-outline { flex: 0 0 auto; min-height: 36px; font-size: 13px; border-color: var(--enrollment-accent); border-radius: 999px; }
-.enrollment-subtitle { margin: 4px 0 13px; color: var(--enrollment-muted); font-size: 13px; }
+.enrollment-title-actions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; }
+.enrollment-title-actions .enrollment-outline { font-size: 13px; border-color: var(--enrollment-accent); border-radius: 999px; }
+.enrollment-subtitle { margin: 4px 0 0; color: var(--enrollment-muted); font-size: 13px; }
 .enrollment-catalog-controls { display: grid; gap: 8px; margin-bottom: 10px; }
 .enrollment-catalog .enrollment-levels, .enrollment-catalog .enrollment-filters { display: grid; gap: 7px; }
 .enrollment-catalog .enrollment-levels { grid-template-columns: repeat(5, minmax(0, 1fr)); }
@@ -347,9 +348,10 @@
   [data-enrollment-screen] > nav > div:first-child > div:nth-child(3) > :not(:first-child) { display: none; }
   .enrollment-screen { padding: 99px 24px 48px; }
   .enrollment-screen h1 { font-size: 36px; margin-bottom: 21px; }
+  .enrollment-title-row { margin-bottom: 23px; }
   .enrollment-title-row h1 { margin-bottom: 0; }
-  .enrollment-title-row .enrollment-outline { min-height: 42px; font-size: 14px; }
-  .enrollment-subtitle { font-size: 15px; margin-bottom: 23px; }
+  .enrollment-title-actions .enrollment-outline { font-size: 14px; }
+  .enrollment-subtitle { font-size: 15px; }
   .enrollment-catalog-controls {
     gap: 8px 24px;
     margin-bottom: 16px;
@@ -761,18 +763,10 @@
   .enrollment-appointment-card .enrollment-primary { max-width: 100%; }
 }
 @media (max-width: 359px) {
+  .enrollment-title-actions .enrollment-outline { padding-inline: 8px; }
   .enrollment-class-card .enrollment-class-bottom { flex-direction: column; align-items: stretch; }
   .enrollment-class-card .enrollment-primary { max-width: 100%; width: 100%; }
 }
 
-.enrollment-consult-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: .65rem;
-  margin-bottom: .75rem;
-}
-.enrollment-consult-row .enrollment-subtitle { margin: 0; }
 .enrollment-consult-action { gap: .45rem; }
 .enrollment-chat-return:has(+ .enrollment-back) { margin-inline-end: 1rem; }

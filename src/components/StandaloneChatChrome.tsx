@@ -132,8 +132,8 @@ export function ChatAssessmentSummary({result,lang,onDetails}:{
   </section>;
 }
 
-export function StandaloneChatDialog({title,closeLabel,onClose,children,wide=false,locked=false}:{
-  title:string;closeLabel:string;onClose:()=>void;children:ReactNode;wide?:boolean;locked?:boolean;
+export function StandaloneChatDialog({title,closeLabel,onClose,children,wide=false,locked=false,variant}:{
+  title:string;closeLabel:string;onClose:()=>void;children:ReactNode;wide?:boolean;locked?:boolean;variant?:'retake';
 }){
   const dialog=useRef<HTMLDialogElement>(null);
   const label=useId();
@@ -142,8 +142,8 @@ export function StandaloneChatDialog({title,closeLabel,onClose,children,wide=fal
     el?.showModal();
     return ()=>el?.close();
   },[]);
-  return <dialog ref={dialog} className={`standalone-chat-dialog${wide?' is-wide':''}`} aria-labelledby={label}
-    onCancel={event=>{event.preventDefault();if(!locked)onClose();}}>
+  return <dialog ref={dialog} className={`standalone-chat-dialog${wide?' is-wide':''}`} aria-labelledby={label} data-chat-dialog={variant}
+    onCancel={event=>{event.preventDefault();event.stopPropagation();if(!locked)onClose();}}>
     <header><h2 id={label}>{title}</h2><button type="button" className="chat-dialog-close" aria-label={closeLabel} disabled={locked} onClick={onClose}><X size={19}/></button></header>
     <div className="chat-dialog-body">{children}</div>
   </dialog>;

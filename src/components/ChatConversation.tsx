@@ -20,9 +20,9 @@ export function ChatFollowups({prompts, onSelect}: {prompts?: string[]; onSelect
   </div>;
 }
 
-export function ChatMessage({role,content,language,entry,origin,anchor,enrollment,delivery,compact=false,busy,onRetry,children}:{
+export function ChatMessage({role,content,language,entry,origin,anchor,enrollment,delivery,compact=false,busy,onRetry,entryAction,children}:{
   role:'user'|'assistant';content:string;language:string;entry:ChatSource;enrollment?:EnrollmentGuideAction;
-  origin?:ChatOrigin;anchor?:ChatMessageAnchor;delivery?:Delivery;compact?:boolean;busy?:boolean;onRetry?:()=>void;children?:ReactNode;
+  origin?:ChatOrigin;anchor?:ChatMessageAnchor;delivery?:Delivery;compact?:boolean;busy?:boolean;onRetry?:()=>void;entryAction?:ReactNode;children?:ReactNode;
 }){
   const user=role==='user';
   const guidance=enrollment&&<ChatEnrollmentGuide action={enrollment} language={language} entry={entry} origin={origin} anchor={anchor}/>;
@@ -45,6 +45,7 @@ export function ChatMessage({role,content,language,entry,origin,anchor,enrollmen
               <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
             </div>)}
         </div>}
+        {entryAction}
         {guidance&&<div data-chat-enrollment className="w-full min-w-0">{guidance}</div>}
       </div>
     </div>

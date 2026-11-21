@@ -23,8 +23,7 @@ declare const __UPER_ANALYTICS__: AnalyticsConfiguration | null;
 const build = typeof __UPER_BUILD__ === "undefined" ? null : __UPER_BUILD__;
 const configuration =
   typeof __UPER_ANALYTICS__ === "undefined" ? null : __UPER_ANALYTICS__;
-export const GA_MEASUREMENT_ID =
-  (import.meta as any).env?.VITE_UPER_MEASUREMENT_ID || "";
+export const GA_MEASUREMENT_ID = configuration?.measurementId ?? "";
 let client: ReturnType<typeof createAnalyticsClient> | undefined;
 let actorRole: string | undefined;
 export function setAnalyticsRole(role?: string) {

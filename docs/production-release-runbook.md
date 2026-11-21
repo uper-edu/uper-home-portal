@@ -80,7 +80,7 @@
 | 变量 | 用途与配置时机 |
 | --- | --- |
 | `PORTAL_CREDENTIAL_KEYRING_FILE` | 后台集成凭证使用的生产专用密钥环。迁移前提供容器内可读的绝对路径，文件权限为 `0600`，与数据库独立备份。 |
-| `VITE_UPER_MEASUREMENT_ID` | 前端构建使用的公开 GA4 衡量 ID，须匹配已分配的正式数据流。 模板值为 `G-SZCY9WLK8X`。 |
+| 浏览器 GA4 数据流 | 前端按构建目标读取 `src/data/analyticsEnvironments.json`，更改映射后重新构建。 |
 
 ### 报名与招生邮件
 

@@ -8,7 +8,32 @@ export function environmentName(value = 'dev') {
   return value;
 }
 
+/** Public configuration uses UPER_PORTAL_; existing runtime consumers use PORTAL_. */
+export function portalEnvironmentKey(key) {
+  return key.startsWith('UPER_PORTAL_') ? key.slice(5) : key;
+}
+
+function normalizePortalEnvironment(values) {
+  const normalized = {...values};
+  for (const [key, value] of Object.entries(values)) {
+    const runtimeKey = portalEnvironmentKey(key);
+    if (runtimeKey === key) continue;
+    if (Object.hasOwn(values, runtimeKey) && values[runtimeKey] !== value)
+      throw Error('Conflicting environment settings: ' + key + ' and ' + runtimeKey);
+    normalized[runtimeKey] = value;
+    delete normalized[key];
+  }
+  return normalized;
+}
+
+function mysqlEnvironment(values) {
+  if (values.PORTAL_DATABASE_DRIVER !== undefined && values.PORTAL_DATABASE_DRIVER !== 'mysql')
+    throw Error('Only MySQL is supported');
+  return {...values, PORTAL_DATABASE_DRIVER: 'mysql'};
+}
+
 export function portalWorkerEnabled(env = process.env) {
+  env = normalizePortalEnvironment(env);
   const setting = env.PORTAL_WORKER_ENABLED;
   if (setting !== undefined && setting !== 'true' && setting !== 'false') {
     throw Error('PORTAL_WORKER_ENABLED must be true or false when set');
@@ -28,13 +53,13 @@ export function readEnvironment(target, directory = process.cwd()) {
   const name = environmentName(target);
   const file = path.resolve(directory, '.env.' + name);
   if (!fs.existsSync(file)) throw Error('Missing .env.' + name + '; prepare it from the corresponding example');
-  const values = dotenv.parse(fs.readFileSync(file));
+  const values = normalizePortalEnvironment(dotenv.parse(fs.readFileSync(file)));
   if (values.PORTAL_ENV && values.PORTAL_ENV !== name) throw Error('Environment file target mismatch');
   for (const key of Object.keys(values)) {
     if (key.startsWith('VITE_') && /KEY|SECRET|TOKEN|PASSWORD|MYSQL|WEBHOOK/i.test(key))
       throw Error('Server credentials must not use a frontend VITE_ variable');
   }
-  return { file, values: { ...values, PORTAL_ENV: name } };
+  return { file, values: mysqlEnvironment({ ...values, PORTAL_ENV: name }) };
 }
 export function frontendEnvironment(target, directory = process.cwd()) {
   const { values } = readEnvironment(target, directory);
@@ -55,17 +80,18 @@ export function readBootstrapSecrets(file){
 }
 /** @param {{env?: NodeJS.ProcessEnv, directory?: string, target?: string, file?: string}} [options] */
 export function loadPortalEnvironment({ env = process.env, directory = process.cwd(), target, file } = {}) {
-  const selected = target || env.PORTAL_ENV;
-  const explicitFile = file || env.PORTAL_ENV_FILE;
+  const incoming = normalizePortalEnvironment(env);
+  const selected = target || incoming.PORTAL_ENV;
+  const explicitFile = file || incoming.PORTAL_ENV_FILE;
   // Container env_file and isolated test fixtures already provide a complete runtime environment.
-  const injected = env.PORTAL_ENV_SOURCE === 'injected' || (!selected && !explicitFile && !!(env.MYSQL_TRIAL_URL || env.PORTAL_BOOTSTRAP_SECRET_FILE));
+  const injected = incoming.PORTAL_ENV_SOURCE === 'injected' || (!selected && !explicitFile && !!(incoming.MYSQL_TRIAL_URL || incoming.PORTAL_BOOTSTRAP_SECRET_FILE));
   let name = selected ? environmentName(selected) : undefined;
   if (!injected || explicitFile) {
     let values;
     if (explicitFile) {
       const resolved = path.resolve(directory, explicitFile);
       if (!fs.existsSync(resolved)) throw Error('Explicit environment file does not exist');
-      values = dotenv.parse(fs.readFileSync(resolved));
+      values = normalizePortalEnvironment(dotenv.parse(fs.readFileSync(resolved)));
       if (name && values.PORTAL_ENV && values.PORTAL_ENV !== name) throw Error('Environment file target mismatch');
       name = name || (values.PORTAL_ENV && environmentName(values.PORTAL_ENV));
       file = resolved;
@@ -77,11 +103,15 @@ export function loadPortalEnvironment({ env = process.env, directory = process.c
     }
     // Selection is explicit: stale variables inherited from another local environment must not win.
     for (const key of Object.keys(env)) {
-      if (key !== 'PORTAL_PACKAGE_ENV' && /^(PORTAL_|MYSQL_|ACCESS_|TRIAL_|LARK_|OPENAI_|DEEPSEEK_|APP_ENV$|APP_URL$|PLATFORM_MODE$|NODE_ENV$|PORT$|MOCK_EMPLOYEE_ID$|DEFAULT_AI_PROVIDER$)/.test(key)) delete env[key];
+      if (portalEnvironmentKey(key) !== 'PORTAL_PACKAGE_ENV' && /^(PORTAL_|MYSQL_|ACCESS_|TRIAL_|LARK_|OPENAI_|DEEPSEEK_|APP_ENV$|APP_URL$|PLATFORM_MODE$|NODE_ENV$|PORT$|MOCK_EMPLOYEE_ID$|DEFAULT_AI_PROVIDER$)/.test(portalEnvironmentKey(key))) delete env[key];
     }
     Object.assign(env, values);
     env.PORTAL_ENV_FILE = file;
+  } else {
+    Object.assign(env, incoming);
   }
+  Object.assign(env, mysqlEnvironment(normalizePortalEnvironment(env)));
+  for (const key of Object.keys(env)) if (portalEnvironmentKey(key) !== key) delete env[key];
   if (name) env.PORTAL_ENV = name;
   if(env.PORTAL_BOOTSTRAP_SECRET_FILE)Object.assign(env,readBootstrapSecrets(env.PORTAL_BOOTSTRAP_SECRET_FILE));
   if (env.PORTAL_PACKAGE_ENV && name && env.PORTAL_PACKAGE_ENV !== name) throw Error('Package and runtime environment mismatch');

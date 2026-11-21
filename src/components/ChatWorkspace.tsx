@@ -1,3 +1,4 @@
+import {chatWorkspaceEntry,type ChatWorkspaceEntry} from '../utils/chatWorkspaceAction';
 import {ChatComposer,ChatFollowups,ChatMessage as ChatBubble,ChatTyping} from './ChatConversation';
 import type {EnrollmentGuideAction} from '../utils/enrollmentGuidance';
 import {lookupPromotion} from '../utils/promotionLookup';
@@ -48,6 +49,7 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   suggestedPrompts?: string[];
+  workspaceEntry?:ChatWorkspaceEntry;
   isAssessmentResult?: boolean;
   assessmentData?: HskResult & { whatsapp?: string };
 }
@@ -338,7 +340,7 @@ export default function ChatWorkspace({
         setMessages(prev=>prev.map(m=>m.id===userMessage.id&&e.saved?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:reply}:m));
       });
       if (result.status === 'contact_required') setShowOnboardingModal(true);
-      setMessages(prev=>prev.map(m=>m.id===userMessage.id?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:result.reply,enrollment:result.enrollment,suggestedPrompts:result.suggestedPrompts}:m));
+      setMessages(prev=>prev.map(m=>m.id===userMessage.id?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:result.reply,enrollment:result.enrollment,suggestedPrompts:result.suggestedPrompts,workspaceEntry:result.workspaceEntry}:m));
     }catch(e){
       const delivery=draft(sharedChatDrafts,userMessage.id)?.delivery || 'unknown';
       setMessages(prev=>prev.filter(m=>m.id!==botMessageId).map(m=>m.id===userMessage.id?{...m,delivery}:m));
@@ -371,9 +373,23 @@ export default function ChatWorkspace({
     else handleStartVoluntaryAssessment();
   };
   const busy=isTyping||starting||chatFailed;
+  const openLearningProfile=()=>setShowOnboardingModal(true);
+  function messageEntry(value:ChatWorkspaceEntry|undefined) {
+    const entry=chatWorkspaceEntry(value?.action,value?.language);
+    if (!entry) return;
+    const label=(zh:string,en:string,id:string)=>chooseText(entry.language,zh,en,id);
+    if (entry.action==='learning_profile') return {label:profile?
+      label('补充学习资料','Add learning preferences','Tambahkan preferensi belajar'):
+      label('填写学习资料','Add learning profile','Isi profil belajar'),open:openLearningProfile};
+    if (entry.action==='assessment_result'&&retainedReport) return {
+      label:label('查看测评结果','View assessment results','Lihat hasil tes'),open:()=>setReport(retainedReport)};
+    return {label:hasAssessmentDraft?label('继续测评','Resume assessment','Lanjutkan tes'):
+      retainedReport?label('重新测评','Retake assessment','Ulangi tes'):
+        label('开始免费测评','Start free assessment','Mulai tes gratis'),open:assessmentAction};
+  }
   const headerActions=[
     {label:profile?t('补充学习资料','Add learning preferences','Tambahkan preferensi belajar'):
-      t('填写学习资料','Add learning profile','Isi profil belajar'),onClick:()=>setShowOnboardingModal(true),disabled:busy},
+      t('填写学习资料','Add learning profile','Isi profil belajar'),onClick:openLearningProfile,disabled:busy},
     ...(retainedReport?[{label:t('查看测评结果','View assessment results','Lihat hasil tes'),onClick:()=>setReport(retainedReport)}]:[]),
     {label:hasAssessmentDraft?t('继续测评','Resume assessment','Lanjutkan tes'):retainedReport?t('重新测评','Retake assessment','Ulangi tes'):t('免费 HSK 摸底测评','Free HSK placement assessment','Tes penempatan HSK gratis'),
       onClick:assessmentAction,disabled:busy},
@@ -451,17 +467,20 @@ export default function ChatWorkspace({
         <span>{fromEnrollment.title||filterSummary||t('全部班次','All classes','Semua kelas')}</span>
       </div>}
 
-      {confirm&&<StandaloneChatDialog title={confirmationTitle} closeLabel={closeLabel}
+      {confirm&&<StandaloneChatDialog title={confirmationTitle} closeLabel={closeLabel} variant={confirm==='retake'?'retake':undefined}
         locked={switchingPerson||starting} onClose={()=>{setConfirm(null);setPersonError(false);}}>
         <p>{confirm==='restart'
           ? t('为当前使用者开始一段新对话。原有对话会保留。','Start a new conversation for this user. Earlier conversations will be kept.','Mulai percakapan baru untuk pengguna ini. Percakapan sebelumnya tetap disimpan.')
           : confirm==='switch'
             ? t('另一位使用者将开启独立咨询。当前使用者的对话和测评记录会保留。','Another person will open a separate consultation. This user’s chat and assessment will be kept.','Pengguna lain akan membuka konsultasi terpisah. Percakapan dan hasil tes pengguna ini tetap disimpan.')
-            : t('开始新的测评，之前的结果会保留。','Start a new assessment. Earlier results will be kept.','Mulai tes baru. Hasil sebelumnya tetap disimpan.')}</p>
+            : t('开始新一轮测评，之前的结果和对话都会保留。','Your earlier results and conversation will be kept.','Hasil sebelumnya dan percakapan Anda tetap tersimpan.')}</p>
         {personError&&<p role="alert" className="chat-assessment-review">{t('切换未确认成功，请刷新后核对当前使用者。','Switch not confirmed. Reload and check the current user.','Pergantian belum dikonfirmasi. Muat ulang dan periksa pengguna saat ini.')}</p>}
         {confirm==='restart'&&chatFailed&&<p role="alert" className="chat-assessment-review">{t('新对话暂未确认，请重试。','New conversation not confirmed. Please retry.','Percakapan baru belum dikonfirmasi. Coba lagi.')}</p>}
+        {confirm==='retake'&&<div className="chat-retake-person">
+          <span>{t('为其他人测评？','Taking the test for someone else?','Tes ini untuk orang lain?')}</span>
+          <button type="button" onClick={()=>setConfirm('switch')}>{t('切换使用者','Switch user','Ganti pengguna')}</button>
+        </div>}
         <div className="chat-dialog-actions">
-          {confirm==='retake'&&<button type="button" className="underline" onClick={()=>setConfirm('switch')}>{t('不是本人？切换使用者','Not you? Switch user','Bukan kamu? Ganti pengguna')}</button>}
           <button type="button" disabled={switchingPerson||starting} onClick={()=>{setConfirm(null);setPersonError(false);}}>{cancelLabel}</button>
           <button type="button" className="chat-primary disabled:opacity-50" disabled={switchingPerson||starting} onClick={()=>void handleConfirm()}>
             {switchingPerson||starting?t('处理中…','Working…','Memproses…'):
@@ -484,13 +503,17 @@ export default function ChatWorkspace({
             onPrompt={prompt=>{setInputValue(prompt);inputRef.current?.focus({preventScroll:true});}}/>
         </div>}
         {!isTakingAssessment && !emptyChat && <div className="standalone-chat-flow">
-        {!isTakingAssessment && messages.map((msg) => (
+        {!isTakingAssessment && messages.map((msg) => {
+          const entry=msg.role==='assistant'&&msg.content.trim()?messageEntry(msg.workspaceEntry):undefined;
+          return (
           <div key={msg.id} data-chat-message-id={msg.id} tabIndex={-1}>
             <ChatBubble role={msg.role==='user'?'user':'assistant'} content={msg.content} language={lang} entry={chatSource}
               origin={recommendationPage ? {source:thread.source,page:recommendationPage} : thread} enrollment={msg.enrollment}
               anchor={msg.enrollment?{owner:visitorScope(),conversationId:thread.conversationId,messageId:msg.id,
                 widget:presentation==='panel'||presentation==='mobile'}:undefined}
-              delivery={msg.delivery} compact={compact} busy={isTyping} onRetry={()=>void handleSendMessage(undefined,msg)}>
+              delivery={msg.delivery} compact={compact} busy={isTyping} onRetry={()=>void handleSendMessage(undefined,msg)}
+              entryAction={entry&&<button type="button" className="chat-enrollment-next self-start" data-chat-workspace-action
+                disabled={busy} onClick={entry.open}>{entry.label}</button>}>
               {msg.isAssessmentResult&&msg.assessmentData?<ChatAssessmentSummary result={msg.assessmentData} lang={lang}
                 onDetails={()=>setReport(msg.assessmentData!)}/>:undefined}
             </ChatBubble>
@@ -499,7 +522,7 @@ export default function ChatWorkspace({
               <ChatFollowups prompts={msg.suggestedPrompts} onSelect={prompt=>void handleSendMessage(prompt)}/>}
 
           </div>
-        ))}
+        );})}
 
           {consultationError&&<p role="alert" className="text-sm">{t('咨询暂不可用，测评结果已保存。','Consultation is temporarily unavailable; your results are saved.','Konsultasi belum tersedia; hasil tes tersimpan.')} <button className="underline min-h-11" onClick={()=>void beginAssessmentConsultation(consultationError)}>{t('重试咨询','Retry consultation','Coba konsultasi lagi')}</button></p>}
           {profileConsultationError&&<p role="alert" className="text-sm">{t('咨询暂不可用，请重试。','Consultation is temporarily unavailable. Please retry.','Konsultasi belum tersedia. Silakan coba lagi.')} <button className="underline min-h-11" onClick={()=>void beginProfileConsultation()}>{t('重试咨询','Retry consultation','Coba konsultasi lagi')}</button></p>}

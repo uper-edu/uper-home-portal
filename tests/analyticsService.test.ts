@@ -56,7 +56,6 @@ test("actual portal services emit only scope-checked saved receipts; failures an
       write: false,
       define: {
         "import.meta.env": JSON.stringify({
-          VITE_UPER_MEASUREMENT_ID: analyticsEnvironments.environments.dev.measurementId,
           MODE: "dev",
         }),
         __UPER_ANALYTICS__:JSON.stringify({target:'dev',...analyticsEnvironments.environments.dev}),

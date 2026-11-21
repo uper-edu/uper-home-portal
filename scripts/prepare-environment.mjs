@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import dotenv from 'dotenv';
-import {environmentName, readEnvironment} from '../server/environment.mjs';
+import {environmentName, portalEnvironmentKey, readEnvironment} from '../server/environment.mjs';
 
 /** Keep the target file intact and append only assignments absent from it. */
 export function prepareEnvironment(target, {
@@ -14,7 +14,7 @@ export function prepareEnvironment(target, {
   const file = path.resolve(directory, '.env.' + name);
   const template = fs.readFileSync(path.resolve(templateDirectory, '.env.' + name + '.example'), 'utf8');
   const defaults = dotenv.parse(template);
-  if (defaults.PORTAL_ENV !== name) throw Error('Environment template target mismatch');
+  if ((defaults.UPER_PORTAL_ENV ?? defaults.PORTAL_ENV) !== name) throw Error('Environment template target mismatch');
 
   let stat;
   try {
@@ -30,7 +30,8 @@ export function prepareEnvironment(target, {
   const original = fs.readFileSync(file);
   readEnvironment(name, directory);
   const existing = dotenv.parse(original);
-  const added = Object.keys(defaults).filter(key => !Object.hasOwn(existing, key));
+  const existingKeys = new Set(Object.keys(existing).map(portalEnvironmentKey));
+  const added = Object.keys(defaults).filter(key => !existingKeys.has(portalEnvironmentKey(key)));
   if (added.length === 0) return {created: false, added};
 
   const entries = added.map(key => key + '=' + JSON.stringify(defaults[key])).join('\n');

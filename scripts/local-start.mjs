@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { loadPortalEnvironment } from '../server/environment.mjs';
 import { prepareLocalMysql } from "./local-mysql.mjs";
-loadPortalEnvironment({target:process.argv[2] || process.env.PORTAL_ENV || 'dev'});
+loadPortalEnvironment({target:process.argv[2] || process.env.UPER_PORTAL_ENV || process.env.PORTAL_ENV || 'dev'});
 if (process.env.PORTAL_DATABASE_DRIVER !== "mysql")
   throw Error("Explicit MySQL configuration required");
 await prepareLocalMysql();

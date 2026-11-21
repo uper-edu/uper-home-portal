@@ -71,7 +71,7 @@ const copy = {
   material: ['Course and materials', 'Kursus dan materi', '课程内容与教材'],
   resources: ['Practice and resources', 'Latihan dan sumber daya', '课后练习与资源'],
   teacher: ['Teacher', 'Pengajar', '授课教师'],
-  consultCatalog: ['Ask for help choosing a class', 'Minta bantuan memilih kelas', '咨询选班'],
+  consultCatalog: ['Help me choose', 'Tanya kelas', '咨询选班'],
   consultClass: ['Ask about this class', 'Tanya tentang kelas ini', '咨询这个班'],
   backChat: ['Back to chat', 'Kembali ke chat', '返回咨询'],
   backLinkHub: ['All links', 'Semua tautan', '全部入口'],
@@ -397,14 +397,16 @@ export default function Enrollment() {
   return <section className="enrollment-screen enrollment-catalog">
     {backChat}
     {hubPath && <Link className="enrollment-back" to={hubPath}><ArrowLeft size={15} aria-hidden="true"/>{t('backLinkHub')}</Link>}
-    <div className="enrollment-title-row">
-      <h1>{t('title')}</h1>
-      {servicing && <Link className="enrollment-outline" to={minePath} state={chatReturnState}>{t('mine')}<ChevronRight size={16} aria-hidden="true"/></Link>}
-    </div>
-    {consultCatalog ? <div className="enrollment-consult-row">
-      <p className="enrollment-subtitle">{t('online')}</p>
-      {consultCatalog}
-    </div> : <p className="enrollment-subtitle">{t('online')}</p>}
+    <header className="enrollment-title-row">
+      <div>
+        <h1>{t('title')}</h1>
+        <p className="enrollment-subtitle">{t('online')}</p>
+      </div>
+      {(consultCatalog || servicing) && <div className="enrollment-title-actions">
+        {consultCatalog}
+        {servicing && <Link className="enrollment-outline" to={minePath} state={chatReturnState}>{t('mine')}<ChevronRight size={16} aria-hidden="true"/></Link>}
+      </div>}
+    </header>
     {intakeNotice}
     <div className="enrollment-catalog-controls">
       <div className="enrollment-levels" role="group" aria-label={t('level')}>

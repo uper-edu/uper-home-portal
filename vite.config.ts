@@ -23,7 +23,7 @@ const preventFetchOverwritePlugin = () => {
 
 export default defineConfig(({mode}) => {
   const env = frontendEnvironment(mode);
-  const analytics = analyticsBuildConfiguration(mode,env);
+  const analytics = analyticsBuildConfiguration(mode);
   return {
     // Vite must not silently merge legacy .env / .env.local files across targets.
     envDir: false,

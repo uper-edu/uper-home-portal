@@ -26,8 +26,8 @@ test('environment target errors and unprovisioned production fail before databas
  assert.throws(()=>loadPortalEnvironment({env:{PORTAL_ENV:'test',PORTAL_ENV_SOURCE:'injected',PORTAL_PACKAGE_ENV:'prod'}}),/mismatch/);
 });
 test('frontend configuration excludes private values and rejects secret VITE names',t=>{
- const directory=fixture(t);fs.writeFileSync(path.join(directory,'.env.test'),'PORTAL_ENV=test\nOPENAI_API_KEY=synthetic-private\nMYSQL_TRIAL_URL=mysql://private\nVITE_UPER_MEASUREMENT_ID=TEST-PUBLIC');
- assert.deepEqual(frontendEnvironment('test',directory),{VITE_UPER_MEASUREMENT_ID:'TEST-PUBLIC'});
+ const directory=fixture(t);fs.writeFileSync(path.join(directory,'.env.test'),'PORTAL_ENV=test\nOPENAI_API_KEY=synthetic-private\nMYSQL_TRIAL_URL=mysql://private\nVITE_TEST_PUBLIC=TEST-PUBLIC');
+ assert.deepEqual(frontendEnvironment('test',directory),{VITE_TEST_PUBLIC:'TEST-PUBLIC'});
  fs.appendFileSync(path.join(directory,'.env.test'),'\nVITE_OPENAI_API_KEY=synthetic-private');assert.throws(()=>frontendEnvironment('test',directory),/Server credentials/);
 });
 test('injected container and isolated fixtures preserve supplied environment without local files',()=>{
@@ -94,4 +94,36 @@ test('explicit environment preparation creates only the selected file and preser
   assert.equal(fs.statSync(testFile).mtimeMs, modified);
   assert.equal(fs.readFileSync(devFile, 'utf8'), devContents);
   assert.equal(fs.existsSync(prodFile), false);
+});
+
+test('UPER_PORTAL names load for local files and injected environments', t => {
+ const directory=fixture(t);
+ fs.writeFileSync(path.join(directory,'.env.dev'),'UPER_PORTAL_ENV=dev\nUPER_PORTAL_LOCAL_CUTOVER=true\nUPER_PORTAL_WORKER_ENABLED=false\nTRIAL_DATASET=local-crm');
+ const env={UPER_PORTAL_PUBLIC_ORIGIN:'stale'};
+ assert.equal(loadPortalEnvironment({env,directory,target:'dev'}).target,'dev');
+ assert.equal(env.PORTAL_PUBLIC_ORIGIN,undefined);
+ assert.equal(env.UPER_PORTAL_PUBLIC_ORIGIN,undefined);
+ assert.equal(env.PORTAL_LOCAL_CUTOVER,'true');
+ assert.equal(env.PORTAL_DATABASE_DRIVER,'mysql');
+ assert.equal(portalWorkerEnabled(env),false);
+
+ const injected={UPER_PORTAL_ENV:'test',UPER_PORTAL_ENV_SOURCE:'injected',PORTAL_PACKAGE_ENV:'test'};
+ assert.equal(loadPortalEnvironment({env:injected}).target,'test');
+ assert.equal(injected.PORTAL_DATABASE_DRIVER,'mysql');
+ assert.throws(()=>loadPortalEnvironment({env:{...injected,UPER_PORTAL_ENV:'prod'}}),/Conflicting environment settings/);
+ assert.throws(()=>loadPortalEnvironment({env:{...injected,PORTAL_DATABASE_DRIVER:'sqlite'}}),/Only MySQL/);
+ fs.appendFileSync(path.join(directory,'.env.dev'),'\nUPER_PORTAL_DATABASE_DRIVER=sqlite');
+ assert.throws(()=>readEnvironment('dev',directory),/Only MySQL/);
+});
+
+test('development template preparation recognizes already configured legacy names', t => {
+ const directory=fixture(t);
+ fs.writeFileSync(path.join(directory,'.env.dev.example'),'UPER_PORTAL_ENV=dev\nUPER_PORTAL_PUBLIC_ORIGIN=https://example.invalid\nUPER_PORTAL_WORKER_ENABLED=false\n');
+ const existing='PORTAL_ENV=dev\nPORTAL_PUBLIC_ORIGIN=http://localhost:3000\n';
+ fs.writeFileSync(path.join(directory,'.env.dev'),existing);
+ const command=fileURLToPath(new URL('../scripts/prepare-environment.mjs',import.meta.url));
+ const result=JSON.parse(execFileSync(process.execPath,[command,'dev'],{cwd:directory,encoding:'utf8'}));
+ assert.deepEqual(result.added,['UPER_PORTAL_WORKER_ENABLED']);
+ assert.equal(readEnvironment('dev',directory).values.PORTAL_PUBLIC_ORIGIN,'http://localhost:3000');
+ assert.equal(readEnvironment('dev',directory).values.PORTAL_WORKER_ENABLED,'false');
 });

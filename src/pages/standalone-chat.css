@@ -250,6 +250,29 @@
 .chat-dialog-body { padding: 16px; font-size: 14px; line-height: 1.6; }
 .chat-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 14px; }
 .chat-dialog-actions > button:not(.chat-primary) { min-height: 44px; padding: 0 12px; }
+.standalone-chat-dialog[data-chat-dialog="retake"] > header { border-bottom: 0; padding: 14px 20px 0; }
+.standalone-chat-dialog[data-chat-dialog="retake"] h2 { font-size: 20px; }
+.standalone-chat-dialog[data-chat-dialog="retake"] .chat-dialog-body { padding: 8px 20px 18px; }
+.chat-retake-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+  color: var(--chat-muted);
+  font-size: 13px;
+}
+.chat-retake-person button { min-height: 44px; color: var(--chat-accent); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+.standalone-chat-dialog[data-chat-dialog="retake"] .chat-dialog-actions {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--chat-border);
+}
+.standalone-chat-dialog[data-chat-dialog="retake"] .chat-dialog-actions > button:not(.chat-primary) {
+  border: 1px solid var(--chat-border);
+  border-radius: 10px;
+  padding-inline: 16px;
+}
+.standalone-chat-dialog[data-chat-dialog="retake"] .chat-dialog-actions > button:not(.chat-primary):hover { background: #edf5f1; }
 .standalone-chat-page :is(button,a,summary):focus-visible { outline: 2px solid var(--chat-accent); outline-offset: 2px; }
 
 @media (max-width: 600px) {
