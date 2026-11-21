@@ -1,10 +1,11 @@
 import {useEffect,useId,useRef,type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowLeft,ArrowRight,ChevronRight,ClipboardCheck,Maximize2,Minimize2,X} from 'lucide-react';
+import {ArrowLeft,ArrowRight,ChevronRight,ClipboardCheck,ClipboardList,Maximize2,Minimize2,X,type LucideIcon} from 'lucide-react';
 import {chooseText,type HskLanguage,type HskResult} from '../data/hskAssessment';
 import {learnerAssessmentGuidance} from '../data/hskLearnerGuidance';
 import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
 import {PublicPageLinkActions} from './PublicLinkActions';
+import {SocialProfileIcon, socialProfiles} from './SocialProfileIcon';
 import {PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenu} from './PublicHeaderMenu';
 
 export type ChatPresentation = 'page' | 'panel' | 'mobile' | 'expanded';
@@ -59,8 +60,21 @@ export function StandaloneChatHeader({lang,onLanguageChange,actions,name,assessm
   </header>;
 }
 
-export function ChatWelcome({lang,hasDraft,hasResult,onAssessment,onPrompt}:{
+function ChatWelcomeOffer({icon:Icon,title,description,label,onClick}:{
+  icon:LucideIcon;title:string;description:string;label:string;onClick:()=>void;
+}) {
+  return <div className="chat-test-offer">
+    <span aria-hidden="true"><Icon size={20}/></span>
+    <div><h2>{title}</h2><p>{description}</p></div>
+    <button type="button" className="chat-primary" onClick={onClick}>
+      {label}<ArrowRight size={16} aria-hidden="true"/>
+    </button>
+  </div>;
+}
+
+export function ChatWelcome({lang,hasDraft,hasResult,onAssessment,onPrompt,standalone=false,hasProfile,onLearningProfile}:{
   lang:HskLanguage;hasDraft:boolean;hasResult:boolean;onAssessment:()=>void;onPrompt:(prompt:string)=>void;
+  standalone?:boolean;hasProfile?:boolean;onLearningProfile?:()=>void;
 }){
   const t:Translate=(zh,en,id)=>chooseText(lang,zh,en,id);
   const prompts=[
@@ -69,25 +83,33 @@ export function ChatWelcome({lang,hasDraft,hasResult,onAssessment,onPrompt}:{
     t('学费怎么算？','How much are the classes?','Berapa biaya kelasnya?'),
   ];
   return <section className="chat-welcome">
-    <div className="chat-welcome-mark"><img src="/uper-logo-mark.svg" alt="" width="23" height="27"/></div>
+    {!standalone&&<div className="chat-welcome-mark"><img src="/uper-logo-mark.svg" alt="" width="23" height="27"/></div>}
     <h1>{t('你好，想怎么开始学中文？','How would you like to start learning Chinese?','Bagaimana kamu ingin mulai belajar Mandarin?')}</h1>
     <p>{t('我是 UPER AI 学习顾问。可以问我课程、学费和报名。','I’m UPER’s AI learning advisor. Ask me about courses, tuition, or enrollment.','Saya konsultan belajar AI UPER. Tanyakan tentang kelas, biaya, atau pendaftaran.')}</p>
-    <div className="chat-test-offer">
-      <span aria-hidden="true"><ClipboardCheck size={20}/></span>
-      <div>
-        <h2>{t('免费 HSK 摸底测评','Free HSK placement assessment','Tes penempatan HSK gratis')}</h2>
-        <p>{hasResult&&!hasDraft?t('查看你上次测评的学习起点。','Review the starting point from your last assessment.','Lihat titik awal dari tes terakhirmu.'):
-          t('15 题快测，看看适合从哪里开始。','Take a 15-question check to find a starting point.','Jawab 15 soal untuk mengetahui titik awal belajarmu.')}</p>
-      </div>
-      <button type="button" className="chat-primary" onClick={onAssessment}>
-        {hasDraft?t('继续测评','Resume assessment','Lanjutkan tes'):hasResult?t('查看测评结果','View assessment results','Lihat hasil tes'):
-          t('开始免费测评','Start free assessment','Mulai tes gratis')}<ArrowRight size={16} aria-hidden="true"/>
-      </button>
-    </div>
+    {onLearningProfile&&<ChatWelcomeOffer icon={ClipboardList}
+      title={t('学习登记问卷','Learning questionnaire','Kuesioner belajar')}
+      description={t('告诉我们你的学习目标和偏好，方便推荐课程。','Tell us your goals and preferences so we can suggest a class.','Ceritakan tujuan dan preferensimu agar kami bisa menyarankan kelas.')}
+      label={hasProfile?t('补充学习资料','Add preferences','Tambah preferensi'):t('填写问卷','Fill out questionnaire','Isi kuesioner')}
+      onClick={onLearningProfile}/>}
+    <ChatWelcomeOffer icon={ClipboardCheck}
+      title={t('免费 HSK 摸底测评','Free HSK placement assessment','Tes penempatan HSK gratis')}
+      description={hasResult&&!hasDraft?t('查看你上次测评的学习起点。','Review the starting point from your last assessment.','Lihat titik awal dari tes terakhirmu.'):
+        t('15 题快测，看看适合从哪里开始。','Take a 15-question check to find a starting point.','Jawab 15 soal untuk mengetahui titik awal belajarmu.')}
+      label={hasDraft?t('继续测评','Resume assessment','Lanjutkan tes'):hasResult?t('查看测评结果','View assessment results','Lihat hasil tes'):
+        t('开始免费测评','Start free assessment','Mulai tes gratis')}
+      onClick={onAssessment}/>
     <div className="chat-starter-prompts">
       {prompts.map(prompt=><button type="button" key={prompt} onClick={()=>onPrompt(prompt)}>{prompt}<ChevronRight size={15} aria-hidden="true"/></button>)}
     </div>
   </section>;
+}
+
+export function ChatWelcomeSocials({lang}:{lang:HskLanguage}) {
+  return <nav className="chat-welcome-socials" aria-label={chooseText(lang,'UPER 官方社交账号','UPER social media','Media sosial UPER')}>
+    {(['whatsapp','instagram','tiktok','youtube','linkedin','threads','facebook'] as const).map(platform=><a
+      key={platform} href={socialProfiles[platform].url} aria-label={socialProfiles[platform].name}
+      target="_blank" rel="noopener noreferrer"><SocialProfileIcon platform={platform}/></a>)}
+  </nav>;
 }
 
 export function ChatAssessmentSummary({result,lang,onDetails}:{

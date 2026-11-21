@@ -208,7 +208,20 @@
   .chat-comparison-facts dd { margin-top: 0; }
 }
 .chat-welcome-layout { display: grid; place-items: center; min-height: 100%; padding: 24px 20px; }
+.chat-welcome-layout:has(.chat-welcome-socials) { grid-template-rows: 1fr auto; padding-block-end: 6px; }
 .chat-welcome { width: min(100%,536px); text-align: center; }
+.chat-welcome-socials { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 20px; }
+.chat-welcome-socials a {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 44px;
+  border-radius: 10px;
+  color: var(--chat-muted);
+}
+.chat-welcome-socials a:is(:hover,:focus-visible) { color: #0b5946; background: #ebf4ef; }
+.chat-welcome-socials a:focus-visible { outline: 2px solid #0b5946; outline-offset: -2px; }
+.chat-welcome-socials svg { width: 17px; height: 17px; }
 .chat-welcome-mark {
   display: grid;
   place-items: center;
@@ -235,6 +248,7 @@
   text-align: start;
 }
 .chat-test-offer > span { display: grid; place-items: center; height: 37px; width: 37px; border-radius: 10px; background: #fff; color: var(--chat-accent); }
+.chat-test-offer + .chat-test-offer { margin-top: 10px; }
 .chat-test-offer h2 { font-size: 16px; font-weight: 720; color: #184638; margin-bottom: 3px; }
 .chat-test-offer p { font-size: 13px; }
 .chat-starter-prompts { margin-top: 17px; display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }

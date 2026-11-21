@@ -20,7 +20,7 @@ import type {EnrollmentChatSelection} from '../utils/enrollmentChatJourney';
 import {useState,useEffect,useRef} from 'react';
 import {useLocation,useNavigate} from 'react-router-dom';
 import {motion} from 'motion/react';
-import {ChatAssessmentSummary,ChatWelcome,StandaloneChatDialog,StandaloneChatHeader} from './StandaloneChatChrome';
+import {ChatAssessmentSummary,ChatWelcome,ChatWelcomeSocials,StandaloneChatDialog,StandaloneChatHeader} from './StandaloneChatChrome';
 import '../pages/standalone-chat.css';
 import GFormOnboardingModal from './GFormOnboardingModal';
 import HskAssessmentReport from './HskAssessmentReport';
@@ -499,9 +499,11 @@ export default function ChatWorkspace({
 
       <ConversationRegion ref={node=>{mainRef.current=node;}} inert={showOnboardingModal} className="standalone-chat-main">
         {!isTakingAssessment && emptyChat && <div className="chat-welcome-layout">
-          <ChatWelcome lang={lang} hasDraft={hasAssessmentDraft} hasResult={Boolean(retainedReport)}
+          <ChatWelcome lang={lang} standalone={presentation==='page'} hasDraft={hasAssessmentDraft} hasResult={Boolean(retainedReport)}
+            hasProfile={Boolean(profile)} onLearningProfile={presentation==='page'&&!busy?openLearningProfile:undefined}
             onAssessment={()=>retainedReport&&!hasAssessmentDraft?setReport(retainedReport):assessmentAction()}
             onPrompt={prompt=>{setInputValue(prompt);inputRef.current?.focus({preventScroll:true});}}/>
+          {presentation==='page'&&<ChatWelcomeSocials lang={lang}/>}
         </div>}
         {!isTakingAssessment && !emptyChat && <div className="standalone-chat-flow">
         {!isTakingAssessment && messages.map((msg) => {
