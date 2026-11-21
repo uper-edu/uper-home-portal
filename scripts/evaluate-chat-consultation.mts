@@ -8,7 +8,7 @@ import {openTrialDatabase,transaction,validateTrialDatabase} from '../cloud/mysq
 import {newHskAttempt} from '../src/data/hskAssessment';
 import {getVersionQuestions} from '../src/data/hskAssessmentVersions';
 import {enrollmentGuideHref,type EnrollmentGuideAction} from '../src/utils/enrollmentGuidance';
-import {ai as aiDefaults} from '../src/data/system-defaults/index.ts';
+import {initialAiSelection} from '../src/data/system-defaults/ai.ts';
 import {aiModelSlots,selectedReasoningEffort,type AiSelection} from '../src/utils/aiModelSelection.ts';
 
 type Case={id:string;name:string;turns:string[];clickPrompts?:number[];expected:string[];source?:string;reported?:string;scores?:number[];
@@ -212,7 +212,7 @@ try{
   const modelSelection=async()=>{
     const settings=(await rows("SELECT value FROM portal_settings WHERE id='ai_service'"))[0]?.value;
     const current:AiSelection=(typeof settings==='string'?JSON.parse(settings):settings)?.current??
-      {...aiDefaults,primary:values.OPENAI_MODEL||aiDefaults.primary};
+      initialAiSelection(values.OPENAI_MODEL);
     return Object.fromEntries(aiModelSlots.map(role=>[role,{model:current[role],effort:selectedReasoningEffort(current,role)??null}]));
   };
   const selection=await modelSelection();

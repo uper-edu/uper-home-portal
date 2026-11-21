@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {validateSelection,isAiAdministrator,probeModel,providerFor} from '../server/portal/aiServiceConfig';
+import {aiModels,validateSelection,isAiAdministrator,probeModel,providerFor} from '../server/portal/aiServiceConfig';
 import {aiServiceText} from '../src/utils/aiServiceLanguage';
 const permissions=['access.read','access.users','access.roles','access.sessions','access.audit'];
 test('only complete System Administrator can manage AI, not CRM Manager or Sales',()=>{
@@ -8,6 +8,12 @@ test('only complete System Administrator can manage AI, not CRM Manager or Sales
  assert.equal(isAiAdministrator({roles:['access_admin'],permissions:permissions.slice(1)}),false);
 });
 test('model selection is allowlisted, different and strips unexpected properties',()=>{
+ assert.deepEqual(aiModels,['gpt-6.2-sol','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','deepseek-v4-pro','deepseek-chat']);
+ for(const model of aiModels){
+  const other=model==='gpt-6-luna'?'gpt-4o':'gpt-6-luna';
+  assert.deepEqual(validateSelection({primary:model,fallback:other}),{primary:model,fallback:other});
+  assert.deepEqual(validateSelection({primary:other,fallback:model}),{primary:other,fallback:model});
+ }
  assert.deepEqual(validateSelection({primary:'gpt-6.1-sol',fallback:'deepseek-chat',key:'not retained'}),{primary:'gpt-6.1-sol',fallback:'deepseek-chat'});
  for(const value of [null,{}, {primary:'gpt-4o',fallback:'gpt-4o'},{primary:'arbitrary',fallback:'deepseek-chat'}])assert.throws(()=>validateSelection(value));
 });
@@ -36,10 +42,10 @@ test('AI defaults use the confirmed primary while preserving environment and sav
  const empty={query:async()=>({rows:[]})};
  try {
   delete process.env.OPENAI_MODEL;
-  assert.deepEqual((await aiState(empty)).current,{primary:'gpt-6.2-sol',fallback:'deepseek-v4-pro'});
+  assert.deepEqual((await aiState(empty)).current,{primary:'gpt-6-luna',primaryEffort:'medium',fallback:'deepseek-v4-pro'});
   assert.deepEqual(validateSelection((await aiState(empty)).current),(await aiState(empty)).current);
   process.env.OPENAI_MODEL='gpt-6.1-terra';
-  assert.equal((await aiState(empty)).current.primary,'gpt-6.1-terra');
+  assert.deepEqual((await aiState(empty)).current,{primary:'gpt-6.1-terra',fallback:'deepseek-v4-pro'});
   const saved={revision:3,current:{primary:'gpt-6-luna',fallback:'deepseek-chat'}};
   assert.deepEqual(await aiState({query:async()=>({rows:[{value:saved}]})}),saved);
  } finally {

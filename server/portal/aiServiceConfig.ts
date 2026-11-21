@@ -1,14 +1,14 @@
 import {integrationCredential} from './integrationCredentials.ts';
 import {aiCredentialTarget,aiCredentialUrl, legacyAiCredential} from './integrationCredentialTargets.ts';
-import {ai as aiDefaults} from '../../src/data/system-defaults/index.ts';
+import {aiModels,initialAiSelection} from '../../src/data/system-defaults/ai.ts';
 import {randomUUID} from 'node:crypto';
 import {auditLog} from './audit.ts';
 const tx=async(work:any)=>(await import('./store.ts')).tx(work);
 import {validMutationOrigin} from './accessTransport.ts';
 import {modelParameters} from './modelParameters.ts';
 import {aiModelSlots,defaultReasoningEffort,effortField,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection,type ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
-export const aiModels=['gpt-6.2-sol','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','deepseek-v4-pro','deepseek-chat'];
-const defaults=():AiSelection=>({...aiDefaults,primary:process.env.OPENAI_MODEL||aiDefaults.primary});
+export {aiModels};
+const defaults=()=>initialAiSelection(process.env.OPENAI_MODEL);
 export function validateSelection(v:any):AiSelection {
  if(!v||!aiModels.includes(v.primary)||!aiModels.includes(v.fallback)||v.primary===v.fallback)throw Object.assign(Error('invalid_selection'),{status:400});
  const selection:AiSelection={primary:v.primary,fallback:v.fallback};
