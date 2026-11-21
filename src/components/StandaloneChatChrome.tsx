@@ -1,78 +1,56 @@
 import {useEffect,useId,useRef,type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowLeft,ArrowRight,ChevronDown,ChevronRight,ClipboardCheck,Globe,Maximize2,Minimize2,MoreHorizontal,X} from 'lucide-react';
+import {ArrowLeft,ArrowRight,ChevronRight,ClipboardCheck,Maximize2,Minimize2,X} from 'lucide-react';
 import {chooseText,type HskLanguage,type HskResult} from '../data/hskAssessment';
 import {learnerAssessmentGuidance} from '../data/hskLearnerGuidance';
 import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
+import {PublicPageLinkActions} from './PublicLinkActions';
+import {PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenu} from './PublicHeaderMenu';
 
 export type ChatPresentation = 'page' | 'panel' | 'mobile' | 'expanded';
 
 type Translate = (zh:string,en:string,id:string)=>string;
 type HeaderAction = {label:string; onClick:()=>void; disabled?:boolean} | {label:string; href:string};
 
-function HeaderDisclosure({trigger,label,group,children}:{
-  trigger:ReactNode;label:string;group:string;children:(close:()=>void)=>ReactNode;
-}){
-  const disclosure=useRef<HTMLDetailsElement>(null);
-  const summary=useRef<HTMLElement>(null);
-  function close(returnFocus=false){
-    if(disclosure.current)disclosure.current.open=false;
-    if(returnFocus)summary.current?.focus();
-  }
-  return <details name={group} className="chat-header-disclosure" ref={disclosure}
-    onBlur={event=>{if(event.relatedTarget&&!event.currentTarget.contains(event.relatedTarget))close();}}
-    onKeyDown={event=>{
-      if(event.key==='Escape'&&disclosure.current?.open){event.preventDefault();close(true);}
-    }}>
-    <summary ref={summary} aria-label={label}>{trigger}</summary>
-    <div className="chat-header-popover" role="group" aria-label={label}>
-      {children(()=>close(true))}
-    </div>
-  </details>;
-}
-
-const languageNames: Record<HskLanguage,string>={zh:'中文',en:'English',id:'Bahasa Indonesia'};
-
-export function StandaloneChatHeader({lang,onLanguageChange,actions,name,assessment=false,inactive,presentation='page',enrollmentReturn,linkHubReturn,onDismiss,onExpand}:{
+export function StandaloneChatHeader({lang,onLanguageChange,actions,name,assessment=false,inactive,presentation='page',enrollmentReturn,linkHubReturn,bookmarkParams,onDismiss,onExpand}:{
   lang:HskLanguage;onLanguageChange:(language:HskLanguage)=>void;actions:HeaderAction[];name?:string;assessment?:boolean;inactive?:boolean;
   presentation?:ChatPresentation;enrollmentReturn?:{href:string;label:string;onReturn:()=>void};onDismiss?:()=>void;onExpand?:()=>void;
   linkHubReturn?:string;
+  bookmarkParams?:URLSearchParams;
 }){
-  const group=useId();
   const t:Translate=(zh,en,id)=>chooseText(lang,zh,en,id);
-  const languageLabel=t('页面语言','Page language','Bahasa halaman');
+  const hubReturnLabel = t('全部入口','All links','Semua tautan');
   const dismissLabel = presentation === 'expanded' ? t('收起咨询','Minimize consultation','Perkecil konsultasi') :
     t('关闭咨询','Close consultation','Tutup konsultasi');
-  return <header className="standalone-chat-header" inert={inactive}>
+  return <header className="public-page-header standalone-chat-header" inert={inactive}>
     <div className="chat-header-brand">
       {presentation==='page'&&!assessment&&(enrollmentReturn?
-        <Link className="chat-header-back chat-enrollment-back" to={enrollmentReturn.href} onClick={event=>{
+        <Link className="chat-header-back chat-enrollment-back" to={enrollmentReturn.href} aria-label={enrollmentReturn.label} onClick={event=>{
           if (!isPlainLinkClick(event)) return;
           event.preventDefault();
           enrollmentReturn.onReturn();
-        }}><ArrowLeft size={17} aria-hidden="true"/>{enrollmentReturn.label}</Link>:
-        linkHubReturn?<Link className="chat-header-back chat-enrollment-back" to={linkHubReturn}>
-          <ArrowLeft size={17} aria-hidden="true"/>{t('全部入口','All links','Semua tautan')}
+        }}><ArrowLeft size={17} aria-hidden="true"/><span>{enrollmentReturn.label}</span></Link>:
+        linkHubReturn?<Link className="chat-header-back chat-enrollment-back" to={linkHubReturn} aria-label={hubReturnLabel}>
+          <ArrowLeft size={17} aria-hidden="true"/><span>{hubReturnLabel}</span>
         </Link>:<Link className="chat-header-back" to="/" aria-label={t('返回首页','Return to home','Kembali ke beranda')}><ArrowLeft size={19} aria-hidden="true"/></Link>)}
-      {!assessment&&<img src="/uper-logo-mark.svg" width="22" height="26" alt=""/>}
-      <span>{assessment?t('HSK 分班参考测评','HSK placement assessment','Tes penempatan HSK'):
-        t('UPER 学习咨询','UPER Learning Advisory','Konsultasi Belajar UPER')}</span>
+      {assessment
+        ? <span className="chat-header-title">{t('HSK 分班参考测评','HSK placement assessment','Tes penempatan HSK')}</span>
+        : <><PublicHeaderBrand/><span className="chat-header-title chat-header-consult-title">
+            {t('学习咨询','Learning Advisory','Konsultasi Belajar')}
+          </span></>}
     </div>
-    <div className="chat-header-actions">
-      {!assessment&&<HeaderDisclosure group={group} label={languageLabel+', '+languageNames[lang]} trigger={<>
-          <Globe size={15} className="chat-header-globe"/><span>{lang==='id'?'Indonesia':languageNames[lang]}</span><ChevronDown size={14}/>
-        </>}>
-          {close=>(Object.keys(languageNames) as HskLanguage[]).map(language=><button key={language} type="button"
-            aria-pressed={lang===language} onClick={()=>{onLanguageChange(language);close();}}>{languageNames[language]}</button>)}
-        </HeaderDisclosure>}
-        {!assessment&&!!actions.length&&<HeaderDisclosure group={group} label={t('更多操作','More actions','Tindakan lainnya')} trigger={<MoreHorizontal size={20}/>}>
+    <div className="chat-header-actions public-header-tools flex">
+      {!assessment&&<PublicHeaderLanguage language={lang} onChange={onLanguageChange}/>}
+      {!assessment&&bookmarkParams&&<PublicPageLinkActions path="/chat" language={lang} params={bookmarkParams}
+        shareTitle={t('UPER 学习咨询','UPER Learning Advisory','Konsultasi Belajar UPER')} mobileOnly/>}
+      {!assessment&&!!actions.length&&<PublicHeaderMenu label={t('更多操作','More actions','Tindakan lainnya')}>
           {close=><>
             {name&&<p className="chat-header-profile">{name}</p>}
             {actions.map(action=>'href' in action
               ? <a key={action.label} href={action.href} target="_blank" rel="noopener noreferrer" onClick={close}>{action.label}</a>
               : <button key={action.label} type="button" disabled={action.disabled} onClick={()=>{close();action.onClick();}}>{action.label}</button>)}
           </>}
-        </HeaderDisclosure>}
+      </PublicHeaderMenu>}
       {presentation==='panel'&&onExpand&&<button type="button" className="chat-header-back" onClick={onExpand}
         aria-label={t('展开继续咨询','Continue in full chat','Lanjutkan di halaman chat')} title={t('展开','Expand','Perbesar')}><Maximize2 size={17}/></button>}
       {onDismiss&&<button type="button" className="chat-header-back" onClick={onDismiss} data-chat-host-dismiss

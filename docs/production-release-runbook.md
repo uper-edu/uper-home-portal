@@ -26,12 +26,12 @@
 
 | 顺序与检查项 | 访问路径 | 核对内容 |
 | --- | --- | --- |
-| [ ] 01 环境及域名 | **服务器** → 正式应用运行配置；**浏览器** → `https://uperedu.com/api/version` | 核对前后端制品、正式数据库和 `PORTAL_PUBLIC_ORIGIN=https://uperedu.com`。数据库和变量来源由运维从运行配置确认。正式应用使用经批准的内网 MySQL TCP 直连，`MYSQL_TLS_MODE=disabled`。本机 socket 和 TLS CA 配置不适用于这条正式应用连接。 |
+| [ ] 01 环境及域名 | **服务器** → 正式应用运行配置；**浏览器** → `https://uperedu.com/api/version` | 核对前后端制品、正式数据库和 `UPER_PORTAL_PUBLIC_ORIGIN=https://uperedu.com`。数据库和变量来源由运维从运行配置确认。正式应用使用经批准的内网 MySQL TCP 直连，`MYSQL_TLS_MODE=disabled`。本机 socket 和 TLS CA 配置不适用于这条正式应用连接。 |
 | [ ] 02 初始化及账号 | **系统管理** → **用户与权限** → **用户** → 点击姓名 → **生效权限**；返回 **用户与权限** → **角色** → 点击角色名称 | 核对预置角色、账号状态、实际权限范围和首次改密要求。升级前后对照正式账号和客户归属，保留现有配置及历史款项。 |
 | [ ] 03 课程定价 | **CRM** → **报名管理** → 标题右侧 **课程与班次设置** → **课程与报价** | 核对课程级别、标准学费、优惠范围和启用状态。 |
 | [ ] 04 班次与收款资料 | **CRM** → **报名管理** → **课程与班次设置** → **报名班次** → 打开目标班次的编辑抽屉，只读核对后关闭 | 核对班型、每周课表、WIB 时区、师资教材、应付金额、收款资料和发布状态。标准班 10 人足额到账确认开班，招生上限 15 人。小班 4 人足额到账确认开班，上限 6 人。 |
 | [ ] 05 报名期限 | **CRM** → **报名管理** → **课程与班次设置** → **报名规则** | 核对付款默认 24 小时、已付款转班邀请答复默认 48 小时，并抽查已生成订单和邀请仍沿用原截止时间。 |
-| [ ] 06 SMTP 账号及凭证 | **系统管理** → **邮件配置** → **发件账号** → 点击邮箱；**服务器** → 正式应用私有运行配置 | 页面核对账号是否启用、凭证状态、SMTP 主机、端口、TLS、发送频率和限额。单账号默认每日 450 封、200 个去重外部收件人，月限额按账号配置。新凭证使用环境密钥文件，迁移旧 SMTP 密文前保留其原解密密钥。生产模板中的密钥和传输方式均留空。旧队列、发信池和凭证核对通过并获发信授权后，设置 `PORTAL_ENROLLMENT_MAIL_TRANSPORT=smtp`。 |
+| [ ] 06 SMTP 账号及凭证 | **系统管理** → **邮件配置** → **发件账号** → 点击邮箱；**服务器** → 正式应用私有运行配置 | 页面核对账号是否启用、凭证状态、SMTP 主机、端口、TLS、发送频率和限额。单账号默认每日 450 封、200 个去重外部收件人，月限额按账号配置。新凭证使用环境密钥文件，迁移旧 SMTP 密文前保留其原解密密钥。生产模板中的密钥和传输方式均留空。旧队列、发信池和凭证核对通过并获发信授权后，设置 `UPER_PORTAL_ENROLLMENT_MAIL_TRANSPORT=smtp`。 |
 | [ ] 07 发信池及 Enrollment 选用 | **系统管理** → **邮件配置** → **发信池** → **Enrollment · Production**；再到 **CRM** → **报名管理** → **课程与班次设置** → **招生邮件** | 先核对池启用状态、成员、负载分配策略、账号及池限额。池日上限留空时不限。再核对招生实际选用的池、固定发件账号规则及发送记录。已有绑定由系统管理员核对。 |
 | [ ] 08 Lark | **CRM** → **销售运营** → **通知与审计** → **通知渠道**，再查看 **通知策略** 和 **接入检查**；**Lark 开发者控制台** → **CRM-Bot** → 核对已发布版本的回调；**服务器** → 私有运行配置 | 核对群 Webhook、个人绑定回调、群和个人发送模式、策略收件范围及管理层群。查看消息链接的访问权限。 |
 | [ ] 09 后台及 GA | **服务器** → 正式应用运行配置和进程状态；**Google Analytics** → **UPER Production** → 对应 Web 数据流 | 核对后台的实际运行状态、正式衡量 ID 和本次批准的外发状态。发布后按签核顺序恢复后台和外发。 |
@@ -39,29 +39,30 @@
 
 ## 3. 生产环境变量
 
-与 `.env.prod.example` 对照填写。私有值由运维通过正式应用的运行配置提供。
+与 `.env.prod.example` 对照填写。私有值由运维通过正式应用的运行配置提供。模板使用 `UPER_PORTAL_` 命名，运行入口仍可读取已有的 `PORTAL_` 变量。切换时同一项只配置一次，新旧值冲突会中止启动。旧版回退使用该版本对应的私有配置。
 
 ### 运行与站点
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `PORTAL_ENV` | 生产环境标识，须与构建包目标一致。 模板值为 `prod`。 |
-| `PORTAL_ENV_SOURCE` | 容器注入完整配置时用 `injected`。由启动器读取私有环境文件时可省略。 模板值为 `injected`。 |
-| `PORTAL_DEPLOYMENT` | 启用正式站部署校验。 模板值为 `production`。 |
-| `PORTAL_PRODUCTION_READY` | 正式配置和发布验收完成后才设为 `true`。 模板值为 `false`。 |
+| `UPER_PORTAL_ENV` | 生产环境标识，须与构建包目标一致。 模板值为 `prod`。 |
+| `UPER_PORTAL_ENV_SOURCE` | 容器注入完整配置时用 `injected`。由启动器读取私有环境文件时可省略。 模板值为 `injected`。 |
+| `UPER_PORTAL_DEPLOYMENT` | 启用正式站部署校验。 模板值为 `production`。 |
+| `UPER_PORTAL_PRODUCTION_READY` | 正式配置和发布验收完成后才设为 `true`。 模板值为 `false`。 |
 | `NODE_ENV` | Node.js 正式运行模式。 模板值为 `production`。 |
 | `APP_ENV` | 启用正式环境访问保护。 模板值为 `production`。 |
 | `PLATFORM_MODE` | 使用本站员工账号和本地身份模块。 模板值为 `local`。 |
 | `PORT` | 容器监听端口，须与反向代理一致。 模板值为 `8080`。 |
 | `APP_URL` | 正式站规范 HTTPS 地址。 模板值为 `https://uperedu.com`。 |
-| `PORTAL_PUBLIC_ORIGIN` | 生成招生邮件链接和校验 Lark 回调使用的正式 HTTPS 来源。 模板值为 `https://uperedu.com`。 |
+| `UPER_PORTAL_PUBLIC_ORIGIN` | 生成招生邮件链接和校验 Lark 回调使用的正式 HTTPS 来源。 模板值为 `https://uperedu.com`。 |
 | `TRIAL_FRONTEND_DIRECTORY` | 由应用提供静态站点时，填实际前端构建目录。 |
 
 ### MySQL
 
+应用默认使用 MySQL。显式设置其他数据库类型会中止启动。
+
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `PORTAL_DATABASE_DRIVER` | 后端使用 MySQL。 模板值为 `mysql`。 |
 | `TRIAL_DATASET` | 正式连接的校验标识，设置此值不会初始化或清除数据。 模板值为 `synthetic`。 |
 | `MYSQL_TRIAL_URL` | 正式数据库私有连接地址，使用经批准的生产库和内网端点。 |
 | `MYSQL_TLS_MODE` | 正式站启动校验要求经批准的内网 MySQL 直连模式 `disabled`。 模板值为 `disabled`。 |
@@ -73,35 +74,35 @@
 | `ACCESS_PUBLIC_ORIGIN` | 受保护访问使用的正式 HTTPS 主站来源。 模板值为 `https://uperedu.com`。 |
 | `ACCESS_ALLOWED_ORIGINS` | 正式站获准的 HTTPS 来源清单，须包含主站。多个来源以逗号分隔。 模板值为 `https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com`。 |
 | `ACCESS_TRUSTED_PROXIES` | 可信反向代理的具体私网 IP，多个地址以逗号分隔。 |
-| `PORTAL_WORKER_ENABLED` | 后台 worker 开关。省略时正式站默认开启。首次部署核验或维护时按发布步骤显式控制。 模板值为 `true`。 |
+| `UPER_PORTAL_WORKER_ENABLED` | 后台 worker 开关。省略时正式站默认开启。首次部署核验或维护时显式设为 `false`。 模板值为 `true`。 |
 
 ### 集成凭证与浏览器统计
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `PORTAL_CREDENTIAL_KEYRING_FILE` | 后台集成凭证使用的生产专用密钥环。迁移前提供容器内可读的绝对路径，文件权限为 `0600`，与数据库独立备份。 |
+| `UPER_PORTAL_CREDENTIAL_KEYRING_FILE` | 后台集成凭证使用的生产专用密钥环。迁移前提供容器内可读的绝对路径，文件权限为 `0600`，与数据库独立备份。 |
 | 浏览器 GA4 数据流 | 前端按构建目标读取 `src/data/analyticsEnvironments.json`，更改映射后重新构建。 |
 
 ### 报名与招生邮件
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `PORTAL_ENROLLMENT_SERVICE_ENABLED` | 默认关闭。权限和存量订单服务联调通过后启用，包括查单、补交凭证、核款和退款。 模板值为 `false`。 |
-| `PORTAL_ENROLLMENT_MAIL_TRANSPORT` | 默认留空。核对旧队列、发信池和凭证并获发信授权后才设置 `smtp`。 |
+| `UPER_PORTAL_ENROLLMENT_SERVICE_ENABLED` | 默认关闭。权限和存量订单服务联调通过后启用，包括查单、补交凭证、核款和退款。 模板值为 `false`。 |
+| `UPER_PORTAL_ENROLLMENT_MAIL_TRANSPORT` | 默认留空。核对旧队列、发信池和凭证并获发信授权后才设置 `smtp`。 |
 
 ### 按需配置
 
 | 变量 | 用途与配置时机 |
 | --- | --- |
-| `PORTAL_LOG_LEVEL` | 调整日志级别时填写。 模板值为 `info`。 |
+| `UPER_PORTAL_LOG_LEVEL` | 调整日志级别时填写。 模板值为 `info`。 |
 | `MYSQL_BIN_DIRECTORY` | 备份或恢复工具找不到 MySQL 客户端时填写。 |
 | `ACCESS_INITIAL_PASSWORD` | 首次初始化预置员工时，通过私有配置提供已约定的统一初始密码。首次登录须修改。已有账号的日常启动可省略。 |
-| `PORTAL_BOOTSTRAP_SECRET_FILE` | 部署层按需提供数据库连接和初始化配置的私有文件。 |
-| `PORTAL_CREDENTIAL_PROVIDER_CHECKS` | 仅获准调用真实供应商核验时启用。 模板值为 `false`。 |
+| `UPER_PORTAL_BOOTSTRAP_SECRET_FILE` | 部署层按需提供数据库连接和初始化配置的私有文件。 |
+| `UPER_PORTAL_CREDENTIAL_PROVIDER_CHECKS` | 仅获准调用真实供应商核验时启用。 模板值为 `false`。 |
 | `OPENAI_MODEL` | 后台尚无模型配置时可覆盖默认 OpenAI 模型。 模板值为 `gpt-6.2-sol`。 |
-| `PORTAL_COS_BUCKET` | 按需核对 COS 桶。 |
-| `PORTAL_COS_REGION` | 按需核对 COS 桶所在区域。 |
-| `PORTAL_COS_PREFIX` | 采用默认对象前缀 `cms/` 时可省略。 模板值为 `cms/`。 |
+| `UPER_PORTAL_COS_BUCKET` | 按需核对 COS 桶。 |
+| `UPER_PORTAL_COS_REGION` | 按需核对 COS 桶所在区域。 |
+| `UPER_PORTAL_COS_PREFIX` | 采用默认对象前缀 `cms/` 时可省略。 模板值为 `cms/`。 |
 
 ### 旧版升级兼容
 
@@ -116,7 +117,7 @@
 | COS | `PORTAL_COS_SECRET_ID`、`PORTAL_COS_SECRET_KEY`、`PORTAL_COS_SECURITY_TOKEN` | 确认后台凭证接管同一目标，重启后验证 CMS 媒体读取和所需操作，并确认回退后移除。会话令牌仅用于临时凭证。 |
 | 旧 Lark 发送模式 | `PORTAL_NOTIFICATION_MODE`、`LARK_PERSONAL_DELIVERY_ENABLED` | 只在沿用尚未迁移模式的旧生产库时保留原值。首次升级后，核对 CRM → 销售运营 → 通知与审计 → 通知渠道，确认群及个人模式均已迁移后移除。 |
 
-升级到移除账号操作密钥的版本时，从私有运行配置和 `PORTAL_BOOTSTRAP_SECRET_FILE` 指向的文件中清理旧的 `ACCESS_OPERATION_KEY` 项。启动仍核对域名、可信代理、数据库和生产就绪。两位系统管理员通过后台互相重置密码。
+升级到移除账号操作密钥的版本时，从私有运行配置和 `UPER_PORTAL_BOOTSTRAP_SECRET_FILE` 指向的文件中清理旧的 `ACCESS_OPERATION_KEY` 项。启动仍核对域名、可信代理、数据库和生产就绪。两位系统管理员通过后台互相重置密码。
 
 ## 4. 软件系统默认设置
 

@@ -9,7 +9,7 @@ import {visitorScope} from '../services/visitorScope';
 import {PageMetadata} from './PageMetadata';
 import { safeHskResult } from "../data/hskReportHistory";
 import {draft,type Delivery} from "../services/chatDelivery";
-import {chatFetch, registerContact, finishChat, startAnotherVisitor, sharedChatDrafts} from '../services/portalChat';
+import {chatFetch, chatPromotionParams, registerContact, finishChat, startAnotherVisitor, sharedChatDrafts} from '../services/portalChat';
 import {announceChatChange,useSharedChat} from '../hooks/useSharedChat';
 import {useChatInputDraft} from '../hooks/useChatInputDraft';
 import {trackChatbotInteraction} from '../utils/analytics';
@@ -434,6 +434,7 @@ export default function ChatWorkspace({
   const recommendationPage = fromEnrollment?.url ?? (linkHubPath && promotionIdentity(entryParams).tagged ? pathname+search : undefined);
   const header = <StandaloneChatHeader lang={lang} onLanguageChange={changeLanguage} actions={thread ? headerActions : []}
     presentation={presentation} enrollmentReturn={backToEnrollment} linkHubReturn={linkHubPath} onDismiss={onDismiss} onExpand={onExpand && thread ? ()=>onExpand(thread,lang) : undefined}
+    bookmarkParams={showMetadata?(promotionIdentity(entryParams).tagged?entryParams:chatPromotionParams(thread,search)):undefined}
     name={profile?.fullName} assessment={isTakingAssessment && !!thread} inactive={showOnboardingModal}/>;
   if (!thread) return <div className="standalone-chat-page font-sans" data-chat-presentation={presentation}>
     {showMetadata&&<PageMetadata lang={lang}/>}

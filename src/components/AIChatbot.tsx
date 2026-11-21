@@ -1,7 +1,6 @@
 import {lazy, Suspense, useLayoutEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
-import {Bot, GraduationCap, Sparkles, X} from 'lucide-react';
-import {motion} from 'motion/react';
+import {MessageCircleMore, X} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 import {chooseText, type HskLanguage} from '../data/hskAssessment';
 import {chatPromotionParams, type ChatOrigin} from '../services/portalChat';
@@ -21,7 +20,7 @@ function subscribeViewport(notify: () => void) {
 }
 
 export default function AIChatbot({expanded,returnScroll}: {expanded: boolean; returnScroll?: number}) {
-  const {t, i18n} = useTranslation();
+  const {i18n} = useTranslation();
   const lang = normalizeSiteLanguage(i18n.language);
   const current = useLocation();
   const navigate = useNavigate();
@@ -37,6 +36,9 @@ export default function AIChatbot({expanded,returnScroll}: {expanded: boolean; r
   const visible = open || expanded;
   const modal = mobile || expanded;
   const label = chooseText(lang,'UPER 学习咨询','UPER Learning Advisory','Konsultasi Belajar UPER');
+  const launcherLabel = visible
+    ? chooseText(lang,'关闭咨询','Close chat','Tutup konsultasi')
+    : chooseText(lang,'课程咨询','Course advice','Konsultasi kursus');
 
   useLayoutEffect(() => {
     const node = dialog.current;
@@ -95,31 +97,19 @@ export default function AIChatbot({expanded,returnScroll}: {expanded: boolean; r
   }
 
   return <>
-    <div className="fixed bottom-24 right-6 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-3 select-none">
-      <motion.button type="button" ref={launcher} id="uper-ai-fab"
-        whileHover={{scale:1.08}} whileTap={{scale:.95}} onClick={toggle}
-        aria-label={t('faq.toggleAiService')} aria-expanded={visible} aria-controls="uper-ai-chat-window"
-        className={'relative w-14 h-14 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-all duration-300 group '+
-          (visible ? 'bg-slate-900 text-white hover:bg-slate-800' :
-            'bg-gradient-to-tr from-primary-600 to-primary-500 text-white hover:shadow-primary-600/45 hover:shadow-xl')}>
-        {visible ? <X className="w-5.5 h-5.5" aria-hidden="true"/> :
-          <span className="relative w-full h-full flex items-center justify-center" aria-hidden="true">
-            <span className="absolute inset-1.5 border border-dashed border-white/25 rounded-full animate-[spin_15s_linear_infinite] group-hover:border-white/50"/>
-            <Sparkles className="absolute top-2.5 right-2.5 w-3 h-3 text-amber-300 opacity-90"/>
-            <Bot className="w-6.5 h-6.5 text-white drop-shadow-sm group-hover:-translate-y-0.5 transition-transform duration-300"/>
-            <GraduationCap className="absolute top-2.5 left-2.5 w-4 h-4 text-white/90 -rotate-[20deg]"/>
-            <span className="absolute top-0 right-0 flex size-3">
-              <span className="animate-ping absolute size-full rounded-full bg-amber-400 opacity-75"/>
-              <span className="relative size-3 rounded-full bg-amber-500"/>
-            </span>
-          </span>}
-      </motion.button>
-    </div>
+    <button type="button" ref={launcher} id="uper-ai-fab" className="site-chat-launcher" onClick={toggle}
+      aria-expanded={visible} aria-controls="uper-ai-chat-window">
+      {visible ? <X size={19} aria-hidden="true"/> : <MessageCircleMore size={19} aria-hidden="true"/>}
+      <span>{launcherLabel}</span>
+    </button>
     <dialog ref={dialog} className="site-chat-host" id="uper-ai-chat-window" aria-label={label}
       data-fullscreen={modal || undefined}
       onCancel={event=>{event.preventDefault();dismiss();}}
       onKeyDown={event=>{
-        if(event.key==='Escape'&&!modal&&!event.defaultPrevented){event.preventDefault();dismiss();}
+        const nestedDialog=(event.target as HTMLElement).closest('dialog[open]');
+        if(event.key==='Escape'&&!modal&&!event.defaultPrevented&&nestedDialog===event.currentTarget){
+          event.preventDefault();dismiss();
+        }
       }}>
       {started&&<Suspense fallback={<p className="p-4" role="status">{chooseText(lang,'正在打开咨询…','Opening consultation…','Membuka konsultasi…')}</p>}>
         <ChatWorkspace presentation={expanded?'expanded':mobile?'mobile':'panel'} initialLanguage={lang}
