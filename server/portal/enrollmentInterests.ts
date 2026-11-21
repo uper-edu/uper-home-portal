@@ -101,12 +101,13 @@ export async function matchPublishedEnrollmentClass(c: Client, classId: string) 
   }
 }
 
-export function startEnrollmentVacancySimulation(transact:Context['transact'],lockClass:Context['lockClass']) {
+export function startEnrollmentVacancySimulation(transact:Context['transact'],lockClass:Context['lockClass'],enabled=async()=>true) {
   let busy=false;
   const tick=async()=>{
     if (busy) return;
     busy=true;
     try {
+      if(!await enabled())return;
       const candidates=await transact(async c=>(await c.query(`SELECT e.id AS class_id FROM enrollment_classes e
         LEFT JOIN enrollment_vacancy_cycles v ON v.class_id=e.id
         WHERE (e.state='published' AND EXISTS (

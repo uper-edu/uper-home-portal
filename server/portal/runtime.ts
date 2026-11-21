@@ -3,7 +3,7 @@ import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
 import {operationContext} from './operationContext.ts';
 import {mountIntegrationCredentials} from './integrationCredentialAdmin.ts';
 import {groupCredential,larkApplication} from './integrationCredentialTargets.ts';
-import {mountEnrollmentMail,startEnrollmentMail} from './enrollmentMail.ts';
+import {initializeEnrollmentMailDelivery,mountEnrollmentMail,startEnrollmentMail} from './enrollmentMail.ts';
 import {promotionEntryPoint,promotionEvidenceKeys} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import { mountEnrollmentManagement } from './enrollmentManagement.ts';
@@ -381,6 +381,7 @@ export async function mountPortal(app: Express) {
     return;
   }
   await initializePortalDefaults();
+  await initializeEnrollmentMailDelivery();
   mountCourseRoutes(app,{wrap,staff});
   app.use(accessRestoreGate);
   mountEnrollmentCatalog(app, { wrap, staff });

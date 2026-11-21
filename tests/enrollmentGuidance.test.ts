@@ -630,15 +630,16 @@ test('group overview answers size and tuition without selecting a particular bat
 test('a browse intent that asks to apply verifies intake before giving application, waitlist, or preference links',async()=>{
   const {chatEnrollmentAction,enrollmentReply}=await import('../server/portal/chatEnrollment');
   const keys=['PORTAL_ENV','TRIAL_DATASET','PORTAL_LOCAL_CUTOVER','MYSQL_TRIAL_SOCKET',
-    'PORTAL_DEPLOYMENT','PORTAL_ENROLLMENT_MAIL_TRANSPORT','PORTAL_ENROLLMENT_SIMULATION_MAILBOX'] as const;
+    'PORTAL_DEPLOYMENT','PORTAL_ENROLLMENT_SIMULATION_MAILBOX'] as const;
   const saved=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
   Object.assign(process.env,{PORTAL_ENV:'dev',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',
     MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock',PORTAL_DEPLOYMENT:'',
-    PORTAL_ENROLLMENT_MAIL_TRANSPORT:'simulation',PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/tmp/chat-apply-fixture'});
+    PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/tmp/chat-apply-fixture'});
   const broad={kind:'browse',question:'apply'};
   const scoped={...broad,level:'HSK 1',period:'weekend',format:'standard'};
   const run=async(intent:unknown,rows:PublicEnrollmentClass[])=>{
     const result=await chatEnrollmentAction({query:async(sql)=>{
+      if(sql.includes('enrollment_mail_configuration'))return {rows:[{revision:1,config:{accounts:[],delivery:{mode:'simulation',generation:'fixture'}}}]};
       assert.match(sql,/FROM enrollment_classes e/);
       return {rows:rows.map(({id,availability,...data})=>({id,data:{...data,capacity:15},opened:0,seats:availability==='full'?15:0}))};
     }},intent,false,false);
@@ -661,9 +662,8 @@ test('a browse intent that asks to apply verifies intake before giving applicati
     const failure=await chatEnrollmentAction({query:async()=>{throw Error('query failed');}},broad,false,false);
     assert.equal(failure?.kind,'unavailable');
     assert.match(enrollmentReply(failure!,'zh'),/^暂时无法确认现在能否报名/);
-    process.env.PORTAL_ENROLLMENT_MAIL_TRANSPORT='disabled';
     const paused=await chatEnrollmentAction({query:async(sql)=>{
-      assert.match(sql,/enrollment_bank/);return {rows:[]};
+      assert.match(sql,/enrollment_bank|enrollment_mail_configuration/);return {rows:[]};
     }},broad,false,false);
     assert.equal(paused?.kind,'paused');
     assert.deepEqual(paused?.readinessReasons,['bank_required','mail_required']);

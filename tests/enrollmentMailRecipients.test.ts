@@ -45,7 +45,9 @@ test('local and test SMTP route a new email to the learner address and skip olde
       }};
       const result=await operationContext.run(client,async()=>{
         await orderNotice(client,'payment_confirmed','order-fixture');
-        assert.equal((queuedPayload as {smtpRecipientPolicy?:string})?.smtpRecipientPolicy,smtpRecipientPolicy);
+        const payload=queuedPayload as {smtpRecipientPolicy?:string;delivery?:{recipientPolicy?:string}};
+        assert.equal(payload.delivery?.recipientPolicy,smtpRecipientPolicy);
+        assert.equal(payload.smtpRecipientPolicy,undefined);
         assert.equal((await dispatchEnrollmentMail('old',learner,mail,{queueKey:'old'})).state,'waiting');
         assert.deepEqual(await dispatchEnrollmentMail('invalid','a@example.invalid,b@example.invalid',mail),
           {state:'rejected',reason:'invalid_recipient'});

@@ -23,11 +23,11 @@ test('normal local startup serves existing orders without enabling mail simulati
 
 test('local mail simulation is independent of the CRM worker',()=>{
   const simulation={...local,PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/tmp/test-mailbox'};
-  assert.deepEqual(enrollmentServicePolicy(simulation),{simulation:true,servicing:true,maintenance:false});
-  assert.deepEqual(enrollmentServicePolicy({...simulation,PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',PORTAL_WORKER_ENABLED:'false'}),
+  assert.deepEqual(enrollmentServicePolicy(simulation,'simulation'),{simulation:true,servicing:true,maintenance:false});
+  assert.deepEqual(enrollmentServicePolicy({...simulation,PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',PORTAL_WORKER_ENABLED:'false'},'simulation'),
     {simulation:true,servicing:true,maintenance:true});
-  for(const transport of ['smtp','disabled']){
-    assert.deepEqual(enrollmentServicePolicy({...simulation,PORTAL_ENROLLMENT_MAIL_TRANSPORT:transport}),
+  for(const transport of ['smtp','disabled'] as const){
+    assert.deepEqual(enrollmentServicePolicy(simulation,transport),
       {simulation:false,servicing:true,maintenance:false});
   }
 });
@@ -35,16 +35,23 @@ test('local mail simulation is independent of the CRM worker',()=>{
 test('the company mailbox is opt-in and tied to the isolated test database',()=>{
   const testEnv={PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial',TRIAL_DATASET:'synthetic',
     PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',PORTAL_WORKER_ENABLED:'false',
-    PORTAL_ENROLLMENT_MAIL_TRANSPORT:'simulation',PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/private/simulated-mail',
+    PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/private/simulated-mail',
     PORTAL_ENROLLMENT_SIMULATION_DATABASE:'uper_trial_enrollment_review',
     MYSQL_TRIAL_URL:'mysql://fixture:fixture@mysql/uper_trial_enrollment_review'};
-  assert.deepEqual(enrollmentServicePolicy(testEnv),{simulation:true,servicing:true,maintenance:false});
+  assert.deepEqual(enrollmentServicePolicy(testEnv,'simulation'),{simulation:true,servicing:true,maintenance:false});
+  assert.deepEqual(enrollmentServicePolicy(testEnv,'disabled'),{simulation:false,servicing:true,maintenance:false});
   for(const override of [{PORTAL_ENV:'prod'},{PORTAL_DEPLOYMENT:'remote-dev'},
-    {TRIAL_DATASET:'local-crm'},{PORTAL_WORKER_ENABLED:'true'},{PORTAL_ENROLLMENT_MAIL_TRANSPORT:''},
+    {TRIAL_DATASET:'local-crm'},{PORTAL_WORKER_ENABLED:'true'},
     {PORTAL_ENROLLMENT_SIMULATION_DATABASE:''},{MYSQL_TRIAL_URL:'mysql://mysql/uper_trial_other'},
     {PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'relative'}]){
-    assert.equal(enrollmentServicePolicy({...testEnv,...override}).simulation,false);
+    assert.equal(enrollmentServicePolicy({...testEnv,...override},'simulation').simulation,false);
   }
+});
+
+test('production cannot use the private simulation mailbox',()=>{
+  const production={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',
+    PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/private/simulated-mail'};
+  assert.deepEqual(enrollmentServicePolicy(production,'simulation'),{simulation:false,servicing:true,maintenance:true});
 });
 
 test('a saved but partially replaced test bank is still ineligible for live payments',()=>{
@@ -61,6 +68,7 @@ test('live intake requires bank and OTP readiness while serving existing orders'
   const {enrollmentReadiness}=await import('../server/portal/enrollmentApplication.ts');
   const bank={name:'Bank',accountName:'UPER',accountNumber:'12345678'};
   const client=(configured:boolean)=>({query:async(sql:string)=>{
+    if(sql.includes('enrollment_mail_configuration'))return {rows:[]};
     assert.match(sql,/enrollment_bank/);
     return {rows:configured?[{value:{bank,revision:1}}]:[]};
   }});

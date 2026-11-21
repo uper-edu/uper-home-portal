@@ -17,7 +17,9 @@ import {enrollmentMailPreset} from './enrollmentMailPresets.ts';
 import {mailPoolQuotaReason,selectMailAccount,type Usage} from './enrollmentMailRouting.ts';
 import {enrollmentInterestStillAvailable} from './enrollmentInterestDelivery.ts';
 import {smtpRecipientPolicy} from './enrollmentMailRecipientPolicy.ts';
+import {isEnrollmentMailMode,matchesEnrollmentMailDelivery,type EnrollmentMailMode,type EnrollmentMailDelivery} from '../../src/utils/enrollmentMailMode.ts';
 import {enrollmentServicePolicy} from './enrollmentRuntime.ts';
+import type {Employee} from './identity.ts';
 
 type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
 type RouteReason='paused'|'invalid_recipient'|'shared_window'|'pool_daily_limit'|'pool_daily_recipient_limit'|'binding_pending'|'bound_account'|'no_capacity'|MailPoolStrategy|'existing'|'interest_no_longer_available';
@@ -28,13 +30,14 @@ const timezone=()=>process.env.PORTAL_ENROLLMENT_MAIL_TIMEZONE||'Asia/Jakarta';
 
 const transact=<T>(work:(c:Client)=>Promise<T>):Promise<T>=>tx(work,{isolation:'READ COMMITTED'});
 
-export function enrollmentMailMode(){
-  if(process.env.PORTAL_ENROLLMENT_MAIL_TRANSPORT==='smtp'){
-    if((environment()==='prod'&&process.env.PORTAL_DEPLOYMENT==='production'||environment()==='test'||isLocalEnrollmentRuntime())&&
-      portalPublicOrigin())return 'smtp';
-    return 'disabled';
-  }
-  return enrollmentSimulation()?'simulation':'disabled';
+const smtpDeployment = () => (environment()==='prod'&&process.env.PORTAL_DEPLOYMENT==='production')||
+  environment()==='test'||isLocalEnrollmentRuntime();
+
+// Import the previous deployment setting once, before accepting requests.
+function legacyDeliveryMode():EnrollmentMailMode {
+  const legacy=process.env.UPER_PORTAL_ENROLLMENT_MAIL_TRANSPORT??process.env.PORTAL_ENROLLMENT_MAIL_TRANSPORT;
+  if(legacy==='smtp')return smtpDeployment()&&portalPublicOrigin()?'smtp':'disabled';
+  return (legacy==='simulation'||!legacy&&isLocalEnrollmentRuntime())&&enrollmentSimulation()?'simulation':'disabled';
 }
 function timeKeys(now:number){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:timezone(),year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
@@ -51,12 +54,28 @@ async function configuration(c:Client,lock=false){
     'SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1 FOR UPDATE':
     'SELECT revision,config FROM enrollment_mail_configuration WHERE environment=:p1',[env])).rows[0];
   const revision=Number(row?.revision??0);
-  return {revision,config:revision===0?preset:enrollmentMailPreset(env,row.config)};
-}
-export async function enrollmentMailEnabled(c:Client){
-  return enrollmentMailMode()!=='disabled'&&(await configuration(c)).config.enabled;
+  const candidate=row?.config?.delivery;
+  const delivery:EnrollmentMailDelivery=isEnrollmentMailMode(candidate?.mode)&&typeof candidate?.generation==='string'
+    ?candidate:{mode:'disabled',generation:''};
+  return {revision,delivery,storedConfig:row?.config,config:revision===0?preset:enrollmentMailPreset(env,row.config)};
 }
 
+export async function initializeEnrollmentMailDelivery(){
+  await transact(async c=>{
+    const {storedConfig,delivery}=await configuration(c,true);
+    if(delivery.generation)return;
+    await c.query('UPDATE enrollment_mail_configuration SET config=:p2 WHERE environment=:p1',
+      [environment(),{...storedConfig,delivery:{mode:legacyDeliveryMode(),generation:randomUUID()}}]);
+  });
+}
+
+export async function enrollmentMailDelivery(c:Client=pool){
+  return (await configuration(c)).delivery;
+}
+
+export function enrollmentMailbox(mode:EnrollmentMailMode){
+  return mode==='simulation'?enrollmentSimulation():null;
+}
 export async function configuredSmtpAccount(c:Client,address:string,lock=false){
   const {config}=await configuration(c,lock);
   return config.accounts.find(account=>account.address===address);
@@ -68,15 +87,26 @@ function smtpPassword(account:StoredMailAccount,c?:Client){
   },c).then(value=>value?.password);
 }
 
-export async function enrollmentSmtpReady(c:Client){
-  if(enrollmentMailMode()!=='smtp'||process.env.PORTAL_WORKER_ENABLED==='false')return false;
-  const {config,revision}=await configuration(c);
-  const members=new Set(mailPoolMembers(config));
-  if(!revision||!config.enabled)return false;
-  for(const account of config.accounts){
-    if(account.enabled&&members.has(account.address)&&mailSmtpEndpoint(account)&&await smtpPassword(account,c))return true;
+async function deliveryReadiness(c:Client,{config,delivery,revision}:Awaited<ReturnType<typeof configuration>>){
+  if(delivery.mode==='disabled')return ['delivery_disabled'];
+  if(delivery.mode==='simulation')return enrollmentMailbox(delivery.mode)?[]:['simulation_mailbox_required'];
+  const reasons:string[]=[];
+  if(!smtpDeployment()||!portalPublicOrigin())reasons.push('smtp_origin_required');
+  if(process.env.PORTAL_WORKER_ENABLED==='false')reasons.push('mail_worker_required');
+  if(!revision||!config.enabled)reasons.push('mail_pool_required');
+  else {
+    const members=new Set(mailPoolMembers(config));
+    let sender=false;
+    for(const account of config.accounts){
+      if(account.enabled&&members.has(account.address)&&mailSmtpEndpoint(account)&&await smtpPassword(account,c)){sender=true;break;}
+    }
+    if(!sender)reasons.push('mail_sender_required');
   }
-  return false;
+  return reasons;
+}
+export async function enrollmentSmtpReady(c:Client){
+  const saved=await configuration(c);
+  return saved.delivery.mode==='smtp'&&!(await deliveryReadiness(c,saved)).length;
 }
 async function counters(c:Client,now:number,recipient=''){
   const {day,month}=timeKeys(now);
@@ -93,15 +123,16 @@ async function counters(c:Client,now:number,recipient=''){
 }
 const isExternal=(recipient:string)=>!(process.env.PORTAL_ENROLLMENT_MAIL_INTERNAL_DOMAINS??'')
   .split(',').map(v=>v.trim().toLowerCase()).includes(recipient.split('@').at(-1)??'');
-async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set<string>,queueKey?:string){
+async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set<string>,queueKey?:string,expected?:EnrollmentMailDelivery){
   return transact(async c=>{
-    const {config}=await configuration(c,true);
+    const {config,delivery}=await configuration(c,true);
     const [queued]=queueKey?(await c.query(`SELECT kind,subject_id,payload FROM enrollment_notification_receipts
       WHERE event_key=:p1 AND state='queued'`,[queueKey])).rows:[];
-    const mode=enrollmentMailMode();
-    if(queueKey&&(!queued||(queued.payload?.smtpRecipientPolicy??'')!==(mode==='smtp'?smtpRecipientPolicy:'')))
+    if(queueKey&&(!queued||!matchesEnrollmentMailDelivery(queued.payload?.delivery,delivery)||
+      (queued.payload?.delivery?.recipientPolicy??'')!==(delivery.mode==='smtp'?smtpRecipientPolicy:'')))
       return {reason:'paused'} as const;
-    if(!config.enabled||mode==='disabled')return {reason:'paused'} as const;
+    if(expected&&!matchesEnrollmentMailDelivery(expected,delivery))return {reason:'paused'} as const;
+    if(!config.enabled||delivery.mode==='disabled')return {reason:'paused'} as const;
     const prior=(await c.query(`SELECT state,account,started_ms FROM enrollment_mail_attempts
       WHERE environment=:p1 AND event_key=:p2 AND state<>'rejected' LIMIT 1`,[environment(),event])).rows[0];
     if(prior){
@@ -109,7 +140,7 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
       return {prior:prior.state==='reserved'?'unknown':prior.state,previousAccount:prior.account} as const;
     }
     if(queued&&['waitlist_vacancy','demand_match'].includes(queued.kind)){
-      const policy=enrollmentServicePolicy();
+      const policy=enrollmentServicePolicy(process.env,delivery.mode);
       if(!policy.servicing||!policy.simulation&&!hasConfiguredEnrollmentBank(await readEnrollmentBank(c)))return {reason:'paused'} as const;
       if(!await enrollmentInterestStillAvailable(c,event,recipient,queued))return {reason:'interest_no_longer_available'} as const;
     }
@@ -138,7 +169,7 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
     const candidates:StoredMailAccount[]=[];
     for(const account of config.accounts){
       if(!account.enabled||!members.has(account.address)||bound&&bound!==account.address||excluded.has(account.address))continue;
-      if(enrollmentMailMode()==='simulation'||mailSmtpEndpoint(account)&&await smtpPassword(account,c))candidates.push(account);
+      if(delivery.mode==='simulation'||mailSmtpEndpoint(account)&&await smtpPassword(account,c))candidates.push(account);
     }
     const eligible=new Set<string>();
     for(const window of new Set(candidates.map(a=>a.windowSeconds))){
@@ -155,12 +186,13 @@ async function reserve(event:string,recipient:string,urgent:boolean,excluded:Set
     await c.query(`INSERT INTO enrollment_mail_attempts(id,environment,event_key,account,recipient,day_key,month_key,started_ms,is_external,pool_id,state)
       VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,:p10,'reserved')`,
       [id,environment(),event,account.address,recipient,day,month,now,external,selected?.id??null]);
-    return {id,account,bound,sticky:config.sticky,reason:bound?'bound_account':selected?.strategy??'balanced'} as const;
+    return {id,account,delivery,bound,sticky:config.sticky,reason:bound?'bound_account':selected?.strategy??'balanced'} as const;
   });
 }
 
-async function deliver(account:StoredMailAccount,id:string,recipient:string,mail:Mail,code?:string):Promise<State|'address_rejected'>{
-  const local=enrollmentMailMode()==='simulation'?enrollmentSimulation():null;
+async function deliver(account:StoredMailAccount,id:string,recipient:string,mail:Mail,delivery:EnrollmentMailDelivery,code?:string):Promise<State|'address_rejected'>{
+  if(!matchesEnrollmentMailDelivery(delivery,await enrollmentMailDelivery()))return 'rejected';
+  const local=enrollmentMailbox(delivery.mode);
   if(local){
     try{
       if(code!==undefined)await local.deliver(id,recipient,code,mail);
@@ -169,7 +201,7 @@ async function deliver(account:StoredMailAccount,id:string,recipient:string,mail
     }catch{return 'unknown';}
   }
   const options=smtpTransportOptions(account);
-  if(!options||enrollmentMailMode()!=='smtp')return 'rejected';
+  if(!options||delivery.mode!=='smtp'||!smtpDeployment())return 'rejected';
   const current=await configuredSmtpAccount(pool,account.address);
   const secret=current?.enabled&&smtpCredentialTarget(current)===smtpCredentialTarget(account)?await smtpPassword(current,pool):undefined;
   if(!secret)return 'rejected';
@@ -182,6 +214,7 @@ async function deliver(account:StoredMailAccount,id:string,recipient:string,mail
       ...options,
       auth:{user:account.address,pass:secret},connectionTimeout:10_000,greetingTimeout:10_000,socketTimeout:20_000,
     });
+    if(!matchesEnrollmentMailDelivery(delivery,await enrollmentMailDelivery()))return 'rejected';
     const result=await transport.sendMail({from:{name:'UPER Admissions',address:account.address},to:recipient,
       subject:mail.subject,
       text:mail.text.replace(/(^|\s)(?:http:\/\/localhost:3000)?(\/enrollment(?=[/?"\s]|$))/g,(_match,space,link)=>space+origin+link),
@@ -244,7 +277,7 @@ export async function reconcileLegacyEnrollmentMail(eventKeys:readonly string[],
           if(!preview)await c.query(`INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)
             VALUES(:p1,'email','payment_confirmed',:p2,:p3,'queued',UTC_TIMESTAMP(6))`,
           [replacement,row.subject_id,
-            {...content,...renderEnrollmentEmail('payment_confirmed',content),environment:environment(),smtpRecipientPolicy:row.payload?.smtpRecipientPolicy}]);
+            {...content,...renderEnrollmentEmail('payment_confirmed',content),environment:environment(),delivery:row.payload?.delivery}]);
           plannedOrders.add(row.subject_id);
           decisions[key]='replace';
           result.replaced++;
@@ -258,22 +291,23 @@ export async function reconcileLegacyEnrollmentMail(eventKeys:readonly string[],
   });
 }
 
-export async function dispatchEnrollmentMail(event:string,recipient:string,mail:Mail,{code,deliveryId=mailDeliveryId(event),queueKey}:{
-  code?:string;deliveryId?:string;queueKey?:string;
+export async function dispatchEnrollmentMail(event:string,recipient:string,mail:Mail,{code,deliveryId=mailDeliveryId(event),queueKey,expected}:{
+  code?:string;deliveryId?:string;queueKey?:string;expected?:EnrollmentMailDelivery;
 }={}):Promise<{state:State;account?:string;reason:RouteReason}>{
   if(!validContactEmail(recipient))return {state:'rejected',reason:'invalid_recipient'};
   const excluded=new Set<string>();
   let lastRejected:string|undefined;
   for(;;){
-    const plan=await reserve(event,recipient,code!==undefined,excluded,queueKey);
+    const plan=await reserve(event,recipient,code!==undefined,excluded,queueKey,expected);
     if(!('id' in plan)&&'reason' in plan){
       if(plan.reason==='interest_no_longer_available')return {state:'cancelled',reason:plan.reason};
       if(lastRejected)return {state:'rejected',account:lastRejected,reason:plan.reason};
       return {state:'waiting',account:'waitingAccount' in plan?plan.waitingAccount:undefined,reason:plan.reason};
     }
     if('prior' in plan)return {state:plan.prior,account:plan.previousAccount,reason:'existing'};
-    const {id,account,bound,sticky,reason}=plan;
-    const outcome=await deliver(account,deliveryId,recipient,mail,code);
+    const {id,account,delivery,bound,sticky,reason}=plan;
+    expected=delivery;
+    const outcome=await deliver(account,deliveryId,recipient,mail,delivery,code);
     const state=outcome==='address_rejected'?'rejected':outcome;
     await transact(async c=>{
       await configuration(c,true);
@@ -350,7 +384,7 @@ async function mailOperation<T>(c:Client,actor:string,requestId:unknown,action:s
 }
 
 export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:Request,r:Response)=>Promise<unknown>)=>any;
-    staff:(q:Request,permission:string)=>Promise<{id:string;permissions:string[]}>}){
+    staff:(q:Request,permission:string)=>Promise<Pick<Employee,'id'|'roles'|'permissions'>>}){
   const path='/api/admin/enrollment-mail';
   const authorize=async(q:Request)=>{
     const user=await staff(q,'access.read');
@@ -359,14 +393,14 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
     return user;
   };
   const view=async()=>{
-    const {config,revision}=await configuration(pool);
+    const {config,revision,delivery}=await configuration(pool);
     const {usage,day}=await counters(pool,Date.now());
     const {rows:poolCounts}=await pool.query("SELECT pool_id,COUNT(*) AS total,COUNT(DISTINCT LOWER(TRIM(recipient))) AS recipients FROM enrollment_mail_attempts WHERE environment=:p1 AND day_key=:p2 AND pool_id IS NOT NULL AND state<>'rejected' GROUP BY pool_id",
       [environment(),day]);
     const poolUsage=Object.fromEntries(poolCounts.map(row=>[row.pool_id,Number(row.total)]));
     const poolRecipientUsage=Object.fromEntries(poolCounts.map(row=>[row.pool_id,Number(row.recipients)]));
     const accounts=config.accounts.map(({encryptedPassword,secret,...account})=>account);
-    return {config:{...config,accounts},revision,environment:environment(),mode:enrollmentMailMode(),usage,poolUsage,poolRecipientUsage,timezone:timezone(),
+    return {config:{...config,accounts},revision,environment:environment(),mode:delivery.mode,usage,poolUsage,poolRecipientUsage,timezone:timezone(),
       managedCredentials:!!process.env.PORTAL_CREDENTIAL_KEYRING_FILE,
       configured:await Promise.all(config.accounts.map(async a=>({address:a.address,configured:!!await smtpPassword(a,pool)})))};
   };
@@ -415,7 +449,7 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
         const config=activeEnrollmentMailConfig({...edited,accounts,sticky:before.config.sticky});
         const revision=before.revision+1;
         await c.query('UPDATE enrollment_mail_configuration SET config=:p2,revision=revision+1 WHERE environment=:p1',
-          [environment(),config]);
+          [environment(),{...config,delivery:before.delivery}]);
         await c.query(`INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.configured',:p2)`,
           [actor.id,{environment:environment(),revision,enabled:config.enabled,sticky:config.sticky,accounts:config.accounts.length,
             credentialChange:credentialReceipt&&{address:credentialReceipt.address,action:credentialReceipt.change}}]);
@@ -450,31 +484,37 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
   app.put('/api/crm/enrollment/mail/pool',wrap(async(q,r)=>{
     const actor=await staff(q,'crm.operations.manage');
     if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
-    const selectedPool=q.body?.pool,sticky=q.body?.sticky;
+    const selectedPool=q.body?.pool,sticky=q.body?.sticky,mode=q.body?.mode;
+    if(mode!==undefined){
+      if(!isAiAdministrator(actor))invalid('enrollment_mail_forbidden',403);
+      if(!isEnrollmentMailMode(mode))invalid('enrollment_mail_invalid',400);
+    }
     if(sticky!==undefined&&typeof sticky!=='boolean')invalid('enrollment_mail_invalid',400);
     const saved=await transact(async c=>{
-      const {config,revision}=await configuration(c,true);
+      const {config,revision,delivery}=await configuration(c,true);
       if(revision!==q.body?.revision)invalid('enrollment_mail_conflict',409);
       if(!config.pools?.some(p=>p.id===selectedPool))invalid('enrollment_mail_invalid',400);
       const next=activeEnrollmentMailConfig({...config,selectedPool,sticky:sticky??config.sticky});
+      const nextDelivery=mode!==undefined&&mode!==delivery.mode?{mode,generation:randomUUID()}:delivery;
       await c.query('UPDATE enrollment_mail_configuration SET config=:p2,revision=revision+1 WHERE environment=:p1',
-        [environment(),next]);
+        [environment(),{...next,delivery:nextDelivery}]);
       await c.query(`INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'access.enrollment_mail.pool_selected',:p2)`,
-        [actor.id,{environment:environment(),previousPool:config.selectedPool,pool:selectedPool,previousSticky:config.sticky,sticky:next.sticky}]);
-      return {selectedPool,sticky:next.sticky,revision:revision+1};
+        [actor.id,{environment:environment(),previousPool:config.selectedPool,pool:selectedPool,previousSticky:config.sticky,sticky:next.sticky,previousMode:delivery.mode,mode:nextDelivery.mode}]);
+      return {selectedPool,sticky:next.sticky,mode:nextDelivery.mode,revision:revision+1};
     });
     return r.json({ok:true,settings:saved});
   }));
   app.get('/api/crm/enrollment/mail',wrap(async(q,r)=>{
-    await staff(q,'crm.operations.manage');
-    const {config,revision}=await configuration(pool);
+    const actor=await staff(q,'crm.operations.manage');
+    const saved=await configuration(pool);
+    const {config,revision,delivery}=saved;
     const rows=(await pool.query(`SELECT n.event_key AS id,n.subject_id AS recordId,n.kind,n.state,
       n.payload->>'$.subject' AS subject,NULLIF(n.payload->>'$.sender','null') AS sender,
       n.payload->>'$.routeReason' AS routeReason,
       DATE_FORMAT(n.recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt
       FROM enrollment_notification_receipts n WHERE n.channel='email' AND n.kind NOT IN ('otp_apply','otp_mine')
       ORDER BY n.recorded_at DESC,n.event_key DESC LIMIT 100`)).rows;
-    return r.set('Cache-Control','no-store').json({name:config.name,enabled:config.enabled,sticky:config.sticky,mode:enrollmentMailMode(),rows,revision,selectedPool:config.selectedPool,
+    return r.set('Cache-Control','no-store').json({name:config.name,enabled:config.enabled,sticky:config.sticky,mode:delivery.mode,canEditMode:isAiAdministrator(actor),deliveryReasons:await deliveryReadiness(pool,saved),rows,revision,selectedPool:config.selectedPool,
       pools:config.pools?.map(({id,name,enabled})=>({id,name,enabled}))});
   }));
 }
@@ -482,25 +522,26 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
 // The business event and its pending email are inserted in the same transaction.
 // Only newly queued records are considered, so historical simulated rows are never replayed.
 export function startEnrollmentMail(){
-  const mode=enrollmentMailMode();
-  if(mode==='disabled'||mode==='simulation'&&!enrollmentServicePolicy().maintenance||
-    mode==='smtp'&&process.env.PORTAL_WORKER_ENABLED==='false')return;
   let active=false;
   const tick=async()=>{
     if(active)return;
     active=true;
     try{
-      if(!await enrollmentMailEnabled(pool))return;
+      const {config,delivery}=await configuration(pool);
+      if(!config.enabled||delivery.mode==='disabled'||
+        delivery.mode==='simulation'&&!enrollmentServicePolicy(process.env,delivery.mode).maintenance||
+        delivery.mode==='smtp'&&process.env.PORTAL_WORKER_ENABLED==='false')return;
       const {restoreState}=await import('./accessRecoveryState.ts');
       if((await restoreState())?.required)return;
       const {rows}=await pool.query(`SELECT event_key,payload FROM enrollment_notification_receipts
         WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1
-        AND COALESCE(payload->>'$.smtpRecipientPolicy','')=:p3
+        AND payload->>'$.delivery.generation'=:p3 AND payload->>'$.delivery.mode'=:p4
+        AND COALESCE(payload->>'$.delivery.recipientPolicy','')=:p5
         AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2
-        ORDER BY recorded_at,event_key LIMIT 40`,[environment(),Date.now(),mode==='smtp'?smtpRecipientPolicy:'']);
+        ORDER BY recorded_at,event_key LIMIT 40`,[environment(),Date.now(),delivery.generation,delivery.mode,delivery.mode==='smtp'?smtpRecipientPolicy:'']);
       for(const row of rows){
         const payload=row.payload;
-        const {state,account,reason}=await dispatchEnrollmentMail(row.event_key,payload.recipient,payload,{deliveryId:payload.deliveryId,queueKey:row.event_key});
+        const {state,account,reason}=await dispatchEnrollmentMail(row.event_key,payload.recipient,payload,{deliveryId:payload.deliveryId,queueKey:row.event_key,expected:delivery});
         const next=state==='waiting'?'queued':state==='rejected'?'failed':state;
         // Delay blocked mail so later recipients can use other accounts.
         await pool.query(`UPDATE enrollment_notification_receipts SET state=:p2,payload=:p3

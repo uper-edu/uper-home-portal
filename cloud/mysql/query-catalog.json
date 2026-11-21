@@ -2193,8 +2193,8 @@
       "server/portal/enrollmentNotices.ts"
     ]
   },
-  "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(payload->>'$.smtpRecipientPolicy','')=:p3\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40": {
-    "sql": "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND COALESCE(payload->>'$.smtpRecipientPolicy','')=:p3\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40",
+  "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND payload->>'$.delivery.generation'=:p3 AND payload->>'$.delivery.mode'=:p4\n        AND COALESCE(payload->>'$.delivery.recipientPolicy','')=:p5\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40": {
+    "sql": "SELECT event_key,payload FROM enrollment_notification_receipts\n        WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1\n        AND payload->>'$.delivery.generation'=:p3 AND payload->>'$.delivery.mode'=:p4\n        AND COALESCE(payload->>'$.delivery.recipientPolicy','')=:p5\n        AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2\n        ORDER BY recorded_at,event_key LIMIT 40",
     "sources": [
       "server/portal/enrollmentMail.ts"
     ]
@@ -4203,6 +4203,12 @@
   },
   "UPDATE enrollment_mail_bindings SET account=:p3 WHERE environment=:p1 AND recipient=:p2": {
     "sql": "UPDATE enrollment_mail_bindings SET account=:p3 WHERE environment=:p1 AND recipient=:p2",
+    "sources": [
+      "server/portal/enrollmentMail.ts"
+    ]
+  },
+  "UPDATE enrollment_mail_configuration SET config=:p2 WHERE environment=:p1": {
+    "sql": "UPDATE enrollment_mail_configuration SET config=:p2 WHERE environment=:p1",
     "sources": [
       "server/portal/enrollmentMail.ts"
     ]

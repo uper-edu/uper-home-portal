@@ -1,22 +1,22 @@
-import {enrollmentMailConfigured,enrollmentMailMode} from './enrollmentMail.ts';
+import {enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox} from './enrollmentMail.ts';
 import {smtpRecipientPolicy} from './enrollmentMailRecipientPolicy.ts';
 import { enrollmentOrderEmailPath, renderEnrollmentEmail, type EnrollmentEmailKind } from './enrollmentEmail.ts';
 import { cardMoney, enrollmentCard } from './enrollmentCards.ts';
 import { enrollmentWeekOf, enrollmentWeekTotals, latestDueEnrollmentWeek } from './enrollmentWeekly.ts';
 import { pendingEnrollmentProofTotals } from './enrollmentProofTotals.ts';
 import { enrollmentAssistancePath } from '../../src/utils/enrollmentAssistance.ts';
-import type { enrollmentSimulation } from './enrollmentSimulation.ts';
 
 type Client = { query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}> };
 type Notice = Exclude<EnrollmentEmailKind,'otp_apply'|'otp_mine'|'assistance_confirmation'>;
 const pendingMoney=(amount:number|null,unknown:number)=>cardMoney(amount)+(amount!==null&&unknown?'（另有 '+unknown+' 笔金额未知）':'');
 
 async function record(c:Client,key:string,channel:'email'|'lark',kind:string,subjectId:string,payload:object) {
-  const mode=enrollmentMailMode();
-  const queued=channel==='email'&&mode!=='disabled'&&await enrollmentMailConfigured(c);
+  const delivery=channel==='email'?await enrollmentMailDelivery(c):undefined;
+  const queued=delivery&&delivery.mode!=='disabled'&&await enrollmentMailConfigured(c);
+  const marker=delivery?.mode==='smtp'?{...delivery,recipientPolicy:smtpRecipientPolicy}:delivery;
   await c.query(`INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)
     VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key`,
-    [key,channel,kind,subjectId,queued?{...payload,environment:process.env.PORTAL_ENV,...mode==='smtp'&&{smtpRecipientPolicy}}:payload,queued?'queued':'simulated']);
+    [key,channel,kind,subjectId,queued?{...payload,environment:process.env.PORTAL_ENV,delivery:marker}:payload,queued?'queued':'simulated']);
 }
 export async function latestAssistanceMail(c:Client,id:string){
   return (await c.query(`SELECT event_key AS id,state,DATE_FORMAT(recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt
@@ -24,14 +24,15 @@ export async function latestAssistanceMail(c:Client,id:string){
     ORDER BY recorded_at DESC,event_key DESC LIMIT 1`,[id])).rows[0];
 }
 
-export async function sendAssistanceMail(c:Client,local:ReturnType<typeof enrollmentSimulation>,
-  offer:any,attempt:string){
+export async function sendAssistanceMail(c:Client,offer:any,attempt:string){
+  const {mode}=await enrollmentMailDelivery(c);
+  const local=enrollmentMailbox(mode);
   const {id,email,data,expiresAt}=offer;
   const content={salutation:data.name,language:data.lang,class:data.quote.level,format:data.quote.format,period:data.quote.period,firstLesson:data.quote.firstLesson,
     schedule:data.quote.schedule,weeklySchedule:data.quote.weeklySchedule,minutes:data.quote.minutes,
     price:data.quote.price,deadline:expiresAt,url:enrollmentAssistancePath(id,data.lang)};
   const message=renderEnrollmentEmail('assistance_confirmation',content);
-  if(await enrollmentMailConfigured(c)){
+  if((mode==='smtp'||local)&&await enrollmentMailConfigured(c)){
     await record(c,'email:assistance_confirmation:'+id+':'+attempt,'email','assistance_confirmation',id,{
       ...message,recipient:email,environment:process.env.PORTAL_ENV,deliveryId:'assistance-'+attempt,
     });
@@ -122,12 +123,12 @@ export async function recordDueEnrollmentWeekly(c:Client,now=new Date()) {
   });
 }
 
-export function startEnrollmentWeeklySimulation(transact:(fn:(c:Client)=>Promise<unknown>)=>Promise<unknown>) {
+export function startEnrollmentWeeklySimulation(transact:(fn:(c:Client)=>Promise<unknown>)=>Promise<unknown>,enabled=async()=>true) {
   let busy=false;
   const tick=async()=>{
     if(busy)return;
     busy=true;
-    try { await transact(c=>recordDueEnrollmentWeekly(c)); }
+    try { if(await enabled())await transact(c=>recordDueEnrollmentWeekly(c)); }
     catch { console.error('Enrollment weekly simulation could not record the report'); }
     finally { busy=false; }
   };

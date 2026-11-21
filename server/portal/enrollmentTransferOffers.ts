@@ -41,12 +41,13 @@ export async function markPriorityTransfersOnCancellation(c:Client,classId:strin
       AND state IN ('awaiting_payment','proof_review','partial','paid','recovered','expired')`,[classId]);
 }
 
-export function startEnrollmentPriorityTransferSimulation({transact,lockOrder,lockClass}:Context) {
+export function startEnrollmentPriorityTransferSimulation({transact,lockOrder,lockClass}:Context,enabled=async()=>true) {
   let busy=false;
   const tick=async()=>{
     if(busy) return;
     busy=true;
     try{
+      if(!await enabled())return;
       const candidates=await transact(async c=>(await c.query(`SELECT o.id FROM enrollment_orders o
         JOIN enrollment_classes e ON e.id=o.class_id
         WHERE e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price

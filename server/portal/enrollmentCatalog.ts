@@ -8,6 +8,7 @@ import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { enrollmentInstant, enrollmentScheduleReviewFields, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validEnrollmentHolidayDate, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
+import { enrollmentMailDelivery } from './enrollmentMail.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { enrollmentReadiness } from './enrollmentApplication.ts';
 import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
@@ -177,7 +178,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         [actor.id, { classId: body.id, state: body.state, revision }]);
       const breakDatesOnly=isPublished&&breakDatesChanged&&data.firstLesson===current.data.firstLesson&&
         data.enrollmentCloses===current.data.enrollmentCloses;
-      if (body.state === 'published' && !breakDatesOnly && enrollmentServicePolicy().maintenance) await matchPublishedEnrollmentClass(c,body.id);
+      if (body.state === 'published' && !breakDatesOnly && enrollmentServicePolicy(process.env,(await enrollmentMailDelivery(c)).mode).maintenance) await matchPublishedEnrollmentClass(c,body.id);
       return { classId: body.id, revision };
     }));
     r.json(result);

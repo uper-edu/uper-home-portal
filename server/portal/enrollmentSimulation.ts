@@ -9,7 +9,7 @@ export function isLocalEnrollmentRuntime(env = process.env) {
 
 function isIsolatedTestMailbox(env: NodeJS.ProcessEnv) {
   if (env.PORTAL_ENV !== 'test' || env.PORTAL_DEPLOYMENT !== 'company-trial' ||
-      env.TRIAL_DATASET !== 'synthetic' || env.PORTAL_ENROLLMENT_MAIL_TRANSPORT !== 'simulation' ||
+      env.TRIAL_DATASET !== 'synthetic' ||
       env.PORTAL_WORKER_ENABLED !== 'false') return false;
   const database = env.PORTAL_ENROLLMENT_SIMULATION_DATABASE;
   const url = URL.parse(env.MYSQL_TRIAL_URL ?? '');
@@ -19,9 +19,7 @@ function isIsolatedTestMailbox(env: NodeJS.ProcessEnv) {
 
 export function enrollmentSimulation(env = process.env) {
   const directory = env.PORTAL_ENROLLMENT_SIMULATION_MAILBOX;
-  const transport = env.PORTAL_ENROLLMENT_MAIL_TRANSPORT;
-  const local = isLocalEnrollmentRuntime(env) && (!transport || transport === 'simulation');
-  if ((!local && !isIsolatedTestMailbox(env)) ||
+  if ((!isLocalEnrollmentRuntime(env) && !isIsolatedTestMailbox(env)) ||
       !directory || !isAbsolute(directory)) return null;
   type Message={subject:string;html:string;text:string;language:string};
   async function deliver(id:string,email:string,message:Message,code?:string){

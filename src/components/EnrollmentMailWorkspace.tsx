@@ -1,3 +1,4 @@
+import {enrollmentMailModes,type EnrollmentMailMode} from '../utils/enrollmentMailMode';
 import {IntegrationCredentialControl} from './IntegrationCredentials';
 import {useCallback,useEffect,useId,useLayoutEffect,useRef,useState,type MouseEvent} from 'react';
 import {ArrowDown,ArrowRightLeft,ArrowUp,ClipboardCheck,Pencil,Plus,Save} from 'lucide-react';
@@ -28,8 +29,7 @@ type MailEditorTarget='new-pool'|'reassign'|number|{pool:MailPool};
 type AdminView={config:EnrollmentMailConfig;revision:number;environment:string;mode:string;timezone:string;managedCredentials?:boolean;
   usage:Record<string,Usage>;poolUsage:Record<string,number>;poolRecipientUsage?:Record<string,number>;configured:{address:string;configured:boolean}[]};
 type MailEditorDraft=EnrollmentMailConfig & Partial<Pick<MailPool,'dailyLimit'|'dailyRecipientLimit'|'strategy'>>;
-type BusinessView={revision:number;selectedPool:string;sticky:boolean;pools:Pick<MailPool,'id'|'name'|'enabled'>[];name:string;enabled:boolean;mode:string;rows:{id:string;subject:string;sender:string;routeReason?:string;state:string;recordedAt:string}[]};
-type EnrollmentReadiness={accepting:boolean;reasons:string[]};
+type BusinessView={revision:number;selectedPool:string;sticky:boolean;pools:Pick<MailPool,'id'|'name'|'enabled'>[];name:string;enabled:boolean;mode:EnrollmentMailMode;canEditMode?:boolean;deliveryReasons?:string[];rows:{id:string;subject:string;sender:string;routeReason?:string;state:string;recordedAt:string}[]};
 const adminPath='/api/admin/enrollment-mail';
 const accountListHref='/system?tab=mail';
 const poolListHref='/system?tab=mail&mailView=pool';
@@ -52,11 +52,20 @@ const stateWords:Record<string,[string,string,string]>={
   message_count:['按发信封数选号','Selected by send volume','Dipilih menurut jumlah email'],
   recipient_count:['按去重收件人数选号','Selected by unique recipients','Dipilih menurut jumlah penerima unik'],
   priority:['按账号优先级选号','Selected by account priority','Dipilih menurut prioritas akun'],
-  disabled:['未启用','Disabled','Nonaktif'],simulation:['模拟 SMTP','Simulated SMTP','SMTP simulasi'],smtp:['正式 SMTP','Live SMTP','SMTP aktif'],
+  disabled:['未启用','Disabled','Nonaktif'],simulation:['模拟投递','Simulated delivery','Pengiriman simulasi'],smtp:['正式 SMTP','Live SMTP','SMTP aktif'],
+};
+const deliveryModeWords:Record<EnrollmentMailMode,[string,string,string]>={
+  disabled:['停用','Disabled','Nonaktif'],
+  simulation:['模拟投递','Simulated delivery','Pengiriman simulasi'],
+  smtp:['正式 SMTP','Live SMTP','SMTP aktif'],
 };
 const readinessWords:Record<string,[string,string,string]>={
-  service_disabled:['报名服务尚未启用','Enrollment service is disabled','Layanan pendaftaran belum aktif'],
-  mail_required:['请核对 SMTP 投递、发信池和发件账号','Check SMTP delivery, the sending pool, and sender accounts','Periksa pengiriman SMTP, pool, dan akun pengirim'],
+  delivery_disabled:['招生邮件投递已停用','Admissions email delivery is disabled','Pengiriman email pendaftaran dinonaktifkan'],
+  simulation_mailbox_required:['此环境的模拟邮箱未就绪','The simulated mailbox is not ready','Kotak surat simulasi belum siap'],
+  smtp_origin_required:['请配置可用的公开访问地址','Configure a valid public site URL','Atur alamat situs publik yang valid'],
+  mail_worker_required:['邮件处理进程未运行','The mail worker is off','Worker email tidak aktif'],
+  mail_pool_required:['请启用所选发信池','Enable the selected sending pool','Aktifkan pool pengiriman yang dipilih'],
+  mail_sender_required:['发信池没有可用的发件账号及凭证','The pool has no usable sender with credentials','Pool tidak memiliki akun pengirim dengan kredensial yang dapat digunakan'],
 };
 
 export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canManageCredentials=false,view='accounts',recordId='',returnPoolId='',onNavigate=noop,onDraft=noop,onBusy=noop}:{
@@ -68,7 +77,6 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   const stickyHelpId=useId();
   const memberOrderId=useId();
   const [result,setResult]=useState<AdminView|BusinessView>();
-  const [readiness,setReadiness]=useState<EnrollmentReadiness>();
   const [loading,setLoading]=useState(false),[failure,setFailure]=useState<'error'|'denied'>();
   const [draft,setDraft]=useState<MailEditorDraft>(),[account,setAccount]=useState<MailAccount>();
   const accountEndpoint=account&&mailSmtpEndpoint(account);
@@ -87,7 +95,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   const [adminConflict,setAdminConflict]=useState(false);
   const [awaitingSavedRead,setAwaitingSavedRead]=useState(false);
   const [revision,setRevision]=useState(0);
-  const [settingsDraft,setSettingsDraft]=useState<{pool:string;sticky:boolean;revision:number}>();
+  const [settingsDraft,setSettingsDraft]=useState<{pool:string;sticky:boolean;mode:EnrollmentMailMode;revision:number}>();
   const [settingsLookup,setSettingsLookup]=useState<'different'|'error'>();
   const [historySearch,setHistorySearch]=useState(''),[historyStatus,setHistoryStatus]=useState(''),[historyPage,setHistoryPage]=useState(1);
   const [replacement,setReplacement]=useState({recipient:'',account:'',reason:''});
@@ -100,7 +108,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   const refresh=useCallback(async()=>{
     if(!allowed)return;
     const readId=++mailReadId.current;
-    setLoading(true);setFailure(undefined);setReadiness(undefined);
+    setLoading(true);setFailure(undefined);
     try{
       const response=await fetch(admin?adminPath:'/api/crm/enrollment/mail',{cache:'no-store'});
       if(readId!==mailReadId.current)return;
@@ -112,13 +120,6 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
       if(readId!==mailReadId.current)return;
       setResult(next);
       setAwaitingSavedRead(false);
-      if(!admin){
-        const intake=await fetch('/api/crm/enrollment/readiness',{cache:'no-store'}).catch(()=>undefined);
-        if(intake?.ok){
-          const value=await intake.json();
-          if(readId===mailReadId.current)setReadiness(value);
-        }
-      }
       return next;
     }catch{if(readId===mailReadId.current)setFailure('error');}
     finally{if(readId===mailReadId.current)setLoading(false);}
@@ -170,9 +171,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
   };
   const activeView=result&&'config' in result?result:undefined;
   const business=result&&'rows' in result?result:undefined;
-  const readinessMessages=readiness?.reasons.flatMap(reason=>readinessWords[reason]?[t(...readinessWords[reason])]:[])??[];
-  const settings=business&&(settingsDraft??{pool:business.selectedPool,sticky:business.sticky,revision:business.revision});
-  const choiceDirty=!!business&&!!settings&&(settings.pool!==business.selectedPool||settings.sticky!==business.sticky);
+  const settings=business&&(settingsDraft??{pool:business.selectedPool,sticky:business.sticky,mode:business.mode,revision:business.revision});
+  const choiceDirty=!!business&&!!settings&&(settings.pool!==business.selectedPool||settings.sticky!==business.sticky||Boolean(business.canEditMode)&&settings.mode!==business.mode);
   const settingsConflict=choiceDirty&&settings?.revision!==business?.revision;
   const settingsPoolAvailable=!!business?.pools?.some(pool=>pool.id===settings?.pool);
   const settingsUnknown=!admin&&feedback==='unknown';
@@ -186,10 +186,10 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
     setSettingsLookup(undefined);
     setFeedback(undefined);
   },[admin,allowed,failure]);
-  const changeSettings=(patch:Partial<{pool:string;sticky:boolean}>)=>{
+  const changeSettings=(patch:Partial<{pool:string;sticky:boolean;mode:EnrollmentMailMode}>)=>{
     if(!business||!settings||busy||settingsUnknown)return;
     const next={...settings,...patch};
-    setSettingsDraft(next.pool===business.selectedPool&&next.sticky===business.sticky?undefined:next);
+    setSettingsDraft(next.pool===business.selectedPool&&next.sticky===business.sticky&&next.mode===business.mode?undefined:next);
     setFeedback(undefined);
   };
   const saveChoice=async()=>{
@@ -197,14 +197,14 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
     setBusy(true);setFeedback(undefined);setSettingsLookup(undefined);
     try{
       const response=await fetch('/api/crm/enrollment/mail/pool',{method:'PUT',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(settings)});
+        body:JSON.stringify({...settings,mode:business?.canEditMode&&settings.mode!==business.mode?settings.mode:undefined})});
       if(!response.ok){
         setFeedback(response.status>=500?'unknown':'error');
         if(response.status===409)await refresh();
         return;
       }
       const {settings:saved}=await response.json();
-      if(saved?.selectedPool!==settings.pool||saved.sticky!==settings.sticky||saved.revision!==settings.revision+1)throw Error();
+      if(saved?.selectedPool!==settings.pool||saved.sticky!==settings.sticky||saved.mode!==settings.mode||saved.revision!==settings.revision+1)throw Error();
       setResult(current=>current&&'rows' in current?{...current,...saved}:current);
       setSettingsDraft(undefined);
       setAwaitingSavedRead(true);
@@ -216,7 +216,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
     if(!settings||loading||busy)return;
     const next=await refresh();
     if(!next||!('rows' in next)){setSettingsLookup('error');return;}
-    if(next.selectedPool===settings.pool&&next.sticky===settings.sticky){
+    if(next.selectedPool===settings.pool&&next.sticky===settings.sticky&&next.mode===settings.mode){
       setSettingsDraft(undefined);setFeedback(undefined);
     }else if(next.revision>settings.revision){
       // A different revision has taken effect. The submitted revision can no longer be applied.
@@ -568,10 +568,17 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
             disabled={busy||settingsUnknown||!!failure} value={settings.pool} options={(business.pools??[]).map(pool=>({value:pool.id,
               label:pool.enabled?pool.name:pool.name+' · '+word('disabled')}))} onChange={pool=>changeSettings({pool})}/>
         </AdminField>
-        <AdminStaticField label={t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')} value={word(business.mode)}/>
+        {business.canEditMode?<AdminField as="div">
+          <label htmlFor={stickyHelpId+'-delivery'}>{t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')}</label>
+          <CrmSingleSelect controlId={stickyHelpId+'-delivery'} lang={lang} isLight={isLight}
+            label={t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')}
+            value={settings.mode} disabled={busy||settingsUnknown||!!failure}
+            options={enrollmentMailModes.map(mode=>({value:mode,label:t(...deliveryModeWords[mode])}))}
+            onChange={mode=>{if(enrollmentMailModes.some(value=>value===mode))changeSettings({mode:mode as EnrollmentMailMode});}}/>
+        </AdminField>:<AdminStaticField label={t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')} value={word(business.mode)}/>}
       </AdminFormGrid>
-        {readinessMessages.length?<AdminFormFeedback state="error" lang={lang}>
-          {readinessMessages.join(' · ')}
+        {business.deliveryReasons?.length?<AdminFormFeedback state="error" lang={lang}>
+          {business.deliveryReasons.map(reason=>readinessWords[reason]?t(...readinessWords[reason]):'').filter(Boolean).join(' · ')}
         </AdminFormFeedback>:null}
         <div data-admin-stack className="enrollment-mail-fixed-sender">
           <AdminField className="enrollment-mail-switch-row">{fixedSender}
@@ -594,6 +601,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
         </AdminFormFeedback>
         <AdminFormSummary fields={[
           [t('当前发信池','Current sending pool','Pool pengiriman saat ini'),business.name],
+          [t('当前投递方式','Current delivery mode','Mode pengiriman saat ini'),word(business.mode)],
           [fixedSender,business.sticky?t('已开启','Enabled','Aktif'):t('已关闭','Off','Nonaktif')],
         ]}/>
         <AdminFormActions>

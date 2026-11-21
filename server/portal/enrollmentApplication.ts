@@ -1,4 +1,4 @@
-import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailMode,enrollmentSmtpReady} from './enrollmentMail.ts';
+import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox,enrollmentSmtpReady} from './enrollmentMail.ts';
 import type { Express, Request, Response } from 'express';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { tx } from './store.ts';
@@ -7,7 +7,6 @@ import { validMutationOrigin } from './accessTransport.ts';
 import { validContactEmail } from '../../src/utils/contactEmail.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import type { Employee } from './identity.ts';
-import { enrollmentSimulation } from './enrollmentSimulation.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitlist, startEnrollmentVacancySimulation, takenSeats } from './enrollmentInterests.ts';
 import { enrollmentInsertionPhone, enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
@@ -100,8 +99,9 @@ function proofContent(raw: unknown, mime: unknown) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-export async function enrollmentReadiness(c:Client,policy=enrollmentServicePolicy()) {
-  if(!policy.servicing)return {accepting:false,servicing:false,reasons:['service_disabled']};
+export async function enrollmentReadiness(c:Client,policy?:ReturnType<typeof enrollmentServicePolicy>) {
+  if(!(policy??enrollmentServicePolicy()).servicing)return {accepting:false,servicing:false,reasons:['service_disabled']};
+  policy??=enrollmentServicePolicy(process.env,(await enrollmentMailDelivery(c)).mode);
   const reasons:string[]=[];
   if(!policy.simulation){
     if(!hasConfiguredEnrollmentBank(await readEnrollmentBank(c)))reasons.push('bank_required');
@@ -114,26 +114,26 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   wrap: (fn: Route) => (q: Request, r: Response) => void;
   staff: (q: Request, permission: string) => Promise<Employee>;
 }) {
-  const local = enrollmentSimulation();
   const policy = enrollmentServicePolicy();
+  const maintenanceMode=async()=>enrollmentServicePolicy(process.env,(await enrollmentMailDelivery()).mode);
   mountEnrollmentRules(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   mountEnrollmentBank(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   const base = '/api/enrollment';
   const finance = '/api/crm/enrollment/finance';
 
   async function requireNewEnrollment(c:Client) {
-    const {reasons}=await enrollmentReadiness(c,policy);
+    const {reasons}=await enrollmentReadiness(c);
     if(reasons.length)invalid('enrollment_intake_'+reasons[0],503);
   }
   app.get(base + '/availability', wrap(async (_q,r) => {
-    const readiness=await enrollTx(c=>enrollmentReadiness(c,policy)).catch(()=>({
+    const readiness=await enrollTx(c=>enrollmentReadiness(c)).catch(()=>({
       accepting:false,servicing:policy.servicing,reasons:['check_failed'],
     }));
     r.set('Cache-Control','no-store').json(readiness);
   }));
   app.get('/api/crm/enrollment/readiness', wrap(async (q,r) => {
     await staff(q,'crm.operations.manage');
-    r.set('Cache-Control','no-store').json(await enrollTx(c=>enrollmentReadiness(c,policy)));
+    r.set('Cache-Control','no-store').json(await enrollTx(c=>enrollmentReadiness(c)));
   }));
   mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow,servicing:policy.servicing});
   if (!policy.servicing) return;
@@ -159,11 +159,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     return actor;
   };
   mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
-  if(local&&policy.maintenance) startEnrollmentWeeklySimulation(enrollTx);
-  if(policy.maintenance){
-    startEnrollmentVacancySimulation(enrollTx,lockClass);
-    startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass});
-  }
+  startEnrollmentWeeklySimulation(enrollTx,async()=>{
+    const current=await maintenanceMode();
+    return current.simulation&&current.maintenance;
+  });
+  const maintenance=async()=>(await maintenanceMode()).maintenance;
+  startEnrollmentVacancySimulation(enrollTx,lockClass,maintenance);
+  startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass},maintenance);
   mountEnrollmentResolution(app,{wrap,post,transact:moneyTx,read:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
 
   post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {
@@ -221,10 +223,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
 
   post(base + '/email/request', async (q, r) => {
     const email = contact(q.body.email);
-    if(enrollmentMailMode()==='disabled') invalid('enrollment_email_unavailable',503);
     const id = randomUUID();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const pending=await enrollTx(async (c: Client) => {
+      const delivery=await enrollmentMailDelivery(c);
+      const local=enrollmentMailbox(delivery.mode);
+      if(delivery.mode==='disabled'||delivery.mode==='simulation'&&!local)invalid('enrollment_email_unavailable',503);
       await lockEnrollmentEmail(c, email);
       await c.query(`INSERT INTO enrollment_email_challenges(email,challenge_id,digest,expires_at,resend_at)
         VALUES(:p1,:p2,:p3,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE email=email`, [email, id, otpHash(id, code)]);
@@ -238,12 +242,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const message=renderEnrollmentEmail(q.body.purpose==='mine'?'otp_mine':'otp_apply',{
         language:q.body.language,code,codeMinutes:emailCodeMinutes,
       });
-      if(await enrollmentMailConfigured(c))return message;
-      if(!local||enrollmentMailMode()!=='simulation')invalid('enrollment_email_unavailable',503);
+      if(await enrollmentMailConfigured(c))return {message,delivery};
+      if(!local)invalid('enrollment_email_unavailable',503);
       await local.deliver(id,email,code,message);
     });
     if(pending){
-      const result=await dispatchEnrollmentMail('otp:'+id,email,pending,{code,deliveryId:id});
+      const result=await dispatchEnrollmentMail('otp:'+id,email,pending.message,{code,deliveryId:id,expected:pending.delivery});
       if(result.state!=='accepted'&&result.state!=='simulated'){
         await enrollTx(c=>c.query(`UPDATE enrollment_email_challenges SET used=TRUE,
           resend_at=IF(:p3,UTC_TIMESTAMP(6),resend_at) WHERE email=:p1 AND challenge_id=:p2`,
@@ -290,7 +294,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const {paymentHours}=await readEnrollmentRules(c);
     await requireNewEnrollment(c);
     const bankSettings=await readEnrollmentBank(c);
-    if(!policy.simulation&&!hasConfiguredEnrollmentBank(bankSettings))invalid('enrollment_intake_bank_required',503);
+    if(!enrollmentMailbox((await enrollmentMailDelivery(c)).mode)&&!hasConfiguredEnrollmentBank(bankSettings))invalid('enrollment_intake_bank_required',503);
     const {bank}=bankSettings;
     await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
       VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)`,
@@ -360,7 +364,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       if(!offer||offer.opportunity_id!==opportunityId)invalid('enrollment_assistance_unavailable',404);
       const latest=await latestAssistanceMail(c,result.id);
       return latest??(Number(offer.active)&&!offer.order_id
-        ?await sendAssistanceMail(c,local,offer,sha(actor.id+':'+requestId)):undefined);
+        ?await sendAssistanceMail(c,offer,sha(actor.id+':'+requestId)):undefined);
     });
     r.json({...result,mail});
   });
@@ -376,7 +380,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
           !Number(offer.active)||offer.order_id)invalid('enrollment_assistance_unavailable',404);
       const latest=await latestAssistanceMail(c,applicationId);
       if(['simulated','accepted','queued','unknown'].includes(latest?.state)||(latest?.id??null)!==q.body?.previousAttempt)return latest;
-      return sendAssistanceMail(c,local,offer,sha(latest?.id??'resume:'+applicationId));
+      return sendAssistanceMail(c,offer,sha(latest?.id??'resume:'+applicationId));
     });
     r.json({mail});
   });
