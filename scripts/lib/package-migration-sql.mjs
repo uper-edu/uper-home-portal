@@ -3,13 +3,17 @@ import path from 'node:path';
 
 const schemaName = /^schema(?:-[\w-]+)?\.sql$/;
 
-export async function verifyPackagedMigrationSql(sourceDirectory, packagedDirectory) {
+export async function readStartupMigrationSqlNames(sourceDirectory) {
   const migration = await fs.readFile(path.join(sourceDirectory, 'migrate.mjs'), 'utf8');
   const required = new Set(
     Array.from(migration.matchAll(/['"](?:\.\/)?(schema(?:-[\w-]+)?\.sql)['"]/g), match => match[1]),
   );
   if (!required.size) throw new Error('No startup migration SQL files found');
+  return required;
+}
 
+export async function verifyPackagedMigrationSql(sourceDirectory, packagedDirectory) {
+  const required = await readStartupMigrationSqlNames(sourceDirectory);
   const packaged = new Set((await fs.readdir(packagedDirectory)).filter(name => schemaName.test(name)));
   const missing = [...required].filter(name => !packaged.has(name));
   const extra = [...packaged].filter(name => !required.has(name));
