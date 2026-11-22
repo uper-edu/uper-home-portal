@@ -12,7 +12,11 @@ export function identityMatch(a: any, b: any) {
 }
 export {loadCrmAccessControls as identityControls} from './crmAccessControls.ts';
 export async function pendingIdentity(c: any, leadId?: string, lock=false) {
-  const rows = (await (lock&&leadId?c.query("SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1 FOR UPDATE",[leadId]):c.query("SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending'"))).rows;
+  const {rows}=leadId
+    ? lock
+      ? await c.query("SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1 FOR UPDATE",[leadId])
+      : await c.query("SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1",[leadId])
+    : await c.query("SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending'");
   const aliases=rows.length?(await c.query("SELECT id,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NOT NULL")).rows:[];
   return rows.map((r:any)=>({...r,aliasMatches:aliases.filter((a:any)=>a.profile.identityMergedInto===r.candidate_id&&identityMatch(r.source_profile,a.profile).length).map((a:any)=>({id:a.id,name:a.profile.fullName,basis:identityMatch(r.source_profile,a.profile)}))})).filter((r:any)=>(!leadId||r.lead_id===leadId)&&!r.source_profile.identityMergedInto&&(identityMatch(r.source_profile,r.candidate_profile).length||r.aliasMatches.length));
 }

@@ -2298,6 +2298,12 @@
       "server/portal/identityReview.ts"
     ]
   },
+  "SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1": {
+    "sql": "SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1",
+    "sources": [
+      "server/portal/identityReview.ts"
+    ]
+  },
   "SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1 FOR UPDATE": {
     "sql": "SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1 FOR UPDATE",
     "sources": [
