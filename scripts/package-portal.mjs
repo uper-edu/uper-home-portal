@@ -4,6 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {build,transform} from 'esbuild';
 import {environmentName,frontendEnvironment} from '../server/environment.mjs';
 import {buildIdentity,sourceIdentity} from '../server/runtimeVersion.mjs';
+import {verifyPackagedMigrationSql} from './lib/package-migration-sql.mjs';
 export async function buildPortalPackage({environment='dev',directory}={}) {
 const root=process.cwd();
 const target=environmentName(environment);
@@ -33,6 +34,7 @@ for(const file of inputs){
  await fs.writeFile(dest,code.replace(/(\bfrom\s+["'][^"']+\.json["'])(?!\s+with\b)/g,'$1 with { type: "json" }'));
 }
 for(const f of ['schema.sql','schema-v2.sql','schema-v13.sql','schema-v14.sql','schema-v15.sql','schema-v16.sql','schema-v19.sql','schema-v20.sql','schema-credentials-20261119162447.sql','schema-enrollment-20261114172847.sql','schema-enrollment-20261114174435.sql','schema-enrollment-20261114175859.sql','schema-enrollment-20261114181313.sql','schema-enrollment-20261114182623.sql','schema-enrollment-20261114183459.sql','schema-enrollment-20261114193153.sql','schema-enrollment-20261114213702.sql','schema-enrollment-20261114234419.sql','schema-enrollment-20261114235011.sql','schema-enrollment-20261114235404.sql','schema-enrollment-20261115000007.sql','schema-enrollment-20261115014556.sql','schema-enrollment-20261115183339.sql','schema-enrollment-20261116191537.sql','schema-enrollment-20261116214753.sql'])await fs.copyFile('cloud/mysql/'+f,path.join(runtime,'cloud/mysql',f));
+await verifyPackagedMigrationSql('cloud/mysql',path.join(runtime,'cloud/mysql'));
 for(const f of ['package.json','package-lock.json'])await fs.copyFile(f,path.join(out,f));
 const dockerfile=await fs.readFile('cloud/company-trial/Dockerfile','utf8');
 await fs.writeFile(path.join(out,'Dockerfile'),dockerfile+'\nENV PORTAL_ENV='+target+' PORTAL_PACKAGE_ENV='+target+' PORTAL_ENV_SOURCE=injected\n');
