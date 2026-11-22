@@ -31,7 +31,7 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 
 ## Zentao bug fixes
 
-- Use [fix-zentao-bugs](.agents/skills/fix-zentao-bugs/SKILL.md) for Zentao bug investigation, repair, and disposition.
+- Use [commando-fix-zentao-bugs](.agents/skills/commando-fix-zentao-bugs/SKILL.md) for Zentao bug investigation, repair, and disposition.
 - Default to manual confirmation: analyze each bug and its validity, present the final repair plan and obtain explicit human approval for that exact bug and plan before changing repair code. Explicit approval may cover an identified list of per-bug plans; implement and verify each bug separately. User-provided directions alone are not approval; material plan changes require renewed confirmation. Show remaining bugs and present the next unapproved bug for confirmation.
 - Verify fixes directly on local port 3000 with focused tests. Isolation for data destruction, migration, fault injection, or uncontrolled notifications requires prior explicit user confirmation under the local development rules above; do not start it autonomously. Accumulate fixes, then run the required full checks for the final release source, back up and publish the batch. In company test, verify the deployed version, health/login, each bug's critical path, and environment differences rather than repeating the full local suite.
 - Do not mark a repaired bug resolved in Zentao until local 3000 verification, canonical GitHub push, company-test deployment and targeted verification, and evidence upload have all succeeded. Local-only fixes remain pending delivery. Publishing and Zentao writes still require authorization; maintaining this workflow starts neither.
@@ -41,7 +41,7 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 
 ## 管理工作区设计
 
-修改CRM、CMS或系统管理的导航、布局、详情、编辑、保存反馈或响应式时，必须使用 [uper-admin-workspace-design](.agents/skills/uper-admin-workspace-design/SKILL.md)。纯后端、数据库及HSK题库任务不自动触发。此要求不授予发布或业务规则变更权限。
+修改CRM、CMS或系统管理的导航、布局、详情、编辑、保存反馈或响应式时，必须使用 [commando-uper-admin-workspace-design](.agents/skills/commando-uper-admin-workspace-design/SKILL.md)。纯后端、数据库及HSK题库任务不自动触发。此要求不授予发布或业务规则变更权限。
 
 新增或改造管理端记录详情时执行[记录详情规范](docs/design/admin-record-detail-system.md)，复用详情操作区和适用页面的记录侧栏。
 

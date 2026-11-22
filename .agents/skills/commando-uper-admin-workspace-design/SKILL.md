@@ -1,5 +1,5 @@
 ---
-name: uper-admin-workspace-design
+name: commando-uper-admin-workspace-design
 description: 统一UPER CRM、CMS和系统管理的导航、布局、详情、编辑反馈和响应式；纯后端、数据库或HSK内容不自动触发。
 ---
 # 管理工作区设计

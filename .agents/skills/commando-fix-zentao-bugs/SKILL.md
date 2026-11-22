@@ -1,5 +1,5 @@
 ---
-name: fix-zentao-bugs
+name: commando-fix-zentao-bugs
 description: 分析、修复和交付禅道 BUG。默认逐单确认方案，在本地3000定向验证，积累一批后统一回归、推送和测试发布；仅显式授权才开启全自动。也用于合理性评审、备注和状态处置；维护本 skill 不启动修复。
 ---
 

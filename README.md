@@ -53,7 +53,7 @@ Database integration tests use disposable synthetic databases. The native test h
 
 ## Company test deployment
 
-The approved unified origin is `https://home.prototype.uperedu.com`, with frontend and API served together. The company test environment has its own synthetic MySQL schema and private `.env.test`; it does not use local3000 customer data or credentials. Staff APIs retain login, role and customer-scope checks. Server builds are prepared locally and released through the project adapter for the `uper-server-deploy` skill. A GitHub sync does not authorize deployment.
+The approved unified origin is `https://home.prototype.uperedu.com`, with frontend and API served together. The company test environment has its own synthetic MySQL schema and private `.env.test`; it does not use local3000 customer data or credentials. Staff APIs retain login, role and customer-scope checks. Server builds are prepared locally and released through the project adapter for the `commando-uper-server-deploy` skill. A GitHub sync does not authorize deployment.
 
 - [Company deployment acceptance](docs/company-host-deployment-20261015.md)
 - [Browser acceptance and remaining limitations](docs/company-browser-acceptance-20261015.md)

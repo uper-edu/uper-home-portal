@@ -6,7 +6,12 @@ import os
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--skill-root', default=str(Path.home()/'.codex/skills/uper-server-deploy'))
+skills_directory = Path.home()/'.codex/skills'
+default_skill_root = skills_directory/'commando-uper-server-deploy'
+legacy_skill_root = skills_directory/'uper-server-deploy'
+if not (default_skill_root/'scripts/uper.py').is_file() and (legacy_skill_root/'scripts/uper.py').is_file():
+    default_skill_root = legacy_skill_root
+parser.add_argument('--skill-root', default=str(default_skill_root))
 parser.add_argument('--output', default='.local-backups/company-trial-20261014/tool')
 access = parser.add_mutually_exclusive_group()
 access.add_argument('--controlled-access', action='store_true', help='Use private HTTP Basic authentication instead of deny-all')
