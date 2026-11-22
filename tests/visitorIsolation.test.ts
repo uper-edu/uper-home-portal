@@ -39,6 +39,19 @@ test('657: delayed history and save responses cannot write into a new visitor co
  selectVisitorScope(A);started=new Promise(r=>entered=r);const save=saveHskAttempt(result().attempt,'en',A);await started;selectVisitorScope(B);release(Response.json({result:result()}));await assert.rejects(save,/Visitor changed/);assert.deepEqual(readHskHistory(),[]);
  }finally{e.restore();}
 });
+test('confirmed assessment save caches the server result for the submitting visitor',async()=>{
+ const e=environment();
+ try{
+  const saved={...result(),saveStatus:'saved' as const};
+  globalThis.fetch=async url=>String(url).endsWith('/session')
+    ?Response.json({registered:true,cacheScope:A})
+    :Response.json({result:saved});
+  assert.deepEqual(await saveHskAttempt(saved.attempt,'en',A),saved);
+  assert.deepEqual(readHskHistory(),[saved]);
+  selectVisitorScope(B);
+  assert.deepEqual(readHskHistory(),[]);
+ }finally{e.restore();}
+});
 test('657: session reply after invalidation cannot restore an old identity; network failure never selects an identity',async()=>{
  const e=environment();try{let release!:(r:Response)=>void;globalThis.fetch=async()=>new Promise<Response>(r=>release=r);const s=verifyVisitorSession();invalidateVisitorScope();release(Response.json({cacheScope:A,registered:true}));await assert.rejects(s,/Visitor changed/);assert.equal(visitorScope(),'');globalThis.fetch=async()=>{throw Error('offline');};await assert.rejects(verifyVisitorSession(),/offline/);assert.equal(visitorScope(),'');}finally{e.restore();}
 });

@@ -4,7 +4,7 @@ import {registrationAnalyticsReceipt,assessmentAnalyticsReceipt,advisorAnalytics
 import {saveRegistration,hasPendingRegistration,RegistrationSaveError} from './registrationSave';
 import {verifyVisitorSession, visitorScope, assertVisitorScope, invalidateVisitorScope, VISITOR_MARKER} from './visitorScope';
 import {saveStudentContext} from './studentProfileStorage';
-import { mergeHskHistoryRows } from "./hskAttemptStorage";
+import { mergeHskHistoryRows, writeHskResult } from "./hskAttemptStorage";
 import {normalizeEnrollmentChatSelection} from '../utils/enrollmentChatJourney';
 import {promotionEvidenceKeys, promotionEntryPoint} from '../utils/promotionNavigation';
 import {
@@ -346,7 +346,9 @@ export async function saveHskAttempt(
   const data = await scopedJson(res);
   assertVisitorScope(expectedScope);
   trackConfirmedReceipt(assessmentAnalyticsReceipt(data.result,attempt.attemptId));
-  return data.result as import("../data/hskAssessment").HskResult;
+  const result = data.result as import("../data/hskAssessment").HskResult;
+  writeHskResult(result);
+  return result;
 }
 export async function restoreHskHistory(lang: import("../data/hskAssessment").HskLanguage = "en") {
   await session();

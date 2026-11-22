@@ -310,7 +310,7 @@ export default function ChatWorkspace({
   const [savingReport,setSavingReport]=useState(false);
   const retryReport=async(result:HskResult)=>{
     if(savingReport)return;setSavingReport(true);
-    try {const saved=await saveHskAttempt(result.attempt,lang);writeHskResult(saved);setReport(current=>current?saved:null);handleAssessmentComplete(saved);} catch {} finally {setSavingReport(false);}
+    try {const saved=await saveHskAttempt(result.attempt,lang);setReport(current=>current?saved:null);handleAssessmentComplete(saved);} catch {} finally {setSavingReport(false);}
   };
 
   const handleSendMessage = async (textToSend?: string, retry?: ChatMessage, action?: ChatMessage['action']) => {

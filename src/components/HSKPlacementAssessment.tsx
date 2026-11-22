@@ -329,7 +329,6 @@ export default function HSKPlacementAssessment({
     writeHskResult(local);
     try {
       const saved = await saveHskAttempt(local.attempt, lang, ownerScope);
-      writeHskResult(saved);
       clearHskDraft(local.attempt.attemptId);
       if (mounted.current) onComplete(saved);
     } catch (e) {
