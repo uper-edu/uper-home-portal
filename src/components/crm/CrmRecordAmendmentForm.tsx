@@ -1,3 +1,4 @@
+import {crmSaveFailureKind} from '../../utils/crmOperationResult';
 import {CrmFormSection} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import {agreementTime} from '../../utils/crmProgressDetails';
@@ -22,7 +23,7 @@ export function CrmRecordAmendmentForm({target,lead,timezone,isLight,onSaved,onC
  const change=(fn:()=>void)=>{fn();setRequest(null);setError('');};
  const contact=target.eventType==='followup.recorded'&&!['closure','internal'].includes(target.payload?.recordKind);
  async function save(query=false){if(busy||suspended)return;setBusy(true);onBusy?.(true);setError('');let body=request||{requestId:crypto.randomUUID(),targetFactId:target.eventId,expectedAmendmentRevision:revision,kind,text,reason,contactResult:result||undefined,withdrawCommitmentIds:withdrawIds,expectedCommitmentRevision:lead.simpleRevision||0};setRequest(body);
-  try{const r=await fetch(`/api/crm/leads/${lead.id}/${query?'operations/'+body.requestId:'amendments'}`,query?{cache:'no-store',signal:AbortSignal.timeout(15000)}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});const d=await r.json();if(!r.ok){if(query&&r.status===404){setUnknown(false);setError('未查到本次结果；原输入和请求ID保留，可核对后明确重试。');}else if(!query&&r.status<500){setUnknown(false);setRequest(null);setError(d.error||'未保存，输入保留');}else{setUnknown(true);setError(d.error||'结果尚未确认，请查询保存结果');}return;}
+  try{const r=await fetch(`/api/crm/leads/${lead.id}/${query?'operations/'+body.requestId:'amendments'}`,query?{cache:'no-store',signal:AbortSignal.timeout(15000)}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});const d=await r.json();if(!r.ok){const failure=crmSaveFailureKind(r.status,query);if(failure==='receipt_missing'){setUnknown(false);setError('未查到本次结果；原输入和请求ID保留，可核对后明确重试。');}else if(failure==='rejected'){setUnknown(false);setRequest(null);setError(d.error||'未保存，输入保留');}else{setUnknown(true);setError(d.error||'结果尚未确认，请查询保存结果');}return;}
    if(d.saved!==true||d.operationKind!=='record.amended'||d.leadId!==lead.id||d.lead?.id!==lead.id||d.amendment?.requestId!==body.requestId||d.amendment?.targetFactId!==body.targetFactId)throw Error();
    onDirty?.(false);onSaved?.(d);
   }catch{setUnknown(true);setError('保存结果尚未确认，输入保留。请先查询结果，不要重复提交。');}finally{setBusy(false);onBusy?.(false);}}

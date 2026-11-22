@@ -1,4 +1,5 @@
 import {trackEvent,trackConfirmedReceipt} from '../../utils/analytics';
+import {crmSaveFailureKind} from '../../utils/crmOperationResult';
 import {profileAnalyticsReceipt} from '../../utils/analyticsReceipts';
 import {CrmHistoryAccess} from './CrmHistoryAccess';
 import {CrmQuestionnaireEvidence} from './CrmQuestionnaireEvidence';
@@ -572,13 +573,14 @@ export function CrmProfileEditor({
       const d = await r.json();
       if (!r.ok) {
         setConflict(r.status === 409);
-        if (r.status === 404 && query) {
+        const failure = crmSaveFailureKind(r.status, query);
+        if (failure === "receipt_missing") {
           setError(lang === "zh" ? "暂未查到保存结果，输入已保留，请稍后再次查询。" :
             lang === "id" ? "Hasil penyimpanan belum ditemukan. Isian dipertahankan. Periksa lagi nanti." :
             "No save receipt yet. Your input is retained. Check again later.");
           return;
         }
-        if (r.status < 500 && !query) {
+        if (failure === "rejected") {
           knownFailure = true;
           setRequest(null);
           setUnknown(false);
