@@ -6,11 +6,14 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 - Never commit environment files containing credentials, runtime customer records in `data/`, logs, or local backups. `.env.example` contains placeholders only.
 - Stage only reviewed source and documentation changes; do not blindly stage all files.
 - Before syncing, follow the [final-version checks](#本地开发与验证范围).
-- A request to sync code authorizes a push to the canonical repository, but does not authorize production deployment.
+- Confirm the delivery batch and its exact commit with the user before pushing to the canonical repository or releasing to company test. Production deployment requires separate explicit authorization.
 - Keep lesson content and grading rules unchanged during infrastructure fixes unless the user requests content changes.
 
 ## 本地开发与验证范围
 
+- 默认在本地 `main` 开发，在本地 3000 按改动影响做定向验收。验收通过后，按可独立验证和回退的范围提交到本地 `main`。
+- 本地提交累积成可以一起验收的交付批次后，核对范围、依赖和最终提交号，对该版本跑全量检查。检查通过后，先请用户确认，再按授权批量同步 GitHub 和发布公司 test。
+- 公司 test 使用已同步的确切提交构建发布包。切换前记录回退版本，切换后按本批改动做定向验收。只更新验收文档的提交可随下一批同步，无需单独重新发布 test。
 - 日常按改动风险做定向验证。文档、注释或不改变文件内容的 Git 历史整理，检查相关差异即可。文案、样式和单个交互，验证受影响的页面和状态。权限、数据库迁移、收退款、通知等高风险改动，验证关键流程、拒绝和失败场景，并遵守下述隔离要求。
 - 推送前对最终待推送版本执行一次 `npm test`、`npm run lint`、`npm run build` 和 `git diff --check`。同一版本已有可核对的通过记录时，直接复用。最终版本有变更时，按新版本执行。
 - 验收报告先列实际验证的流程和结果，再列未验证项、跳过原因及其对验收的影响。全量测试统计放在这些信息之后。
