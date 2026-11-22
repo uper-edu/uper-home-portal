@@ -7,7 +7,7 @@ import {test} from 'node:test';
 import {runCredentialMaintenance} from '../scripts/lib/credential-maintenance.mts';
 import {sealMailPassword} from '../server/portal/enrollmentMailCredentials.ts';
 import {openCredential, readCredentialKeyring, sealCredential} from '../server/portal/integrationCredentialCrypto.ts';
-import {candidateValues, credentialSlot, type CredentialClient} from '../server/portal/integrationCredentials.ts';
+import {credentialVersionValues, credentialSlot, type CredentialClient} from '../server/portal/integrationCredentials.ts';
 import {encryptGroupWebhook} from '../server/portal/larkGroupWebhook.ts';
 import {migrateLegacyCredentials} from '../server/portal/legacyCredentialMigration.ts';
 
@@ -108,8 +108,8 @@ test('rewraps each legacy format with the environment keyring and leaves existin
   assert.equal(apply.mode,'apply');
   assert.equal(apply.smtp.migrated, 1);
   assert.equal(apply.larkGroup.migrated, 1);
-  assert.deepEqual(candidateValues(credentialSlot('smtp', 'fixture@example.test'), states.get('smtp/fixture@example.test').active), {password});
-  assert.deepEqual(candidateValues(credentialSlot('lark-group', 'fixture-group'), states.get('lark-group/fixture-group').active),
+  assert.deepEqual(credentialVersionValues(credentialSlot('smtp', 'fixture@example.test'), states.get('smtp/fixture@example.test').active), {password});
+  assert.deepEqual(credentialVersionValues(credentialSlot('lark-group', 'fixture-group'), states.get('lark-group/fixture-group').active),
     {webhook, signingKey: 'fixture-signature'});
   assert.equal(states.get('smtp/revoked@example.test'), revoked);
   assert.equal(audits.length, 2);

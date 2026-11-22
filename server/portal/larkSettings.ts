@@ -1,4 +1,4 @@
-import {credentialError, credentialSlot, credentialTarget, credentialState, candidateValues, makeCredentialVersion, storeCredentialState, type CredentialClient} from './integrationCredentials.ts';
+import {credentialError, credentialSlot, credentialTarget, credentialState, credentialVersionValues, makeCredentialVersion, storeCredentialState, type CredentialClient} from './integrationCredentials.ts';
 
 export const larkCallbackPath='/api/crm/lark/callback';
 export type LarkSettings={appId:string; tenant:string; callback:string; revision:number};
@@ -54,7 +54,7 @@ export async function saveLarkSettings(db:CredentialClient, input:unknown){
   const previousTarget=larkSettingsTarget(current), target=larkSettingsTarget(next);
   if(state.active&&previousTarget!==target){
     if(state.active.target!==previousTarget)return credentialError(409,'credential_conflict');
-    const active=makeCredentialVersion(slot,target,candidateValues(slot,state.active));
+    const active=makeCredentialVersion(slot,target,credentialVersionValues(slot,state.active));
     await storeCredentialState(db,slot,{...state,revision:state.revision+1,active,candidate:undefined,updatedAt:active.createdAt});
   }
   await db.query('INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2',[settingsId(),next]);

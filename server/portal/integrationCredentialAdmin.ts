@@ -5,7 +5,7 @@ import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
 import {canReplaceCurrentCredential} from '../../src/utils/integrationCredentialPolicy.ts';
 import {validMutationOrigin} from './accessTransport.ts';
 import {
-  candidateValues, credentialError as fail, credentialKinds, credentialSlot, credentialSource,credentialTarget,
+  credentialVersionValues, credentialError as fail, credentialKinds, credentialSlot, credentialSource,credentialTarget,
   credentialState, makeCredentialVersion, safeCredentialState, storeCredentialState, usesDirectCredentialSetup, verifiedCandidate,
   type CredentialClient, type CredentialKind, type CredentialValues, type Slot, type CredentialVerificationFailure,
 } from './integrationCredentials.ts';
@@ -277,7 +277,7 @@ export function mountIntegrationCredentials(app: Express, {
       }else if(action==='activate'){
         const candidate=verifiedCandidate(state,destination.id);
         if(candidate.id!==q.body.version||candidate.receipt?.scope!==credentialTarget(destination.context))return fail(409,'credential_conflict');
-        candidateValues(slot,candidate);
+        credentialVersionValues(slot,candidate);
         next.managed=true;
         next.active=candidate;
         delete next.candidate;
@@ -332,7 +332,7 @@ export function mountIntegrationCredentials(app: Express, {
         const candidate=state.candidate;
         if(!candidate||candidate.id!==q.body.version||candidate.target!==destination.id)return fail(409,'credential_conflict');
         if(candidate.validation&&candidate.validation.until>Date.now())return fail(409,'credential_verification_running');
-        const values=candidateValues(slot,candidate);
+        const values=credentialVersionValues(slot,candidate);
         await storeCredentialState(db,slot,{...state,candidate:{...candidate,receipt:undefined,
           validation:{requestId,until:Date.now()+180_000}}});
         return {target:destination,values};

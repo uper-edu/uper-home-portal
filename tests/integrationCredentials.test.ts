@@ -260,7 +260,14 @@ test('direct credential setup preserves each service’s verification, replaceme
   assert.notEqual(larkState().active.id,prior.id);
   assert.equal(larkKey(),'verified-fixture');
   assert.equal(larkState().candidate,undefined);
+  const managed = larkState();
+  const unexpectedFallback = () => assert.fail('A managed credential must not fall back');
+  assert.deepEqual(credentialSource(managed,larkSlot,'different destination',unexpectedFallback),
+    {source:'target_changed',value:undefined});
+  assert.deepEqual(credentialSource({...managed,active:{...managed.active,sealed:'invalid'}},larkSlot,target,unexpectedFallback),
+    {source:'unavailable',value:undefined});
   assert.equal((await integrationAction('lark-app','revoke',3)).status,200);
+  assert.deepEqual(credentialSource(larkState(),larkSlot,target,unexpectedFallback),{source:'revoked',value:undefined});
   assert.equal(larkKey(),undefined);
   const cosSlot=credentialSlot('cos','default');
   const cosState=()=>slots.get('dev/cos/default');

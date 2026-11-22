@@ -2,7 +2,7 @@ import {isDeepStrictEqual} from 'node:util';
 import {resolveMailPassword, type StoredMailAccount} from './enrollmentMailCredentials.ts';
 import {groupWebhookUsesEnvironment} from './larkGroupWebhook.ts';
 import {
-  candidateValues, credentialSlot, credentialState, makeCredentialVersion, storeCredentialState,
+  credentialVersionValues, credentialSlot, credentialState, makeCredentialVersion, storeCredentialState,
   type CredentialClient, type CredentialValues, type Slot,
 } from './integrationCredentials.ts';
 import {
@@ -35,7 +35,7 @@ export async function migrateLegacyCredentials(db: CredentialClient, environment
       return;
     }
     const active = makeCredentialVersion(slot, target, values);
-    if (!isDeepStrictEqual(candidateValues(slot, active), values)) throw Error('Credential round trip failed');
+    if (!isDeepStrictEqual(credentialVersionValues(slot, active), values)) throw Error('Credential round trip failed');
     count.eligible++;
     if (!apply) return;
 

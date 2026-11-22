@@ -45,7 +45,7 @@ export function credentialSource(state: State, slot: Slot, target: string, legac
   if (!state.active) return {source: 'revoked' as const, value: undefined};
   if (state.active.target !== target) return {source: 'target_changed' as const, value: undefined};
   try {
-    return {source: 'managed' as const, value: openCredential(readCredentialKeyring(undefined,slot.environment), slot, state.active.id, target, state.active.sealed)};
+    return {source: 'managed' as const, value: credentialVersionValues(slot, state.active)};
   } catch {
     return {source: 'unavailable' as const, value: undefined};
   }
@@ -80,7 +80,7 @@ export function makeCredentialVersion(slot: Slot, target: string, values: Creden
   return {id, target, sealed: sealCredential(readCredentialKeyring(undefined,slot.environment), slot, id, target, values), createdAt: new Date().toISOString()};
 }
 
-export function candidateValues(slot: Slot, version: Version) {
+export function credentialVersionValues(slot: Slot, version: Version) {
   return openCredential(readCredentialKeyring(undefined,slot.environment), slot, version.id, version.target, version.sealed);
 }
 
