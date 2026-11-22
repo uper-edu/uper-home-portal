@@ -1484,7 +1484,7 @@ function CrmWorkspace({
               {href:'/crm?tab=payments',label:paymentWorkspaceLabel('historical',lang),current:!enrollmentPaymentView},
             ]}/>}
             {canFinance&&enrollmentPaymentView?
-          <CrmEnrollmentFinance key={employee.id} refreshVersion={financeRefresh} onRefreshingChange={setFinanceLoading} lang={lang} isLight={isLight}
+          <CrmEnrollmentFinance key={employee.id} actorId={employee.id} refreshVersion={financeRefresh} onRefreshingChange={setFinanceLoading} lang={lang} isLight={isLight}
             onQueueChanged={paymentQueue.refresh} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={url=>{lastWorkspaceUrl.current=url;}}/> :
           <CrmFinanceWorkspace key={employee.id} refreshVersion={financeRefresh} onRefreshingChange={setFinanceLoading} onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight}
             onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/>}

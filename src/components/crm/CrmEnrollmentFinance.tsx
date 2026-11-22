@@ -47,8 +47,8 @@ function EnrollmentProof({id,mime,lang}:{id:string;mime?:string;lang:CrmLanguage
   </section>;
 }
 
-export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefreshingChange,onDirty,onBusy,onLocation,onQueueChanged}:{
-  lang:CrmLanguage;isLight?:boolean;refreshVersion:number;onRefreshingChange:(loading:boolean)=>void;onDirty:(dirty:boolean)=>void;onBusy:(busy:boolean)=>void;
+export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,onRefreshingChange,onDirty,onBusy,onLocation,onQueueChanged}:{
+  actorId:string;lang:CrmLanguage;isLight?:boolean;refreshVersion:number;onRefreshingChange:(loading:boolean)=>void;onDirty:(dirty:boolean)=>void;onBusy:(busy:boolean)=>void;
   onLocation:(url:string)=>void;onQueueChanged:()=>void;
 }) {
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
@@ -76,7 +76,7 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
   };
   const [requestId,setRequestId]=useState('');
   const [dirty,setDirty]=useState(false);
-  const receiptOperation=useCrmOrderOperation();
+  const receiptOperation=useCrmOrderOperation({actorId,orderId});
   const [refundBusy,setRefundBusy]=useState(false);
   const busy=receiptOperation.busy||refundBusy;
   const [savedDetailRead,setSavedDetailRead]=useState<string|null>(null);
@@ -257,7 +257,14 @@ export function CrmEnrollmentFinance({lang,isLight=true,refreshVersion,onRefresh
           </a>
         </li>)}</ul>
       </CrmDisclosure>}
-      {['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={afterWrite} onBusyChange={setRefundBusy} onDraftChange={()=>setDirty(true)}/> :
+      {receiptOperation.pending?.restored&&receiptOperation.pending.request.orderId===row.id ?
+        <CrmOrderOperationFeedback lang={lang} command={receiptOperation} onCheck={()=>void receiptOutcome(receiptOperation.check())} onRetry={()=>{}}
+          onResume={['refunding','refunded'].includes(row.status)?undefined:()=>{
+            const originalRequestId=receiptOperation.resume();
+            if(!originalRequestId)return;
+            setSelected(row.id);setRequestId(originalRequestId);setDetailError('');
+          }}/> :
+      ['refunding','refunded'].includes(row.status) ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={afterWrite} onBusyChange={setRefundBusy} onDraftChange={()=>setDirty(true)}/> :
       selected !== row.id ? <div className="crm-enrollment-finance-actions"><button type="button" ref={receiptTrigger} className="crm-work-button" data-primary disabled={savedDetailRead===orderId} onClick={() => {
         setSelected(row.id);setRequestId(crypto.randomUUID());setDetailError('');setSavedDetailRead(null);
       }}>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')}</button></div>

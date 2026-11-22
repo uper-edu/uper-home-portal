@@ -31,7 +31,7 @@ import {leadTier,taskDeadline} from './portal/followup.ts';
 import {campaignsContext} from '../cloud/mysql/campaign-context.mjs';
 import {loadCampaigns,getCurrentCampaigns,saveCampaign,deleteCampaign,trackCampaignImpression,synthesizeCampaignAiAssets,getCampaignByIdOrCode} from './campaignStorage.ts';
 import {log} from './logger.ts';
-import {mountRequestTracing} from './requestTracing.ts';
+import {mountRequestTracing,requestErrorContext} from './requestTracing.ts';
 export async function startMysqlApplication(){
 const company=companyConfiguration();
 const production=productionConfiguration();
@@ -142,7 +142,7 @@ if(process.env.TRIAL_FRONTEND_DIRECTORY){
   app.use(express.static(directory,frontendStaticOptions(directory)));
   mountMetadataHtml(app,directory,nativePool);
 }
-app.use((e:any,q:any,r:any,_next:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status===413?'Request too large':'Request could not be processed'});});
+app.use((e:any,q:any,r:any,_next:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,status,traceId:r.locals.traceId,...requestErrorContext(q,e)});r.status(status).json({error:status===413?'Request too large':'Request could not be processed'});});
 if(workerEnabled&&!activeLocal&&!company&&!production){
  const channels=(await pool.query("SELECT * FROM notification_channels")).rows;
  if(channels.some(c=>!c.config.deleted&&c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');

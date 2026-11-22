@@ -1,6 +1,6 @@
 import VisitorBoundary from './VisitorBoundary';
 import {visitorScope} from '../services/visitorScope';
-import {enrollmentPost,watchEnrollmentEmailSession} from '../services/enrollmentSession';
+import {enrollmentPost,readEnrollmentOperation,watchEnrollmentEmailSession} from '../services/enrollmentSession';
 import {readVisitorContact,rememberVisitorContact,readEnrollmentDraft,writeEnrollmentDraft,subscribeVisitorContact} from '../services/visitorContact';
 import {getStudentContext} from '../services/studentProfileStorage';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
@@ -50,7 +50,7 @@ export function EnrollmentApplication(props:Parameters<typeof EnrollmentForm>[0]
 }
 
 type LearnerDraft={email?:string;name?:string;phone?:string};
-type ContactDraft=LearnerDraft & {forAnother?:boolean;priority?:boolean;personal?:LearnerDraft;delegate?:LearnerDraft};
+type ContactDraft=LearnerDraft & {forAnother?:boolean;priority?:boolean;personal?:LearnerDraft;delegate?:LearnerDraft;applicationRequestId?:string};
 
 function maskedEmail(email:string) {
   const [local,domain]=email.split('@');
@@ -90,12 +90,15 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   const formKey=paymentClasses?'payment:'+orderId:classId?(waitlistClass||full?'waitlist:':'apply:')+classId:demandOnly?'demand':'mine';
   const [savedDraft]=useState(()=>readEnrollmentDraft<ContactDraft>(owner,formKey)??{});
   const draftRef=useRef(savedDraft);
+  const submittedApplication=useRef<ContactDraft|undefined>(savedDraft.applicationRequestId?savedDraft:undefined);
   const [contact]=useState(()=>readVisitorContact(owner)??getStudentContext()?.leadProfile??{});
   function saveDraft(patch:ContactDraft) {
+    if(submittedApplication.current&&!Object.hasOwn(patch,'applicationRequestId'))return;
     draftRef.current={...draftRef.current,...patch};
     writeEnrollmentDraft(owner,formKey,draftRef.current);
   }
   function clearDraft() {
+    submittedApplication.current=undefined;
     draftRef.current={};
     writeEnrollmentDraft(owner,formKey);
   }
@@ -129,8 +132,10 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   const canSummarize = !forAnother && emailConfirmed && !!name.trim() && validContactPhone(phone);
   const [verified,setVerified] = useState(false);
   const [busy,setBusy] = useState(false);
+  const [pendingApplication,setPendingApplication]=useState(Boolean(savedDraft.applicationRequestId));
+  const applicationDraftLocked=busy||pendingApplication;
   const personOption=<label className="enrollment-learner-switch">
-    <input type="checkbox" checked={forAnother} disabled={busy} onChange={event=>{
+    <input type="checkbox" checked={forAnother} disabled={applicationDraftLocked} onChange={event=>{
       const another=event.target.checked;
       const drafts=draftRef.current;
       setForAnother(another);
@@ -151,7 +156,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   </label>;
   const [error,setError] = useState('');
   useEffect(()=>{
-    if (forAnother || paymentClasses || challenge || verified || verificationStep || busy) return;
+    if (forAnother || paymentClasses || challenge || verified || verificationStep || applicationDraftLocked) return;
     return subscribeVisitorContact(owner,contact=>{
       const edits=draftRef.current;
       if(edits.email===undefined)updateEmail(contact.email??'');
@@ -160,8 +165,12 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         if(edits.phone===undefined)updatePhone(contact.whatsapp??'');
       }
     });
-  },[owner,forAnother,paymentClasses,challenge,verified,verificationStep,busy,classId,demandOnly]);
-  const [requestId] = useState(() => crypto.randomUUID());
+  },[owner,forAnother,paymentClasses,challenge,verified,verificationStep,applicationDraftLocked,classId,demandOnly]);
+  const [requestId,setRequestId] = useState(() => savedDraft.applicationRequestId??crypto.randomUUID());
+  const running=useRef(false);
+  const proofKey='proof:'+orderId;
+  const [pendingProof,setPendingProof]=useState(()=>paymentClasses?readEnrollmentDraft<string>(owner,proofKey):undefined);
+  const [proofReadFailed,setProofReadFailed]=useState(false);
   const [file,setFile] = useState<File>();
   const cancelDialog=useRef<HTMLDialogElement>(null);
   const base = '/api/enrollment';
@@ -193,12 +202,12 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     const revision=++orderRead.current;
     const expected=recordsEmail.current||currentEmail;
     const headers=validContactEmail(expected)?{'X-Enrollment-Email':expected}:undefined;
-    const response = await fetch(base+'/orders/'+encodeURIComponent(id),{cache:'no-store',headers});
+    const response = await fetch(base+'/orders/'+encodeURIComponent(id),{cache:'no-store',headers,signal:AbortSignal.timeout(15000)});
     if (!response.ok) throw Error(response.status===401?'enrollment_verification_required':'enrollment_order_not_found');
     const {verifiedEmail:address,...nextOrder}: Order & {verifiedEmail?:string} = await response.json();
     const verifiedAddress=address??expected;
     const options = await fetch(base+'/orders/'+encodeURIComponent(id)+'/aftercare',{
-      cache:'no-store',headers:verifiedAddress?{'X-Enrollment-Email':verifiedAddress}:undefined,
+      cache:'no-store',headers:verifiedAddress?{'X-Enrollment-Email':verifiedAddress}:undefined,signal:AbortSignal.timeout(15000),
     }).catch(()=>null);
     if(options?.status===401)throw Error('enrollment_verification_required');
     const nextAftercare=options?.ok ? await options.json() : undefined;
@@ -221,6 +230,15 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     setOrder(undefined);
     setAftercare(undefined);
     setFile(undefined);
+    setProofReadFailed(false);
+  }
+  function requireEmailVerification() {
+    invalidateEmailConfirmation();
+    setChallenge(undefined);
+    setCode('');
+    setSessionAddress('');
+    clearPrivateRecords();
+    if(applicationClass)setVerificationStep(true);
   }
   async function getOrders() {
     const revision=++recordRead.current;
@@ -283,7 +301,8 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     applicationHeading.current?.focus();
   },[verificationStep]);
   async function run(action: () => Promise<void>) {
-    if (busy) return;
+    if (running.current) return;
+    running.current=true;
     setBusy(true);
     setError('');
     try { await action(); } catch (cause) {
@@ -300,21 +319,15 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         window.scrollTo(0,0);
       }
       if (message==='enrollment_seat_available') setHasNoSeat(false);
-      if (message==='enrollment_verification_required') {
-        invalidateEmailConfirmation();
-        setChallenge(undefined);
-        setCode('');
-        setSessionAddress('');
-        clearPrivateRecords();
-        if(applicationClass)setVerificationStep(true);
-      }
+      if (message==='enrollment_verification_required') requireEmailVerification();
       setError(message);
     }
-    finally { setBusy(false); }
+    finally { running.current=false;setBusy(false); }
   }
   function sendCode() {
     return run(async () => {
-      const data=await enrollmentPost(base+'/email/request',{email,language,purpose:!classId&&!demandOnly?'mine':'apply'});
+      const data=await enrollmentPost(base+'/email/request',{email,language,purpose:!classId&&!demandOnly?'mine':'apply'},
+        undefined,AbortSignal.timeout(60000));
       setChallenge(data.challengeId);setCode('');
     });
   }
@@ -334,14 +347,52 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     source.set('lang',language);
     return source.toString();
   }
-  async function submitApplication() {
-    const result=await enrollmentPost(base+'/applications',{ classId,name,phone,priority,requestId,source:sourceQuery() },currentEmail||recordsEmail.current);
+  function openApplicationResult(result:Pick<Order,'id'>) {
+    if(typeof result?.id!=='string'||!result.id)throw Error('enrollment_operation_unconfirmed');
     if(!forAnother&&(emailConfirmed||applicationClass))rememberVisitorContact(owner,{fullName:name,email,whatsapp:phone});
     clearDraft();
     const next=new URLSearchParams(params);
     next.set('order',result.id);
     next.delete('apply');
     navigate('/enrollment/payment?' + next.toString(), { replace:true });
+  }
+  async function checkApplication() {
+    await verifyEnteredEmail();
+    if(submittedApplication.current?.email!==email)throw Error('enrollment_operation_unconfirmed');
+    const result=await readEnrollmentOperation<Order>(base+'/applications/results/'+requestId,currentEmail||recordsEmail.current);
+    if(result.state!=='saved')throw Error('enrollment_operation_unconfirmed');
+    openApplicationResult(result.order);
+  }
+  async function submitApplication() {
+    if(pendingApplication){
+      const original=submittedApplication.current;
+      if(original?.email!==email)throw Error('enrollment_operation_unconfirmed');
+      const result=await readEnrollmentOperation<Order>(base+'/applications/results/'+requestId,currentEmail||recordsEmail.current);
+      if(result.state==='saved'){openApplicationResult(result.order);return;}
+      if(original.name!==name||original.phone!==phone||original.priority!==priority)throw Error('enrollment_operation_unconfirmed');
+    }
+    saveDraft({email,name,phone,priority,applicationRequestId:requestId});
+    submittedApplication.current=draftRef.current;
+    setPendingApplication(true);
+    let result;
+    try {
+      result=await enrollmentPost(base+'/applications',{classId,name,phone,priority,requestId,source:sourceQuery()},
+        currentEmail||recordsEmail.current,AbortSignal.timeout(15000));
+    } catch(cause){
+      const status=(cause as {status?:number}).status;
+      const message=(cause as Error).message;
+      if((status&&status>=400&&status<500&&![401,408,409,425,429].includes(status))||
+          ['enrollment_class_full','enrollment_class_unavailable'].includes(message)||message.startsWith('enrollment_intake_')){
+        submittedApplication.current=undefined;
+        saveDraft({applicationRequestId:undefined});
+        setPendingApplication(false);
+        setRequestId(crypto.randomUUID());
+        throw cause;
+      }
+      if(message==='enrollment_verification_required')throw cause;
+      throw Error('enrollment_operation_unconfirmed');
+    }
+    openApplicationResult(result);
   }
   const apply = () => phoneField.check() && run(submitApplication);
   async function verifyEnteredEmail() {
@@ -379,23 +430,67 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     if (!order || !file) return;
     return run(async () => {
       const path=base+'/orders/'+encodeURIComponent(order.id)+'/proofs';
-      const started=await enrollmentPost(path+'/start',{});
+      const expected=recordsEmail.current||currentEmail;
+      if(pendingProof){
+        const result=await readEnrollmentOperation<Order>(path+'/'+pendingProof+'/result',expected);
+        if(result.state==='saved'){finishProof(result.order);return;}
+      }
       const encoded=await new Promise<string>((resolve,reject)=>{
         const reader=new FileReader();
         reader.onerror=reject;
         reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');
         reader.readAsDataURL(file);
       });
-      await enrollmentPost(path+'/finish',{uploadId:started.uploadId,mime:file.type,encoded,...transfer});
-      setFile(undefined);
-      await getOrder(order.id);
-      if (params.has('proof')) {
-        const next = new URLSearchParams(params);
-        next.delete('proof');
-        setParams(next,{replace:true,preventScrollReset:true});
+      const uploadId=pendingProof??(await enrollmentPost(path+'/start',{},expected,AbortSignal.timeout(15000))).uploadId;
+      storePendingProof(uploadId);
+      let saved;
+      try{saved=await enrollmentPost(path+'/finish',{uploadId,mime:file.type,encoded,...transfer},expected,AbortSignal.timeout(90000));}
+      catch(cause){
+        const message=(cause as Error).message;
+        if(['enrollment_invalid_proof','enrollment_upload_expired'].includes(message)){
+          storePendingProof(undefined);
+          throw cause;
+        }
+        if(message==='enrollment_verification_required')throw cause;
+        throw Error('enrollment_operation_unconfirmed');
       }
-      window.scrollTo(0,0);
+      finishProof(saved);
     });
+  }
+  function storePendingProof(id?:string){
+    setPendingProof(id);
+    writeEnrollmentDraft(owner,proofKey,id);
+  }
+  function finishProof(saved:Order){
+    if(!saved?.id||saved.id!==order?.id)throw Error('enrollment_operation_unconfirmed');
+    storePendingProof(undefined);
+    setFile(undefined);
+    setOrder(previous=>previous?.id===saved.id?{...previous,...saved}:previous);
+    if (params.has('proof')) {
+      const next = new URLSearchParams(params);
+      next.delete('proof');
+      setParams(next,{replace:true,preventScrollReset:true});
+    }
+    window.scrollTo(0,0);
+    void refreshSavedProof(saved.id);
+  }
+  async function refreshSavedProof(id:string){
+    try{await getOrder(id);setProofReadFailed(false);}
+    catch(error){
+      if((error as Error).message==='enrollment_verification_required'){
+        requireEmailVerification();
+        setError('enrollment_verification_required');
+        return;
+      }
+      setProofReadFailed(true);
+    }
+  }
+  async function checkProof(){
+    if(!order||!pendingProof)return;
+    const path=base+'/orders/'+encodeURIComponent(order.id)+'/proofs/'+pendingProof+'/result';
+    const result=await readEnrollmentOperation<Order>(path,recordsEmail.current||currentEmail);
+    if(result.state!=='saved')throw Error('enrollment_operation_unconfirmed');
+    finishProof(result.order);
   }
   const join = () => phoneField.check() && run(async () => {
     if (waitlistClass) await verifyEnteredEmail();
@@ -460,6 +555,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     enrollment_transfer_unavailable:['该班次目前无法转入，请返回可转班次刷新查看。','This class is no longer available for transfer. Go back and check the list again.','Kelas ini tidak lagi tersedia. Kembali dan periksa daftar kelas.'],
     enrollment_priority_unavailable:['当前报名无法开启优先安排，请刷新核对状态。','Priority arrangements are unavailable for this enrollment. Refresh to check its status.','Pengaturan prioritas tidak tersedia untuk pendaftaran ini. Muat ulang untuk memeriksa status.'],
     enrollment_invalid_proof:['凭证上传失败。请检查文件后重试。','Upload failed. Check the file and retry.','Unggahan gagal. Periksa file dan coba lagi.'],
+    enrollment_operation_unconfirmed:['结果尚未确认。请查询上次提交。','The result is unconfirmed. Check your last submission.','Hasil belum terkonfirmasi. Periksa pengiriman terakhir Anda.'],
   };
   const message=enrollmentReadinessMessage(error.replace(/^enrollment_intake_/,''),language)??t(errors[error] || ['操作未完成，请核对后重试。','The action could not be completed. Please review and retry.','Tindakan belum selesai. Periksa dan coba lagi.']);
   function transfer(targetClassId:string,decision:'accept'|'decline',invitationId?:string) {
@@ -518,7 +614,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       {challenge && <p className="enrollment-code-feedback" role="status">{verifiedHint}</p>}
     </div>;
   const emailField = <label className="enrollment-field">{emailLabel}
-    <input ref={enteredEmailField} type="email" required autoComplete="email" disabled={busy} value={email} onChange={event=>editEmail(event.target.value)}
+    <input ref={enteredEmailField} type="email" required autoComplete="email" disabled={busy} readOnly={pendingApplication} value={email} onChange={event=>editEmail(event.target.value)}
       placeholder={t(['输入你的电子邮箱','Enter your email address','Masukkan alamat email'])}/>
   </label>;
   const learnerFields = <div className="enrollment-learner">
@@ -527,7 +623,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         <span className="enrollment-identity-label">{t(['学员资料','Learner details','Data siswa'])}</span>
         <strong>{name.trim()}</strong>
       </div>
-      <button type="button" className="enrollment-record-link" aria-expanded={editingContact} disabled={busy}
+      <button type="button" className="enrollment-record-link" aria-expanded={editingContact} disabled={applicationDraftLocked}
         onClick={()=>setEditingContact(!editingContact)}>
         {t(editingContact?['收起','Collapse','Tutup']:['修改','Edit','Ubah'])}
       </button>
@@ -542,16 +638,16 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     {personOption}
     {(!canSummarize||editingContact)&&<>
       <label className="enrollment-field">{learnerLabel}
-        <input required maxLength={120} autoComplete="name" value={name} onChange={event=>setName(event.target.value)}
+        <input required maxLength={120} autoComplete="name" readOnly={applicationDraftLocked} value={name} onChange={event=>setName(event.target.value)}
           placeholder={t(['输入学员姓名','Enter learner name','Masukkan nama siswa'])}/>
       </label>
       {forAnother&&sessionAddress&&sessionAddress!==currentEmail&&<button type="button" className="enrollment-record-link"
-        disabled={busy} onClick={()=>editEmail(sessionAddress)}>
+        disabled={applicationDraftLocked} onClick={()=>editEmail(sessionAddress)}>
         {t(['使用我的已验证邮箱收通知','Use my verified email for updates','Gunakan email terverifikasi saya untuk pemberitahuan'])}
       </button>}
       {emailField}
       <label className="enrollment-field">{phoneLabel}
-        <input type="tel" {...phoneField.inputProps} required autoComplete="tel" value={phone} onChange={event=>setPhone(event.target.value)}
+        <input type="tel" {...phoneField.inputProps} required autoComplete="tel" readOnly={applicationDraftLocked} value={phone} onChange={event=>setPhone(event.target.value)}
           placeholder={t(['含国家或地区代码','Include country or region code','Sertakan kode negara atau wilayah'])}/>{phoneError}
       </label>
       {(!applicationClass||emailConfirmed)&&codeField}
@@ -592,6 +688,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       </Link>}
     <h1 ref={applicationHeading} tabIndex={-1}>{verificationStep ? t(['验证邮箱','Verify your email','Verifikasi email']) : applyText}</h1>
     {error && <p className="enrollment-form-error" role="alert">{message}</p>}
+    {pendingApplication&&emailConfirmed&&<button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>void run(checkApplication)}>
+      {t(['查询上次申请','Check last application','Periksa pendaftaran terakhir'])}
+    </button>}
     {verificationStep ? <form className="enrollment-journey-form" onSubmit={event=>{event.preventDefault();void verifyApplication();}}>
       <p className="enrollment-journey-note">{t([
         '验证后，你可以用这个邮箱查看报名。转班邀请、班次取消等重要事项也会通过邮件通知你。',
@@ -619,7 +718,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       <p className="enrollment-tuition">{t(['本班学费','Class tuition','Biaya kelas'])} <strong>{formatCurrency(applicationClass.price,language)}</strong></p>
       {learnerFields}
       <label className="enrollment-priority">
-        <input type="checkbox" checked={priority} onChange={event=>setPriority(event.target.checked)}/>
+        <input type="checkbox" checked={priority} disabled={applicationDraftLocked} onChange={event=>setPriority(event.target.checked)}/>
         <span><strong>{t(['优先安排 · 可取消','Priority arrangements · Optional','Pengaturan prioritas · Opsional'])}</strong>
           <span>{t([
             '原班不开课且你已付清学费时，我们会优先寻找最近开课的同级别、同班型班次。有合适席位时先为你保留，再请你确认。',
@@ -908,6 +1007,15 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         <button type="button" className="enrollment-primary" disabled={busy} onClick={cancelEnrollment}>{t(['确认取消','Confirm cancellation','Konfirmasi pembatalan'])}</button>
       </div>
     </dialog>
+    {order&&pendingProof&&<button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>void run(checkProof)}>
+      {t(['查询上次上传','Check last upload','Periksa unggahan terakhir'])}
+    </button>}
+    {order&&proofReadFailed&&<p role="status">
+      {t(['凭证已保存。暂时无法更新订单详情。','Proof saved. Order details could not be refreshed.','Bukti disimpan. Detail pesanan belum dapat dimuat ulang.'])}{' '}
+      <button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>void run(()=>refreshSavedProof(order.id))}>
+        {t(['刷新订单','Refresh order','Muat ulang pesanan'])}
+      </button>
+    </p>}
     {checkingRecords || loadingPayment ? <p role="status">{t(['正在读取报名…','Loading enrollment…','Memuat pendaftaran…'])}</p> : order ? <>
       {showAftercare ? <EnrollmentOrderAftercare order={order} details={aftercare} catalog={orderResultClasses} search={params}
         language={language} minePath={listPath} busy={busy} proofPath={canUpload ? '/enrollment/payment?'+proofParams.toString() : undefined}

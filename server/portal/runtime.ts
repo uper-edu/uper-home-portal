@@ -15,6 +15,7 @@ import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {auditLog} from './audit.ts';
 import {log} from '../logger.ts';
+import {requestErrorContext} from '../requestTracing.ts';
 import {listInbox,readInbox} from './inappInbox.ts';
 import {previewBackfill,confirmBackfill,backfillResult} from './assignmentBackfill.ts';
 import {assignNewLead,prepareAssignmentPolicy} from './autoAssignment.ts';
@@ -159,7 +160,7 @@ function wrap(fn: (req: Request, res: Response) => Promise<any>) {
     Promise.resolve().then(()=>{if(containsRemovedProfileMetadata(req.body))fail(400,"不支持的资料字段");return fn(req,res);}).catch((e) => {
       const status = (e as any).status || 503;
       // Business rejections (fail(4xx)) stay at warn; only service failures are error-level.
-      log[status < 500 ? "warn" : "error"]("http.error", { method: req.method, path: req.path, status, traceId: res.locals.traceId, error: e as Error });
+      log[status < 500 ? "warn" : "error"]("http.error", { method: req.method, status, traceId: res.locals.traceId, ...requestErrorContext(req,e) });
       if (!res.headersSent)
         res.status(e.status || 503).json({
           saved: typeof e.saved === "boolean" ? e.saved : undefined,

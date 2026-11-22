@@ -3283,6 +3283,18 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
+  "SELECT o.*, b.state AS class_state FROM enrollment_orders o\n        JOIN enrollment_classes b ON b.id=o.class_id WHERE o.email=:p1 AND o.request_id=:p2": {
+    "sql": "SELECT o.*, b.state AS class_state FROM enrollment_orders o\n        JOIN enrollment_classes b ON b.id=o.class_id WHERE o.email=:p1 AND o.request_id=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
+  "SELECT o.*, b.state AS class_state, p.id AS saved_proof\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3\n        WHERE o.id=:p1 AND o.email=:p2": {
+    "sql": "SELECT o.*, b.state AS class_state, p.id AS saved_proof\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3\n        WHERE o.id=:p1 AND o.email=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT o.*, customer.profile,\n      (SELECT DATE_FORMAT(a.expires_at,'%Y-%m-%dT%H:%i:%sZ') FROM enrollment_assisted_applications a\n        WHERE a.opportunity_id=o.id AND a.order_id IS NULL AND a.expires_at>UTC_TIMESTAMP(6)\n        ORDER BY a.created_at DESC,a.id LIMIT 1) AS assistanceDueAt\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      WHERE (:p1 IS NULL OR customer.id=:p1)\n      ORDER BY o.created_at DESC,o.id": {
     "sql": "SELECT o.*, customer.profile,\n      (SELECT DATE_FORMAT(a.expires_at,'%Y-%m-%dT%H:%i:%sZ') FROM enrollment_assisted_applications a\n        WHERE a.opportunity_id=o.id AND a.order_id IS NULL AND a.expires_at>UTC_TIMESTAMP(6)\n        ORDER BY a.created_at DESC,a.id LIMIT 1) AS assistanceDueAt\n      FROM enrollment_opportunities o JOIN portal_leads original ON original.id=o.lead_id\n      JOIN portal_leads customer ON customer.id=COALESCE(NULLIF(original.profile->>'$.identityMergedInto','null'),original.id)\n      WHERE (:p1 IS NULL OR customer.id=:p1)\n      ORDER BY o.created_at DESC,o.id",
     "sources": [

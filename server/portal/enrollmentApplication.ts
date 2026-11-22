@@ -1,3 +1,4 @@
+import {measureEnrollmentPhase} from '../requestTracing.ts';
 import {enrollmentSessionCookie,enrollmentVisitorDigest,readEnrollmentEmailSession,revokeEnrollmentEmailSession} from './enrollmentVisitorSession.ts';
 import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox,enrollmentSmtpReady} from './enrollmentMail.ts';
 import type { Express, Request, Response } from 'express';
@@ -229,7 +230,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const email = contact(q.body.email);
     const id = randomUUID();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    const pending=await enrollTx(async (c: Client) => {
+    const pending=await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
       const delivery=await enrollmentMailDelivery(c);
       const local=enrollmentMailbox(delivery.mode);
       if(delivery.mode==='disabled'||delivery.mode==='simulation'&&!local)invalid('enrollment_email_unavailable',503);
@@ -249,9 +250,9 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       if(await enrollmentMailConfigured(c))return {message,delivery};
       if(!local)invalid('enrollment_email_unavailable',503);
       await local.deliver(id,email,code,message);
-    });
+    }));
     if(pending){
-      const result=await dispatchEnrollmentMail('otp:'+id,email,pending.message,{code,deliveryId:id,expected:pending.delivery});
+      const result=await measureEnrollmentPhase(r,'mail_dispatch',()=>dispatchEnrollmentMail('otp:'+id,email,pending.message,{code,deliveryId:id,expected:pending.delivery}));
       if(result.state!=='accepted'&&result.state!=='simulated'){
         await enrollTx(c=>c.query(`UPDATE enrollment_email_challenges SET used=TRUE,
           resend_at=IF(:p3,UTC_TIMESTAMP(6),resend_at) WHERE email=:p1 AND challenge_id=:p2`,
@@ -450,6 +451,19 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     r.json(result);
   });
 
+  app.get(base+'/applications/results/:requestId',wrap(async(q,r)=>{
+    r.set('Cache-Control','no-store');
+    const requestId=String(q.params.requestId);
+    if(!uuid.test(requestId))invalid('enrollment_invalid_application');
+    const result=await enrollTx(async(c:Client)=>{
+      const email=await session(c,q);
+      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state FROM enrollment_orders o
+        JOIN enrollment_classes b ON b.id=o.class_id WHERE o.email=:p1 AND o.request_id=:p2`,[email,requestId]);
+      return row?{state:'saved',order:view(row,row.class_state)}:{state:'unconfirmed'};
+    });
+    r.json(result);
+  }));
+
   post(base + '/applications', async (q, r) => {
     const { classId, requestId, name, priority } = q.body;
     const phone = enrollmentPhone(q.body.phone);
@@ -458,7 +472,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         typeof name !== 'string' || name.trim().length < 1 || name.length > 120 ||
         !phone ||
         typeof priority !== 'boolean') invalid('enrollment_invalid_application');
-    const result = await moneyTx(async (c: Client) => {
+    const result = await measureEnrollmentPhase(r,'transaction',()=>moneyTx(async (c: Client) => {
       const email = await session(c, q);
       const fingerprint = sha(JSON.stringify([classId, name.trim(), phone.trim(), priority]));
       const cohort = await lockClass(c, classId);
@@ -476,7 +490,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       const seats = await takenSeats(c,classId);
       if (Number(seats) >= cohort.data.capacity) invalid('enrollment_class_full', 409);
       return reserveSeat(c,cohort,seats,{email,name:name.trim(),phone,requestId,fingerprint,price:cohort.data.price,priority,source:q.body.source});
-    });
+    }));
     r.json(result);
   });
 
@@ -549,6 +563,22 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     r.set('Cache-Control', 'no-store').json(result);
   }));
 
+  app.get(base+'/orders/:id/proofs/:uploadId/result',wrap(async(q,r)=>{
+    r.set('Cache-Control','no-store');
+    const {id,uploadId}=q.params;
+    if(!uuid.test(String(id))||!uuid.test(String(uploadId)))invalid('enrollment_invalid_proof');
+    const result=await enrollTx(async(c:Client)=>{
+      const email=await session(c,q);
+      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state, p.id AS saved_proof
+        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id
+        LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3
+        WHERE o.id=:p1 AND o.email=:p2`,[id,email,uploadId]);
+      if(!row)invalid('enrollment_order_not_found',404);
+      return row.saved_proof?{state:'saved',order:view(row,row.class_state)}:{state:'unconfirmed'};
+    });
+    r.json(result);
+  }));
+
   post(base + '/orders/:id/proofs/start', async (q, r) => {
     const uploadId = await enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
@@ -565,7 +595,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const { uploadId, mime, encoded, reportedAmount, bankReference } = q.body;
     if (typeof uploadId !== 'string' || !uuid.test(uploadId)) invalid('enrollment_invalid_proof');
     // End the current attempt on a rejected upload, so a later attempt uses a fresh server clock.
-    const result = await enrollTx(async (c: Client) => {
+    const result = await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
       const prior = (await c.query('SELECT order_id FROM enrollment_proofs WHERE id=:p1', [uploadId])).rows[0];
       if (prior?.order_id === order.id) return view(order,cohort.state);
@@ -574,7 +604,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       }
       let digest, transferDetails;
       try {
-        digest = proofContent(encoded, mime);
+        digest = await measureEnrollmentPhase(r,'proof_validation',()=>proofContent(encoded,mime));
         transferDetails = proofTransferDetails(reportedAmount,bankReference);
       }
       catch {
@@ -599,7 +629,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       await c.query('UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
       await proofNotices(c,order.id,cohort.id,digest,cohort.data.level);
       return view({...order,state},cohort.state);
-    });
+    }));
     if (!result) invalid('enrollment_invalid_proof');
     r.json(result);
   });
@@ -733,7 +763,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         !time || !Number.isFinite(time.getTime()) || time.getTime() > Date.now() ||
         typeof requestId !== 'string' || !uuid.test(requestId)) invalid('enrollment_invalid_receipt');
     const id = String(q.params.id);
-    const result = await moneyTx((c: Client) => operation(c, actor.id, q.body,
+    const result = await measureEnrollmentPhase(r,'transaction',()=>moneyTx((c: Client) => operation(c, actor.id, q.body,
       { leadId: 'enrollment:' + id, kind: 'enrollment.receipt', authorize: () => financeActor(q) }, async () => {
       if(typeof receivingAccount!=='string'||!receivingAccount.trim()||receivingAccount.trim().length>160)
         invalid('enrollment_receiving_account_required');
@@ -762,7 +792,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       await applyEnrollmentPaymentCredits(c,{order:{...order,state,received},cohort},lockOrder);
       const latest=(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0];
       return {order:view(latest,cohort.state),...summary};
-    }));
+    })));
     r.json(result);
   });
 }

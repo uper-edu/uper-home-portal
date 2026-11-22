@@ -110,10 +110,21 @@ export default function Enrollment() {
   const [liveClasses, setClasses] = useState<PublicEnrollmentClass[]>();
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
+  const [readinessReload,setReadinessReload]=useState(0);
   const [availability, setAvailability] = useState<{accepting:boolean;servicing:boolean;reasons:string[]}>();
   const classes=previewToken?(previewRow?[previewRow]:undefined):liveClasses;
   const accepting=previewToken?!!previewRow?.price:availability?.accepting;
   const servicing=availability?.servicing;
+  useEffect(()=>{
+    if(previewToken||!classes)return;
+    performance.clearMarks('uper:enrollment:catalog-ready');
+    performance.mark('uper:enrollment:catalog-ready');
+  },[previewToken,classes]);
+  useEffect(()=>{
+    if(previewToken||accepting===undefined)return;
+    performance.clearMarks('uper:enrollment:intake-checked');
+    performance.mark('uper:enrollment:intake-checked');
+  },[previewToken,accepting,availability]);
   const requestedLevel = params.get('level');
   const level = requestedLevel && catalogLevels.includes(requestedLevel) ? requestedLevel : '1';
   const period = params.get('period') || '';
@@ -123,9 +134,10 @@ export default function Enrollment() {
     if(previewToken)return;
     const abort = new AbortController();
     setFailed(false);
-    fetch('/api/enrollment/classes', { signal: abort.signal, cache: 'no-store' }).then(async response => {
+    fetch('/api/enrollment/classes', { signal: AbortSignal.any([abort.signal,AbortSignal.timeout(15000)]), cache: 'no-store' }).then(async response => {
       if (!response.ok) throw Error();
       const data: { classes: PublicEnrollmentClass[]; appointments?:Appointment[] } = await response.json();
+      if(abort.signal.aborted)return;
       setClasses(data.classes);
       setAppointments(data.appointments??[]);
     }).catch(() => { if (!abort.signal.aborted) setFailed(true); });
@@ -134,14 +146,15 @@ export default function Enrollment() {
   useEffect(() => {
     if(previewToken)return;
     const abort = new AbortController();
-    fetch('/api/enrollment/availability', { signal: abort.signal, cache: 'no-store' })
+    setAvailability(undefined);
+    fetch('/api/enrollment/availability', { signal: AbortSignal.any([abort.signal,AbortSignal.timeout(15000)]), cache: 'no-store' })
       .then(response => {if(!response.ok)throw Error();return response.json();})
       .then((data: { accepting?: boolean; servicing?:boolean; reasons?:string[] }) => {
         if (!abort.signal.aborted) setAvailability({accepting:data.accepting===true,servicing:(data.servicing??data.accepting)===true,reasons:data.reasons??['check_failed']});
       })
       .catch(() => { if (!abort.signal.aborted) setAvailability({accepting:false,servicing:true,reasons:['check_failed']}); });
     return () => abort.abort();
-  }, [previewToken]);
+  }, [reload,readinessReload,previewToken]);
   useEffect(()=>{
     if(!previewToken)return;
     const receive=(event:MessageEvent)=>{
@@ -238,6 +251,7 @@ export default function Enrollment() {
   };
   const intakeNotice=accepting===false&&!previewToken&&<div role="status" className="enrollment-form-error">
     {availability?.reasons.map(reason=><p key={reason}>{enrollmentReadinessMessage(reason,language)}</p>)}
+    {availability?.reasons.includes('check_failed')&&<button type="button" className="enrollment-quiet" onClick={()=>setReadinessReload(value=>value+1)}>{t('retry')}</button>}
   </div>;
   const backChat = !previewToken && fromChat && <Link
     className="enrollment-back enrollment-chat-return" to={fromChat.url}
@@ -336,6 +350,7 @@ export default function Enrollment() {
       <Link className="enrollment-back" to={listPath} state={chatReturnState}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>
       <h1>{t('join')}</h1>
       <EnrollmentApplication key={selected.id} classId={selected.id} language={language} full waitlistClass={selected}/>
+      <Link className="enrollment-quiet" to={minePath} state={chatReturnState}>{t('mine')}</Link>
     </section>;
   }
 
@@ -359,7 +374,9 @@ export default function Enrollment() {
     <h1>{t(application && selected ? selected.availability === 'full' ? 'join' : 'apply' : 'details')}</h1>
     {failed ? <p role="alert">{t('error')} <button type="button" onClick={() => setReload(value => value + 1)}>{t('retry')}</button></p>
       : !classes ? <p role="status">{t('loading')}</p>
-      : !selected ? <p>{t('unavailable')}</p>
+      : !selected ? <><p>{t('unavailable')}</p>
+        {application&&<Link className="enrollment-quiet" to={minePath} state={chatReturnState}>{t('mine')}</Link>}
+      </>
       : application ? <div className="enrollment-apply-layout">
         {classCard(selected, false)}
         {accepting && selected.price>0 && <EnrollmentApplication key={selected.id} classId={selected.id} language={language} full={selected.availability==='full'}/>}

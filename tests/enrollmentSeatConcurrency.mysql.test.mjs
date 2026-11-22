@@ -45,7 +45,7 @@ test('one final seat, idempotent reservations and cross-class credit from a veri
   // Exercise the public application handler with genuine persisted sessions and transactions.
   // There is no HTTP server, real mailbox or worker.
   const routes=new Map();
-  const app={get:()=>{},post:(path,handler)=>routes.set(path,handler)};
+  const app={get:(path,handler)=>routes.set('GET '+path,handler),post:(path,handler)=>routes.set(path,handler)};
   const unexpected=()=>{throw Error('Unexpected staff or visitor setup call');};
   mountEnrollmentApplication(app,{wrap:handler=>handler,staff:unexpected,visitor:unexpected});
   const route=routes.get('/api/enrollment/applications');
@@ -58,14 +58,17 @@ test('one final seat, idempotent reservations and cross-class credit from a veri
       VALUES(:p1,:p2,TIMESTAMPADD(HOUR,1,UTC_TIMESTAMP(6)))`,[enrollmentVisitorDigest(session,visitor),email]);
     const headers={origin,host,cookie:`${portalVisitorCookie}=${visitor}; ${enrollmentSessionCookie}=v2.${session}`};
     const learnerRequestId=randomUUID();
-    return async (targetClass=classId,requestId=learnerRequestId)=> {
-      const body={classId:targetClass,requestId,name:'Test Learner '+index,phone:`+628123400000${index}`,priority:false};
+    const invoke=async(handler,body={},params={})=>{
       let output;
       const res={set:()=>res,json:value=>{output=value;}};
-      await route({body,headers,protocol:'https',is:type=>type==='application/json',get:name=>headers[name.toLowerCase()]},res);
+      await handler({body,params,headers,protocol:'https',is:type=>type==='application/json',get:name=>headers[name.toLowerCase()]},res);
       assert.ok(output);
       return output;
     };
+    const apply=(targetClass=classId,requestId=learnerRequestId)=>invoke(route,{
+      classId:targetClass,requestId,name:'Test Learner '+index,phone:`+628123400000${index}`,priority:false,
+    });
+    return Object.assign(apply,{invoke,requestId:learnerRequestId});
   }
   const learners=await Promise.all([learner(1),learner(2)]);
   const outcomes=await Promise.allSettled(learners.map(apply=>apply()));
@@ -80,6 +83,25 @@ test('one final seat, idempotent reservations and cross-class credit from a veri
     [[order.id,'awaiting_payment',875000,0]]);
   const {rows:receipts}=await pool.query('SELECT kind,state FROM enrollment_notification_receipts WHERE subject_id=:p1',[order.id]);
   assert.deepEqual(receipts.map(row=>[row.kind,row.state]),[['seat_reserved','simulated']]);
+  const winningLearner=learners[winner];
+  const otherLearner=learners[1-winner];
+  const applicationResult=routes.get('GET /api/enrollment/applications/results/:requestId');
+  const originalRequest={requestId:winningLearner.requestId};
+  assert.equal((await winningLearner.invoke(applicationResult,{},originalRequest)).order.id,order.id);
+  assert.deepEqual(await otherLearner.invoke(applicationResult,{},originalRequest),{state:'unconfirmed'});
+  const proofRoot='/api/enrollment/orders/:id/proofs';
+  const params={id:order.id};
+  const {uploadId}=await winningLearner.invoke(routes.get(proofRoot+'/start'),{},params);
+  const readProof=routes.get('GET '+proofRoot+'/:uploadId/result');
+  assert.deepEqual(await winningLearner.invoke(readProof,{},{...params,uploadId}),{state:'unconfirmed'});
+  const encoded=Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'),Buffer.alloc(8)]).toString('base64');
+  const proof={uploadId,encoded,mime:'image/png'};
+  const finish=routes.get(proofRoot+'/finish');
+  await winningLearner.invoke(finish,proof,params);
+  assert.equal((await winningLearner.invoke(readProof,{},{...params,uploadId})).order.status,'proof_review');
+  await winningLearner.invoke(finish,proof,params);
+  assert.equal(Number((await pool.query('SELECT COUNT(*) n FROM enrollment_proofs WHERE order_id=:p1',[order.id])).rows[0].n),1);
+  await assert.rejects(otherLearner.invoke(readProof,{},{...params,uploadId}),/enrollment_order_not_found/);
 
   await pool.query("UPDATE enrollment_orders SET state='expired',received=160000 WHERE id=:p1",[order.id]);
   await pool.query(`INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,created_at)
