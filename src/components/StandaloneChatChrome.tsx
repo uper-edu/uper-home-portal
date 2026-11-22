@@ -5,7 +5,7 @@ import {chooseText,type HskLanguage,type HskResult} from '../data/hskAssessment'
 import {learnerAssessmentGuidance} from '../data/hskLearnerGuidance';
 import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
 import {PublicPageLinkActions} from './PublicLinkActions';
-import {SocialProfileIcon, socialProfiles} from './SocialProfileIcon';
+import {SocialProfileIcon, socialProfileOrder, socialProfiles} from './SocialProfileIcon';
 import {PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenu} from './PublicHeaderMenu';
 
 export type ChatPresentation = 'page' | 'panel' | 'mobile' | 'expanded';
@@ -105,7 +105,7 @@ export function ChatWelcome({lang,hasDraft,hasResult,onAssessment,onPrompt,hasPr
 
 export function ChatWelcomeSocials({lang}:{lang:HskLanguage}) {
   return <nav className="chat-welcome-socials" aria-label={chooseText(lang,'UPER 官方社交账号','UPER social media','Media sosial UPER')}>
-    {(['whatsapp','instagram','tiktok','youtube','linkedin','threads','facebook'] as const).map(platform=><a
+    {socialProfileOrder.map(platform=><a
       key={platform} href={socialProfiles[platform].url} aria-label={socialProfiles[platform].name}
       target="_blank" rel="noopener noreferrer"><SocialProfileIcon platform={platform}/></a>)}
   </nav>;

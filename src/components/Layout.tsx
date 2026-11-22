@@ -13,7 +13,7 @@ import { BackToTop } from './ui/BackToTop';
 import { trackLanguageSwitch, trackEvent } from '../utils/analytics';
 import { useDesignStyle, useColorTheme } from '../utils/theme';
 import { useStudentName, STUDENT_PORTAL_URL } from '../utils/studentAuth';
-import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
+import { SocialProfileIcon, socialProfileOrder, socialProfiles } from './SocialProfileIcon';
 import { PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenuIcon, publicHeaderLanguages, publicHeaderMenuButtonClass } from './PublicHeaderMenu';
 import { PublicPageLinkActions } from './PublicLinkActions';
 
@@ -633,7 +633,7 @@ const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
                 {t('footer.followUs')}
               </h4>
               <ul className="flex flex-wrap gap-1.5">
-                {(['whatsapp', 'instagram', 'tiktok', 'youtube', 'linkedin', 'threads', 'facebook'] as const).map((platform) => (
+                {socialProfileOrder.map((platform) => (
                   <li key={platform}>
                     <a
                       href={socialProfiles[platform].url}

@@ -8,6 +8,10 @@ export const socialProfiles = {
   linkedin: { name: 'LinkedIn', url: 'https://www.linkedin.com/company/pt-uper-education-technology/' },
 } as const;
 
+export const socialProfileOrder = [
+  'whatsapp', 'instagram', 'tiktok', 'youtube', 'linkedin', 'threads', 'facebook',
+] as const satisfies readonly (keyof typeof socialProfiles)[];
+
 export function SocialProfileIcon({
   platform,
   className,

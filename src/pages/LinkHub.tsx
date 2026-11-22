@@ -16,7 +16,7 @@ import { PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenu } from "../co
 import "./link-hub.css";
 import { useSearchParams } from "react-router-dom";
 import LinkHandbookPreview from "../components/LinkHandbookPreview";
-import { SocialProfileIcon, socialProfiles } from "../components/SocialProfileIcon";
+import { SocialProfileIcon, socialProfileOrder, socialProfiles } from "../components/SocialProfileIcon";
 import { linkHubConsultUrl } from '../utils/instagramBioCampaign';
 
 const whatsapp = "https://wa.me/6281116612062";
@@ -213,7 +213,7 @@ export default function LinkHub() {
         </section>
         <footer className="linkhub-footer">
           <nav className="linkhub-socials" aria-label={t.socials}>
-            {(["whatsapp", "instagram", "tiktok", "youtube", "linkedin", "threads", "facebook"] as const).map((kind) => (
+            {socialProfileOrder.map((kind) => (
               <a
                 key={kind}
                 onClick={()=>trackEvent('link_click',{target:kind,entry_point:'linkhub'})}
