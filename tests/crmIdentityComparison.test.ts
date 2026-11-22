@@ -16,7 +16,8 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
   const session=()=>{let cookie='';return async(path:string,body?:any,method?:string)=>{const r=await fetch(base+path,{method:method||(body===undefined?'GET':'POST'),headers:{Origin:base,Cookie:cookie,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});for(const h of r.headers.getSetCookie())cookie=h.split(';')[0];return {status:r.status,data:await r.json()};};};
   const sales=session(),manager=session();for(const [s,n]of [[sales,'Fadhil'],[manager,'Suki']]as const)assert.equal((await s('/api/crm/auth/login',{loginId:n,password:n})).status,200);
   const a='TEST-comparison-'+randomUUID(),b='TEST-peer-'+randomUUID(),visitor=randomUUID();
-  for(const [id,name,owner]of [[a,'TEST Contacted','Fadhil'],[b,'TEST Different Name',null]])await pool.query('INSERT INTO portal_leads(id,business_number,profile) VALUES(:p1,:p2,:p3)',[id,id,{id,fullName:name,email:'comparison@example.invalid',whatsapp:'',owner,manualNotes:'Hot is customer original text',tier:'Hot',currentStage:'New',latestAssessment:{score:17,maxScore:20}}]);
+  const submittedAt='2026-10-27T01:00:00.000Z';
+  for(const [id,name,owner]of [[a,'TEST Contacted','Fadhil'],[b,'TEST Different Name',null]])await pool.query('INSERT INTO portal_leads(id,business_number,profile) VALUES(:p1,:p2,:p3)',[id,id,{id,fullName:name,submittedAt,email:'comparison@example.invalid',whatsapp:'',owner,manualNotes:'Hot is customer original text',tier:'Hot',currentStage:'New',latestAssessment:{score:17,maxScore:20}}]);
   await pool.query('INSERT INTO visitor_sessions(id,expires_at) VALUES(:p1,DATE_ADD(UTC_TIMESTAMP(6),INTERVAL 1 DAY))',[visitor]);await pool.query('INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) VALUES(:p1,:p2,:p3)',[visitor,a,b]);
   const before=(await pool.query('SELECT id,profile FROM portal_leads WHERE id IN (:p1,:p2) ORDER BY id',[a,b])).rows;
   const path='/api/crm/leads/'+a;
@@ -32,27 +33,35 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
   const after=await manager(path+'/identity-comparison?candidateId='+b);assert.equal(after.data.pending,false);assert.equal(after.data.decision,'shared');assert.equal(after.data.canConfirm,false);assert.equal(after.data.decidedBy,'Suki');assert.match(after.data.decidedAt,/Z$/);assert.ok(Math.abs(Date.now()-Date.parse(after.data.decidedAt))<10000);
   const profiles=(await pool.query('SELECT id,profile FROM portal_leads WHERE id IN (:p1,:p2) ORDER BY id',[a,b])).rows;
   for(let i=0;i<before.length;i++){assert.equal(profiles[i].profile.owner,before[i].profile.owner);assert.deepEqual(profiles[i].profile.latestAssessment,before[i].profile.latestAssessment);}
-  assert.equal(Number((await pool.query('SELECT COUNT(*) n FROM followup_tasks')).rows[0].n),0);
+  const followUps=(await pool.query('SELECT lead_id,kind,owner_id FROM followup_tasks')).rows;
+  assert.deepEqual(followUps,[{lead_id:a,kind:'consultation',owner_id:'Fadhil'}]);
   assert.equal(Number((await pool.query("SELECT COUNT(*) n FROM crm_facts WHERE kind='identity.shared' AND lead_id=:p1",[a])).rows[0].n),1);
   // Global controls never replace the caller's existing record permissions.
   const policy=(await manager('/api/crm/policy-config')).data;assert.equal(policy.identityReviewManagerOnly,true);assert.equal(policy.ownerAssignmentManagerOnly,false);assert.equal(policy.sourceAttributionManagerOnly,true);
   assert.equal((await sales('/api/crm/policy-config',{ownerAssignmentManagerOnly:false})).status,403);
   assert.equal((await manager('/api/crm/policy-config',{ownerAssignmentManagerOnly:'true'})).status,400);
   assert.equal((await manager('/api/crm/policy-config',{identityReviewManagerOnly:false,ownerAssignmentManagerOnly:true})).status,200);
-  const c='TEST-control-'+randomUUID(),d='TEST-owned-'+randomUUID(),v2=randomUUID();
-  for(const [id,owner]of [[c,null],[d,'Fadhil']])await pool.query('INSERT INTO portal_leads(id,business_number,profile) VALUES(:p1,:p2,:p3)',[id,id,{id,fullName:id,email:'comparison@example.invalid',owner,currentStage:'New'}]);
+  const c='TEST-control-'+randomUUID(),d='TEST-owned-'+randomUUID(),assignmentLead='TEST-assignment-'+randomUUID(),v2=randomUUID();
+  for(const [id,owner]of [[c,null],[d,'Fadhil'],[assignmentLead,null]])await pool.query('INSERT INTO portal_leads(id,business_number,profile) VALUES(:p1,:p2,:p3)',[id,id,{id,fullName:id,submittedAt,email:'comparison@example.invalid',owner,currentStage:'New'}]);
   await pool.query('INSERT INTO visitor_sessions(id,expires_at) VALUES(:p1,DATE_ADD(UTC_TIMESTAMP(6),INTERVAL 1 DAY))',[v2]);
   await pool.query('INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) VALUES(:p1,:p2,:p3)',[v2,a,d]);
   const salesCompare=await sales(path+'/identity-comparison?candidateId='+d);assert.equal(salesCompare.status,200);assert.equal(salesCompare.data.canConfirm,true);
   const controlDecision={requestId:randomUUID(),candidateId:d,decision:'different',reason:'TEST same owner, different people',expectedComparisonRevision:salesCompare.data.revision};
   assert.equal((await sales(path+'/identity-actions',controlDecision)).status,200);
-  assert.equal((await sales('/api/crm/leads/'+c+'/claim',{})).data.error,'OWNER_MANAGER_REQUIRED');
-  assert.equal((await sales(path,{owner:'Wigar'},'PATCH')).data.error,'OWNER_MANAGER_REQUIRED');
-  assert.equal((await manager('/api/crm/leads/'+c+'/claim',{})).data.error,'Sales claim permission required');
-  assert.equal((await manager('/api/crm/leads/'+c)).data.lead.identityReview.ownerAssignmentManagerOnly,true);
-  assert.equal((await manager('/api/crm/leads/'+c,{owner:'Wigar'},'PATCH')).status,200);
-  assert.equal((await manager('/api/crm/leads/'+c)).data.lead.owner,'Wigar');
-  assert.equal((await manager('/api/crm/leads/'+c,{owner:null},'PATCH')).status,200);
+  const claimPath='/api/crm/leads/'+c+'/claim';
+  const assignmentPath='/api/crm/leads/'+assignmentLead;
+  const assignOwner=(expectedOwner:string|null)=>({owner:'Wigar',expectedOwner,expectedOwnerChangedAt:null,ownerChangeReason:'',ownerChangeRequestId:randomUUID()});
+  const salesClaim=await sales(claimPath,{});
+  assert.equal(salesClaim.status,403);assert.equal(salesClaim.data.error,'OWNER_MANAGER_REQUIRED');
+  const salesAssignment=await sales(path,assignOwner('Fadhil'),'PATCH');
+  assert.equal(salesAssignment.status,403);assert.equal(salesAssignment.data.error,'没有分配客户负责人的权限');
+  const managerClaim=await manager(claimPath,{});
+  assert.equal(managerClaim.status,403);assert.equal(managerClaim.data.error,'Sales claim permission required');
+  assert.equal((await manager(assignmentPath)).data.lead.identityReview.ownerAssignmentManagerOnly,true);
+  assert.equal((await manager(assignmentPath,assignOwner(null),'PATCH')).status,200);
+  assert.equal((await manager(assignmentPath)).data.lead.owner,'Wigar');
+  const emptyOwner=await manager(assignmentPath,{owner:null},'PATCH');
+  assert.equal(emptyOwner.status,400);assert.equal(emptyOwner.data.error,'请选择接收销售');
   const stored=(await manager('/api/crm/policy-config')).data;assert.deepEqual(stored.businessHours,policy.businessHours);assert.deepEqual(stored.firstResponseSla,policy.firstResponseSla);
   assert.equal(Number((await pool.query("SELECT COUNT(*) n FROM portal_audit WHERE action='crm.access-controls.save'")).rows[0].n),1);
   // Enabled Sales review does not authorize a second owner's records.
@@ -61,8 +70,10 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
   // Old pages cannot submit after the manager-only gate is switched back on.
   assert.equal((await manager('/api/crm/policy-config',{identityReviewManagerOnly:true,ownerAssignmentManagerOnly:false})).status,200);
   assert.equal((await sales(path+'/identity-actions',{...controlDecision,requestId:randomUUID()})).data.error,'IDENTITY_MANAGER_REQUIRED');
-  assert.equal((await sales('/api/crm/leads/'+c+'/claim',{})).status,200);
-  assert.equal((await sales(path,{owner:'Wigar'},'PATCH')).data.error,'Lead assignment permission required');
+  assert.equal((await sales(claimPath,{})).status,200);
+  const salesAssignmentWithManagerGateOff=await sales(path,assignOwner('Fadhil'),'PATCH');
+  assert.equal(salesAssignmentWithManagerGateOff.status,403);
+  assert.equal(salesAssignmentWithManagerGateOff.data.error,'没有分配客户负责人的权限');
   const {canReviewSourceAttribution,assertSourceAttributionReviewer}=await import('../server/portal/crmAccessControls.ts');
   const operator:any={id:'TEST Marketing Operator',active:true,roles:['sales'],permissions:['crm.read','campaigns.manage'],scope:'all'};
   assert.equal(await canReviewSourceAttribution(pool,operator),false);
