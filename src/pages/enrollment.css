@@ -428,6 +428,48 @@
 .enrollment-apply-screen { max-width: 664px; }
 .enrollment-apply-screen h1:focus { outline: none; }
 .enrollment-journey-form { display: grid; gap: 13px; }
+.enrollment-learner { display: grid; gap: 11px; min-width: 0; }
+.enrollment-learner-switch { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; font-size: 13px; }
+.enrollment-learner-switch input { width: 17px; height: 17px; flex-shrink: 0; accent-color: var(--enrollment-accent); }
+.enrollment-identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  padding: 11px 13px;
+  border: 1px solid var(--enrollment-border);
+  border-radius: 10px;
+  background: var(--enrollment-wash);
+}
+.enrollment-email-identity { margin-block-end: 8px; }
+.enrollment-learner-identity { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.enrollment-learner-meta { grid-column: 1 / -1; display: grid; gap: 3px; min-width: 0; }
+.enrollment-identity-info { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.enrollment-identity-label { color: var(--enrollment-muted); font-size: 12px; }
+.enrollment-identity-detail, .enrollment-identity-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+  min-width: 0;
+  font-size: 13px;
+}
+.enrollment-identity-detail { color: var(--enrollment-muted); overflow-wrap: anywhere; }
+.enrollment-identity-detail strong { color: var(--enrollment-ink); }
+.enrollment-identity-verified {
+  padding: 1px 6px;
+  border-radius: 5px;
+  color: var(--enrollment-accent);
+  background: white;
+  font-size: 11px;
+  font-weight: 650;
+}
+.enrollment-identity-actions .enrollment-identity-signout { color: var(--enrollment-muted); }
+@media (max-width: 480px) {
+  .enrollment-email-identity .enrollment-identity-actions { width: 100%; }
+  .enrollment-identity-actions .enrollment-record-link { min-height: 40px; }
+}
 .enrollment-journey-note, .enrollment-tuition, .enrollment-code-feedback { color: var(--enrollment-muted); }
 .enrollment-journey-note, .enrollment-tuition {
   background: var(--enrollment-wash);

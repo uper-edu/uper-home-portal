@@ -2,13 +2,20 @@ import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import {enrollmentClassTitle,type EnrollmentClassIdentity} from '../utils/enrollmentCatalog';
 import {useEffect,useState} from 'react';
 import {Link,useLocation,useNavigate} from 'react-router-dom';
-import {enrollmentCopy,enrollmentPost} from './EnrollmentApplication';
+import {enrollmentCopy,enrollmentPost,watchEnrollmentEmailSession} from './EnrollmentApplication';
 import {interestOption,type InterestLanguage} from './EnrollmentInterests';
 import {formatCurrency} from '../utils/currency';
+import VisitorBoundary from './VisitorBoundary';
+import {readVisitorContact} from '../services/visitorContact';
+import {visitorScope} from '../services/visitorScope';
 
 type Offer={classId:string;quote:EnrollmentClassIdentity & {level:string;firstLesson:string;schedule:string;price:number;period:string;format:string};name?:string;phone?:string;email?:string;orderId?:string};
 
 export function EnrollmentAssistance({language}:{language:InterestLanguage}){
+  return <VisitorBoundary><EnrollmentAssistanceForm language={language}/></VisitorBoundary>;
+}
+
+function EnrollmentAssistanceForm({language}:{language:InterestLanguage}){
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(language,[zh,en,id]);
   const {hash}=useLocation();
   const links=new URLSearchParams(hash.slice(1));
@@ -17,13 +24,18 @@ export function EnrollmentAssistance({language}:{language:InterestLanguage}){
   const lookup=applicationId?{applicationId}:{token};
   const navigate=useNavigate();
   const [offer,setOffer]=useState<Offer>();
-  const [email,setEmail]=useState('');
+  const [email,setEmail]=useState(()=>readVisitorContact(visitorScope())?.email??'');
   const [challenge,setChallenge]=useState('');
   const [code,setCode]=useState('');
   const [confirmed,setConfirmed]=useState(false);
   const [priority,setPriority]=useState(true);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
+  function removeVerifiedDetails(){
+    setOffer(current=>current&&{classId:current.classId,quote:current.quote});
+    setEmail(offer?.email??'');
+    setConfirmed(false);setChallenge('');setCode('');
+  }
   useEffect(()=>{
     let cancelled=false;
     setOffer(undefined);setError('');
@@ -39,17 +51,33 @@ export function EnrollmentAssistance({language}:{language:InterestLanguage}){
       .catch(cause=>{if(!cancelled)setError(cause.message);});
     return ()=>{cancelled=true;};
   },[token,applicationId,language]);
+  useEffect(()=>{
+    if(!offer?.email)return;
+    const address=offer.email;
+    let cancelled=false;
+    const check=async()=>{
+      const result=await enrollmentPost('/api/enrollment/email/session',{email:address}).catch(()=>null);
+      if(!cancelled&&result?.verified!==true)removeVerifiedDetails();
+    };
+    const unwatch=watchEnrollmentEmailSession(check);
+    return ()=>{cancelled=true;unwatch();};
+  },[offer?.email]);
   const payment=(id:string)=>navigate('/enrollment/payment?'+new URLSearchParams({lang:language,order:id}),{replace:true});
   const run=async(action:()=>Promise<void>)=>{
     if(busy)return;
     setBusy(true);setError('');
-    try{await action();}catch(cause){setError((cause as Error).message);}
+    try{await action();}catch(cause){
+      const message=(cause as Error).message;
+      if(message==='enrollment_verification_required')removeVerifiedDetails();
+      setError(message);
+    }
     finally{setBusy(false);}
   };
   const errors:Record<string,[string,string,string]>={
     enrollment_assistance_unavailable:['此报名链接已失效，请联系销售获取新链接。','This enrollment link is no longer available. Contact your advisor for a new link.','Tautan ini tidak berlaku. Hubungi tim kami untuk tautan baru.'],
     enrollment_assistance_quote_changed:['班次或学费已更新，请联系销售获取新链接。','The class or fee has changed. Contact your advisor for a new link.','Kelas atau biaya berubah. Hubungi tim kami untuk tautan baru.'],
     enrollment_assistance_email:['请使用与销售确认的报名邮箱。','Use the email address agreed with your advisor.','Gunakan email yang disepakati dengan tim kami.'],
+    enrollment_verification_required:['请验证当前邮箱后继续。','Verify this email address to continue.','Verifikasi alamat email ini untuk melanjutkan.'],
     enrollment_class_full:['该班次已满。你可以加入候补。','This class is full. You can join the waitlist.','Kelas penuh. Kamu dapat masuk daftar tunggu.'],
     enrollment_assistance_existing_order:['这笔报名已有订单，请到「我的报名」查看。','There is already an order. Find it in My enrollments.','Pesanan sudah ada. Periksa Pendaftaran saya.'],
     enrollment_intake_paused:['新报名暂时暂停，请联系销售。','New applications are paused. Please contact your advisor.','Pendaftaran baru dijeda. Hubungi tim kami.'],
@@ -75,7 +103,7 @@ export function EnrollmentAssistance({language}:{language:InterestLanguage}){
       });
     }}>
       <label className="enrollment-field">{t('报名邮箱','Enrollment email','Email pendaftaran')}
-        <input type="email" required autoComplete="email" value={email} onChange={event=>{setEmail(event.currentTarget.value);setChallenge('');setCode('');}}/>
+        <input type="email" required autoComplete="email" disabled={busy} value={email} onChange={event=>{setEmail(event.currentTarget.value);setChallenge('');setCode('');setError('');}}/>
       </label>
       {challenge&&<label className="enrollment-field">{t('邮箱验证码','Email verification code','Kode verifikasi email')}
         <input value={code} inputMode="numeric" maxLength={6} pattern="[0-9]{6}" autoComplete="one-time-code"
@@ -89,7 +117,7 @@ export function EnrollmentAssistance({language}:{language:InterestLanguage}){
       </div>
     </form>:<form className="enrollment-journey-form" onSubmit={event=>{
       event.preventDefault();if(!confirmed)return;
-      void run(async()=>{const order=await enrollmentPost('/api/enrollment/assistance/confirm',{...lookup,termsVersion:1,confirmed,priority});payment(order.id);});
+      void run(async()=>{const order=await enrollmentPost('/api/enrollment/assistance/confirm',{...lookup,termsVersion:1,confirmed,priority},offer.email);payment(order.id);});
     }}>
       <div className="enrollment-record">
         <p>{t('学员姓名','Learner name','Nama siswa')} · {offer.name}</p>

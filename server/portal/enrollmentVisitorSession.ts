@@ -20,3 +20,30 @@ export function readEnrollmentSessionDigest(cookies:string|undefined) {
   const visitorId=portalVisitorToken(cookies);
   if (visitorId) return enrollmentVisitorDigest(match[2],visitorId);
 }
+
+export async function readEnrollmentEmailSession(
+  client:{query:(sql:string,args?:unknown[])=>Promise<{rows:{email:string}[]}>},
+  cookies:string|undefined,
+  expected?:string,
+):Promise<string|undefined> {
+  const digest=readEnrollmentSessionDigest(cookies);
+  if(!digest)return;
+  const {rows:[row]}=await client.query(
+    'SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE',[digest]);
+  if(expected!==undefined&&expected.trim().toLowerCase()!==row?.email)return;
+  return row?.email;
+}
+
+export async function revokeEnrollmentEmailSession(
+  client:{query:(sql:string,args?:unknown[])=>Promise<{rows:{email:string}[]}>},
+  cookies:string|undefined,
+  expected?:string,
+):Promise<boolean> {
+  const digest=readEnrollmentSessionDigest(cookies);
+  if(!digest)return true;
+  const {rows:[row]}=await client.query('SELECT email FROM enrollment_email_sessions WHERE digest=:p1 FOR UPDATE',[digest]);
+  if(!row)return true;
+  if(expected!==undefined&&row.email!==expected.trim().toLowerCase())return false;
+  await client.query('DELETE FROM enrollment_email_sessions WHERE digest=:p1',[digest]);
+  return true;
+}

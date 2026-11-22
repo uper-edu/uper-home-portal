@@ -1,4 +1,4 @@
-import {enrollmentSessionCookie,enrollmentVisitorDigest,readEnrollmentSessionDigest} from './enrollmentVisitorSession.ts';
+import {enrollmentSessionCookie,enrollmentVisitorDigest,readEnrollmentEmailSession,revokeEnrollmentEmailSession} from './enrollmentVisitorSession.ts';
 import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox,enrollmentSmtpReady} from './enrollmentMail.ts';
 import type { Express, Request, Response } from 'express';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -51,11 +51,9 @@ const enrollTx = (work: (c: Client) => Promise<any>) => tx(work, { isolation: 'R
 const moneyTx = (work:(c:Client)=>Promise<any>)=>enrollTx(async c=>{await lockEnrollmentFunds(c);return work(c);});
 
 async function session(c: Client, q: Request): Promise<string> {
-  const digest=readEnrollmentSessionDigest(q.headers.cookie);
-  if (!digest) invalid('enrollment_verification_required', 401);
-  const row = (await c.query('SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE', [digest])).rows[0];
-  if (!row) invalid('enrollment_verification_required', 401);
-  return row.email;
+  const email=await readEnrollmentEmailSession(c,q.headers.cookie,q.get('X-Enrollment-Email'));
+  if (!email) invalid('enrollment_verification_required', 401);
+  return email;
 }
 
 async function lockClass(c: Client, classId: string) {
@@ -261,6 +259,25 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     r.json({ challengeId: id });
   });
 
+  post(base + '/email/session', async (q, r) => {
+    if(q.body?.email===undefined){
+      const verifiedEmail=await enrollTx(c=>readEnrollmentEmailSession(c,q.headers.cookie));
+      r.json({verifiedEmail:verifiedEmail??null});
+      return;
+    }
+    const email=contact(q.body?.email);
+    const verified=await enrollTx(async c=>!!await readEnrollmentEmailSession(c,q.headers.cookie,email));
+    r.json({verified});
+  });
+
+  post(base + '/email/logout', async (q,r)=>{
+    const expected=q.get('X-Enrollment-Email');
+    const revoked=await enrollTx(c=>revokeEnrollmentEmailSession(c,q.headers.cookie,expected));
+    if(!revoked)invalid('enrollment_verification_required',401);
+    r.clearCookie(enrollmentSessionCookie,{path:base,httpOnly:true,secure:q.secure,sameSite:'strict'});
+    r.json({signedOut:true});
+  });
+
   post(base + '/email/verify', async (q, r) => {
     const email = contact(q.body.email);
     const { challengeId, code } = q.body;
@@ -280,6 +297,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         return null;
       }
       await c.query('UPDATE enrollment_email_challenges SET used=TRUE WHERE email=:p1', [email]);
+      await revokeEnrollmentEmailSession(c,q.headers.cookie);
       await c.query('INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,TIMESTAMPADD(HOUR,:p3,UTC_TIMESTAMP(6)))',
         [enrollmentVisitorDigest(token,scope.id),email,rules.emailSessionHours]);
       return rules.emailSessionHours;
@@ -512,15 +530,17 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       const orders=rows.map(row => ({ ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson,
         classCancelled:row.class_state==='cancelled',updatedAt:row.updated_at_iso,needsPayment:Number(row.needs_payment)===1,
         invitation:row.invitation_id?{id:row.invitation_id,deadline:row.invitation_deadline}:undefined }));
-      return {orders,applications};
+      return {orders,applications,verifiedEmail:email};
     });
     r.set('Cache-Control', 'no-store').json(result);
   }));
 
   app.get(base + '/orders/:id', wrap(async (q, r) => {
     const result = await enrollTx(async (c: Client) => {
-      const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
-      return { ...view(order,cohort.state), bank: cohort.state!=='cancelled' && (order.state === 'awaiting_payment' || order.state === 'partial') ? order.data.bank : undefined };
+      const verifiedEmail = await session(c,q);
+      const { order,cohort } = await lockOrder(c, String(q.params.id), verifiedEmail);
+      return { ...view(order,cohort.state), verifiedEmail,
+        bank: cohort.state!=='cancelled' && (order.state === 'awaiting_payment' || order.state === 'partial') ? order.data.bank : undefined };
     });
     r.set('Cache-Control', 'no-store').json(result);
   }));

@@ -72,6 +72,12 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
+  "DELETE FROM enrollment_email_sessions WHERE digest=:p1": {
+    "sql": "DELETE FROM enrollment_email_sessions WHERE digest=:p1",
+    "sources": [
+      "server/portal/enrollmentVisitorSession.ts"
+    ]
+  },
   "DELETE FROM enrollment_email_sessions WHERE email=:p1": {
     "sql": "DELETE FROM enrollment_email_sessions WHERE email=:p1",
     "sources": [
@@ -2160,7 +2166,13 @@
   "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE": {
     "sql": "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE",
     "sources": [
-      "server/portal/enrollmentApplication.ts"
+      "server/portal/enrollmentVisitorSession.ts"
+    ]
+  },
+  "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 FOR UPDATE": {
+    "sql": "SELECT email FROM enrollment_email_sessions WHERE digest=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/enrollmentVisitorSession.ts"
     ]
   },
   "SELECT email FROM enrollment_orders WHERE id=:p1 FOR UPDATE": {
