@@ -499,11 +499,11 @@ export default function ChatWorkspace({
 
       <ConversationRegion ref={node=>{mainRef.current=node;}} inert={showOnboardingModal} className="standalone-chat-main">
         {!isTakingAssessment && emptyChat && <div className="chat-welcome-layout">
-          <ChatWelcome lang={lang} standalone={presentation==='page'} hasDraft={hasAssessmentDraft} hasResult={Boolean(retainedReport)}
-            hasProfile={Boolean(profile)} onLearningProfile={presentation==='page'&&!busy?openLearningProfile:undefined}
+          <ChatWelcome lang={lang} hasDraft={hasAssessmentDraft} hasResult={Boolean(retainedReport)}
+            hasProfile={Boolean(profile)} onLearningProfile={!busy?openLearningProfile:undefined}
             onAssessment={()=>retainedReport&&!hasAssessmentDraft?setReport(retainedReport):assessmentAction()}
             onPrompt={prompt=>{setInputValue(prompt);inputRef.current?.focus({preventScroll:true});}}/>
-          {presentation==='page'&&<ChatWelcomeSocials lang={lang}/>}
+          <ChatWelcomeSocials lang={lang}/>
         </div>}
         {!isTakingAssessment && !emptyChat && <div className="standalone-chat-flow">
         {!isTakingAssessment && messages.map((msg) => {

@@ -72,9 +72,9 @@ function ChatWelcomeOffer({icon:Icon,title,description,label,onClick}:{
   </div>;
 }
 
-export function ChatWelcome({lang,hasDraft,hasResult,onAssessment,onPrompt,standalone=false,hasProfile,onLearningProfile}:{
+export function ChatWelcome({lang,hasDraft,hasResult,onAssessment,onPrompt,hasProfile,onLearningProfile}:{
   lang:HskLanguage;hasDraft:boolean;hasResult:boolean;onAssessment:()=>void;onPrompt:(prompt:string)=>void;
-  standalone?:boolean;hasProfile?:boolean;onLearningProfile?:()=>void;
+  hasProfile?:boolean;onLearningProfile?:()=>void;
 }){
   const t:Translate=(zh,en,id)=>chooseText(lang,zh,en,id);
   const prompts=[
@@ -83,7 +83,6 @@ export function ChatWelcome({lang,hasDraft,hasResult,onAssessment,onPrompt,stand
     t('学费怎么算？','How much are the classes?','Berapa biaya kelasnya?'),
   ];
   return <section className="chat-welcome">
-    {!standalone&&<div className="chat-welcome-mark"><img src="/uper-logo-mark.svg" alt="" width="23" height="27"/></div>}
     <h1>{t('你好，想怎么开始学中文？','How would you like to start learning Chinese?','Bagaimana kamu ingin mulai belajar Mandarin?')}</h1>
     <p>{t('我是 UPER AI 学习顾问。可以问我课程、学费和报名。','I’m UPER’s AI learning advisor. Ask me about courses, tuition, or enrollment.','Saya konsultan belajar AI UPER. Tanyakan tentang kelas, biaya, atau pendaftaran.')}</p>
     {onLearningProfile&&<ChatWelcomeOffer icon={ClipboardList}
