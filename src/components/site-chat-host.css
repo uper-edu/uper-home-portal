@@ -27,13 +27,15 @@
 }
 
 .site-chat-host {
+  --site-chat-menu-clearance: 100px;
+  --site-chat-bottom: 88px;
   position: fixed;
-  inset: auto 24px 88px auto;
-  z-index: 60;
+  inset: auto 24px var(--site-chat-bottom) auto;
+  z-index: 49;
   margin: 0;
   padding: 0;
   width: min(464px, calc(100vw - 48px));
-  height: min(640px, calc(100dvh - 112px));
+  height: min(860px, calc(100dvh - var(--site-chat-menu-clearance) - var(--site-chat-bottom)));
   max-width: none;
   max-height: none;
   overflow: hidden;

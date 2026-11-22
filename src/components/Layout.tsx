@@ -80,7 +80,9 @@ const prefTranslations = {
   }
 };
 
-const Navbar = ({ onOpenAppearance, learnerPreview }: { onOpenAppearance: () => void; learnerPreview?:boolean }) => {
+const Navbar = ({ onOpenAppearance, learnerPreview, navbarRef }: {
+  onOpenAppearance: () => void; learnerPreview?:boolean; navbarRef:React.Ref<HTMLElement>;
+}) => {
   const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -179,7 +181,7 @@ const Navbar = ({ onOpenAppearance, learnerPreview }: { onOpenAppearance: () => 
   ];
 
   return (
-    <nav inert={learnerPreview} className={`fixed top-0 w-full z-50 transition-all duration-300 ${enrollmentSection?'public-page-header':isScrolled?'glass-card py-3 shadow-xs':'bg-transparent py-5'}`}>
+    <nav ref={navbarRef} inert={learnerPreview} className={`fixed top-0 w-full z-50 transition-all duration-300 ${enrollmentSection?'public-page-header':isScrolled?'glass-card py-3 shadow-xs':'bg-transparent py-5'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
         <Link to={journeyLink("/")} className="flex items-center gap-1.5 md:gap-2 group">
           {enrollmentSection ? <PublicHeaderBrand eager/> : <><img
@@ -848,6 +850,7 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
   const { isApple } = useDesignStyle();
   const location = useLocation();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const navbarRef = useRef<HTMLElement>(null);
   // Scroll to top on route change, but restore scroll on back navigation
   const { pathname } = location;
   const enrollmentScreen = (/^\/enrollment\/(?:mine|help)\//).test(pathname) || /^\/enrollment(?:\/[^/]+)?\/?$/.test(pathname);
@@ -909,7 +912,7 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
   return (
     <div data-enrollment-screen={enrollmentScreen || undefined} className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
 
-      <Navbar learnerPreview={learnerPreview} onOpenAppearance={() => setAppearanceOpen(true)} />
+      <Navbar navbarRef={navbarRef} learnerPreview={learnerPreview} onOpenAppearance={() => setAppearanceOpen(true)} />
       <main className="flex-grow">
         <motion.div
           key={location.pathname}
@@ -928,7 +931,7 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
       </main>
       {!enrollmentScreen && <>
         <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
-        <VisitorBoundary><AIChatbot expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}/></VisitorBoundary>
+        <VisitorBoundary><AIChatbot navbarRef={navbarRef} expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}/></VisitorBoundary>
         <BackToTop />
         <MobileBottomBar />
       </>}

@@ -1,4 +1,4 @@
-import {lazy, Suspense, useLayoutEffect, useRef, useState, useSyncExternalStore} from 'react';
+import {lazy, Suspense, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {MessageCircleMore, X} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
@@ -19,7 +19,9 @@ function subscribeViewport(notify: () => void) {
   return () => viewport.removeEventListener('change', notify);
 }
 
-export default function AIChatbot({expanded,returnScroll}: {expanded: boolean; returnScroll?: number}) {
+export default function AIChatbot({expanded,returnScroll,navbarRef}: {
+  expanded: boolean; returnScroll?: number; navbarRef: RefObject<HTMLElement|null>;
+}) {
   const {i18n} = useTranslation();
   const lang = normalizeSiteLanguage(i18n.language);
   const current = useLocation();
@@ -53,6 +55,22 @@ export default function AIChatbot({expanded,returnScroll}: {expanded: boolean; r
       node.querySelector<HTMLElement>('[data-chat-host-dismiss]')?.focus({preventScroll:true});
     }
   }, [visible, modal]);
+
+  useLayoutEffect(() => {
+    const menu = navbarRef.current;
+    const host = dialog.current;
+    if (!visible || modal || !menu || !host) return;
+    const updateClearance = () => {
+      host.style.setProperty('--site-chat-menu-clearance', `${Math.ceil(menu.getBoundingClientRect().bottom) + 12}px`);
+    };
+    updateClearance();
+    const observer = new ResizeObserver(updateClearance);
+    observer.observe(menu, {box:'border-box'});
+    return () => {
+      observer.disconnect();
+      host.style.removeProperty('--site-chat-menu-clearance');
+    };
+  }, [visible, modal, navbarRef]);
 
   // On reload of an expanded chat, restore the website position when its history entry becomes visible again.
   useLayoutEffect(() => {
