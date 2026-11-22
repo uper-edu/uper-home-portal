@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {buildPortalPackage} from '../scripts/package-portal.mjs';
 import {loadCmsSeed,cmsSeedRoot} from '../cloud/mysql/cms-seed.mjs';
 import {mediaDigest} from '../cloud/mysql/cms-media-storage.mjs';
 
@@ -21,9 +23,16 @@ test('COS-17: seed checksum manifest covers all package files',async()=>{
  for(const line of lines){const match=/^([a-f0-9]{64})  (.+)$/.exec(line);assert.ok(match);assert.equal(mediaDigest(await fs.readFile(new URL(match[2],cmsSeedRoot))),match[1],match[2]);}
 });
 
-test('COS-18: COS migration is additive, packaged, and contains no new foreign keys',async()=>{
- const sql=await fs.readFile(new URL('../cloud/mysql/schema-v16.sql',import.meta.url),'utf8');
+test('COS-18: COS migration is additive, packaged, and contains no new foreign keys',{timeout:120_000},async(t)=>{
+ const migration='schema-v16.sql';
+ const source=await fs.readFile(new URL(`../cloud/mysql/${migration}`,import.meta.url));
+ const sql=source.toString('utf8');
  assert.match(sql,/MODIFY COLUMN content MEDIUMBLOB NULL/);assert.match(sql,/ADD COLUMN cos_url/);
  assert.doesNotMatch(sql,/\bFOREIGN KEY\b|\bREFERENCES\b|\bDROP\b|\bDELETE\b/);
- assert.match(await fs.readFile(new URL('../scripts/package-portal.mjs',import.meta.url),'utf8'),/'schema-v16.sql'/);
+ await fs.mkdir('build',{recursive:true});
+ const directory=await fs.mkdtemp(path.join('build','cos-migration-test-'));
+ t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+ const release=await buildPortalPackage({directory});
+ const packaged=await fs.readFile(path.join(release.directory,'runtime','cloud','mysql',migration));
+ assert.deepEqual(packaged,source);
 });
