@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { enrollmentWeekOf, latestDueEnrollmentWeek } from '../server/portal/enrollmentWeekly';
-import { enrollmentOrderEmailPath, enrollmentEmailSubjects, renderEnrollmentEmail, type EnrollmentEmailKind } from '../server/portal/enrollmentEmail';
+import { enrollmentEmailWhatsAppDestination,enrollmentEmailWhatsAppPath,enrollmentOrderEmailPath,enrollmentEmailSubjects,renderEnrollmentEmail,type EnrollmentEmailKind } from '../server/portal/enrollmentEmail';
 import { enrollmentCard } from '../server/portal/enrollmentCards';
 import { proofTransferDetails,summarizeEnrollmentProofs } from '../server/portal/enrollmentProofTotals';
 import { workingDayDeadline } from '../src/utils/workCalendar';
@@ -55,11 +55,12 @@ test('each email template renders localized HTML and plain text and escapes save
       assert.match(email.html,new RegExp('<html lang="'+language+'">'));
       assert.match(email.html,/&lt;Santi&gt; &amp; Co/);
       assert.match(email.text,/<Santi> & Co/);
-      const contactMatch=email.text.match(/https:\/\/wa\.me\/6281116612062\?text=\S+/);
-      assert.ok(contactMatch);
-      const supportMessage=new URL(contactMatch[0]).searchParams.get('text')!;
+      const contactLink=email.text.split('\n\n').at(-1)!.split(' ').at(-1)!;
+      const contact=new URL(contactLink);
+      assert.equal(contact.pathname,enrollmentEmailWhatsAppPath);
+      const supportMessage=contact.searchParams.get('text')!;
       assert.ok(supportMessage.includes('UPER'));
-      assert.ok(email.html.includes(contactMatch[0]));
+      assert.ok(email.html.includes(contactLink));
       assert.doesNotMatch(supportMessage,/123456|Santi/);
       const otp=kind==='otp_apply'||kind==='otp_mine';
       const index=['zh','en','id'].indexOf(language);
@@ -80,6 +81,33 @@ test('each email template renders localized HTML and plain text and escapes save
       assert.ok(email.html.includes(['标准班','Standard class','Kelas standar'][index])===!otp);
     }
   }
+});
+
+test('enrollment email footer follows the current public origin and puts Chat third in HTML and text',()=>{
+  for(const [environment,origin] of [
+    ['dev','http://localhost:3000'],
+    ['test','https://home.prototype.uperedu.com'],
+    ['prod','https://uperedu.com'],
+  ]){
+    for(const language of ['zh','en','id']){
+      const env={PORTAL_ENV:environment,PORTAL_PUBLIC_ORIGIN:origin};
+      const email=renderEnrollmentEmail('seat_reserved',{language,url:'/enrollment/payment?order=qa'},env);
+      const hrefs=[...email.html.matchAll(/href="([^"]+)"/g)].map(match=>new URL(match[1]));
+      assert.ok(hrefs.every(link=>link.origin===origin));
+      assert.deepEqual(hrefs.map(link=>link.pathname),[
+        '/enrollment/payment','/','/enrollment','/chat',enrollmentEmailWhatsAppPath,
+      ]);
+      assert.ok(hrefs.slice(1,4).every(link=>link.searchParams.get('lang')===language));
+      const foot=email.text.split('\n\n').slice(-4).map(line=>new URL(line.split(' ').at(-1)!));
+      assert.deepEqual(foot.map(String),hrefs.slice(1).map(String));
+      const target=new URL(enrollmentEmailWhatsAppDestination(foot[3].searchParams.get('text')));
+      assert.equal(target.origin,'https://wa.me');
+      assert.equal(target.pathname,'/6281116612062');
+      assert.equal(target.searchParams.get('text'),foot[3].searchParams.get('text'));
+    }
+  }
+  const misconfigured=renderEnrollmentEmail('otp_apply',{language:'zh',code:'123456'},{PORTAL_ENV:'test'});
+  assert.doesNotMatch(misconfigured.html,/href=|localhost|uperedu\.com/);
 });
 
 test('payment confirmation leaves class arrangements to staff and has no separate opening email',()=>{

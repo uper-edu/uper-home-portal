@@ -28,7 +28,7 @@ import { latestAssistanceMail, orderNotice, proofNotices, sendAssistanceMail, st
 
 import { applyEnrollmentPaymentCredits, lockEnrollmentFunds, updateEnrollmentPayment } from './enrollmentPaymentCredits.ts';
 import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
-import { renderEnrollmentEmail } from './enrollmentEmail.ts';
+import { enrollmentEmailWhatsAppDestination, enrollmentEmailWhatsAppPath, renderEnrollmentEmail } from './enrollmentEmail.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 import { hasConfiguredEnrollmentBank,mountEnrollmentBank,readEnrollmentBank } from './enrollmentBank.ts';
 
@@ -120,6 +120,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
   mountEnrollmentBank(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   const base = '/api/enrollment';
   const finance = '/api/crm/enrollment/finance';
+  app.get(enrollmentEmailWhatsAppPath,(q,r)=>{
+    r.set({'Cache-Control':'no-store','Referrer-Policy':'no-referrer'});
+    r.redirect(302,enrollmentEmailWhatsAppDestination(q.query.text));
+  });
 
   async function requireNewEnrollment(c:Client) {
     const {reasons}=await enrollmentReadiness(c);
