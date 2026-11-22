@@ -1,7 +1,7 @@
 import {identityCrossConflict} from '../../src/utils/crmIdentityCandidates.ts';
 import {canonicalIdentity} from './identityConsolidation.ts';
 import {loadCrmAccessControls as identityControls} from './crmAccessControls.ts';
-import { normalizeContactPhone } from './trustWorkflow.ts';
+import { invalid, normalizeContactPhone } from './trustWorkflow.ts';
 import { validContactPhone } from '../../src/utils/contactPhone.ts';
 import { validContactEmail } from '../../src/utils/contactEmail.ts';
 import { canReviewIdentityRole } from '../../src/utils/crmOutreach.ts';
@@ -11,6 +11,28 @@ export function identityMatch(a: any, b: any) {
   return [email(a) && email(a)===email(b) ? 'email' : '', phone(a) && phone(a)===phone(b) ? 'phone' : ''].filter(Boolean);
 }
 export {loadCrmAccessControls as identityControls} from './crmAccessControls.ts';
+type IdentityLead = {id:string;profile:any};
+type PendingIdentityRow = {lead_id:string;candidate_id:string;source_profile:any;candidate_profile:any};
+
+function withPendingIdentityEvidence<Row extends PendingIdentityRow>(rows:Row[],aliases:IdentityLead[]) {
+  const aliasesByRoot=new Map<string,IdentityLead[]>();
+  for(const alias of aliases){
+    const rootId=alias.profile.identityMergedInto;
+    const group=aliasesByRoot.get(rootId)??[];
+    group.push(alias);
+    aliasesByRoot.set(rootId,group);
+  }
+  return rows.flatMap(row=>{
+    if(row.source_profile.identityMergedInto)return [];
+    const aliasMatches=(aliasesByRoot.get(row.candidate_id)??[]).flatMap(alias=>{
+      const basis=identityMatch(row.source_profile,alias.profile);
+      return basis.length?[{id:alias.id,name:alias.profile.fullName,basis}]:[];
+    });
+    return identityMatch(row.source_profile,row.candidate_profile).length||aliasMatches.length
+      ? [{...row,aliasMatches}]:[];
+  });
+}
+
 export async function pendingIdentity(c: any, leadId?: string, lock=false) {
   const {rows}=leadId
     ? lock
@@ -18,7 +40,7 @@ export async function pendingIdentity(c: any, leadId?: string, lock=false) {
       : await c.query("SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending' AND i.lead_id=:p1",[leadId])
     : await c.query("SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id WHERE i.decision='pending'");
   const aliases=rows.length?(await c.query("SELECT id,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IS NOT NULL")).rows:[];
-  return rows.map((r:any)=>({...r,aliasMatches:aliases.filter((a:any)=>a.profile.identityMergedInto===r.candidate_id&&identityMatch(r.source_profile,a.profile).length).map((a:any)=>({id:a.id,name:a.profile.fullName,basis:identityMatch(r.source_profile,a.profile)}))})).filter((r:any)=>(!leadId||r.lead_id===leadId)&&!r.source_profile.identityMergedInto&&(identityMatch(r.source_profile,r.candidate_profile).length||r.aliasMatches.length));
+  return withPendingIdentityEvidence(rows.filter((row:PendingIdentityRow)=>!leadId||row.lead_id===leadId),aliases);
 }
 export async function attachIdentity(c: any, employee: any, leads: any[], lock=false) {
   const rows = lock&&leads.length===1?await pendingIdentity(c,leads[0].id,true):await pendingIdentity(c);
@@ -34,21 +56,41 @@ export async function discoverIdentity(c:any,visitorId:string,leadId:string,prof
   const phone=validContactPhone(profile.whatsapp)?normalizeContactPhone(profile.whatsapp):'';
   if(!email&&!phone)return;
   const rows=(await c.query("SELECT id,profile FROM portal_leads WHERE id<>:p1 AND ((:p2<>'' AND lower(TRIM(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null')))=:p2) OR (:p3<>'' AND REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p3,:p4,:p5))) FOR UPDATE",[leadId,email,phone,phone.startsWith('62')?'0'+phone.slice(2):phone,phone?'00'+phone:''])).rows;
-  const candidates=new Map<string,any>();
-  for(const row of rows){
-    if(!identityMatch(profile,row.profile).length)continue;
-    const root=await canonicalIdentity(c,row.id);
-    if(!root||root.id===leadId)continue;
-    const decided=(await c.query("SELECT decision FROM identity_candidates WHERE lead_id=:p1 AND candidate_id=:p2 AND decision IN ('different','shared')",[leadId,root.id])).rows;
-    if(decided.length)continue;
-    if(root.profile.identityLifecycle==='pending'){
-      // A pending submission is evidence, never a confirmed identity anchor.
-      const parents=(await pendingIdentity(c,root.id)).map((r:any)=>({id:r.candidate_id,profile:r.candidate_profile}));
-      for(const parent of parents)if(identityMatch(profile,parent.profile).length)candidates.set(parent.id,parent);
-      if(!parents.some((parent:any)=>identityMatch(profile,parent.profile).length))candidates.set(root.id,root);
-    }else candidates.set(root.id,root);
+  const matches:IdentityLead[]=rows.filter((row:IdentityLead)=>identityMatch(profile,row.profile).length);
+  const mergedTargetIds=[...new Set(matches.map(row=>row.profile.identityMergedInto).filter(Boolean))];
+  const mergedTargets:IdentityLead[]=mergedTargetIds.length?(await c.query(`SELECT id,profile FROM portal_leads WHERE id IN (SELECT id FROM JSON_TABLE(:p1,'$[*]' COLUMNS(id VARCHAR(191) PATH '$')) AS targets)`,[JSON.stringify(mergedTargetIds)])).rows:[];
+  const targetsById=new Map(mergedTargets.map(row=>[row.id,row]));
+  const roots=new Map<string,IdentityLead>();
+  for(const row of matches){
+    const root=row.profile.identityMergedInto?targetsById.get(row.profile.identityMergedInto):row;
+    if(!root||root.profile.identityMergedInto)invalid('IDENTITY_TARGET_CHANGED',409);
+    if(root.id!==leadId)roots.set(root.id,root);
   }
-  for(const row of candidates.values())await c.query("INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE visitor_id=visitor_id",[visitorId,leadId,row.id]);
+  if(!roots.size)return 0;
+
+  const {rows:decided}=await c.query("SELECT candidate_id FROM identity_candidates WHERE lead_id=:p1 AND decision IN ('different','shared')",[leadId]);
+  for(const row of decided)roots.delete(row.candidate_id);
+
+  const pendingIds=[...roots.values()].filter(row=>row.profile.identityLifecycle==='pending').map(row=>row.id);
+  const relations:PendingIdentityRow[]=pendingIds.length?(await c.query(`SELECT i.*,a.profile AS source_profile,b.profile AS candidate_profile FROM identity_candidates i
+    JOIN portal_leads a ON a.id=i.lead_id JOIN portal_leads b ON b.id=i.candidate_id
+    WHERE i.decision='pending' AND i.lead_id IN (SELECT id FROM JSON_TABLE(:p1,'$[*]' COLUMNS(id VARCHAR(191) PATH '$')) AS pending_leads)`,[JSON.stringify(pendingIds)])).rows:[];
+  const parentIds=[...new Set(relations.map(row=>row.candidate_id))];
+  const aliases:IdentityLead[]=parentIds.length?(await c.query(`SELECT id,profile FROM portal_leads WHERE NULLIF(profile->>'$.identityMergedInto','null') IN (SELECT id FROM JSON_TABLE(:p1,'$[*]' COLUMNS(id VARCHAR(191) PATH '$')) AS parents)`,[JSON.stringify(parentIds)])).rows:[];
+
+  // A pending submission is evidence. Prefer its parent only if the new contact also matches it.
+  const parentsByLead=new Map<string,string[]>();
+  for(const relation of withPendingIdentityEvidence(relations,aliases)){
+    if(!identityMatch(profile,relation.candidate_profile).length)continue;
+    const parents=parentsByLead.get(relation.lead_id)??[];
+    parents.push(relation.candidate_id);
+    parentsByLead.set(relation.lead_id,parents);
+  }
+  const candidates=new Set<string>();
+  for(const rootId of roots.keys()){
+    for(const candidateId of parentsByLead.get(rootId)??[rootId])candidates.add(candidateId);
+  }
+  for(const candidateId of candidates)await c.query("INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE visitor_id=visitor_id",[visitorId,leadId,candidateId]);
   return candidates.size;
 
 }
