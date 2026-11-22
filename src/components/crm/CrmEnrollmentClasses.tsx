@@ -29,7 +29,7 @@ import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/en
 import { validEnrollmentHolidayDate } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
-import { enrollmentPost } from '../EnrollmentApplication';
+import { enrollmentPost } from '../../services/enrollmentSession';
 
 type Copy = readonly [string, string, string];
 
