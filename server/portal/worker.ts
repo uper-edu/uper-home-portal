@@ -25,7 +25,7 @@ import {assessmentOccurrence} from './factMilestones.ts';
 import {
   recipients,
   priority,
-  retryAfter,
+  readLarkDeliveryReceipt,
   larkCard,
   standardLarkCard,
   dailyDigestCard,
@@ -601,22 +601,7 @@ export async function tick(clock = new Date()) {
         ),
         signal: AbortSignal.timeout(10000),
       });
-      serverWait = retryAfter(response.headers.get("retry-after"), clock);
-      const body = await response.json().catch(() => null);
-      if (
-        response.ok &&
-        (!body || (body.code === undefined && body.StatusCode === undefined))
-      )
-        throw Error("Invalid Lark receipt");
-      if (!response.ok || Number(body?.code ?? body?.StatusCode) !== 0) {
-        state = "failed";
-        const code = Number(body?.code ?? body?.StatusCode);
-        result = Number.isSafeInteger(code) ? `HTTP ${response.status}; code ${code}` : `HTTP ${response.status}`;
-        // Lark can return a rate-limit rejection in an HTTP 200 receipt.
-        // Only this documented transient business code joins the existing HTTP retries.
-        retry = response.status === 429 || response.status >= 500 ||
-          code === 11232;
-      }
+      ({state, result, retry, serverWait} = await readLarkDeliveryReceipt(response, clock));
     } catch (e) {
       state = "unknown";
       result = personalEmployee ? (e as Error).message : "Lark group delivery could not be confirmed";

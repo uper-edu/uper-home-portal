@@ -6,6 +6,23 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import express from "express";
 import { defaults, schedule, sla, validate } from "../server/portal/policy";
+import { readLarkDeliveryReceipt } from "../server/portal/notificationDelivery";
+
+test("Lark delivery receipts distinguish acceptance, explicit retryable rejection, and unknown delivery", async () => {
+  const clock = new Date("2026-10-12T00:00:00Z");
+  const classify = (body: unknown, status = 200, headers?: HeadersInit) =>
+    readLarkDeliveryReceipt(Response.json(body, {status, headers}), clock);
+  assert.deepEqual(await classify({StatusCode:0}), {state:"accepted",result:"",retry:false,serverWait:0});
+  assert.deepEqual(await classify({code:11232}, 200, {"retry-after":"90"}),
+    {state:"failed",result:"HTTP 200; code 11232",retry:true,serverWait:90});
+  assert.deepEqual(await classify({code:19001,msg:"private provider detail"}),
+    {state:"failed",result:"HTTP 200; code 19001",retry:false,serverWait:0});
+  assert.deepEqual(await classify({}, 429), {state:"failed",result:"HTTP 429",retry:true,serverWait:0});
+  assert.deepEqual(await readLarkDeliveryReceipt(new Response("invalid",{status:503}),clock),
+    {state:"failed",result:"HTTP 503",retry:true,serverWait:0});
+  await assert.rejects(classify({}),/Invalid Lark receipt/);
+  await assert.rejects(readLarkDeliveryReceipt(new Response("invalid"),clock),/Invalid Lark receipt/);
+});
 test("notification schedules: closing boundary, Sunday, timezone, delay, digest and natural-hour SLA", () => {
   const r = { ...defaults };
   assert.equal(
@@ -906,7 +923,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         const jid = await job(await lead());
         await tick();
         assert.equal(
-          (await api("/api/crm/notification-jobs/" + jid + "/cancel", {}))
+          (await api("/api/crm/notification-jobs/" + jid + "/cancel", {reason:"Synthetic cancellation test"}))
             .status,
           409,
         );

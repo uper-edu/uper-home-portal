@@ -105,6 +105,24 @@ export function retryAfter(value: string | null, now: Date) {
   const time = Date.parse(value);
   return Number.isFinite(time) ? Math.max(0, (time - now.getTime()) / 1000) : 0;
 }
+
+export async function readLarkDeliveryReceipt(response: Response, clock: Date) {
+  const serverWait = retryAfter(response.headers.get('retry-after'), clock);
+  const body = await response.json().catch(() => null);
+  if (response.ok && (!body || (body.code === undefined && body.StatusCode === undefined)))
+    throw Error('Invalid Lark receipt');
+
+  const code = Number(body?.code ?? body?.StatusCode);
+  if (response.ok && code === 0)
+    return {state: 'accepted', result: '', retry: false, serverWait};
+
+  // HTTP 200 can carry a transient rate-limit rejection in the receipt.
+  const retry = response.status === 429 || response.status >= 500 || code === 11232;
+  const status = `HTTP ${response.status}`;
+  const result = Number.isSafeInteger(code) ? `${status}; code ${code}` : status;
+  return {state: 'failed', result, retry, serverWait};
+}
+
 export function larkCard(
   text: string,
   leadId: string | undefined,
