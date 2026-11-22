@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import express from "express";
 import { randomUUID } from "node:crypto";
 import { setupNativeTest } from "./helpers/mysql.mjs";
+import { disposeNativeTest } from "./helpers/disposeNativeTest.mjs";
 if (!process.env.MYSQL_NATIVE_TEST_ENV)
   test(
     "persisted provider failover needs explicit isolated MySQL fixture",
@@ -10,7 +11,7 @@ if (!process.env.MYSQL_NATIVE_TEST_ENV)
     () => {},
   );
 else {
-  await setupNativeTest("chatFailover");
+  const fixture = await setupNativeTest("chatFailover");
   Object.assign(process.env, {
     PLATFORM_MODE: "mock",
     OPENAI_API_KEY: "TEST",
@@ -33,17 +34,27 @@ else {
   globalThis.fetch = async (url, options) => {
     if (!String(url).startsWith("https://mock.invalid/"))
       return nativeFetch(url, options);
-    const body = JSON.parse(options.body),
-      scenario = body.messages.at(-1).content,
-      primary = String(url).endsWith("/openai");
-    if (primary && /^(401|429|500|legacy)$/.test(scenario))
+    const body = JSON.parse(options.body);
+    const question = body.messages.findLast(message => message.role === "user").content;
+    const languageCheck = body.messages[0].content.startsWith("Identify only the response language.");
+    const scenario = languageCheck ? JSON.parse(question).current : question;
+    const primary = String(url).endsWith("/openai");
+    if (languageCheck) return Response.json({
+      choices: [{ message: { content: JSON.stringify({ current: "en", requested: null }) }, finish_reason: "stop" }],
+    });
+    if (primary && /^(401|429|500|legacy|blank-retry)$/.test(scenario))
       return new Response("{}", {
-        status: scenario === "legacy" ? 500 : Number(scenario),
+        status: scenario === "legacy" || scenario === "blank-retry" ? 500 : Number(scenario),
       });
     if (primary && scenario === "network") throw new TypeError("TEST network");
     if (scenario === "both-fail") return new Response("{}", { status: 503 });
+    if (!primary && scenario === "blank-retry" && !body.stream) return Response.json({
+      choices: [{ message: { content: JSON.stringify({ reply: "BACKUP answer", catalogue: null, replyLanguage: "en" }) }, finish_reason: "stop" }],
+    });
     let step = 0;
-    const content = primary ? "PRIMARY answer" : "BACKUP answer";
+    const content = !primary && scenario === "blank-retry"
+      ? " "
+      : JSON.stringify({ reply: primary ? "PRIMARY answer" : "BACKUP answer", catalogue: null, replyLanguage: "en" });
     return new Response(
       new ReadableStream({
         pull(c) {
@@ -74,6 +85,7 @@ else {
       globalThis.fetch = nativeFetch;
       await new Promise((r) => server.close(r));
       await pool.end();
+      await disposeNativeTest(fixture);
     });
     async function request(scenario, stream = true) {
       let cookie = "";
@@ -95,6 +107,7 @@ else {
           messageId,
           content: scenario,
           stream,
+          lang: "en",
         });
       assert.equal(reply.status, 200);
       const events = stream
@@ -148,12 +161,22 @@ else {
             ])
           ).rows;
           assert.equal(attempts.length, 2);
-          assert.ok(attempts[0].error);
+          assert.equal(attempts.filter(attempt => attempt.error).length, 1);
         },
       );
     await t.test("healthy primary uses OpenAI", async () => {
       const { events } = await request("success");
       assert.equal(events.at(-1).modelUsed, "gpt-4o");
+    });
+    await t.test("blank backup stream persists one retry and the final response", async () => {
+      const { events, rows } = await request("blank-retry");
+      assert.equal(events.at(-1).reply, "BACKUP answer");
+      const { rows: attempts } = await pool.query("SELECT model,error FROM ai_attempts WHERE message_id=:p1", [
+        rows.find(row => row.role === "assistant").id,
+      ]);
+      assert.equal(attempts.length, 3);
+      assert.equal(attempts.filter(attempt => attempt.error === "Blank provider stream; retrying without streaming").length, 1);
+      assert.equal(attempts.find(attempt => !attempt.error)?.model, "deepseek-v4-pro");
     });
     await t.test(
       "both providers fail explicitly while user message remains saved",

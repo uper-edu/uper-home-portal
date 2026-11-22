@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readChatProviderReply} from '../server/portal/chatProviderReply';
+import {readChatProviderReply,runChatProviderAttempts} from '../server/portal/chatProviderReply';
+import {renderConsultationReply} from '../server/portal/coursePrices';
 
 const sse = (content: string, finish = 'stop', done = true) => new Response(
   `data: ${JSON.stringify({choices:[{delta:{content},finish_reason:finish}]})}\n\n` + (done?'data: [DONE]':''),
@@ -73,4 +74,98 @@ test('an interrupted request records missing counters without guessing zeros',as
   assert.equal(calls[0].status,'error');
   assert.equal(calls[0].usage.input,null);
   assert.equal(calls[0].usage.output,null);
+});
+
+const providers = [
+  {provider:'openai',model:'gpt-6-luna',key:'mock-openai',url:'https://openai.invalid',reasoningEffort:'medium' as const},
+  {provider:'deepseek',model:'deepseek-v4-pro',key:'mock-deepseek',url:'https://deepseek.invalid'},
+];
+const messages = [{role:'user',content:'Can I see a course?'}];
+const validReply = '{"reply":"You can browse the catalogue.","catalogue":null}';
+
+test('provider attempts preserve per-call model parameters and retry a blank backup stream on the same deadline', async () => {
+  const requests: {url: string; init: RequestInit}[] = [];
+  const events: unknown[] = [];
+  const fetchReply: typeof fetch = async (url, init) => {
+    requests.push({url:String(url),init:init!});
+    if (requests.length === 1) return new Response('', {status:429});
+    if (requests.length === 2) return sse(' ');
+    return Response.json({model:'deepseek-v4-pro-version',choices:[{message:{content:validReply},finish_reason:'stop'}],
+      usage:{prompt_tokens:40,prompt_cache_hit_tokens:25,completion_tokens:12}});
+  };
+  await runChatProviderAttempts(providers, async attempt => {
+    await attempt.request('turn_language',messages,180);
+    assert.equal(attempt.content,validReply);
+    assert.equal(attempt.actualModel,'deepseek-v4-pro-version');
+  }, {
+    blankStreamRetry: async attempt => { events.push(['retry',attempt.role,attempt.content]); },
+    call: (attempt,purpose,call) => {
+      events.push([attempt.role,purpose,call.status,call.retry,call.usage.input,call.usage.cached]);
+    },
+    failed: async (attempt,error) => { events.push(['failure',attempt.role,(error as Error).message,attempt.content]); },
+  }, fetchReply);
+  assert.deepEqual(requests.map(({url})=>url),[providers[0].url,providers[1].url,providers[1].url]);
+  assert.deepEqual(requests.map(({init})=>JSON.parse(String(init.body))),[
+    {model:'gpt-6-luna',messages,response_format:{type:'json_object'},max_completion_tokens:720,reasoning_effort:'medium',stream:true,stream_options:{include_usage:true}},
+    {model:'deepseek-v4-pro',messages,response_format:{type:'json_object'},max_tokens:180,thinking:{type:'disabled'},stream:true,stream_options:{include_usage:true}},
+    {model:'deepseek-v4-pro',messages,response_format:{type:'json_object'},max_tokens:180,thinking:{type:'disabled'},stream:false},
+  ]);
+  assert.equal(new Headers(requests[1].init.headers).get('Authorization'),'Bearer mock-deepseek');
+  assert.equal(requests[1].init.signal,requests[2].init.signal);
+  assert.notEqual(requests[0].init.signal,requests[1].init.signal);
+  assert.deepEqual(events,[
+    ['primary','turn_language','error',false,null,null],
+    ['failure','primary','Provider HTTP 429',''],
+    ['fallback','turn_language','blank',false,null,null],
+    ['retry','fallback',' '],
+    ['fallback','turn_language','received',true,40,25],
+  ]);
+});
+
+test('consultation validation and incomplete streams switch slots without retrying or reusing prior partial text', async () => {
+  for (const [primary,error,partial] of [
+    [sse('partial','stop',false),'Missing provider stream end marker','partial'],
+    [sse('cut off','length'),'Answer truncated','cut off'],
+    [sse('{"reply":"Example","catalogue":{"detail":"invalid","courses":"all"}}'),'Invalid catalogue selection',
+      '{"reply":"Example","catalogue":{"detail":"invalid","courses":"all"}}'],
+  ] as const) {
+    const paths: string[] = [];
+    const failures: unknown[] = [];
+    const replies: string[] = [];
+    await runChatProviderAttempts(providers, async attempt => {
+      assert.equal(attempt.content,'');
+      await attempt.request('consultation',messages);
+      replies.push(renderConsultationReply(attempt.content,{courses:[]},'en').reply);
+    }, {
+      blankStreamRetry: async () => assert.fail('Unexpected non-stream retry'),
+      call: () => {},
+      failed: async (attempt,reason) => { failures.push([attempt.role,(reason as Error).message,attempt.content]); },
+    }, async (url,init) => {
+      paths.push(String(url));
+      const body=JSON.parse(String(init?.body));
+      assert.equal(body.stream,true);
+      assert.equal(body.max_completion_tokens ?? body.max_tokens,url===providers[0].url?4800:1200);
+      return url===providers[0].url?primary:sse(validReply);
+    });
+    assert.deepEqual(paths,providers.map(provider=>provider.url));
+    assert.deepEqual(failures,[['primary',error,partial]]);
+    assert.deepEqual(replies,['You can browse the catalogue.']);
+  }
+});
+
+test('a confirmed reply stops the loop and a missing primary key leaves the backup in its original slot', async () => {
+  for (const primaryAvailable of [true,false]) {
+    const slots: string[] = [];
+    const configured = primaryAvailable ? providers : [{...providers[0],key:undefined},providers[1]];
+    await runChatProviderAttempts(configured, async attempt => {
+      await attempt.request('consultation',messages);
+      assert.equal(attempt.content,validReply);
+      assert.equal(attempt.actualModel,attempt.provider.model);
+    }, {
+      blankStreamRetry: async () => assert.fail('Unexpected non-stream retry'),
+      call: attempt => { slots.push(attempt.role); },
+      failed: async (_attempt,error) => { throw error; },
+    }, async () => sse(validReply));
+    assert.deepEqual(slots,[primaryAvailable?'primary':'fallback']);
+  }
 });

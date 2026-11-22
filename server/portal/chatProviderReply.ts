@@ -1,4 +1,6 @@
 import {chatTokenUsage,type ChatTokenUsage} from './chatTokenUsage.ts';
+import type {ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
+import {modelParameters} from './modelParameters.ts';
 
 type ReplyProgress = { content: string; model?: string };
 type ProviderCall = {
@@ -82,4 +84,79 @@ export async function readChatProviderReply(
   await onBlankStreamRetry();
   const retry = await readCall(false,true);
   if (!retry.content.trim()) throw Error("Blank provider reply after non-stream retry");
+}
+
+type ChatProvider = {
+  model: string;
+  provider: string;
+  key?: string;
+  url: string;
+  reasoningEffort?: ReasoningEffort;
+};
+type ChatMessage = {role: string; content: string};
+type ChatCallPurpose = 'consultation'|'reference'|'language_correction'|'turn_language'|'local_schedule';
+type ChatAttempt = {
+  provider: ChatProvider;
+  role: 'primary'|'fallback';
+  content: string;
+  actualModel: string;
+  request: (purpose: ChatCallPurpose, messages: ChatMessage[], tokens?: number) => Promise<void>;
+};
+
+export async function runChatProviderAttempts(
+  providers: readonly ChatProvider[],
+  complete: (attempt: ChatAttempt) => Promise<void>,
+  handlers: {
+    blankStreamRetry: (attempt: ChatAttempt) => Promise<void>;
+    call: (attempt: ChatAttempt, purpose: ChatCallPurpose, call: ProviderCall) => void;
+    failed: (attempt: ChatAttempt, error: unknown) => Promise<void>;
+  },
+  fetchReply: typeof fetch = fetch,
+) {
+  for (const [index, provider] of providers.entries()) {
+    if (!provider.key) continue;
+    const attempt: ChatAttempt = {
+      provider,
+      role: index === 0 ? 'primary' : 'fallback',
+      content: '',
+      actualModel: provider.model,
+      async request(purpose, messages, tokens = 1200) {
+        const signal = AbortSignal.timeout(45000);
+        const send = (stream: boolean) => fetchReply(provider.url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${provider.key}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: provider.model,
+            messages,
+            response_format: {type: 'json_object'},
+            ...modelParameters(provider.model, tokens, undefined, provider.reasoningEffort),
+            stream,
+            ...(stream ? {stream_options: {include_usage: true}} : {}),
+          }),
+          signal,
+        });
+        await readChatProviderReply(send, provider.provider === 'deepseek',
+          ({content, model}) => {
+            attempt.content = content;
+            attempt.actualModel = model || provider.model;
+          },
+          async () => {
+            await handlers.blankStreamRetry(attempt);
+            attempt.content = '';
+            attempt.actualModel = provider.model;
+          },
+          call => handlers.call(attempt, purpose, call),
+        );
+      },
+    };
+    try {
+      await complete(attempt);
+      return;
+    } catch (error) {
+      await handlers.failed(attempt, error);
+    }
+  }
 }
