@@ -20,7 +20,6 @@ import { HelmetProvider } from 'react-helmet-async';
 import Layout from './components/Layout';
 import { usePageTracking } from './utils/analytics';
 import { ThemeProvider } from './utils/theme';
-import Home from './pages/Home';
 import {learnerPreviewToken} from './utils/enrollmentLearnerPreview';
 import {SiteChatRoutes} from './components/SiteChatRoutes';
 
@@ -44,6 +43,7 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
   });
 }
 
+const Home = lazyWithRetry(() => import('./pages/Home'));
 const LinkHub = lazyWithRetry(() => import('./pages/LinkHub'));
 const Enrollment = lazyWithRetry(() => import('./pages/Enrollment'));
 const About = lazyWithRetry(() => import('./pages/About'));

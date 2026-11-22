@@ -1,8 +1,58 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {frontendCacheControl,frontendStaticOptions} from '../server/staticCache';import{mountMetadataHeaders}from'../server/siteMetadata';
+import test from 'node:test';import assert from 'node:assert/strict';import {frontendCacheControl,frontendStaticCompression,frontendStaticOptions} from '../server/staticCache';import{mountMetadataHeaders}from'../server/siteMetadata';
+import express from 'express';
+import {once} from 'node:events';
+import {mkdir,mkdtemp,rm,writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 const immutable='public, max-age=31536000, immutable';
 test('Vite hashed public resources are immutable, unversioned public files require revalidation',()=>{
  for(const f of ['assets/index-C4nLjRUs.js','assets/vendor-ui-Cpbcv5MD.js','assets/index-BBfucEee.css','assets/font-12345678.woff2','assets\\photo-Abc_d-12.webp'])assert.equal(frontendCacheControl(f),immutable);
  for(const f of ['images/logo.png','images/photo.jpg','favicon.svg','assets/main.js','assets/style.css','robots.txt','sitemap.xml'])assert.equal(frontendCacheControl(f),'public, no-cache');
+});
+
+test('only versioned public JavaScript and CSS negotiate compression',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'uper-static-'));
+ const body='/* public fixture */\n'.repeat(512);
+ let server: ReturnType<ReturnType<typeof express>['listen']> | undefined;
+ try{
+  await mkdir(join(dir,'assets'));
+  for(const file of ['index-12345678.js','index-12345678.css','service-worker.js','config-12345678.json']){
+   await writeFile(join(dir,'assets',file),body);
+  }
+  const app=express();
+  app.get('/api/fixture',(_request,response)=>response.type('js').send(body));
+  app.use('/assets',frontendStaticCompression);
+  app.use(express.static(dir,frontendStaticOptions(dir)));
+  server=app.listen(0,'127.0.0.1');
+  await once(server,'listening');
+  const address=server.address();
+  assert.ok(address&&typeof address==='object');
+  const read=(path:string,headers:Record<string,string>)=>fetch(`http://127.0.0.1:${address.port}${path}`,{headers});
+  for(const ext of ['js','css']){
+   const target='/assets/index-12345678.'+ext;
+   for(const encoding of ['br','gzip','identity']){
+    const response=await read(target,{'Accept-Encoding':encoding});
+    assert.equal(response.status,200);
+    assert.equal(response.headers.get('content-encoding'),encoding==='identity'?null:encoding);
+    assert.equal(response.headers.get('vary'),'Accept-Encoding');
+    assert.equal(response.headers.get('cache-control'),immutable);
+    assert.equal(await response.text(),body);
+   }
+   const partial=await read(target,{'Accept-Encoding':'br',Range:'bytes=0-15'});
+   assert.equal(partial.status,206);
+   assert.equal(partial.headers.get('content-encoding'),null);
+   assert.equal(await partial.text(),body.slice(0,16));
+  }
+  for(const target of ['/api/fixture','/assets/service-worker.js','/assets/config-12345678.json']){
+   const response=await read(target,{'Accept-Encoding':'br'});
+   assert.equal(response.headers.get('content-encoding'),null);
+   await response.arrayBuffer();
+  }
+ }finally{
+  server?.closeAllConnections();
+  if(server?.listening)await new Promise<void>((resolve,reject)=>server!.close(error=>error?reject(error):resolve()));
+  await rm(dir,{recursive:true,force:true});
+ }
 });
 test('HTML, runtime metadata, service workers and unknown files never gain public caching',()=>{
  for(const f of ['index.html','assets/index-12345678.html','portal-build.json','assets/profile-12345678.json','manifest.webmanifest','service-worker.js','sw.js','assets/main-12345678.js.map','exports/private.csv','../private.png','assets/../../private.js'])assert.equal(frontendCacheControl(f),'private, no-store');

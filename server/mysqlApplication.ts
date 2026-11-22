@@ -10,7 +10,7 @@ import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
 import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
 import {canonicalCampaignId} from '../src/utils/organicCampaign.ts';
 import {mountMetadataHeaders,mountMetadataHtml} from './siteMetadata.ts';
-import {frontendStaticOptions} from './staticCache.ts';
+import {frontendStaticCompression,frontendStaticOptions} from './staticCache.ts';
 import {companyConfiguration,productionConfiguration} from './companyTrial.ts';
 import {acquireCompanyRuntimeLease} from '../cloud/mysql/company-maintenance.mjs';
 import { configureAccessTransport, validMutationOrigin } from "./portal/accessTransport.ts";
@@ -138,6 +138,7 @@ app.post(['/api/crm/campaigns/:idOrCode/impression','/api/campaigns/:idOrCode/im
 app.use('/api',(_q,r)=>r.status(404).json({error:'API endpoint not found'}));
 if(process.env.TRIAL_FRONTEND_DIRECTORY){
   const directory=path.resolve(process.env.TRIAL_FRONTEND_DIRECTORY);
+  app.use('/assets',frontendStaticCompression);
   app.use(express.static(directory,frontendStaticOptions(directory)));
   mountMetadataHtml(app,directory,nativePool);
 }

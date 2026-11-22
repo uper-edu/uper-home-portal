@@ -1,4 +1,5 @@
 import path from 'node:path';
+import compression from 'compression';
 import type {Response} from 'express';
 
 /** Only files actually served from the public frontend directory use this policy. */
@@ -26,3 +27,14 @@ export function frontendStaticOptions(directory: string) {
     },
   };
 }
+
+export const frontendStaticCompression = compression({
+  filter(request, response) {
+    const type = String(response.getHeader('Content-Type') ?? '');
+    const cacheControl = String(response.getHeader('Cache-Control') ?? '');
+    return !request.headers.range && response.statusCode === 200 &&
+      cacheControl.includes('immutable') &&
+      /^(?:text\/css|(?:text|application)\/javascript)(?:;|$)/i.test(type) &&
+      compression.filter(request, response);
+  },
+});
