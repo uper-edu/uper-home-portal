@@ -16,6 +16,7 @@ import {
   saveDraft,
   removeDraft,
   readChatResponse,
+  writeChatDrafts,
 } from "./chatDelivery";
 export type ChatSource = "homepage_widget" | "standalone_chat";
 export const sharedChatDrafts = "shared_chat";
@@ -255,39 +256,53 @@ async function recoverRegistration(owner: string) {
 }
 
 function chatSnapshot(data: any, conversationId: string, draftSource: string, boundOnly: boolean) {
+  const answers = new Map();
+  for (const row of data.messages) {
+    if(row.role === "assistant" && !answers.has(row.request_id))answers.set(row.request_id,row);
+  }
+  const local = new Map(drafts(draftSource).map(message=>[message.id,message]));
+  let changed=false;
   for (const m of data.messages) {
     if (m.role === "user") {
-      const answer = data.messages.find((a: any) => a.request_id === m.request_id && a.role === "assistant");
-      if (answer && ["failed", "interrupted"].includes(answer.status))
-        saveDraft(draftSource, {
+      const answer = answers.get(m.request_id);
+      if (answer && ["failed", "interrupted"].includes(answer.status)) {
+        const previous=local.get(m.request_id);
+        local.delete(m.request_id);
+        local.set(m.request_id, {
           id: m.request_id,
           content: m.content,
           conversationId,
           timestamp: m.created_at,
           delivery: answer.status,
-          action: answer.metadata?.followupAction || draft(draftSource, m.request_id)?.action,
-          enrollmentContext:normalizeEnrollmentChatSelection(m.metadata?.enrollmentContext) ??
-            draft(draftSource,m.request_id)?.enrollmentContext,
+          action: answer.metadata?.followupAction || previous?.action,
+          enrollmentContext:normalizeEnrollmentChatSelection(m.metadata?.enrollmentContext) ?? previous?.enrollmentContext,
         });
+        changed=true;
+      }
     }
-    if (m.role === "assistant" && m.status === "completed") removeDraft(draftSource, m.request_id);
+    if (m.role === "assistant" && m.status === "completed" && local.delete(m.request_id))changed=true;
   }
-  const rows = data.messages.map((m: any) => ({
-    ...m,
-    id: m.role === "user" ? m.request_id : "reply-" + m.request_id,
-    delivery: m.role === "user" ? draft(draftSource, m.request_id)?.delivery || "saved" : undefined,
-    timestamp: new Date(m.created_at),
-    action: m.role === 'user' ? draft(draftSource, m.request_id)?.action : undefined,
-    enrollmentContext:m.role==='user'?draft(draftSource,m.request_id)?.enrollmentContext:undefined,
-    enrollment: m.role==='assistant'&&m.status==='completed'?m.metadata?.enrollment:undefined,
-    workspaceEntry: m.role==='assistant'&&m.status==='completed'?m.metadata?.workspaceEntry:undefined,
-    suggestedPrompts: m.role==='assistant'&&m.status==='completed'?m.metadata?.suggestedPrompts:undefined,
-    content: m.status === "interrupted" ? "[回复中断，可重试]" : m.content,
-  }));
+  if(changed)writeChatDrafts(draftSource,local.values());
+  const rows = data.messages.map((m: any) => {
+    const pending=m.role==='user'?local.get(m.request_id):undefined;
+    return {
+      ...m,
+      id: m.role === "user" ? m.request_id : "reply-" + m.request_id,
+      delivery: m.role === "user" ? pending?.delivery || "saved" : undefined,
+      timestamp: new Date(m.created_at),
+      action:pending?.action,
+      enrollmentContext:pending?.enrollmentContext,
+      enrollment: m.role==='assistant'&&m.status==='completed'?m.metadata?.enrollment:undefined,
+      workspaceEntry: m.role==='assistant'&&m.status==='completed'?m.metadata?.workspaceEntry:undefined,
+      suggestedPrompts: m.role==='assistant'&&m.status==='completed'?m.metadata?.suggestedPrompts:undefined,
+      content: m.status === "interrupted" ? "[回复中断，可重试]" : m.content,
+    };
+  });
+  const rowIds=new Set(rows.map((row:{id:string})=>row.id));
   const messages = [
     ...rows,
-    ...drafts(draftSource)
-      .filter(m => (m.conversationId === conversationId || (!boundOnly && !m.conversationId)) && !rows.some((row: {id: string}) => row.id === m.id))
+    ...[...local.values()]
+      .filter(m => (m.conversationId === conversationId || (!boundOnly && !m.conversationId)) && !rowIds.has(m.id))
       .map(m => ({...m, role:"user" as const, timestamp:new Date(m.timestamp)})),
   ];
   const page = data.conversation?.attribution?.page;
@@ -321,8 +336,8 @@ export async function restoreCurrentChat(source: ChatSource, options: {previous?
   for (const legacySource of ['homepage_widget','standalone_chat']) {
     for (const message of drafts(legacySource)) {
       if (message.conversationId !== conversationId) continue;
-      if (!draft(sharedChatDrafts, message.id)) saveDraft(sharedChatDrafts, message);
-      removeDraft(legacySource, message.id);
+      if (draft(sharedChatDrafts, message.id) || saveDraft(sharedChatDrafts, message))
+        removeDraft(legacySource, message.id);
     }
   }
   return {...chatSnapshot(data, conversationId, sharedChatDrafts, true),

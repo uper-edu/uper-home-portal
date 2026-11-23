@@ -27,6 +27,7 @@ export function useSharedChat(source: ChatSource, paused: boolean, legacyThreadI
   const [starting, setStarting] = useState(false);
   const [revision, refresh] = useState(0);
   const generation = useRef(0);
+  const restoreQueue = useRef(Promise.resolve());
   const requestRefresh = () => refresh(value => value + 1);
 
   useEffect(() => {
@@ -47,12 +48,18 @@ export function useSharedChat(source: ChatSource, paused: boolean, legacyThreadI
     if (paused || starting) return;
     const owner = visitorScope();
     const ticket = ++generation.current;
-    void restoreCurrentChat(source, {legacyThreadId, page:chatLanding(owner)}).then(snapshot => {
-      if (ticket !== generation.current || owner !== visitorScope()) return;
-      setThread(previous => JSON.stringify(previous) === JSON.stringify(snapshot) ? previous : snapshot);
-      setFailed(false);
-    }).catch(() => {
-      if (ticket === generation.current && owner === visitorScope()) setFailed(true);
+    const isCurrent = () => ticket === generation.current && owner === visitorScope();
+    // Repeated focus/storage events keep only the latest pending refresh.
+    restoreQueue.current = restoreQueue.current.then(async () => {
+      if (!isCurrent()) return;
+      try {
+        const snapshot = await restoreCurrentChat(source, {legacyThreadId, page:chatLanding(owner)});
+        if (!isCurrent()) return;
+        setThread(previous => JSON.stringify(previous) === JSON.stringify(snapshot) ? previous : snapshot);
+        setFailed(false);
+      } catch {
+        if (isCurrent()) setFailed(true);
+      }
     });
     return () => { generation.current++; };
   }, [source, paused, starting, revision, legacyThreadId]);

@@ -6,10 +6,20 @@ export interface PendingMessage { id:string; content:string; conversationId:stri
 let scope='';
 export function setDraftScope(value:string){scope=value;}
 function key(source:string){return `uper_chat_drafts:${scope}:${source}`;}
-export function drafts(source:string):PendingMessage[]{try{return scope?JSON.parse(localStorage.getItem(key(source))||'[]'):[];}catch{return [];}}
+export function drafts(source:string):PendingMessage[]{
+  if(!scope)return [];
+  try{
+    const stored=JSON.parse(localStorage.getItem(key(source))||'[]');
+    return Array.isArray(stored)?stored:[];
+  }catch{return [];}
+}
 export function draft(source:string,id:string){return drafts(source).find(m=>m.id===id);}
-export function saveDraft(source:string,m:PendingMessage){if(!scope)return;try{localStorage.setItem(key(source),JSON.stringify([...drafts(source).filter(x=>x.id!==m.id),m]));}catch{}}
+export function saveDraft(source:string,m:PendingMessage){return writeChatDrafts(source,[...drafts(source).filter(x=>x.id!==m.id),m]);}
 export function removeDraft(source:string,id:string){try{localStorage.setItem(key(source),JSON.stringify(drafts(source).filter(x=>x.id!==id)));}catch{}}
+export function writeChatDrafts(source:string,messages:Iterable<PendingMessage>) {
+  if(!scope)return false;
+  try{localStorage.setItem(key(source),JSON.stringify([...messages]));return true;}catch{return false;}
+}
 export function deliveryText(status:Delivery,lang:string){
  const zh=lang.startsWith('zh'),en=lang.startsWith('en');
  if(status==='saved')return zh?'已保存':en?'Saved':'Tersimpan';

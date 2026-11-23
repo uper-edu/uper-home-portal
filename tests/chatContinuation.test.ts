@@ -133,3 +133,86 @@ test('Shared entry points restore the same conversation and retain the original 
   assert.deepEqual(await restoreCurrentChat('standalone_chat'),restarted);
   assert.equal(lookups[2].previousConversationId,original);
 });
+
+test('Long history reconciles retry drafts in one storage write and preserves ownership',async t=>{
+  const owner='a'.repeat(64), threadId='fixture-chat', timestamp='2026-11-22T12:00:00Z';
+  const storage=new Map<string,string>();
+  const priorStorage=Object.getOwnPropertyDescriptor(globalThis,'localStorage');
+  let reads=0,writes=0;
+  Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{
+    getItem(key:string){if(key.includes("uper_chat_drafts:"))reads++;return storage.get(key)??null;},
+    setItem(key:string,value:string){if(key.includes("uper_chat_drafts:"))writes++;storage.set(key,value);},
+  }});
+  setDraftScope(owner);
+  selectVisitorScope(owner);
+  t.after(()=>{
+    if(priorStorage)Object.defineProperty(globalThis,'localStorage',priorStorage);
+    else Reflect.deleteProperty(globalThis,'localStorage');
+    setDraftScope('');
+    selectVisitorScope('');
+  });
+  const pending=(id:string,conversationId=threadId)=>({id,conversationId,content:id,timestamp,delivery:'unknown' as const});
+  saveDraft('homepage_widget',pending('completed-0'));
+  saveDraft('homepage_widget',{...pending('retry'),enrollmentContext:{kind:'class',classId:'sample-class'}});
+  saveDraft('homepage_widget',pending('unsent'));
+  saveDraft('homepage_widget',pending('other-visitor-thread','other-chat'));
+  const pair=(id:string,status:string)=>[
+    {role:'user',request_id:id,content:id,created_at:timestamp,status:'saved'},
+    {role:'assistant',request_id:id,content:'answer',created_at:timestamp,status},
+  ];
+  t.mock.method(globalThis,'fetch',async(input:RequestInfo)=>Response.json(input==='/api/portal/session'?{cacheScope:owner}:{
+    conversation:{source:'homepage_widget'},
+    messages:[...Array.from({length:500},(_,i)=>pair('completed-'+i,'completed')).flat(),...pair('retry','interrupted')],
+  }));
+  reads=0;writes=0;
+  const restored=await restoreChat('homepage_widget',threadId);
+  assert.equal(reads,1);
+  assert.equal(writes,1);
+  assert.equal(restored.messages.length,1003);
+  assert.equal(restored.messages[0].delivery,'saved');
+  assert.equal(restored.messages[1000].delivery,'interrupted');
+  assert.deepEqual(restored.messages[1000].enrollmentContext,{kind:'class',classId:'sample-class'});
+  assert.equal(restored.messages.at(-1)?.id,'unsent');
+  assert.equal(draft('homepage_widget','other-visitor-thread')?.conversationId,'other-chat');
+  assert.equal(draft('homepage_widget','completed-0'),undefined);
+});
+
+test('legacy drafts remain recoverable when shared storage rejects migration',async t=>{
+  const owner='a'.repeat(64), threadId='fixture-chat';
+  const storage=new Map<string,string>();
+  let rejectShared=true;
+  const priorStorage=Object.getOwnPropertyDescriptor(globalThis,'localStorage');
+  const priorLocation=Object.getOwnPropertyDescriptor(globalThis,'location');
+  Object.defineProperty(globalThis,'location',{configurable:true,value:{pathname:'/chat',search:''}});
+  Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{
+    getItem:(key:string)=>storage.get(key)??null,
+    setItem(key:string,value:string){
+      if(rejectShared&&key.endsWith(':shared_chat'))throw new Error('Storage quota exceeded');
+      storage.set(key,value);
+    },
+  }});
+  setDraftScope(owner);
+  selectVisitorScope(owner);
+  t.after(()=>{
+    if(priorStorage)Object.defineProperty(globalThis,'localStorage',priorStorage);
+    else Reflect.deleteProperty(globalThis,'localStorage');
+    if(priorLocation)Object.defineProperty(globalThis,'location',priorLocation);
+    else Reflect.deleteProperty(globalThis,'location');
+    setDraftScope('');
+    selectVisitorScope('');
+  });
+  const message={id:'restore-me',conversationId:threadId,content:'try again',timestamp:'2026-11-22T12:00:00Z',delivery:'unknown' as const};
+  saveDraft('homepage_widget',message);
+  t.mock.method(globalThis,'fetch',async(input:RequestInfo)=>Response.json(
+    input==='/api/portal/session'?{cacheScope:owner}:input==='/api/portal/conversations'
+      ?{conversationId:threadId}:{conversation:{source:'homepage_widget'},messages:[]}));
+  await restoreCurrentChat('standalone_chat');
+  assert.deepEqual(draft('homepage_widget',message.id),message);
+  assert.equal(draft('shared_chat',message.id),undefined);
+  rejectShared=false;
+  const restored=await restoreCurrentChat('standalone_chat');
+  assert.equal(restored.messages.length,1);
+  assert.equal(restored.messages[0].id,message.id);
+  assert.equal(draft('homepage_widget',message.id),undefined);
+  assert.deepEqual(draft('shared_chat',message.id),message);
+});
