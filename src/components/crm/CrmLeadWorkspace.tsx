@@ -73,6 +73,7 @@ function CustomerOpportunities({lead,lang,table=false}:{lead:CrmLeadRecord;lang:
  const label=lang==='zh'?`${summary.count} 笔进行中`:lang==='id'?`${summary.count} berlangsung`:`${summary.count} in progress`;
  return <AdminRowAction href={list} aria-label={label}>{table?summary.count:label}</AdminRowAction>;
 }
+const enrollmentLabel=(lang:CrmLanguage)=>lang==='zh'?'已报名':lang==='id'?'Sudah terdaftar':'Enrolled';
 export interface LeadWorkspaceProps {
   leads: CrmLeadRecord[];
   selectedId?: string;
@@ -183,7 +184,7 @@ export function CrmLeadWorkspace({
             onClick={() => open(lead)}
           >
             {lead.fullName || t("Unnamed customer", "未填写姓名")}
-          </AdminRecordEntry>{reviewPurchaseIntent(lead)}<CrmIdentityStatus lead={lead} lang={lang} explain/>{!fields.includes("followup")&&identityAction(lead)}</div>
+          </AdminRecordEntry>{lead.enrollmentOpportunitySummary?.hasEnrollment&&<div className="crm-work-muted">{enrollmentLabel(lang)}</div>}{reviewPurchaseIntent(lead)}<CrmIdentityStatus lead={lead} lang={lang} explain/>{!fields.includes("followup")&&identityAction(lead)}</div>
         );
       case "owner":
         return owner(lead);
@@ -382,6 +383,7 @@ export function CrmLeadWorkspace({
                       </AdminRecordEntry>
                       <div className="crm-work-muted">
                         {leadDisplayNumber(lead)} · {owner(lead)}
+                        {lead.enrollmentOpportunitySummary?.hasEnrollment&&<> · {enrollmentLabel(lang)}</>}
                       </div>
                       {identityFacts.length>0&&<div className="crm-work-muted crm-work-demographics" aria-label={lang==='zh'?'居住地与客户身份':lang==='id'?'Domisili dan identitas pelanggan':'Residence and customer identity'}>{identityFacts.join(' · ')}</div>}
                       {reviewPurchaseIntent(lead)}

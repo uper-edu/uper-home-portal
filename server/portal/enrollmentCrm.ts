@@ -251,7 +251,7 @@ const canChangeEnrollmentEmail = async (c:Client, actor:Employee, customer:{id:s
   actor.permissions.includes('crm.write') && canReviewIdentityRole(actor,await identityControls(c)) &&
   permittedRecord(actor,customer.profile,'crm.write') && canProgress(actor,customer.profile) &&
   !(await pendingIdentity(c,customer.id)).length;
-type OpportunityProfile={id:string;enrollmentOpportunitySummary?:{count:number;only?:{id:string;level:string;stage:string}}};
+type OpportunityProfile={id:string;enrollmentOpportunitySummary?:{count:number;hasEnrollment?:true;only?:{id:string;level:string;stage:string}}};
 
 function opportunityAgreement(profile:any,id:string) {
   const sources=new Set((profile.followUpLogs??[]).filter((log:any)=>log.result?.opportunity?.id===id)
@@ -318,6 +318,7 @@ export async function attachEnrollmentOpportunitySummaries(c:Client,profiles:Opp
     const summary=summaries.get(row.customer_id);
     if(!summary)continue;
     const opportunity=projectOpportunity(row,records.get(row.id)??[],{id:row.customer_id});
+    if(opportunity.state==='enrolled')summary.hasEnrollment=true;
     if(!isOpenOpportunity(opportunity))continue;
     summary.count++;
     if(summary.count===1) summary.only={id:opportunity.id,level:opportunity.level,stage:opportunity.salesStage};

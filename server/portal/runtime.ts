@@ -11,6 +11,7 @@ import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
 import {enrollmentSessionCookie,portalVisitorCookie,portalVisitorToken} from './enrollmentVisitorSession.ts';
 import { mountEnrollmentApplication } from './enrollmentApplication.ts';
 import { attachEnrollmentOpportunitySummaries } from './enrollmentCrm.ts';
+import { enrollmentNeedsNoSalesClaim } from '../../src/utils/crmEnrollment.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {auditLog} from './audit.ts';
@@ -305,7 +306,7 @@ async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
       inactivity: lead.contactOverview.stale,
       requestCount: pendingMap.get(lead.id)||0,
       latest: a?.latest,
-      customerRequests:requests.filter((r:any)=>r.lead_id===lead.id).map((r:any)=>({id:r.id,dueAt:r.data.dueAt,action:r.data.action})),
+      customerRequests:requests.filter((r:any)=>r.lead_id===lead.id).map((r:any)=>({id:r.id,dueAt:r.data.dueAt,action:r.data.action,state:r.state})),
       tasks: (a?.tasks || []).map((t:any)=>({...t,requestDueAt:requestDeadline(t,requests)})),
       isMine:
         lead.owner === e.id || (a?.tasks || []).some((t) => t.ownerId === e.id),
@@ -964,7 +965,8 @@ export async function mountPortal(app: Express) {
       };
       const now = Date.now();
       const servicing=enrollmentServicePolicy().servicing;
-      if(servicing&&filters.sort==="priority")await attachEnrollmentOpportunitySummaries(pool,leads);
+      const needsSummaryBeforeFilter=filters.sort==="priority"||filters.ownership==="unassigned";
+      if(servicing&&needsSummaryBeforeFilter)await attachEnrollmentOpportunitySummaries(pool,leads);
       const result = filterAndSummarize(
         leads,
         filters,
@@ -973,7 +975,7 @@ export async function mountPortal(app: Express) {
         now,
         config,
       );
-      if(servicing&&filters.sort!=="priority")await attachEnrollmentOpportunitySummaries(pool,result.leads);
+      if(servicing&&!needsSummaryBeforeFilter)await attachEnrollmentOpportunitySummaries(pool,result.leads);
       res.json({
         ...result,
         notificationScope,
@@ -1011,6 +1013,7 @@ export async function mountPortal(app: Express) {
     wrap(async (req, res) => {
       const { l, e } = await leadAccess(req);
       await attachLeadAttention(e, [l.profile]);
+      if(enrollmentServicePolicy().servicing)await attachEnrollmentOpportunitySummaries(pool,[l.profile]);
       const rows = (
         await pool.query(
           "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY m.sequence",
@@ -1069,6 +1072,18 @@ export async function mountPortal(app: Express) {
           fail(409, "Lead has already been assigned; refresh the list");
         if (!allowed(e, current)) fail(404, "Lead not found");
         if(e.grants&&!canClaimRecord(e,current))fail(404,'Lead not found');
+        if(enrollmentServicePolicy().servicing){
+          const [profile]=await projectIdentityProfiles(c,[current]);
+          if(profile){
+            await attachEnrollmentOpportunitySummaries(c,[profile]);
+            if(profile.enrollmentOpportunitySummary?.hasEnrollment&&profile.enrollmentOpportunitySummary.count===0){
+              const tasks=await identityProjectionRows(c,[profile],"SELECT lead_id,status FROM followup_tasks WHERE status IN ('open','overdue','migration_hold') AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))");
+              const customerRequests=await identityProjectionRows(c,[profile],"SELECT lead_id,state FROM crm_engagements WHERE kind='task_request' AND state='pending' AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))");
+              if(enrollmentNeedsNoSalesClaim({...profile,attention:{tasks,customerRequests}}))
+                fail(409,'ENROLLMENT_SALES_CLAIM_NOT_NEEDED');
+            }
+          }
+        }
         const next = {
           ...current,
           owner: e.id,

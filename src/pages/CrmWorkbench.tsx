@@ -12,6 +12,7 @@ import {CrmFinanceWorkspace} from '../components/crm/CrmFinanceWorkspace';
 import {CrmEnrollmentManagement} from '../components/crm/CrmEnrollmentManagement';
 import {CrmEnrollmentSettings} from '../components/crm/CrmEnrollmentSettings';
 import {canViewEnrollmentManagement} from '../utils/crmEnrollmentManagement';
+import {enrollmentNeedsNoSalesClaim} from '../utils/crmEnrollment';
 import {CrmEnrollmentFinance} from '../components/crm/CrmEnrollmentFinance';
 import {canVerifyPayments} from '../utils/crmPaymentWorklist';
 import {defaultCrmModule} from '../utils/crmLanding';
@@ -1108,7 +1109,10 @@ function CrmWorkspace({
         );
       await fetchLeads(true);
     } catch (e) {
-      setLeadActionError((e as Error).message);
+      const message=(e as Error).message;
+      setLeadActionError(message==='ENROLLMENT_SALES_CLAIM_NOT_NEEDED'
+        ? adminText(lang,'The learner is enrolled and has no pending sales work.','Siswa sudah terdaftar dan tidak memiliki tindak lanjut penjualan.','学员已报名，当前无销售待办。')
+        : message);
       await fetchLeads(true);
     } finally {
       setClaiming(null);
@@ -1231,6 +1235,7 @@ function CrmWorkspace({
         <AdminRecordHeader back={headerBack}
           title={
           <CrmRecordTitle title={selectedLead.fullName} status={<CrmCustomerContactRestrictions lead={selectedLead} lang={lang} explainIdentity/>} meta={<span>
+              {selectedLead.enrollmentOpportunitySummary?.hasEnrollment&&<>{adminText(lang,'Enrolled','Sudah terdaftar','已报名')}{' · '}</>}
               {employees.find(e=>e.id===selectedLead.owner)?.displayName||selectedLead.owner||t("Unassigned","未分配")}{' · '}{leadDisplayNumber(selectedLead)}
             </span>}/>} actions={<CrmDetailActions label={t("Customer actions","客户操作")}
           secondary={<>
@@ -1349,7 +1354,7 @@ function CrmWorkspace({
             {intentDismissed===selectedLead.id&&<CrmSaveFeedback lang={lang} state="saved">
               {lang==='zh'?'已忽略这条购课意向建议。':lang==='id'?'Saran minat membeli ini diabaikan.':'Purchase intent suggestion dismissed.'}
             </CrmSaveFeedback>}
-            {!selectedLead.identityReview?.pending&&!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
+            {!selectedLead.identityReview?.pending&&!enrollmentNeedsNoSalesClaim(selectedLead)&&!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
             {conversationReturn&&<button type="button" className="crm-work-link" onClick={()=>changeCustomerTab("chat")}>{t("Return to conversation","返回对话")}</button>}
             {taskOpening&&<p role="status">{t("Loading task context…","正在加载任务依据…")}</p>}
             <CrmTrustPanel focusAgreement={notificationFocus?.leadId===selectedLead.id?notificationFocus.agreementId:undefined} feedback={<>{workflowNotice?.taskChange&&<CrmSaveFeedback lang={lang} state="saved">{({create:lang==='zh'?'已新增独立任务':lang==='id'?'Tugas terpisah dibuat':'Separate task created',supplement:lang==='zh'?'已补充原任务，期限不变':lang==='id'?'Informasi tugas ditambahkan; tenggat tetap':'Task information added; deadline unchanged',reschedule:lang==='zh'?'已更新执行时间，原期限及历史保留':lang==='id'?'Waktu pelaksanaan diperbarui; tenggat dan riwayat awal tetap':'Execution time updated; original deadline and history retained',replace:lang==='zh'?'已取消选定原任务并建立替代任务，其他任务保留':lang==='id'?'Tugas lama terpilih dibatalkan dan diganti; tugas lain tetap':'Selected task cancelled and replaced; other tasks retained'}as any)[workflowNotice.taskChange]}</CrmSaveFeedback>}

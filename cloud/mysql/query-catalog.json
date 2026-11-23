@@ -3179,6 +3179,18 @@
       "server/portal/purchaseIntentSuggestions.ts"
     ]
   },
+  "SELECT lead_id,state FROM crm_engagements WHERE kind='task_request' AND state='pending' AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))": {
+    "sql": "SELECT lead_id,state FROM crm_engagements WHERE kind='task_request' AND state='pending' AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
+  "SELECT lead_id,status FROM followup_tasks WHERE status IN ('open','overdue','migration_hold') AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))": {
+    "sql": "SELECT lead_id,status FROM followup_tasks WHERE status IN ('open','overdue','migration_hold') AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
   "SELECT lead_id,value FROM crm_payment_ledgers ORDER BY lead_id": {
     "sql": "SELECT lead_id,value FROM crm_payment_ledgers ORDER BY lead_id",
     "sources": [

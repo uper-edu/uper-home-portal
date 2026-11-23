@@ -1,5 +1,5 @@
 import {matchesLeadMetric,metricSelections} from './crmLeadAnalytics';
-import {hasConfirmedEnrollment} from './crmEnrollment';
+import {enrollmentNeedsNoSalesClaim,hasConfirmedEnrollment} from './crmEnrollment';
 import {salesProgressStages,isSalesProgressStage} from './crmSalesProgress';
 import {humanCommunicationState,projectInteractionTimeline} from './crmInteractionTimeline';
 import {humanCommunicationLabels} from './crmInteractionLabels';
@@ -212,7 +212,7 @@ export function leadMatches(
 ) {
   if(f.overview?.some(key=>!matchesLeadMetric(lead,key,now)))return false;
   if (f.ownership === "mine" && lead.owner !== employeeId) return false;
-  if (f.ownership === "unassigned" && lead.owner) return false;
+  if (f.ownership === "unassigned" && (lead.owner || enrollmentNeedsNoSalesClaim(lead))) return false;
   if (f.ownership === "person" && lead.owner !== f.owner) return false;
   if (
     f.search &&

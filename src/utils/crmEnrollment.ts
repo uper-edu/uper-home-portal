@@ -5,3 +5,12 @@ export function enrollmentVoids(facts:any[]){return new Map<string,any>(facts.fi
 export function effectiveEnrollmentFacts(facts:any[]){const voids=enrollmentVoids(facts);return facts.filter(f=>isEnrollmentConfirmation(f)&&!voids.has(f.id));}
 export function confirmedEnrollmentFacts(facts:any[]){return effectiveEnrollmentFacts(facts).map(f=>({id:f.id,effectiveAt:f.data.effectiveAt??null,recordedAt:f.created_at??null}));}
 export function hasConfirmedEnrollment(lead:any){return Boolean(lead.enrollmentEvidence?.confirmations?.length)||lead.currentStage==='Enrolled'||['Enrolled','Paid'].includes(lead.outcome);}
+export function enrollmentNeedsNoSalesClaim(lead:any):boolean {
+  const summary=lead.enrollmentOpportunitySummary;
+  const attention=lead.attention;
+  return summary?.hasEnrollment===true&&summary.count===0&&Boolean(attention)&&!attention.error&&
+    !lead.identityReview?.pending&&
+    !(attention.tasks??[]).some((task:any)=>['open','overdue','migration_hold'].includes(task.status))&&
+    !(attention.customerRequests??[]).some((request:any)=>request.state===undefined||request.state==='pending')&&
+    !(lead.commitments??[]).some((agreement:any)=>agreement.status==='active');
+}

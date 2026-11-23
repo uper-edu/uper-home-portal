@@ -402,6 +402,7 @@ test("priority uses projected open opportunities across levels and current tasks
   await import("./helpers/mockPortalDatabase.mjs");
   const {attachEnrollmentOpportunitySummaries}=await import("../server/portal/enrollmentCrm.ts");
   const {defaultLeadFilters,filterAndSummarize}=await import("../src/utils/crmLeadFilters.ts");
+  const {enrollmentNeedsNoSalesClaim}=await import("../src/utils/crmEnrollment.ts");
   const now=Date.parse("2026-11-20T10:00:00Z");
   const rows=[
     {id:"a-enrolled",currentStage:"progress:enrolled"},
@@ -426,8 +427,18 @@ test("priority uses projected open opportunities across levels and current tasks
     }))};
   }},rows);
   assert.deepEqual((rows[1] as any).enrollmentOpportunitySummary,{
-    count:1,only:{id:"mixed-waiting",level:"HSK 2",stage:"progress:unreached"},
+    count:1,hasEnrollment:true,only:{id:"mixed-waiting",level:"HSK 2",stage:"progress:unreached"},
   });
+  const enrolled={...rows[0],attention:{tasks:[],customerRequests:[]}};
+  const mixed={...rows[1],attention:enrolled.attention};
+  assert.equal(enrollmentNeedsNoSalesClaim(enrolled),true);
+  assert.equal(enrollmentNeedsNoSalesClaim(mixed),false);
+  assert.equal(enrollmentNeedsNoSalesClaim({...enrolled,attention:{tasks:[{status:"open"}]}}),false);
+  assert.equal(enrollmentNeedsNoSalesClaim({...enrolled,attention:{customerRequests:[{state:"pending"}]}}),false);
+  const claimable={...defaultLeadFilters("all"),ownership:"unassigned" as const,sort:"newest" as const};
+  assert.deepEqual(filterAndSummarize([enrolled,mixed],claimable,"Fadhil","Asia/Jakarta",now).leads.map(row=>row.id),["b-mixed"]);
+  const owned={...enrolled,owner:"owner-1"};
+  assert.equal(filterAndSummarize([owned],{...claimable,ownership:"mine"},"owner-1","Asia/Jakarta",now).leads[0].owner,"owner-1");
   const filters=defaultLeadFilters("all");
   filters.sort="priority";
   assert.deepEqual(filterAndSummarize(rows,filters,"Fadhil","Asia/Jakarta",now).leads.map(row=>row.id),
