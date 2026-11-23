@@ -1,3 +1,5 @@
+import {mysqlConnectionLimit} from '../../cloud/mysql/database.mjs';
+import {chatAdmission} from './chatAdmission.ts';
 import {assessmentWorkspaceReply,chatWorkspaceEntry,type ChatWorkspaceEntry} from '../../src/utils/chatWorkspaceAction.ts';
 import {resolveChatLocalSchedule} from './chatLocalSchedule';
 import {chineseChatInput} from '../../src/utils/chatLanguage.ts';
@@ -36,6 +38,8 @@ export function chatFollowupPrompts(value: unknown): string[] {
     .filter(item => item.length > 0 && item.length <= 110 && !/[\r\n<>]|https?:|www\./iu.test(item));
   return [...new Set(prompts)].slice(0, 3);
 }
+
+const admitChat = chatAdmission(mysqlConnectionLimit-1);
 
 export function mountChat(app: Express) {
   app.post(
@@ -104,17 +108,30 @@ export function mountChat(app: Express) {
         content.length > 5000
       )
         fail(400, "messageId and content required");
-      const lease = await connection();
+      const releaseSlot=await admitChat(res);
+      if(!releaseSlot)return;
+      const lease=await connection().catch(error=>{
+        releaseSlot();
+        throw error;
+      });
+      const releaseConnection=async()=>{
+        try {await lease.release();}
+        finally {releaseSlot();}
+      };
+      if(res.destroyed){
+        await releaseConnection();
+        return;
+      }
       const db = lease.client;
       let lock;
       try {
         lock = await db.query("SELECT GET_LOCK(:p1,0) AS acquired", [conv.id]);
       } catch (e) {
-        lease.release();
+        await releaseConnection();
         throw e;
       }
       if (!lock.rows[0].acquired) {
-        lease.release();
+        await releaseConnection();
         fail(409, "Conversation busy; retry same messageId");
       }
       const transaction = async (fn: any) => {
@@ -617,7 +634,7 @@ export function mountChat(app: Express) {
         } catch (e) {
           log.error("chat.cleanup_failed", { conversationId: conv.id, error: e as Error });
         } finally {
-          lease.release();
+          await releaseConnection();
         }
       }
     }),

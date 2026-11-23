@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {registerHooks} from 'node:module';
 import {test} from 'node:test';
+import {EventEmitter} from 'node:events';
+import {mysqlConnectionLimit} from '../cloud/mysql/database.mjs';
 import {enrollmentGuideHref} from '../src/utils/enrollmentGuidance.ts';
 
 const fixtureKey = Symbol.for('uper.chatRouteFailover');
@@ -8,7 +10,10 @@ const database = `
   const get = () => globalThis[Symbol.for('uper.chatRouteFailover')];
   export const nativePool = {query: (...args) => get().query(...args)};
   export const pool = nativePool;
-  export const connection = async () => ({client:nativePool,release:() => get().released++});
+  export const connection = async () => {
+    get().checkouts++;
+    return {client:nativePool,release:async () => {await get().releaseGate; get().released++;}};
+  };
   export const id = () => 'fixture-' + (++get().sequence);
   export const event = async (_db,type,_lead,fields) => {get().events.push({type,...fields});};
   export const tx = () => {throw Error('Unexpected independent transaction');};
@@ -18,7 +23,7 @@ const modules = new Map([
   ['/cloud/mysql/runtime.mjs',database],
   ['/server/portal/runtime.ts',`
     export const wrap = handler => handler;
-    export const own = async () => ({id:'chat-fixture',visitor_id:'learner-fixture',source:'standalone_chat'});
+    export const own = async req => ({id:req.body.fixtureConversation??'chat-fixture',visitor_id:'learner-fixture',source:'standalone_chat'});
     export const chatEntrySurface = async surface => surface;
     export const fail = (status,message) => {throw Object.assign(Error(message),{status});};
   `],
@@ -68,13 +73,13 @@ function sse(content, done = true) {
 function mountFixture(t, bothFail = false) {
   const priorHistory=[],messages=[],attempts=[],events=[],logs=[],calls=[],sqlTrace=[];
   const fixture = {
-    events,logs,released:0,sequence:0,referenceReads:[],
+    events,logs,released:0,checkouts:0,sequence:0,referenceReads:[],
     async query(sql,args = []) {
-      if (sql.startsWith('SELECT GET_LOCK')) return {rows:[{acquired:1}]};
+      if (sql.startsWith('SELECT GET_LOCK')) return {rows:[{acquired:fixture.busy?0:1}]};
       if (sql.startsWith('SELECT * FROM messages')) return {rows:messages.filter(row=>row.requestId===args[1])};
       if (sql.startsWith('SELECT role,content,metadata')) {
         assert.match(sql, /status IN \('saved','completed'\) ORDER BY sequence DESC LIMIT 40$/);
-        const eligible = [...priorHistory,...messages].filter(row=>['saved','completed'].includes(row.status));
+        const eligible = [...priorHistory,...messages.filter(row=>row.conversationId===args[0])].filter(row=>['saved','completed'].includes(row.status));
         return {rows:eligible.slice(-40).reverse().map(row=>({...row,request_id:row.requestId}))};
       }
       if (sql.startsWith('SELECT result FROM hsk_attempts') || sql.startsWith('SELECT value FROM crm_courses')) return {rows:[]};
@@ -90,17 +95,18 @@ function mountFixture(t, bothFail = false) {
       }
       sqlTrace.push(sql.split(' ').slice(0,3).join(' '));
       if (sql.startsWith('INSERT INTO messages')) {
-        const [userId,,requestId,content,assistantId,metadata] = args;
-        messages.push({id:userId,requestId,role:'user',content,status:'saved',metadata});
-        messages.push({id:assistantId,requestId,role:'assistant',content:'',status:'generating',metadata});
+        const [userId,conversationId,requestId,content,assistantId,metadata] = args;
+        messages.push({id:userId,conversationId,requestId,role:'user',content,status:'saved',metadata});
+        messages.push({id:assistantId,conversationId,requestId,role:'assistant',content:'',status:'generating',metadata});
       } else if (sql.startsWith('INSERT INTO ai_attempts')) {
         const [id,model,content,error] = args;
-        assert.equal(messages[1].id,id);
+        assert.ok(messages.some(row=>row.id===id&&row.role==='assistant'));
         attempts.push({model,content,error});
       } else if (sql.startsWith('UPDATE messages SET content=')) {
         const [id,content,status,model,error,,enrollment,,,prompts,entry] = args;
-        assert.equal(messages[1].id,id);
-        Object.assign(messages[1],{content,status,model,error,metadata:{...messages[1].metadata,
+        const assistant=messages.find(row=>row.id===id&&row.role==='assistant');
+        assert.ok(assistant);
+        Object.assign(assistant,{content,status,model,error,metadata:{...assistant.metadata,
           enrollment,suggestedPrompts:JSON.parse(prompts),workspaceEntry:JSON.parse(entry)}});
       } else if (!['BEGIN','COMMIT','SELECT RELEASE_LOCK(:p1)'].includes(sql) &&
           !sql.startsWith('UPDATE conversations') && !sql.startsWith("UPDATE messages SET status='interrupted'")) {
@@ -132,6 +138,7 @@ function mountFixture(t, bothFail = false) {
     const purpose = instruction.startsWith('Identify only the response language.') ? 'language'
       : instruction.startsWith('Extract only the relevant time basis') ? 'schedule' : 'answer';
     calls.push([target,purpose,body.stream]);
+    await fixture.providerGate;
     if (purpose === 'answer') {fixture.modelHistory=body.messages.slice(1);fixture.modelInstruction=instruction;}
     if (purpose === 'language') return response({current:'en',requested:null},body.model);
     if (purpose === 'schedule') return response({basis:'wib',basisEvidence:null},body.model);
@@ -142,17 +149,17 @@ function mountFixture(t, bothFail = false) {
   });
   let handle;
   mountChat({post(path,handler){assert.equal(path,'/api/chat');handle=handler;}});
-  async function send({stream = true,content = question,enrollmentContext} = {}) {
+  async function send({stream = true,content = question,enrollmentContext,fixtureConversation, messageId = 'learner-turn', response = new EventEmitter()} = {}) {
     const packets = [];
     let reply, ended = false;
     const headers = new Map();
-    const res = {
+    const res = Object.assign(response,{
       setHeader: (name,value) => headers.set(name,value),
       write: packet => packets.push(JSON.parse(packet.trim().slice('data: '.length))),
       json: body => {reply=JSON.parse(JSON.stringify(body));},
       end: () => {ended=true;},
-    };
-    await handle({body:{content,stream,messageId:'learner-turn',entrySurface:'standalone_chat',lang:'en',enrollmentContext}},res);
+    });
+    await handle({body:{content,stream,messageId,fixtureConversation,entrySurface:'standalone_chat',lang:'en',enrollmentContext}},res);
     return {packets,reply,headers,ended};
   }
   return {fixture,send,messages,attempts,events,logs,calls,sqlTrace,priorHistory};
@@ -244,4 +251,54 @@ test('Chat context for an unavailable class includes no class facts', async t =>
   await send({enrollmentContext:{kind:'class',classId:unavailable}});
   assert.deepEqual(fixture.referenceReads,[[unavailable]]);
   assert.ok(fixture.modelInstruction.includes(JSON.stringify({kind:'class',classId:unavailable,publicClass:null})));
+});
+
+
+test('a busy Chat waits for the checked-out connection to return', async t => {
+  const {fixture,send}=mountFixture(t);
+  fixture.busy=true;
+  let finish;
+  fixture.releaseGate=new Promise(resolve=>{finish=resolve;});
+  let settled=false;
+  const result=send().finally(()=>{settled=true;});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(settled,false);
+  finish();
+  await assert.rejects(result,{status:409,message:'Conversation busy; retry same messageId'});
+  assert.equal(fixture.released,1);
+});
+
+
+test('Chat route queues excess turns before checkout and drops an abandoned request', async t => {
+  const {fixture,send,messages,calls}=mountFixture(t);
+  let letProvidersFinish;
+  fixture.providerGate=new Promise(resolve=>{letProvidersFinish=resolve;});
+  const slots=mysqlConnectionLimit-1;
+  const submit=(index,response)=>send({
+    fixtureConversation:'conversation-'+index,messageId:'turn-'+index,response,
+  });
+  const running=Array.from({length:slots},(_,index)=>submit(index));
+  const disconnected=new EventEmitter();
+  const abandoned=submit(slots,disconnected);
+  const waiting=submit(slots+1);
+  const requests=[...running,abandoned,waiting];
+  try {
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(fixture.checkouts,slots);
+    assert.equal(messages.length,2*slots);
+    assert.equal(calls.length,slots);
+    disconnected.destroyed=true;
+    disconnected.emit('close');
+    const result=await abandoned;
+    assert.deepEqual(result.packets,[]);
+    assert.equal(fixture.checkouts,slots);
+  } finally {
+    letProvidersFinish();
+    await Promise.allSettled(requests);
+  }
+  for(const request of [...running,waiting])
+    assert.equal((await request).packets.at(-1)?.status,'completed');
+  assert.equal(fixture.checkouts,slots+1);
+  assert.equal(fixture.released,slots+1);
+  assert.equal(messages.filter(row=>row.requestId==='turn-'+slots).length,0);
 });

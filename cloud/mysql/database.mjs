@@ -19,6 +19,8 @@ export function validateTrialDatabase(env) {
   return { url, name };
 }
 
+export const mysqlConnectionLimit = 8;
+
 export async function openTrialDatabase(env) {
   const { url, name } = validateTrialDatabase(env);
   const { default: mysql } = await import('mysql2/promise');
@@ -34,7 +36,7 @@ export async function openTrialDatabase(env) {
     password: decodeURIComponent(url.password), database: name,
     socketPath: env.MYSQL_TRIAL_SOCKET || undefined,
     ssl: tlsRequired ? { ca: env.MYSQL_CA_PEM, rejectUnauthorized: true, verifyIdentity: true } : undefined,
-    connectionLimit: 8, connectTimeout: 10000, timezone: 'Z',
+    connectionLimit: mysqlConnectionLimit, connectTimeout: 10000, timezone: 'Z',
     supportBigNumbers: true, bigNumberStrings: true, dateStrings: true,
     multipleStatements: false,
   });
