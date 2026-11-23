@@ -9,10 +9,12 @@ import imageUrlBuilder from '../cmsClient';
 import { promotionJourneyUrl } from '../utils/promotionNavigation';
 import { useDesignStyle } from '../utils/theme';
 
+const programLinkTypography = 'font-bold text-lg';
+
 function EnrollmentProgramLink() {
   const {t,i18n}=useTranslation();
   const [params]=useSearchParams();
-  return <Link className="relative mt-5 w-fit inline-flex items-center gap-2 font-semibold text-primary-700 hover:underline"
+  return <Link className={`relative mt-5 w-fit inline-flex items-center gap-2 ${programLinkTypography} text-primary-700 hover:underline`}
     to={promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2),params,'website')}>
     {t('nav.enrollmentDetails')}<ArrowRight size={18} aria-hidden="true"/>
   </Link>;
@@ -1577,7 +1579,7 @@ const MainServices = () => {
                       </div>
                       <h3 className={`text-3xl md:text-4xl font-bold mb-4 text-slate-900 transition-colors ${titleHoverClass}`}>{srv.title}</h3>
                       <p className="text-lg text-slate-600 leading-relaxed mb-8">{srv.desc}</p>
-                      <div className={`inline-flex items-center gap-2 font-bold text-lg transition-colors ${linkTextClass}`}>
+                      <div className={`inline-flex items-center gap-2 ${programLinkTypography} transition-colors ${linkTextClass}`}>
                         {t(`home.servicesData.${srv.id}.cta`)} <ArrowRight className="w-5 h-5 transform group-hover:translate-x-2 transition-transform duration-300" />
                       </div>
                     </div>
