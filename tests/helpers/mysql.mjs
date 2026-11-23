@@ -51,7 +51,6 @@ export async function setupNativeTest(label, {initializeSystemDefaults=false} = 
     PORTAL_DATABASE_DRIVER: "mysql",
     APP_ENV: "test",
     ACCESS_ALLOW_TEST_PASSWORDS: "true",
-    PORTAL_WORKER_ENABLED: "false",
   });
   for (const key of [
     "DATABASE_URL",

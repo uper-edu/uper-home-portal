@@ -63,7 +63,8 @@ const readinessWords:Record<string,[string,string,string]>={
   delivery_disabled:['招生邮件投递已停用','Admissions email delivery is disabled','Pengiriman email pendaftaran dinonaktifkan'],
   simulation_mailbox_required:['此环境的模拟邮箱未就绪','The simulated mailbox is not ready','Kotak surat simulasi belum siap'],
   smtp_origin_required:['请配置可用的公开访问地址','Configure a valid public site URL','Atur alamat situs publik yang valid'],
-  mail_worker_required:['邮件处理进程未运行','The mail worker is off','Worker email tidak aktif'],
+  mail_worker_required:['当前环境不运行正式邮件队列','This environment does not run the live mail queue','Lingkungan ini tidak menjalankan antrean email aktif'],
+  mail_worker_unhealthy:['邮件队列轮询异常','The mail queue is not polling normally','Pemeriksaan antrean email bermasalah'],
   mail_pool_required:['请启用所选发信池','Enable the selected sending pool','Aktifkan pool pengiriman yang dipilih'],
   mail_sender_required:['发信池没有可用的发件账号及凭证','The pool has no usable sender with credentials','Pool tidak memiliki akun pengirim dengan kredensial yang dapat digunakan'],
 };

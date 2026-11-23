@@ -127,7 +127,7 @@ function mountFixture(t, bothFail = false) {
   };
   globalThis[fixtureKey] = fixture;
   const environment = {
-    PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial',TRIAL_DATASET:'synthetic',PORTAL_WORKER_ENABLED:'false',
+    PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial',TRIAL_DATASET:'synthetic',
     PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/uper-unused-mailbox-fixture',
     PORTAL_ENROLLMENT_SIMULATION_DATABASE:'uper_trial_fixture',MYSQL_TRIAL_URL:'mysql://fixture.invalid/uper_trial_fixture',
   };

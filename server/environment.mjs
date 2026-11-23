@@ -17,6 +17,10 @@ function normalizePortalEnvironment(values) {
   const normalized = {...values};
   for (const [key, value] of Object.entries(values)) {
     const runtimeKey = portalEnvironmentKey(key);
+    if (runtimeKey === 'PORTAL_WORKER_ENABLED') {
+      delete normalized[key];
+      continue;
+    }
     if (runtimeKey === key) continue;
     if (Object.hasOwn(values, runtimeKey) && values[runtimeKey] !== value)
       throw Error('Conflicting environment settings: ' + key + ' and ' + runtimeKey);
@@ -34,18 +38,11 @@ function mysqlEnvironment(values) {
 
 export function portalWorkerEnabled(env = process.env) {
   env = normalizePortalEnvironment(env);
-  const setting = env.PORTAL_WORKER_ENABLED;
-  if (setting !== undefined && setting !== 'true' && setting !== 'false') {
-    throw Error('PORTAL_WORKER_ENABLED must be true or false when set');
-  }
-  if (env.PORTAL_DEPLOYMENT === 'remote-dev') {
-    if (setting === 'true') throw Error('Remote development requires port 3000 and no notification worker');
-    return false;
-  }
-  if (setting !== undefined) return setting === 'true';
-  // Standalone synthetic fixtures still require explicit opt-in.
+  if (env.PORTAL_DEPLOYMENT === 'remote-dev' || env.ACCESS_RECOVERY_MAINTENANCE === 'true') return false;
+  if (env.PORTAL_DEPLOYMENT === 'company-trial')
+    return !env.PORTAL_ENROLLMENT_SIMULATION_DATABASE;
+  // Standalone synthetic fixtures have no delivery worker.
   return (env.TRIAL_DATASET === 'local-crm' && env.PORTAL_LOCAL_CUTOVER === 'true') ||
-    env.PORTAL_DEPLOYMENT === 'company-trial' ||
     (env.PORTAL_DEPLOYMENT === 'production' && env.PORTAL_ENV === 'prod');
 }
 /** Exact environment only. Never merge .env or another environment's secrets. */
@@ -111,7 +108,8 @@ export function loadPortalEnvironment({ env = process.env, directory = process.c
     Object.assign(env, incoming);
   }
   Object.assign(env, mysqlEnvironment(normalizePortalEnvironment(env)));
-  for (const key of Object.keys(env)) if (portalEnvironmentKey(key) !== key) delete env[key];
+  for (const key of Object.keys(env))
+    if (portalEnvironmentKey(key) !== key || key === 'PORTAL_WORKER_ENABLED') delete env[key];
   if (name) env.PORTAL_ENV = name;
   if(env.PORTAL_BOOTSTRAP_SECRET_FILE)Object.assign(env,readBootstrapSecrets(env.PORTAL_BOOTSTRAP_SECRET_FILE));
   if (env.PORTAL_PACKAGE_ENV && name && env.PORTAL_PACKAGE_ENV !== name) throw Error('Package and runtime environment mismatch');

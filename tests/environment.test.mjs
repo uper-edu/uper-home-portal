@@ -36,7 +36,7 @@ test('injected container and isolated fixtures preserve supplied environment wit
  const legacy={MYSQL_TRIAL_URL:'mysql://fixture',APP_ENV:'test'};loadPortalEnvironment({env:legacy,directory:'/nonexistent'});assert.equal(legacy.MYSQL_TRIAL_URL,'mysql://fixture');
 });
 
-test('normal environments default to running the worker and honor an explicit pause',()=>{
+test('serving environments start the worker and ignore the retired override',()=>{
  const environments=[
   {TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true'},
   {PORTAL_DEPLOYMENT:'company-trial',PORTAL_ENV:'test',TRIAL_DATASET:'synthetic'},
@@ -44,17 +44,21 @@ test('normal environments default to running the worker and honor an explicit pa
  ];
  for(const env of environments){
   assert.equal(portalWorkerEnabled(env),true);
-  assert.equal(portalWorkerEnabled({...env,PORTAL_WORKER_ENABLED:'false'}),false);
-  assert.throws(()=>portalWorkerEnabled({...env,PORTAL_WORKER_ENABLED:''}),/must be true or false/);
+  assert.equal(portalWorkerEnabled({...env,PORTAL_WORKER_ENABLED:'false',UPER_PORTAL_WORKER_ENABLED:''}),true);
+  assert.equal(portalWorkerEnabled({...env,ACCESS_RECOVERY_MAINTENANCE:'true'}),false);
  }
 });
-test('remote development cannot start a worker and standalone fixtures still opt in',()=>{
+test('remote development and standalone fixtures keep workers off',()=>{
  const remote={PORTAL_DEPLOYMENT:'remote-dev',PORTAL_ENV:'dev',TRIAL_DATASET:'synthetic'};
  assert.equal(portalWorkerEnabled(remote),false);
  assert.equal(portalWorkerEnabled({...remote,PORTAL_WORKER_ENABLED:'false'}),false);
- assert.throws(()=>portalWorkerEnabled({...remote,PORTAL_WORKER_ENABLED:'true'}),/Remote development/);
+ assert.equal(portalWorkerEnabled({...remote,PORTAL_WORKER_ENABLED:'true'}),false);
  assert.equal(portalWorkerEnabled({TRIAL_DATASET:'synthetic'}),false);
- assert.equal(portalWorkerEnabled({TRIAL_DATASET:'synthetic',PORTAL_WORKER_ENABLED:'true'}),true);
+ assert.equal(portalWorkerEnabled({TRIAL_DATASET:'synthetic',PORTAL_WORKER_ENABLED:'true'}),false);
+ const company={PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial'};
+ assert.equal(portalWorkerEnabled({...company,PORTAL_ENROLLMENT_SIMULATION_DATABASE:'uper_trial_dedicated'}),false);
+ assert.equal(portalWorkerEnabled({...company,UPER_PORTAL_ENROLLMENT_SIMULATION_DATABASE:'invalid-database'}),false);
+ assert.equal(portalWorkerEnabled({...company,PORTAL_ENROLLMENT_SIMULATION_DATABASE:''}),true);
 });
 
 test('explicit environment preparation creates only the selected file and preserves existing values', t => {
@@ -64,7 +68,7 @@ test('explicit environment preparation creates only the selected file and preser
   fs.mkdirSync(targetDirectory);
   for (const target of ['dev', 'test', 'prod']) {
     fs.writeFileSync(path.join(directory, '.env.' + target + '.example'),
-      'PORTAL_ENV=' + target + '\nOPENAI_API_KEY=\nPORTAL_WORKER_ENABLED=true\nOPENAI_MODEL=example-model\n');
+      'PORTAL_ENV=' + target + '\nOPENAI_API_KEY=\nPORTAL_LOG_LEVEL=info\nOPENAI_MODEL=example-model\n');
   }
   const prepare = target => JSON.parse(execFileSync(process.execPath, [command, target, targetDirectory],
     {cwd: directory, encoding: 'utf8'}));
@@ -79,14 +83,14 @@ test('explicit environment preparation creates only the selected file and preser
   assert.equal(fs.readFileSync(devFile, 'utf8'), devContents);
   assert.equal(fs.existsSync(prodFile), false);
 
-  const existing = 'PORTAL_ENV=test\nOPENAI_API_KEY="fixture#key"\nPORTAL_WORKER_ENABLED=\n';
+  const existing = 'PORTAL_ENV=test\nOPENAI_API_KEY="fixture#key"\nPORTAL_LOG_LEVEL=\n';
   fs.writeFileSync(testFile, existing);
   assert.deepEqual(prepare('test'), {environment: 'test', created: false, added: ['OPENAI_MODEL']});
   const updated = fs.readFileSync(testFile, 'utf8');
   assert.ok(updated.startsWith(existing));
   const {values} = readEnvironment('test', targetDirectory);
   assert.equal(values.OPENAI_API_KEY, 'fixture#key');
-  assert.equal(values.PORTAL_WORKER_ENABLED, '');
+  assert.equal(values.PORTAL_LOG_LEVEL, '');
   assert.equal(values.OPENAI_MODEL, 'example-model');
   const modified = fs.statSync(testFile).mtimeMs;
   assert.deepEqual(prepare('test'), {environment: 'test', created: false, added: []});
@@ -98,17 +102,18 @@ test('explicit environment preparation creates only the selected file and preser
 
 test('UPER_PORTAL names load for local files and injected environments', t => {
  const directory=fixture(t);
- fs.writeFileSync(path.join(directory,'.env.dev'),'UPER_PORTAL_ENV=dev\nUPER_PORTAL_LOCAL_CUTOVER=true\nUPER_PORTAL_WORKER_ENABLED=false\nTRIAL_DATASET=local-crm');
+ fs.writeFileSync(path.join(directory,'.env.dev'),'UPER_PORTAL_ENV=dev\nUPER_PORTAL_LOCAL_CUTOVER=true\nTRIAL_DATASET=local-crm');
  const env={UPER_PORTAL_PUBLIC_ORIGIN:'stale'};
  assert.equal(loadPortalEnvironment({env,directory,target:'dev'}).target,'dev');
  assert.equal(env.PORTAL_PUBLIC_ORIGIN,undefined);
  assert.equal(env.UPER_PORTAL_PUBLIC_ORIGIN,undefined);
  assert.equal(env.PORTAL_LOCAL_CUTOVER,'true');
  assert.equal(env.PORTAL_DATABASE_DRIVER,'mysql');
- assert.equal(portalWorkerEnabled(env),false);
+ assert.equal(portalWorkerEnabled(env),true);
 
- const injected={UPER_PORTAL_ENV:'test',UPER_PORTAL_ENV_SOURCE:'injected',PORTAL_PACKAGE_ENV:'test'};
+ const injected={UPER_PORTAL_ENV:'test',UPER_PORTAL_ENV_SOURCE:'injected',PORTAL_PACKAGE_ENV:'test',PORTAL_WORKER_ENABLED:'false'};
  assert.equal(loadPortalEnvironment({env:injected}).target,'test');
+ assert.equal(injected.PORTAL_WORKER_ENABLED,undefined);
  assert.equal(injected.PORTAL_DATABASE_DRIVER,'mysql');
  assert.throws(()=>loadPortalEnvironment({env:{...injected,UPER_PORTAL_ENV:'prod'}}),/Conflicting environment settings/);
  assert.throws(()=>loadPortalEnvironment({env:{...injected,PORTAL_DATABASE_DRIVER:'sqlite'}}),/Only MySQL/);
@@ -118,12 +123,12 @@ test('UPER_PORTAL names load for local files and injected environments', t => {
 
 test('development template preparation recognizes already configured legacy names', t => {
  const directory=fixture(t);
- fs.writeFileSync(path.join(directory,'.env.dev.example'),'UPER_PORTAL_ENV=dev\nUPER_PORTAL_PUBLIC_ORIGIN=https://example.invalid\nUPER_PORTAL_WORKER_ENABLED=false\n');
+ fs.writeFileSync(path.join(directory,'.env.dev.example'),'UPER_PORTAL_ENV=dev\nUPER_PORTAL_PUBLIC_ORIGIN=https://example.invalid\nUPER_PORTAL_LOG_LEVEL=info\n');
  const existing='PORTAL_ENV=dev\nPORTAL_PUBLIC_ORIGIN=http://localhost:3000\n';
  fs.writeFileSync(path.join(directory,'.env.dev'),existing);
  const command=fileURLToPath(new URL('../scripts/prepare-environment.mjs',import.meta.url));
  const result=JSON.parse(execFileSync(process.execPath,[command,'dev'],{cwd:directory,encoding:'utf8'}));
- assert.deepEqual(result.added,['UPER_PORTAL_WORKER_ENABLED']);
+ assert.deepEqual(result.added,['UPER_PORTAL_LOG_LEVEL']);
  assert.equal(readEnvironment('dev',directory).values.PORTAL_PUBLIC_ORIGIN,'http://localhost:3000');
- assert.equal(readEnvironment('dev',directory).values.PORTAL_WORKER_ENABLED,'false');
+ assert.equal(readEnvironment('dev',directory).values.PORTAL_LOG_LEVEL,'info');
 });

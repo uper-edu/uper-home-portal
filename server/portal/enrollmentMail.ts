@@ -20,6 +20,8 @@ import {smtpRecipientPolicy} from './enrollmentMailRecipientPolicy.ts';
 import {isEnrollmentMailMode,matchesEnrollmentMailDelivery,type EnrollmentMailMode,type EnrollmentMailDelivery} from '../../src/utils/enrollmentMailMode.ts';
 import {enrollmentServicePolicy} from './enrollmentRuntime.ts';
 import type {Employee} from './identity.ts';
+import {portalWorkerEnabled} from '../environment.mjs';
+import {log} from '../logger.ts';
 
 type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
 type RouteReason='paused'|'invalid_recipient'|'shared_window'|'pool_daily_limit'|'pool_daily_recipient_limit'|'binding_pending'|'bound_account'|'no_capacity'|MailPoolStrategy|'existing'|'interest_no_longer_available';
@@ -27,6 +29,10 @@ type State='accepted'|'simulated'|'rejected'|'unknown'|'waiting'|'cancelled';
 type Mail={subject:string;text:string;html:string;language:string};
 const environment=()=>process.env.PORTAL_ENV||'unconfigured';
 const timezone=()=>process.env.PORTAL_ENROLLMENT_MAIL_TIMEZONE||'Asia/Jakarta';
+const mailPollStaleMs=120_000;
+let mailPollStartedAt:number|undefined;
+let mailPollProgressAt:number|undefined;
+let mailPollFailed=false;
 
 const transact=<T>(work:(c:Client)=>Promise<T>):Promise<T>=>tx(work,{isolation:'READ COMMITTED'});
 
@@ -95,7 +101,7 @@ function smtpPassword(account:StoredMailAccount,c?:Client){
 function smtpRuntimeReasons(){
   const reasons:string[]=[];
   if(!smtpDeployment()||!portalPublicOrigin())reasons.push('smtp_origin_required');
-  if(process.env.PORTAL_WORKER_ENABLED==='false')reasons.push('mail_worker_required');
+  if(!portalWorkerEnabled())reasons.push('mail_worker_required');
   return reasons;
 }
 
@@ -112,7 +118,10 @@ async function deliveryReadiness(c:Client,saved:Awaited<ReturnType<typeof config
   const {mode}=saved.delivery;
   if(mode==='disabled')return ['delivery_disabled'];
   if(mode==='simulation')return enrollmentMailbox(mode)?[]:['simulation_mailbox_required'];
-  return [...smtpRuntimeReasons(),...await smtpPoolReasons(c,saved)];
+  const reasons=[...smtpRuntimeReasons(),...await smtpPoolReasons(c,saved)];
+  if(!reasons.length && mailPollStartedAt!==undefined &&
+    (mailPollFailed || Date.now()-(mailPollProgressAt??mailPollStartedAt)>mailPollStaleMs))reasons.push('mail_worker_unhealthy');
+  return reasons;
 }
 
 export async function enrollmentMailReadiness(c:Client){
@@ -532,6 +541,12 @@ export function mountEnrollmentMail(app:Express,{wrap,staff}:{wrap:(handler:(q:R
 // The business event and its pending email are inserted in the same transaction.
 // Only newly queued records are considered, so historical simulated rows are never replayed.
 export function startEnrollmentMail(){
+  mailPollStartedAt=Date.now();
+  const recordProgress=()=>{
+    if(mailPollProgressAt===undefined || mailPollFailed)log.info('enrollment.mail.poll_ready');
+    mailPollProgressAt=Date.now();
+    mailPollFailed=false;
+  };
   let active=false;
   const tick=async()=>{
     if(active)return;
@@ -540,15 +555,16 @@ export function startEnrollmentMail(){
       const {config,delivery}=await configuration(pool);
       if(!config.enabled||delivery.mode==='disabled'||
         delivery.mode==='simulation'&&!enrollmentServicePolicy(process.env,delivery.mode).maintenance||
-        delivery.mode==='smtp'&&process.env.PORTAL_WORKER_ENABLED==='false')return;
+        delivery.mode==='smtp'&&!portalWorkerEnabled()){recordProgress();return;}
       const {restoreState}=await import('./accessRecoveryState.ts');
-      if((await restoreState())?.required)return;
+      if((await restoreState())?.required){recordProgress();return;}
       const {rows}=await pool.query(`SELECT event_key,payload FROM enrollment_notification_receipts
         WHERE channel='email' AND state='queued' AND payload->>'$.environment'=:p1
         AND payload->>'$.delivery.generation'=:p3 AND payload->>'$.delivery.mode'=:p4
         AND COALESCE(payload->>'$.delivery.recipientPolicy','')=:p5
         AND COALESCE(CAST(payload->>'$.retryAfter' AS UNSIGNED),0)<=:p2
         ORDER BY recorded_at,event_key LIMIT 40`,[environment(),Date.now(),delivery.generation,delivery.mode,delivery.mode==='smtp'?smtpRecipientPolicy:'']);
+      recordProgress();
       for(const row of rows){
         const payload=row.payload;
         const {state,account,reason}=await dispatchEnrollmentMail(row.event_key,payload.recipient,payload,{deliveryId:payload.deliveryId,queueKey:row.event_key,expected:delivery});
@@ -557,8 +573,12 @@ export function startEnrollmentMail(){
         await pool.query(`UPDATE enrollment_notification_receipts SET state=:p2,payload=:p3
           WHERE event_key=:p1 AND state='queued'`,[row.event_key,next,
           {...payload,sender:account??null,routeReason:reason,retryAfter:state==='waiting'?Date.now()+15_000:0}]);
+        recordProgress();
       }
-    }catch{console.error('Enrollment mail queue could not be processed');}
+    }catch{
+      if(!mailPollFailed)log.error('enrollment.mail.poll_failed');
+      mailPollFailed=true;
+    }
     finally{active=false;}
   };
   const timer=setInterval(()=>void tick(),3000);

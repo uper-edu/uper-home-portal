@@ -186,7 +186,7 @@ test('chat distinguishes paused intake, catalogue read failures and an explicit 
   const settings={
     MYSQL_TRIAL_URL:'mysql://unused:unused@localhost/uper_local_crm',
     PORTAL_ENV:'dev',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',
-    MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock',PORTAL_WORKER_ENABLED:'false',
+    MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock',
     PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/private/tmp/guide-unit-test',PORTAL_DEPLOYMENT:'',
     PORTAL_GA_API_SECRET:'',
   };

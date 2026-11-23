@@ -2,7 +2,7 @@ import {test} from 'node:test';import assert from 'node:assert/strict';
 import {setupNativeTest} from './helpers/mysql.mjs';import {disposeNativeTest} from './helpers/disposeNativeTest.mjs';
 import {builtInRoles} from '../src/utils/accessControl.ts';import {DEFAULT_CRM_POLICY_CONFIG as defaults} from '../src/types/crmPolicyConfig.ts';
 if(!process.env.MYSQL_NATIVE_TEST_ENV){test('automatic assignment requires approved isolation',{skip:true},()=>{});}else{
- const fixture=await setupNativeTest('auto_assignment');process.env.PORTAL_WORKER_ENABLED='false';
+ const fixture=await setupNativeTest('auto_assignment');
  const {pool,tx}=await import('../server/portal/store.ts');const {assignNewLead,prepareAssignmentPolicy,assignmentDirectory}=await import('../server/portal/autoAssignment.ts');
  const lead=async(id:string,extra:any={})=>{await pool.query('INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)',[id,{id,name:'Maya Putri',team:'sales',owner:null,submittedAt:'2030-01-01T00:00:00Z',...extra}]);};
  const read=async(id:string)=>(await pool.query('SELECT profile FROM portal_leads WHERE id=:p1',[id])).rows[0].profile;

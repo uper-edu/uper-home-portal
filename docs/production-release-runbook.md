@@ -113,7 +113,6 @@
 | --- | --- |
 | `ACCESS_ALLOWED_ORIGINS` | 正式站获准的 HTTPS 来源清单，须包含主站。多个来源以逗号分隔。 模板值为 `https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com`。 |
 | `ACCESS_TRUSTED_PROXIES` | 可信反向代理的具体私网 IP，多个地址以逗号分隔。 |
-| `UPER_PORTAL_WORKER_ENABLED` | 后台 worker 开关。省略时正式站默认开启。首次部署核验或维护时显式设为 `false`。 模板值为 `true`。 |
 
 ### 集成凭证与浏览器统计
 
@@ -174,9 +173,9 @@
 
 涉及 Lark 时，发布前备份运行配置并记录群与个人渠道模式、签名、目标、收件策略和排队状态。核对正式租户、应用、员工绑定与固定回调 `https://uperedu.com/api/crm/lark/callback`。凭证来源和旧值退役按第 3 节执行。
 
-首次升级涉及旧渠道模式迁移时，保持 worker 暂停，沿用原生效的兼容配置。仅当旧 `PORTAL_NOTIFICATION_MODE=configured` 且群渠道原为真实发送时保留群真实投递。个人渠道还要求旧 `LARK_PERSONAL_DELIVERY_ENABLED=true`。其余按模拟模式核对。确认保存结果后再按旧版升级兼容流程清理相应变量。
+首次升级涉及旧渠道模式迁移时，先暂停相关渠道的投递，沿用原生效的兼容配置。仅当旧 `PORTAL_NOTIFICATION_MODE=configured` 且群渠道原为真实发送时保留群真实投递。个人渠道还要求旧 `LARK_PERSONAL_DELIVERY_ENABLED=true`。其余按模拟模式核对。确认保存结果后再按旧版升级兼容流程清理相应变量。
 
-复核待发任务、目标群和员工绑定。若获准演练新绑定或换绑，先确认个人渠道处于模拟模式。待渠道和队列处理方案获批后恢复 worker，观察积压和重复外发。
+复核待发任务、目标群和员工绑定。若获准演练新绑定或换绑，先确认个人渠道处于模拟模式。待渠道和队列处理方案获批后恢复相关渠道投递，观察积压和重复外发。
 
 ### 5.2 生产测试记录
 

@@ -4,8 +4,8 @@ import {openTrialDatabase} from './database.mjs';
 
 export function assertCompanyMaintenance(env) {
   if(!isCompanyTrial(env))return false;
-  if(env.ACCESS_RECOVERY_MAINTENANCE!=='true' || env.PORTAL_WORKER_ENABLED!=='false')
-    throw Error('Company recovery requires explicit maintenance configuration with workers paused');
+  if(env.ACCESS_RECOVERY_MAINTENANCE!=='true')
+    throw Error('Company recovery requires explicit offline maintenance configuration');
   companyConfiguration({...env,ACCESS_RECOVERY_MAINTENANCE:'false'});
   return true;
 }

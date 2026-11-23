@@ -690,7 +690,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           const env = {
             ...target,
             PORT: String(restorePort),
-            PORTAL_WORKER_ENABLED: "false",
             TRIAL_FRONTEND_DIRECTORY: "",
           };
           child = spawn(

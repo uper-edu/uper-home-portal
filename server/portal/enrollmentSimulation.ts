@@ -9,8 +9,7 @@ export function isLocalEnrollmentRuntime(env = process.env) {
 
 function isIsolatedTestMailbox(env: NodeJS.ProcessEnv) {
   if (env.PORTAL_ENV !== 'test' || env.PORTAL_DEPLOYMENT !== 'company-trial' ||
-      env.TRIAL_DATASET !== 'synthetic' ||
-      env.PORTAL_WORKER_ENABLED !== 'false') return false;
+      env.TRIAL_DATASET !== 'synthetic') return false;
   const database = env.PORTAL_ENROLLMENT_SIMULATION_DATABASE;
   const url = URL.parse(env.MYSQL_TRIAL_URL ?? '');
   return Boolean(database && /^uper_trial_[a-z0-9_]+$/.test(database) &&

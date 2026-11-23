@@ -30,18 +30,17 @@ Target: `https://home.prototype.uperedu.com`, including `/chat`, `/crm`, `/cms`,
 
 ## Notifications and no replay
 
-- Start with `PORTAL_WORKER_ENABLED=false` and both Lark channels in simulation mode. Set the group address in the private server environment using `LARK_GROUP_CRM`. Missing channels fail explicitly.
+- For isolated acceptance, configure the dedicated enrollment simulation database and both Lark channels in simulation mode. Set the group address in the private server environment using `LARK_GROUP_CRM`. Missing channels fail explicitly.
 - For a separately approved TEST receipt check, select live mode on the group channel and verify its Webhook and signing settings. Group policies use the selected CRM channel and deliver to the group configured by `LARK_GROUP_CRM`. Personal delivery requires its own live mode, an active employee with the relevant customer permission, and a binding to the configured Lark app. Cards say `UPER · TEST` and link to the same-domain CRM.
 - Owner → CRM Manager routing, policy snapshots, unknown-result handling, task cancellation and migration holds remain intact. Starting a worker is not permission to replay old failed/unknown/held jobs. Use the empty synthetic DB or individually reviewed NEW events only. API accepted is not actual group receipt.
 - Local acceptance uses only a stubbed Lark transport and synthetic credentials. It does not send a real group notification or call AI.
 
 ### 测试站通知进程发布检查
 
-- [ ] **发布前**，在公司测试服务器只读核对 `/opt/project/home/api/.env.test`，确认 `PORTAL_WORKER_ENABLED=false`。
-- [ ] **发布前**，用本次发布实际采用的 Compose 文件和覆盖设置做只读解析，确认 `api` 服务的有效 `PORTAL_WORKER_ENABLED` 也为 `false`。两项都通过才继续发布。任一结果缺失或不同，暂停发布并查明配置来源。
-- [ ] **发布后**，只读核对新容器中实际运行的应用进程，确认它加载的 `PORTAL_WORKER_ENABLED=false`，且通知后台进程保持关闭。两项都通过才完成验收。
+- [ ] **发布前**，确认常规测试站随 API 启动后台任务。需要隔离外发时，连接独立模拟库并核对库名与模拟邮箱配置。
+- [ ] **发布后**，检查健康状态和 worker 启动日志。独立模拟库应保持外发隔离，无需发送测试通知。
 
-验收记录仅保存开关值和核对结果。检查时只提取指定变量，避免输出完整环境、密钥或通知内容。无需发送测试通知。
+验收记录仅保存模式与核对结果。检查时只提取指定变量，避免输出完整环境、密钥或通知内容。无需发送测试通知。
 
 ## Release order and outstanding host checks
 

@@ -1,4 +1,5 @@
 import {enrollmentSimulation,isLocalEnrollmentRuntime} from './enrollmentSimulation.ts';
+import {portalWorkerEnabled} from '../environment.mjs';
 
 import type {EnrollmentMailMode} from '../../src/utils/enrollmentMailMode.ts';
 
@@ -11,7 +12,7 @@ export function enrollmentServicePolicy(env = process.env, mode:EnrollmentMailMo
   );
   const servicing = isLocalEnrollmentRuntime(env) || configuredService;
   // Local OTP delivery does not process pre-existing orders or queued mail.
-  const isolatedTestSimulation = env.PORTAL_ENV==='test' && env.PORTAL_WORKER_ENABLED==='false';
+  const isolatedTestSimulation = env.PORTAL_ENV==='test' && !portalWorkerEnabled(env);
   const maintenance = !isolatedTestSimulation && (configuredService || simulation && env.PORTAL_ENROLLMENT_SERVICE_ENABLED === 'true');
   return {simulation, servicing, maintenance};
 }

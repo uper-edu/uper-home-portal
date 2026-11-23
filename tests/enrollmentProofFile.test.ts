@@ -119,7 +119,7 @@ test('proof retry checks the old receipt under the order lock before replacing a
   const env=process.env;
   const origin='https://enrollment.example.invalid';
   process.env={...env,PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial',PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',
-    PORTAL_PUBLIC_ORIGIN:origin,PORTAL_WORKER_ENABLED:'false',ACCESS_ALLOWED_ORIGINS:''};
+    PORTAL_PUBLIC_ORIGIN:origin,ACCESS_ALLOWED_ORIGINS:''};
   t.after(()=>{process.env=env;});
   const orderId='00000000-0000-4000-8000-000000000001',oldId='00000000-0000-4000-8000-000000000002';
   const email='proof-learner@example.invalid',other='other-learner@example.invalid',classId='fixture-class';

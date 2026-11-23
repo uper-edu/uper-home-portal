@@ -22,7 +22,7 @@ test('migration and CRM mode changes apply immediately and cannot replay old que
   const env={PORTAL_ENV:'dev',PORTAL_DEPLOYMENT:'',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',
     MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock',PORTAL_PUBLIC_ORIGIN:'http://localhost:3000',
     UPER_PORTAL_ENROLLMENT_MAIL_TRANSPORT:'smtp',PORTAL_ENROLLMENT_MAIL_TRANSPORT:'disabled',
-    PORTAL_ENROLLMENT_SIMULATION_MAILBOX:directory,PORTAL_WORKER_ENABLED:'true',
+    PORTAL_ENROLLMENT_SIMULATION_MAILBOX:directory,
     PORTAL_ENROLLMENT_SMTP_TEST_GMAIL:'fixture-only',ACCESS_ALLOWED_ORIGINS:''};
   const original=Object.fromEntries(Object.keys(env).map(key=>[key,process.env[key]]));
   Object.assign(process.env,env);
@@ -146,13 +146,13 @@ test('migration and CRM mode changes apply immediately and cannot replay old que
     assert.equal((await call('get')).mode,'smtp');
     assert.deepEqual((await call('get')).deliveryReasons,[]);
     const smtp=await enrollmentMailDelivery();
-    process.env.PORTAL_WORKER_ENABLED='false';
+    delete process.env.PORTAL_LOCAL_CUTOVER;
     const readsBefore=credentialReads;
     assert.equal(await (await enrollmentMailReadiness(client)).smtpReady(),false);
     assert.equal(credentialReads,readsBefore);
-    assert.deepEqual((await call('get')).deliveryReasons,['mail_worker_required']);
+    assert.deepEqual((await call('get')).deliveryReasons,['smtp_origin_required','mail_worker_required']);
     assert.ok(credentialReads>readsBefore);
-    process.env.PORTAL_WORKER_ENABLED='true';
+    process.env.PORTAL_LOCAL_CUTOVER='true';
     assert.equal(await (await enrollmentMailReadiness(client)).smtpReady(),true);
     assert.notEqual(smtp.generation,imported.generation);
     queuedRows.set('previous-smtp',{delivery:{...imported,recipientPolicy:smtpRecipientPolicy}});
