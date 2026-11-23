@@ -305,3 +305,52 @@ test('seat reservation checks and stores the same bank settings with one mail co
     assert.deepEqual([mailReads,bankReads,insertAttempts],[3,3,2]);
   });
 });
+
+test('finance order details keep each learner declaration with its own proof',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {mountEnrollmentApplication}=await import('../server/portal/enrollmentApplication.ts');
+  const {operationContext}=await import('../server/portal/operationContext.ts');
+  const previous=process.env;
+  try{
+    process.env={...previous,PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial',PORTAL_ENROLLMENT_SERVICE_ENABLED:'true'};
+    type Handler=(request:Request,response:Response)=>Promise<unknown>;
+    const routes=new Map<string,Handler>();
+    const app={get:(path:string,handler:Handler)=>routes.set(path,handler),post:()=>{}} as unknown as Express;
+    let scope='all';
+    mountEnrollmentApplication(app,{wrap:fn=>fn,staff:async(_request,permission)=>{
+      assert.equal(permission,'crm.payments.verify');
+      return {id:'fixture-finance',scope,permissions:['crm.read','crm.payments.verify']} as never;
+    },visitor:async()=>assert.fail('Finance must not use a learner session')});
+    const read=routes.get('/api/crm/enrollment/finance')!;
+    const proofRows=[
+      {id:'new-pdf',mime:'application/pdf',submittedAt:'2027-01-02T00:00:00.000000Z',transfer:{amount:120000,reference:'NEW-REF'}},
+      {id:'old-image',mime:'image/png',submittedAt:'2027-01-01T00:00:00.000000Z',transfer:null},
+    ];
+    const order={id:'fixture-order',state:'proof_review',class_state:'published',data:{name:'Fixture'},
+      price:200000,received:0,payment_due_at:'2027-01-03 00:00:00',proof_id:'new-pdf',proof_mime:'application/pdf'};
+    const reads:string[]=[];
+    const client={transactionIsolation:'READ COMMITTED',query:async(sql:string,args:unknown[])=>{
+      reads.push(sql);
+      if(sql.includes('SELECT o.*,e.state'))return {rows:[order]};
+      if(sql.includes('transfer_details AS transfer')){
+        assert.deepEqual(args,['fixture-order']);
+        assert.match(sql,/ORDER BY created_at DESC,id DESC/);
+        assert.doesNotMatch(sql,/SELECT proof[, ]/);
+        return {rows:proofRows};
+      }
+      assert.match(sql,/FROM enrollment_(receipts|payment_credits)/);
+      return {rows:[]};
+    }};
+    const request={query:{order:'fixture-order'}} as unknown as Request;
+    let payload:any;
+    const response={set:()=>response,json:(data:unknown)=>{payload=data;}} as unknown as Response;
+    await operationContext.run(client,()=>read(request,response));
+    assert.deepEqual(payload.orders[0].proofs,proofRows);
+    assert.equal(payload.orders[0].received,0);
+    assert.equal(reads.filter(sql=>sql.includes('transfer_details AS transfer')).length,1);
+    scope='own';
+    const priorReads=reads.length;
+    await assert.rejects(operationContext.run(client,()=>read(request,response)),{status:403});
+    assert.equal(reads.length,priorReads);
+  }finally{process.env=previous;}
+});

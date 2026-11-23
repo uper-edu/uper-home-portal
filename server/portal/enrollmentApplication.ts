@@ -770,6 +770,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
 
   app.get(finance, wrap(async (q, r) => {
     await financeActor(q);
+    const orderId=typeof q.query.order==='string'?q.query.order:'';
     const orders = await enrollTx(async (c: Client) => {
       const rows=(await c.query(`SELECT o.*,e.state AS class_state,e.first_lesson_at AS firstLessonAt,
         e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,
@@ -784,7 +785,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         WHERE p.order_id=o.id ORDER BY p.created_at DESC,p.id DESC LIMIT 1) latest_proof ON TRUE
       WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
         OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR latest_proof.id IS NOT NULL)
-      ORDER BY o.created_at DESC LIMIT 150`,[typeof q.query.order==='string'?q.query.order:''])).rows;
+      ORDER BY o.created_at DESC LIMIT 150`,[orderId])).rows;
+      const proofs=orderId&&rows[0]?.proof_id?(await c.query(`SELECT id,mime,
+        DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS submittedAt,transfer_details AS transfer
+        FROM enrollment_proofs WHERE order_id=:p1 ORDER BY created_at DESC,id DESC`,[orderId])).rows:[];
       const receiptsByOrder=new Map<string,any[]>();
       const creditsByOrder=new Map<string,any[]>();
       if(rows.length){
@@ -811,7 +815,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         }
       }
       return rows.map(row=>({...view(row,row.class_state),name:row.data.name,opened:Number(row.opened)===1,
-        proofId:row.proof_id,proofMime:row.proof_mime,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[],
+        proofId:row.proof_id,proofMime:row.proof_mime,proofs,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[],
         level:row.level,format:row.format,period:row.period,firstLessonAt:row.firstLessonAt}));
     });
     r.set('Cache-Control', 'no-store').json({ orders });

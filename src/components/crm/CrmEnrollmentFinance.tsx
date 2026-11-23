@@ -27,10 +27,11 @@ type Receipt = {reference:string;amount:number;account:string|null;settledAt:str
 type PaymentCredit = {id:string;orderId:string;direction:'in'|'out';reference:string;amount:number;appliedAt:string};
 type WorkOrder = { id:string; name:string; price:number; received:number; status:string; level:string; format:string; period:string; firstLessonAt:string; hasProof:boolean; proofAt?:string; reviewDueAt?:string };
 type Worklist = { orders:WorkOrder[]; total:number; page:number; pageSize:number };
-type RecordRow = Omit<WorkOrder,'hasProof'> & { opened: boolean; proofId?: string; proofMime?: string; firstReviewDueAt?:string; receipts:Receipt[]; credits:PaymentCredit[] };
+type FinanceProof = {id:string;mime?:string;submittedAt?:string;transfer?:{amount?:number;reference?:string}|null};
+type RecordRow = Omit<WorkOrder,'hasProof'> & { opened: boolean; proofs?:FinanceProof[]; proofId?: string; proofMime?: string; firstReviewDueAt?:string; receipts:Receipt[]; credits:PaymentCredit[] };
 const endpoint = '/api/crm/enrollment/finance';
 
-function EnrollmentProof({id,mime,lang}:{id:string;mime?:string;lang:CrmLanguage}) {
+function EnrollmentProof({proof:{id,mime,submittedAt,transfer},lang}:{proof:FinanceProof;lang:CrmLanguage}) {
   const [failed,setFailed]=useState(false);
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
   const url=endpoint+'/proofs/'+encodeURIComponent(id);
@@ -40,9 +41,16 @@ function EnrollmentProof({id,mime,lang}:{id:string;mime?:string;lang:CrmLanguage
       <h3>{t('转账凭证','Transfer proof','Bukti transfer')}</h3>
       <a className="crm-work-link" href={url}>{t('下载凭证','Download proof','Unduh bukti')}</a>
     </div>
+    {submittedAt&&<p className="crm-work-muted">{t('提交时间','Submitted','Waktu pengiriman')} · <time dateTime={submittedAt}>{formatCrmEventTime(submittedAt)}</time></p>}
+    {transfer!==undefined&&<dl className="crm-opportunity-summary crm-enrollment-finance-summary">
+      <div><dt>{t('学员填报金额（待核实）','Learner-reported amount (unverified)','Nominal dari siswa (belum diverifikasi)')}</dt>
+        <dd>{transfer?.amount==null?t('未填写','Not provided','Tidak diisi'):formatCurrency(transfer.amount,lang)}</dd></div>
+      <div><dt>{t('学员填报银行流水号','Bank reference from learner','Referensi bank dari siswa')}</dt>
+        <dd className="break-all">{transfer?.reference||t('未填写','Not provided','Tidak diisi')}</dd></div>
+    </dl>}
     {image&&(failed
       ?<p className="crm-work-muted">{t('图片无法预览，可下载查看。','Image preview is unavailable. Download to view it.','Pratinjau tidak tersedia. Unduh untuk melihat gambar.')}</p>
-      :<img className="crm-enrollment-finance-proof-image" src={url+'?preview=image'}
+      :<img className="crm-enrollment-finance-proof-image" src={url+'?preview=image'} loading="lazy"
         alt={t('学员提交的转账凭证','Transfer proof submitted by the learner','Bukti transfer yang dikirim siswa')}
         onError={()=>setFailed(true)}/>)}
   </section>;
@@ -237,7 +245,9 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
       </dl>
       {row.opened&&<p className="crm-work-muted">{t('已确认开班','Class confirmed','Kelas dikonfirmasi')}</p>}
       {row.firstReviewDueAt&&<CrmEnrollmentReviewDeadline dueAt={row.firstReviewDueAt} lang={lang}/>}
-      {row.proofId&&<div ref={reviewHeading} tabIndex={-1} className="crm-list-review-target"><EnrollmentProof key={row.proofId} id={row.proofId} mime={row.proofMime} lang={lang}/></div>}
+      {row.proofId&&<div ref={reviewHeading} tabIndex={-1} className="crm-list-review-target">
+        {(row.proofs?.length?row.proofs:[{id:row.proofId,mime:row.proofMime}]).map(proof=><EnrollmentProof key={proof.id} proof={proof} lang={lang}/>)}
+      </div>}
       {!!row.receipts?.length&&<section className="crm-enrollment-finance-receipts">
         <h3>{t('已核实收款流水','Verified receipt history','Riwayat penerimaan terverifikasi')}</h3>
         <ul className="crm-course-records">{row.receipts.map(receipt=><li key={receipt.reference}>
