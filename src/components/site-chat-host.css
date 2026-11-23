@@ -45,6 +45,8 @@
   background: #f5f8f7;
 }
 
+.site-chat-host[data-without-launcher] { --site-chat-bottom: 24px; }
+
 .site-chat-host[data-fullscreen] {
   inset: 0;
   width: 100%;

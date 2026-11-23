@@ -19,8 +19,10 @@ function subscribeViewport(notify: () => void) {
   return () => viewport.removeEventListener('change', notify);
 }
 
-export default function AIChatbot({expanded,returnScroll,navbarRef}: {
+export default function AIChatbot({expanded,returnScroll,navbarRef,launchRequest,onLaunchHandled,hideLauncher=false}: {
   expanded: boolean; returnScroll?: number; navbarRef: RefObject<HTMLElement|null>;
+  launchRequest?: HTMLButtonElement | null; onLaunchHandled: (request:null)=>void;
+  hideLauncher?: boolean;
 }) {
   const {i18n} = useTranslation();
   const lang = normalizeSiteLanguage(i18n.language);
@@ -32,6 +34,7 @@ export default function AIChatbot({expanded,returnScroll,navbarRef}: {
   });
   const [started,setStarted] = useState(open);
   const launcher = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const restoreScroll = useRef(expanded ? returnScroll : undefined);
   const mobile = useSyncExternalStore(subscribeViewport, () => matchMedia(mobileQuery).matches, () => false);
@@ -41,6 +44,19 @@ export default function AIChatbot({expanded,returnScroll,navbarRef}: {
   const launcherLabel = visible
     ? chooseText(lang,'关闭咨询','Close chat','Tutup konsultasi')
     : chooseText(lang,'课程咨询','Course advice','Konsultasi kursus');
+
+  useLayoutEffect(() => {
+    if (!launchRequest) return;
+    returnFocus.current = launchRequest;
+    onLaunchHandled(null);
+    if (visible) {
+      dialog.current?.querySelector<HTMLElement>('[data-chat-host-dismiss]')?.focus({preventScroll:true});
+      return;
+    }
+    setStarted(true);
+    setOpen(true);
+    trackChatbotInteraction('open');
+  }, [launchRequest,onLaunchHandled,visible]);
 
   useLayoutEffect(() => {
     const node = dialog.current;
@@ -89,7 +105,9 @@ export default function AIChatbot({expanded,returnScroll,navbarRef}: {
     clearChatMessageAnchor();
     setOpen(false);
     trackChatbotInteraction('close');
-    requestAnimationFrame(() => launcher.current?.focus({preventScroll:true}));
+    const trigger=returnFocus.current;
+    returnFocus.current=null;
+    requestAnimationFrame(() => (trigger?.isConnected && trigger.getClientRects().length ? trigger : launcher.current)?.focus({preventScroll:true}));
   }
 
   function toggle() {
@@ -97,6 +115,7 @@ export default function AIChatbot({expanded,returnScroll,navbarRef}: {
       dismiss();
       return;
     }
+    returnFocus.current=launcher.current;
     setStarted(true);
     setOpen(true);
     trackChatbotInteraction('open');
@@ -115,12 +134,13 @@ export default function AIChatbot({expanded,returnScroll,navbarRef}: {
   }
 
   return <>
-    <button type="button" ref={launcher} id="uper-ai-fab" className="site-chat-launcher" onClick={toggle}
+    {!hideLauncher && <button type="button" ref={launcher} id="uper-ai-fab" className="site-chat-launcher" onClick={toggle}
       aria-expanded={visible} aria-controls="uper-ai-chat-window">
       {visible ? <X size={19} aria-hidden="true"/> : <MessageCircleMore size={19} aria-hidden="true"/>}
       <span>{launcherLabel}</span>
-    </button>
+    </button>}
     <dialog ref={dialog} className="site-chat-host" id="uper-ai-chat-window" aria-label={label}
+      data-without-launcher={hideLauncher || undefined}
       data-fullscreen={modal || undefined}
       onCancel={event=>{event.preventDefault();dismiss();}}
       onKeyDown={event=>{
