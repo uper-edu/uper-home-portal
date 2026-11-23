@@ -661,6 +661,22 @@ test('a browse intent that asks to apply verifies intake before giving applicati
     const none=await run(scoped,[sample({period:'weekday-evening'})]);
     assert.equal(none.kind,'demand');
     assert.match(enrollmentGuideHref(none,'zh','ai_chat'),/^\/enrollment\/interest\?/);
+    const tuitionIntent={kind:'quote',question:'matching_tuition',level:'HSK 1'};
+    const quoteReads:string[]=[];
+    const quote=await chatEnrollmentAction({query:async(sql)=>{
+      quoteReads.push(sql);
+      assert.match(sql,/FROM enrollment_classes e/);
+      const group=sample({weeklySchedule:{days:[6],start:'15:00',lessons:1}});
+      return {rows:[{id:group.id,data:group,opened:0,seats:0}]};
+    }},tuitionIntent,false,false);
+    assert.equal(quote?.kind,'class');
+    assert.equal(quoteReads.length,1);
+    assert.equal((await run(tuitionIntent,[])).kind,'demand');
+    const closedQuote=await chatEnrollmentAction({query:async(sql)=>{
+      assert.match(sql,/enrollment_classes|enrollment_bank|enrollment_mail_configuration/);
+      return {rows:[]};
+    }},tuitionIntent,false,false);
+    assert.equal(closedQuote?.kind,'catalog');
     const referenceIds=['selected-class'];
     const selected=sample({id:referenceIds[0],availability:'full'});
     const unrelated=sample({id:'unrelated-class',availability:'available'});

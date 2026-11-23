@@ -175,8 +175,10 @@ export async function chatEnrollmentAction(
       const formats=intent.quoteFormats.length?intent.quoteFormats:intent.format?[intent.format]:[];
       if(question==='matching_tuition'&&!formats.includes('one-on-one')&&!intent.referenceIds.length){
         const classes=await readPublicEnrollmentClasses(c);
-        const readiness=await enrollmentReadiness(c);
-        return matchingEnrollmentTuition(intent,classes,readiness.accepting);
+        const action=matchingEnrollmentTuition(intent,classes,true);
+        if(action.kind==='demand'&&!(await enrollmentReadiness(c)).accepting)
+          return {...action,kind:'catalog'};
+        return action;
       }
       if(intent.invalidLevel&&!level&&!intent.quoteLevels.length)
         return {kind,format,question,detailFields:intent.detailFields,quoteMissing:true,quotes:[]};
