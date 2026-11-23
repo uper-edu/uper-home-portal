@@ -1,4 +1,5 @@
 import {readEnrollmentDraft,writeEnrollmentDraft} from '../services/visitorContact';
+import {ContactPhoneInput} from './ContactPhoneInput';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import { useState, type ReactNode } from 'react';
 import { PublicSingleSelect } from './PublicSingleSelect';
@@ -86,9 +87,12 @@ export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy,
     {contact ? contact.fields : <>
       {!initial&&<label>{t(['学员姓名','Learner name','Nama siswa'])}
         <input required autoComplete="name" maxLength={120} value={name} onChange={event=>setLocalName(event.target.value)}/></label>}
-      <label>{t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP'])}
-        <input type="tel" autoComplete="tel" required {...phoneField.inputProps} value={criteria.phone} onChange={event=>setCriteria({...criteria,phone:event.target.value})}/>
-        {phoneField.error&&<small className="enrollment-form-error" role="alert" id={phoneField.errorId}>{phoneField.error}</small>}</label>
+      <div className="enrollment-field">
+        <label htmlFor={phoneField.errorId+'-input'}>{t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP'])}</label>
+        <ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required
+          value={criteria.phone} onValueChange={phone=>setCriteria({...criteria,phone})}/>
+        {phoneField.error&&<small className="enrollment-form-error" role="alert" id={phoneField.errorId}>{phoneField.error}</small>}
+      </div>
     </>}
     {invalid && <p role="alert">{t(['请检查联系方式和补充说明。','Check your phone number and additional details.','Periksa nomor telepon dan rincian tambahan.'])}</p>}
     {contact ? <div className="enrollment-journey-actions">

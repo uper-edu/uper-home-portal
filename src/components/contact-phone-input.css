@@ -1,0 +1,53 @@
+.contact-phone-input {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.contact-phone-input input {
+  min-width: 0;
+  width: 100%;
+}
+
+.contact-phone-country {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  min-height: 44px;
+  padding-inline: 10px;
+  border: 1px solid var(--chat-border, var(--enrollment-border, #b3c9c1));
+  border-radius: 8px;
+  background: var(--chat-surface, var(--enrollment-surface, #fff));
+  color: inherit;
+  white-space: nowrap;
+}
+
+.contact-phone-country::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.contact-phone-country select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.contact-phone-country:has(select:focus-visible) {
+  outline: 2px solid var(--chat-accent, var(--enrollment-action, #0f766e));
+  outline-offset: 2px;
+}
+
+.contact-phone-country:has(select:disabled) {
+  opacity: .65;
+}

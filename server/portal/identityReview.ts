@@ -1,14 +1,14 @@
 import {identityCrossConflict} from '../../src/utils/crmIdentityCandidates.ts';
 import {canonicalIdentity} from './identityConsolidation.ts';
 import {loadCrmAccessControls as identityControls} from './crmAccessControls.ts';
-import { invalid, normalizeContactPhone } from './trustWorkflow.ts';
-import { validContactPhone } from '../../src/utils/contactPhone.ts';
+import { contactPhoneLookupDigits, invalid, normalizeContactPhone } from './trustWorkflow.ts';
 import { validContactEmail } from '../../src/utils/contactEmail.ts';
 import { canReviewIdentityRole } from '../../src/utils/crmOutreach.ts';
 export function identityMatch(a: any, b: any) {
   const email = (p: any) => typeof p.email === 'string' && p.email.trim() && validContactEmail(p.email) ? p.email.trim().toLowerCase() : '';
-  const phone = (p: any) => validContactPhone(p.whatsapp) ? normalizeContactPhone(p.whatsapp) : '';
-  return [email(a) && email(a)===email(b) ? 'email' : '', phone(a) && phone(a)===phone(b) ? 'phone' : ''].filter(Boolean);
+  const leftEmail = email(a);
+  const leftPhone = normalizeContactPhone(a.whatsapp);
+  return [leftEmail && leftEmail===email(b) ? 'email' : '', leftPhone && leftPhone===normalizeContactPhone(b.whatsapp) ? 'phone' : ''].filter(Boolean);
 }
 export {loadCrmAccessControls as identityControls} from './crmAccessControls.ts';
 type IdentityLead = {id:string;profile:any};
@@ -53,9 +53,9 @@ export async function attachIdentity(c: any, employee: any, leads: any[], lock=f
 }
 export async function discoverIdentity(c:any,visitorId:string,leadId:string,profile:any){
   const email=typeof profile.email==='string'&&validContactEmail(profile.email)?profile.email.trim().toLowerCase():'';
-  const phone=validContactPhone(profile.whatsapp)?normalizeContactPhone(profile.whatsapp):'';
-  if(!email&&!phone)return;
-  const rows=(await c.query("SELECT id,profile FROM portal_leads WHERE id<>:p1 AND ((:p2<>'' AND lower(TRIM(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null')))=:p2) OR (:p3<>'' AND REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p3,:p4,:p5))) FOR UPDATE",[leadId,email,phone,phone.startsWith('62')?'0'+phone.slice(2):phone,phone?'00'+phone:''])).rows;
+  const phones=contactPhoneLookupDigits(profile.whatsapp);
+  if(!email&&!phones.length)return;
+  const rows=(await c.query("SELECT id,profile FROM portal_leads WHERE id<>:p1 AND ((:p2<>'' AND lower(TRIM(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null')))=:p2) OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (SELECT phone FROM JSON_TABLE(:p3,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)) FOR UPDATE",[leadId,email,JSON.stringify(phones)])).rows;
   const matches:IdentityLead[]=rows.filter((row:IdentityLead)=>identityMatch(profile,row.profile).length);
   const mergedTargetIds=[...new Set(matches.map(row=>row.profile.identityMergedInto).filter(Boolean))];
   const mergedTargets:IdentityLead[]=mergedTargetIds.length?(await c.query(`SELECT id,profile FROM portal_leads WHERE id IN (SELECT id FROM JSON_TABLE(:p1,'$[*]' COLUMNS(id VARCHAR(191) PATH '$')) AS targets)`,[JSON.stringify(mergedTargetIds)])).rows:[];
@@ -135,6 +135,6 @@ export async function identityComparison(c:any,leadId:string,candidateId:string|
   }
   const revision=createHash('sha256').update(JSON.stringify({leads,relations,tasks,facts,evidence,group,knownRelations})).digest('hex');
   const subjectId=identityComparisonSubject(relations);
-  const side=(row:any)=>({recordRole:subjectId?(row.id===subjectId?"review_subject":"existing_match"):"undetermined",profile:row.profile,normalizedContact:{email:validContactEmail(row.profile.email)?row.profile.email.trim().toLowerCase():null,phone:validContactPhone(row.profile.whatsapp)?normalizeContactPhone(row.profile.whatsapp):null},tasks:tasks.filter((t:any)=>t.lead_id===row.id),facts:facts.filter((f:any)=>f.lead_id===row.id),messages:evidence.filter((m:any)=>m.lead_id===row.id)});
+  const side=(row:any)=>({recordRole:subjectId?(row.id===subjectId?"review_subject":"existing_match"):"undetermined",profile:row.profile,normalizedContact:{email:validContactEmail(row.profile.email)?row.profile.email.trim().toLowerCase():null,phone:normalizeContactPhone(row.profile.whatsapp)||null},tasks:tasks.filter((t:any)=>t.lead_id===row.id),facts:facts.filter((f:any)=>f.lead_id===row.id),messages:evidence.filter((m:any)=>m.lead_id===row.id)});
   return {leadId,candidateId,aliasMatches:validPending.flatMap((r:any)=>r.aliasMatches||[]),left:side(left),right:side(right),basis,pending,subjectId,candidates,knownRelations,crossConflict:identityCrossConflict(candidates),decision:pending?'pending':decided?.decision||'unavailable',reason:decided?.reason||'',decidedBy:decided?.decided_by||null,decidedAt:decided?.decided_at?(String(decided.decided_at).includes('T')?decided.decided_at:String(decided.decided_at).replace(' ','T')+'Z'):null,revision};
 }

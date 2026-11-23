@@ -10,7 +10,7 @@ const databaseHook=registerHooks({load(url,context,next){
     export const nativePool={},pool={},initialize=unused,connection=unused,tx=unused,event=unused,id=unused;
   `};
 }});
-const {reconcileEnrollmentAfterIdentityReview,recordEnrollmentCustomer}=await import('../server/portal/enrollmentCrm.ts');
+const {reconcileEnrollmentAfterIdentityReview,recordEnrollmentCustomer,validateAssistedContacts}=await import('../server/portal/enrollmentCrm.ts');
 databaseHook.deregister();
 
 const customerId='verified-customer',sourceId='enrollment-registration',actor='reviewer';
@@ -33,7 +33,10 @@ function fixture(records:any[],opportunities=[active],pending=false) {
       return {rows:[pending?{...customer,profile:{...customer.profile,identityLifecycle:'pending'}}:customer]};
     }
     if(sql.includes("profile->>'$.enrollmentEmailVerified'"))return {rows:[lead]};
-    if(sql.includes('REGEXP_REPLACE'))return {rows:[lead]};
+    if(sql.includes('REGEXP_REPLACE')){
+      assert.ok(JSON.parse(String(params[1])).includes('62081212345678'));
+      return {rows:[lead]};
+    }
     if(sql.includes('SELECT r.lead_id,r.opportunity_id,o.level'))return {rows:rows.filter(row=>row.kind===params[0]&&row.record_id===params[1])
       .map(row=>({...row,level:opportunities.find(opportunity=>opportunity.id===row.opportunity_id)?.level}))};
     if(sql.startsWith('SELECT o.* FROM enrollment_opportunities')){
@@ -83,9 +86,26 @@ test('after identity confirmation, order, same-level waitlist and demand use the
 
 test('an order submitted after identity resolution resolves through the original verified enrollment contact to the same opportunity',async()=>{
   const f=fixture([]);
-  await recordEnrollmentCustomer(f.db,{kind:'order',id:'order-after-review',level:'HSK 2',email:sourceProfile.email,phone:sourceProfile.whatsapp,name:sourceProfile.fullName});
+  await recordEnrollmentCustomer(f.db,{kind:'order',id:'order-after-review',level:'HSK 2',email:sourceProfile.email,phone:'81212345678',name:sourceProfile.fullName});
   assert.deepEqual(f.rows,[{kind:'order',record_id:'order-after-review',lead_id:customerId,opportunity_id:active.id}]);
   assert.equal(f.writes.some(write=>write.sql.startsWith('INSERT INTO enrollment_opportunities')),false);
+});
+
+test('assisted enrollment accepts equivalent phone formats and still blocks a shared number', async () => {
+  const primary = {id:'primary', profile:{...sourceProfile, whatsapp:'81212345678'}};
+  const shared = {id:'shared', profile:{whatsapp:'+62 081212345678'}};
+  for (const matches of [[primary], [primary, shared]]) {
+    const db = {async query(sql: string, args: unknown[]) {
+      assert.match(sql, /JSON_TABLE/);
+      assert.deepEqual(args, [sourceProfile.email, JSON.stringify([
+        '6281212345678', '006281212345678', '62081212345678', '0062081212345678', '81212345678', '081212345678',
+      ])]);
+      return {rows:matches};
+    }};
+    const checked = validateAssistedContacts(db, primary, sourceProfile.fullName, sourceProfile.email, '0062 081212345678');
+    if (matches.length === 1) await checked;
+    else await assert.rejects(checked, /enrollment_assistance_identity/);
+  }
 });
 
 test('pending identity, missing or multiple candidates, and independent same-level orders stay available for manual review',async()=>{

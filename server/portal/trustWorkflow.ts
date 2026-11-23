@@ -1,4 +1,5 @@
 import {ledgerMetadata} from '../../src/utils/crmFactLedger.ts';
+import {parseContactPhone} from '../../src/utils/contactPhone.ts';
 import {assertIdentitySalesAllowed,recordIdentityRefusal} from './identityConsolidation.ts';
 import {applyTaskChange} from './taskManagement.ts';
 import {customerReplied} from "./noResponse.ts";
@@ -67,24 +68,49 @@ export async function operation(
   }
   return result;
 }
-export function normalizeContactPhone(value: any) {
-  const digits = String(value || "").replace(/\D/g, "");
-  if (digits.startsWith("00")) return digits.slice(2);
-  return digits.startsWith("0") ? "62" + digits.slice(1) : digits;
+export function normalizeContactPhone(value: unknown) {
+  return parseContactPhone(value)?.number.slice(1) ?? '';
+}
+
+export function contactPhoneLookupDigits(value: unknown) {
+  const phone = parseContactPhone(value);
+  if (!phone) return [];
+  const canonical = phone.number.slice(1);
+  const national = phone.formatNational().replace(/\D/g, '');
+  const withTrunk = phone.countryCallingCode + national;
+  const international = [canonical, '00' + canonical];
+  if (parseContactPhone('+' + withTrunk)?.number === phone.number) {
+    international.push(withTrunk, '00' + withTrunk);
+  }
+  for (const local of [phone.nationalNumber, national]) {
+    if (parseContactPhone(local)?.number === phone.number) international.push(local);
+  }
+  return [...new Set(international)];
 }
 export function contactsConflict(previous: any, incoming: any) {
   const email = (s: any) =>
     String(s || "")
       .trim()
       .toLowerCase();
-  const phone = normalizeContactPhone;
+  const phoneConflict = (previousNumber: unknown, incomingNumber: unknown) => {
+    const previousPhone = normalizeContactPhone(previousNumber);
+    const incomingPhone = normalizeContactPhone(incomingNumber);
+    if (previousPhone || incomingPhone) return previousPhone !== incomingPhone;
+    // Preserve conflict detection for old profiles that predate phone validation.
+    const legacyDigits = (value: unknown) => {
+      const digits = String(value ?? '').replace(/\D/g, '');
+      if (digits.startsWith('00')) return digits.slice(2);
+      return digits.startsWith('0') ? '62' + digits.slice(1) : digits;
+    };
+    return legacyDigits(previousNumber) !== legacyDigits(incomingNumber);
+  };
   return Boolean(
     (previous.email &&
       incoming.email &&
       email(previous.email) !== email(incoming.email)) ||
     (previous.whatsapp &&
       (incoming.whatsapp || incoming.phone) &&
-      phone(previous.whatsapp) !== phone(incoming.whatsapp || incoming.phone)),
+      phoneConflict(previous.whatsapp, incoming.whatsapp || incoming.phone)),
   );
 }
 export async function engagement(

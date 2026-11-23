@@ -1,4 +1,5 @@
 import {useEffect,useId,useRef,useState,type FormEvent} from 'react';
+import {ContactPhoneInput} from './ContactPhoneInput';
 import {chooseText,type HskLanguage} from '../data/hskAssessment';
 import {trackEvent} from '../utils/analytics';
 import {questionnaireOptions} from '../utils/crmQuestionnaire';
@@ -160,12 +161,13 @@ function ChatRegistrationForm({initialLang='en',profile,onConsultFirst,onComplet
             <label className="chat-profile-field">{t('姓名','Full name','Nama lengkap')}
               <input name="fullName" required autoComplete="name" maxLength={200} value={draft.fullName??''} onChange={event=>change({fullName:event.target.value})}/>
             </label>
-            <label className="chat-profile-field">{t('WhatsApp 号码','WhatsApp number','Nomor WhatsApp')}
-              <input name="whatsapp" required type="tel" ref={phone} autoComplete="tel" maxLength={40} value={draft.whatsapp??''}
+            <div className="chat-profile-field">
+              <label htmlFor={id+'-phone-input'}>{t('WhatsApp 号码','WhatsApp number','Nomor WhatsApp')}</label>
+              <ContactPhoneInput id={id+'-phone-input'} language={lang} name="whatsapp" required ref={phone} value={draft.whatsapp??''}
                 onBlur={()=>setPhoneTouched(true)} aria-invalid={invalidPhone} aria-describedby={id+'-phone'}
-                onChange={event=>{setPhoneRejected(false);change({whatsapp:event.target.value});}}/>
-              <small id={id+'-phone'} role={invalidPhone?'alert':undefined}>{invalidPhone?phoneCopy.error:phoneCopy.help}</small>
-            </label>
+                onValueChange={whatsapp=>{setPhoneRejected(false);change({whatsapp});}}/>
+              <small id={id+'-phone'} role={invalidPhone?'alert':undefined}>{invalidPhone?phoneCopy.error:t('可输入本地号码或粘贴完整国际号码。','Enter a local number or paste a full international number.','Masukkan nomor lokal atau tempel nomor internasional lengkap.')}</small>
+            </div>
             <label className="chat-profile-field">{t('邮箱','Email','Email')}
               <input name="email" required type="email" ref={email} autoComplete="email" maxLength={254} value={draft.email??''}
                 onBlur={()=>setEmailTouched(true)} aria-invalid={invalidEmail} aria-describedby={id+'-email'}

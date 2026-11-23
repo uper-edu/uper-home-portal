@@ -2887,8 +2887,8 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
-  "SELECT id,profile FROM portal_leads\n      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)": {
-    "sql": "SELECT id,profile FROM portal_leads\n      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)",
+  "SELECT id,profile FROM portal_leads\n      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','')\n        IN (SELECT phone FROM JSON_TABLE(:p2,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)": {
+    "sql": "SELECT id,profile FROM portal_leads\n      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','')\n        IN (SELECT phone FROM JSON_TABLE(:p2,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)",
     "sources": [
       "server/portal/enrollmentCrm.ts"
     ]
@@ -2923,8 +2923,8 @@
       "server/portal/identityReview.ts"
     ]
   },
-  "SELECT id,profile FROM portal_leads WHERE id<>:p1 AND ((:p2<>'' AND lower(TRIM(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null')))=:p2) OR (:p3<>'' AND REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p3,:p4,:p5))) FOR UPDATE": {
-    "sql": "SELECT id,profile FROM portal_leads WHERE id<>:p1 AND ((:p2<>'' AND lower(TRIM(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null')))=:p2) OR (:p3<>'' AND REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (:p3,:p4,:p5))) FOR UPDATE",
+  "SELECT id,profile FROM portal_leads WHERE id<>:p1 AND ((:p2<>'' AND lower(TRIM(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null')))=:p2) OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (SELECT phone FROM JSON_TABLE(:p3,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)) FOR UPDATE": {
+    "sql": "SELECT id,profile FROM portal_leads WHERE id<>:p1 AND ((:p2<>'' AND lower(TRIM(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.email')),'null')))=:p2) OR REGEXP_REPLACE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(profile,'$.whatsapp')),'null'),'[^0-9]','') IN (SELECT phone FROM JSON_TABLE(:p3,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)) FOR UPDATE",
     "sources": [
       "server/portal/identityReview.ts"
     ]
@@ -2942,8 +2942,8 @@
       "server/portal/worker.ts"
     ]
   },
-  "SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1\n    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)": {
-    "sql": "SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1\n    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)",
+  "SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1\n    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','')\n      IN (SELECT phone FROM JSON_TABLE(:p2,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)": {
+    "sql": "SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1\n    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','')\n      IN (SELECT phone FROM JSON_TABLE(:p2,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)",
     "sources": [
       "server/portal/enrollmentCrm.ts"
     ]

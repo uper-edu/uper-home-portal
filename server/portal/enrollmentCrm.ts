@@ -13,7 +13,7 @@ import { validMutationOrigin } from './accessTransport.ts';
 import { assignNewLead } from './autoAssignment.ts';
 import { canonicalIdentity, lockIdentityRegistry } from './identityConsolidation.ts';
 import { discoverIdentity, identityControls, pendingIdentity } from './identityReview.ts';
-import { fact, invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
+import { contactPhoneLookupDigits, fact, invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 import { opportunitySourceKind, type OpportunitySourceRef } from '../../src/utils/crmOpportunitySources.ts';
 import { salesProgressContext } from './salesProgress.ts';
@@ -40,7 +40,7 @@ async function identityForSubmission(c: Client, { email, phone, name, emailVerif
   const normalized = normalizeContactPhone(phone);
   const anchors = emailVerified ? (await c.query(`SELECT id,profile FROM portal_leads
     WHERE LOWER(profile->>'$.email')=:p1 AND profile->>'$.enrollmentEmailVerified'='true'`, [email])).rows : [];
-  const compatible = anchors.filter(row => normalizeContactPhone(row.profile.whatsapp) === normalized &&
+  const compatible = anchors.filter(row => normalized && normalizeContactPhone(row.profile.whatsapp) === normalized &&
     (!name || enrollmentLearnerNameKey(name) === enrollmentLearnerNameKey(row.profile.fullName)));
   // An identical registration already held for review may add facts to that same submission.
   const roots = new Map();
@@ -51,8 +51,9 @@ async function identityForSubmission(c: Client, { email, phone, name, emailVerif
   if (roots.size === 1 && (name || anchors.length === 1)) {
     const root = [...roots.values()][0];
     const aliases = (await c.query(`SELECT id,profile FROM portal_leads
-      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)`,
-    [email,normalized,normalized.startsWith('62')?'0'+normalized.slice(2):normalized,'00'+normalized])).rows;
+      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','')
+        IN (SELECT phone FROM JSON_TABLE(:p2,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)`,
+    [email,JSON.stringify(contactPhoneLookupDigits(phone))])).rows;
     const otherMatches = aliases.filter(row => row.id !== root.id && row.profile.identityMergedInto !== root.id);
     if (!otherMatches.length || root.profile.identityLifecycle === 'pending') return root;
     // Respect human decisions on a previously confirmed group with shared contacts.
@@ -222,10 +223,11 @@ export async function validateAssistedContacts(c:Client,customer:{id:string;prof
   const profile=customer.profile, digits=normalizeContactPhone(phone);
   if(enrollmentLearnerNameKey(name)!==enrollmentLearnerNameKey(profile.fullName??'')
     ||profile.email&&String(profile.email).trim().toLowerCase()!==email
-    ||profile.whatsapp&&normalizeContactPhone(profile.whatsapp)!==digits) invalid('enrollment_assistance_identity',409);
+    ||profile.whatsapp&&(!digits||normalizeContactPhone(profile.whatsapp)!==digits)) invalid('enrollment_assistance_identity',409);
   const matches=(await c.query(`SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1
-    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)`,
-    [email,digits,digits.startsWith('62')?'0'+digits.slice(2):digits,'00'+digits])).rows;
+    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','')
+      IN (SELECT phone FROM JSON_TABLE(:p2,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)`,
+    [email,JSON.stringify(contactPhoneLookupDigits(phone))])).rows;
   if(matches.some(match=>match.id!==customer.id&&match.profile.identityMergedInto!==customer.id))
     invalid('enrollment_assistance_identity',409);
 }

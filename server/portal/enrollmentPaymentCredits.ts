@@ -40,7 +40,8 @@ export async function enrollmentRefundReceiptFunds(c:Client,id:string) {
 
 async function sameLearnerOrders(c:Client,order:any,level:string) {
   // Never infer sibling identity from a shared family email or telephone alone.
-  if(typeof order.data?.name!=='string'||!order.data.name.trim()||!normalizeContactPhone(order.data.phone))return [];
+  const phone = normalizeContactPhone(order.data?.phone);
+  if(typeof order.data?.name!=='string'||!order.data.name.trim()||!phone)return [];
   await lockIdentityRegistry(c);
   const rows=(await c.query(`SELECT o.id,o.created_at,o.data,o.state,o.price,o.received,b.state AS class_state
     FROM enrollment_customer_records root
@@ -57,7 +58,7 @@ async function sameLearnerOrders(c:Client,order:any,level:string) {
         AND o.received<o.price AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6))))
     ORDER BY o.created_at,o.id`,[order.id,order.email,level])).rows;
   return rows.filter(row=>typeof row.data?.name==='string'&&enrollmentLearnerNameKey(row.data.name)===enrollmentLearnerNameKey(order.data.name)
-    &&normalizeContactPhone(row.data.phone)===normalizeContactPhone(order.data.phone));
+    &&normalizeContactPhone(row.data.phone)===phone);
 }
 
 export async function applyEnrollmentPaymentCredits(c:Client,current:LockedOrder,lockOrder:LockOrder) {

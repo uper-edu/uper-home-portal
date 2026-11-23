@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { contactsConflict } from "../server/portal/trustWorkflow.ts";
+import { contactPhoneLookupDigits, contactsConflict, normalizeContactPhone } from "../server/portal/trustWorkflow.ts";
 import { needsHandling } from "../src/utils/crmContact.ts";
 test("P0 identity: known contact is normalized, conflicting contact is never overwritten", () => {
   assert.equal(
@@ -21,6 +21,18 @@ test("P0 identity: known contact is normalized, conflicting contact is never ove
     ),
     true,
   );
+});
+test("equivalent historical numbers are found without making different numbers equivalent", () => {
+  const variants = ['081234567890', '81234567890', '+62 081234567890', '0062 81234567890'];
+  for (const number of variants) {
+    assert.equal(normalizeContactPhone(number), '6281234567890');
+    assert.equal(contactsConflict({whatsapp: variants[0]}, {phone: number}), false);
+  }
+  const lookup = contactPhoneLookupDigits(variants[0]);
+  for (const number of variants) assert.ok(lookup.includes(number.replace(/\D/g, '')));
+  assert.equal(contactsConflict({whatsapp: variants[0]}, {phone: '+62 081234567891'}), true);
+  assert.equal(normalizeContactPhone('+44 07911 123456'), '447911123456');
+  assert.deepEqual(contactPhoneLookupDigits('invalid'), []);
 });
 test("information does not create a business obligation for an enrolled customer", () => {
   assert.equal(

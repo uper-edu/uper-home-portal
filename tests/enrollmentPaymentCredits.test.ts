@@ -58,8 +58,9 @@ function creditFixture(related: Order[], target = current) {
 
 test('bank receipts credit the only later same-learner order in either arrival order', async () => {
   const sharedEmail = {...current,id:'different-learner',data:{...learner,name:'Another Learner'}};
-  for (const trigger of [expired,current]) {
-    const fixture = creditFixture([expired,current,sharedEmail]);
+  const differentlyFormatted = {...current,data:{...learner,phone:'+62 08123456789'}};
+  for (const trigger of [expired,differentlyFormatted]) {
+    const fixture = creditFixture([expired,differentlyFormatted,sharedEmail], differentlyFormatted);
     await applyEnrollmentPaymentCredits(fixture.db,{order:trigger,cohort},fixture.lockOrder);
     assert.deepEqual(fixture.locks,trigger===expired?[current.id]:[expired.id,current.id]);
     assert.deepEqual(fixture.allocations,[
@@ -68,7 +69,7 @@ test('bank receipts credit the only later same-learner order in either arrival o
     ]);
     assert.deepEqual(fixture.adjustments,[
       [160,{...learner,creditOut:160},expired.id],
-      [180,'partial',{...learner,creditIn:160},current.id],
+      [180,'partial',{...differentlyFormatted.data,creditIn:160},current.id],
     ]);
   }
 });
