@@ -1,7 +1,8 @@
+import {enrollmentProofUploadTimeout,prepareEnrollmentProofFile} from '../utils/enrollmentProofFile';
 import VisitorBoundary from './VisitorBoundary';
 import type {EnrollmentIntakeTools} from './EnrollmentIntake';
 import {visitorScope} from '../services/visitorScope';
-import {enrollmentPost,readEnrollmentOperation,watchEnrollmentEmailSession} from '../services/enrollmentSession';
+import {enrollmentPost,postEnrollmentProof,readEnrollmentOperation,recoverEnrollmentOperation,watchEnrollmentEmailSession} from '../services/enrollmentSession';
 import {readVisitorContact,readEnrollmentDraft,writeEnrollmentDraft,subscribeVisitorContact} from '../services/visitorContact';
 import {getStudentContext} from '../services/studentProfileStorage';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
@@ -180,8 +181,28 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   },[owner,forAnother,paymentClasses,challenge,verified,verificationStep,applicationDraftLocked,classId,demandOnly]);
   const [requestId,setRequestId] = useState(() => savedDraft.applicationRequestId??crypto.randomUUID());
   const running=useRef(false);
+  const mounted=useRef(true);
+  const proofUpload=useRef<AbortController|undefined>(undefined);
+  const operationReceiptRead=useRef<AbortController|undefined>(undefined);
+  const networkRevision=useRef(0);
+  const formActive=()=>mounted.current&&visitorScope()===owner;
+  useEffect(()=>{
+    mounted.current=true;
+    const onOnline=()=>{networkRevision.current++;};
+    window.addEventListener('online',onOnline);
+    return ()=>{
+      mounted.current=false;
+      operationReceiptRead.current?.abort();
+      proofUpload.current?.abort();
+      window.removeEventListener('online',onOnline);
+    };
+  },[]);
   const proofKey='proof:'+orderId;
   const [pendingProof,setPendingProof]=useState(()=>paymentClasses?readEnrollmentDraft<string>(owner,proofKey):undefined);
+  const [checkingProofReceipt,setCheckingProofReceipt]=useState(false);
+  const [submittingProof,setSubmittingProof]=useState(false);
+  const [proofRecovery,setProofRecovery]=useState<{uploadId:string;afterNetworkRevision?:number}|undefined>(()=>
+    pendingProof?{uploadId:pendingProof}:undefined);
   const [proofReadFailed,setProofReadFailed]=useState(false);
   const [file,setFile] = useState<File>();
   const cancelDialog=useRef<HTMLDialogElement>(null);
@@ -242,6 +263,12 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   function clearPrivateRecords() {
     clearOrders();
     orderRead.current++;
+    operationReceiptRead.current?.abort();
+    proofUpload.current?.abort();
+    if(paymentClasses){
+      const uploadId=readEnrollmentDraft<string>(owner,proofKey);
+      if(uploadId)setProofRecovery({uploadId});
+    }
     setOrder(undefined);
     setAftercare(undefined);
     setFile(undefined);
@@ -315,12 +342,36 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     window.scrollTo(0, 0);
     applicationHeading.current?.focus();
   },[verificationStep]);
+  const currentOrderId=order?.id;
+  useEffect(()=>()=>operationReceiptRead.current?.abort(),[owner,orderId,classId]);
+  useEffect(()=>{
+    const address=recordsEmail.current;
+    if (!paymentClasses || !currentOrderId || !pendingProof || !address || busy || !proofRecovery || proofRecovery.uploadId!==pendingProof) return;
+    const {afterNetworkRevision}=proofRecovery;
+    // A reloaded attempt is checked until the learner selects a new file.
+    if(file && afterNetworkRevision===undefined)return;
+    const path=base+'/orders/'+encodeURIComponent(currentOrderId)+'/proofs/'+encodeURIComponent(pendingProof)+'/result';
+    return recoverEnrollmentOperation<Order>({
+      path,email:address,waitForConnection:afterNetworkRevision===networkRevision.current,
+      isCurrent:()=>!running.current&&formActive()&&recordsEmail.current===address,
+      onChecking:setCheckingProofReceipt,
+      onResult:result=>{
+        setProofRecovery(undefined);
+        if(result.state==='saved'&&result.order.id===currentOrderId)finishProof(result.order);
+      },
+      onVerificationRequired:()=>{
+        requireEmailVerification();
+        setError('enrollment_verification_required');
+      },
+    });
+  },[paymentClasses,currentOrderId,pendingProof,file,owner,busy,proofRecovery]);
   async function run(action: () => Promise<void>) {
     if (running.current) return;
     running.current=true;
     setBusy(true);
     setError('');
     try { await action(); } catch (cause) {
+      if(!formActive()||cause instanceof DOMException&&cause.name==='AbortError')return;
       const message=(cause as Error).message || 'enrollment_failed';
       if (message==='enrollment_class_full') {
         if (applicationClass?.fromWaitlist) {
@@ -456,42 +507,89 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     });
   }
   function upload(transfer:{reportedAmount?:number;bankReference?:string}) {
-    if (!order || !file) return;
+    if (!order || !file || checkingProofReceipt) return;
     return run(async () => {
-      const path=base+'/orders/'+encodeURIComponent(order.id)+'/proofs';
-      const expected=recordsEmail.current||currentEmail;
-      if(pendingProof){
-        const result=await readEnrollmentOperation<Order>(path+'/'+pendingProof+'/result',expected);
-        if(result.state==='saved'){finishProof(result.order);return;}
-      }
-      const encoded=await new Promise<string>((resolve,reject)=>{
-        const reader=new FileReader();
-        reader.onerror=reject;
-        reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');
-        reader.readAsDataURL(file);
-      });
-      const uploadId=pendingProof??(await enrollmentPost(path+'/start',{},expected,AbortSignal.timeout(15000))).uploadId;
-      storePendingProof(uploadId);
-      let saved;
-      try{saved=await enrollmentPost(path+'/finish',{uploadId,mime:file.type,encoded,...transfer},expected,AbortSignal.timeout(90000));}
-      catch(cause){
-        const message=(cause as Error).message;
-        if(['enrollment_invalid_proof','enrollment_upload_expired'].includes(message)){
-          storePendingProof(undefined);
-          throw cause;
-        }
-        if(message==='enrollment_verification_required')throw cause;
-        throw Error('enrollment_operation_unconfirmed');
-      }
-      finishProof(saved);
+      const controller=new AbortController();
+      proofUpload.current=controller;
+      try { await submitProof(transfer,order,file,controller.signal); }
+      finally { if(proofUpload.current===controller)proofUpload.current=undefined; }
     });
   }
+  async function submitProof(transfer:{reportedAmount?:number;bankReference?:string},order:Order,file:File,signal:AbortSignal) {
+    setProofReadFailed(false);
+    const path=base+'/orders/'+encodeURIComponent(order.id)+'/proofs';
+    const expected=recordsEmail.current||currentEmail;
+    const current=()=>formActive()&&!signal.aborted;
+    let reservation:{uploadId:string;transport?:'binary-v1'}|undefined;
+    if(pendingProof){
+      const result=await readCurrentOperationReceipt(path+'/'+pendingProof+'/result',expected);
+      if(!current())return;
+      if(result.state==='saved'){finishProof(result.order);return;}
+      // The binary-aware start endpoint can recheck the same receipt under
+      // the order lock and refresh an eligible upload before sending bytes.
+      if(result.uploadActive!==false && result.proofTransport!=='binary-v1')reservation={uploadId:pendingProof};
+    }
+    const proof=await prepareEnrollmentProofFile(file);
+    if(!current())return;
+    if(!proof)throw Error('enrollment_invalid_proof');
+    if(!reservation){
+      const result=await enrollmentPost(path+'/start',pendingProof?{previousUploadId:pendingProof}:{},expected,
+        AbortSignal.any([signal,AbortSignal.timeout(15000)]));
+      if(!current())return;
+      if(result?.state==='saved'){
+        finishProof(result.order);
+        return;
+      }
+      reservation=result;
+    }
+    const uploadId=reservation?.uploadId;
+    if(typeof uploadId!=='string'||!uploadId)throw Error('enrollment_operation_unconfirmed');
+    storePendingProof(uploadId);
+    setSubmittingProof(true);
+    let saved;
+    try{
+      const metadata={uploadId,...transfer};
+      const deadline=()=>AbortSignal.any([signal,AbortSignal.timeout(enrollmentProofUploadTimeout(proof.size,reservation?.transport))]);
+      if(reservation?.transport==='binary-v1'){
+        saved=await postEnrollmentProof(path+'/finish',proof,metadata,expected,deadline());
+      }else{
+        const encoded=await new Promise<string>((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onerror=reject;
+          reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');
+          reader.readAsDataURL(proof);
+        });
+        if(!current())return;
+        saved=await enrollmentPost(path+'/finish',{...metadata,mime:proof.type,encoded},expected,deadline());
+      }
+    }
+    catch(cause){
+      if(!current())return;
+      const message=(cause as Error).message;
+      if(['enrollment_invalid_proof','enrollment_upload_expired'].includes(message)){
+        storePendingProof(undefined);
+        throw cause;
+      }
+      if(message==='enrollment_verification_required')throw cause;
+      // The upload can finish on the server even when its response is lost.
+      await checkProofResult(order.id,uploadId,expected);
+      return;
+    } finally {
+      setSubmittingProof(false);
+    }
+    if(!current())return;
+    if(saved?.id===order.id)finishProof(saved);
+    else await checkProofResult(order.id,uploadId,expected);
+  }
   function storePendingProof(id?:string){
+    setProofRecovery(undefined);
     setPendingProof(id);
     writeEnrollmentDraft(owner,proofKey,id);
   }
   function finishProof(saved:Order){
+    if(!formActive())return;
     if(!saved?.id||saved.id!==order?.id)throw Error('enrollment_operation_unconfirmed');
+    setError(current=>current==='enrollment_operation_unconfirmed'?'':current);
     storePendingProof(undefined);
     setFile(undefined);
     setOrder(previous=>previous?.id===saved.id?{...previous,...saved}:previous);
@@ -516,10 +614,30 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   }
   async function checkProof(){
     if(!order||!pendingProof)return;
-    const path=base+'/orders/'+encodeURIComponent(order.id)+'/proofs/'+pendingProof+'/result';
-    const result=await readEnrollmentOperation<Order>(path,recordsEmail.current||currentEmail);
-    if(result.state!=='saved')throw Error('enrollment_operation_unconfirmed');
-    finishProof(result.order);
+    await checkProofResult(order.id,pendingProof,recordsEmail.current||currentEmail);
+  }
+  async function readCurrentOperationReceipt(path:string,email:string) {
+    if(visitorScope()!==owner)throw Error('enrollment_verification_required');
+    const controller=new AbortController();
+    operationReceiptRead.current=controller;
+    try{
+      return await readEnrollmentOperation<Order>(path,email,controller.signal);
+    }finally{
+      if(operationReceiptRead.current===controller)operationReceiptRead.current=undefined;
+    }
+  }
+  async function checkProofResult(id:string,uploadId:string,expectedEmail:string){
+    const path=base+'/orders/'+encodeURIComponent(id)+'/proofs/'+encodeURIComponent(uploadId)+'/result';
+    try {
+      const result=await readCurrentOperationReceipt(path,expectedEmail);
+      if(result.state!=='saved')throw Error('enrollment_operation_unconfirmed');
+      finishProof(result.order);
+    } catch(error) {
+      if((error as Error).message==='enrollment_operation_unconfirmed'&&formActive()&&recordsEmail.current===expectedEmail){
+        setProofRecovery({uploadId,afterNetworkRevision:networkRevision.current});
+      }
+      throw error;
+    }
   }
   const join = () => phoneField.check() && run(async () => {
     if (waitlistClass) await verifyEnteredEmail();
@@ -1085,9 +1203,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
           </div>
         </>}
         <EnrollmentPayment order={order} course={resultCourse} classInfo={aftercare?.currentClass} language={language}
-          status={status ?? ''} onCancel={cancelable?openCancellation:undefined} canUpload={!!canUpload} file={file} busy={busy} setFile={setFile}
+          status={status ?? ''} onCancel={cancelable?openCancellation:undefined} canUpload={!!canUpload} file={file} busy={busy||checkingProofReceipt} setFile={setFile}
           upload={transfer=>void upload(transfer)} existingTransferOnly={existingTransferOnly}
-          proofUploadFailed={['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)}/>
+          submittingProof={submittingProof} proofUploadFailed={['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)}/>
       </div> : <>
       {!classId && <button type="button" onClick={()=>{selectOrder(); void run(getOrders);}}>
         {t(['返回报名列表','Back to enrollments','Kembali ke daftar pendaftaran'])}

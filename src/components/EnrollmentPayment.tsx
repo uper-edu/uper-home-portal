@@ -1,3 +1,4 @@
+import {enrollmentProofAccept,enrollmentProofSelectionIssue} from '../utils/enrollmentProofFile';
 import type { EnrollmentClosureReason } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
@@ -23,7 +24,7 @@ export type EnrollmentOrder = {
 
 type Language = 'zh' | 'en' | 'id';
 
-export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, upload, existingTransferOnly = false, proofUploadFailed = false, onCancel }: {
+export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, upload, existingTransferOnly = false, proofUploadFailed = false, submittingProof = false, onCancel }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
   classInfo?:Partial<PublicEnrollmentClass> & {firstLesson:string;schedule:string;level?:string;format?:string;opened?:boolean};
@@ -37,12 +38,14 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   existingTransferOnly?: boolean;
   onCancel?: ()=>void;
   proofUploadFailed?: boolean;
+  submittingProof?: boolean;
 }) {
   const t = (zh: string, en: string, id: string) => language === 'zh' ? zh : language === 'en' ? en : id;
   const locale = t('zh-CN', 'en-GB', 'id-ID');
   const [now, setNow] = useState(Date.now);
   const [copied, setCopied] = useState('');
   const [copyFailed, setCopyFailed] = useState(false);
+  const [fileIssue,setFileIssue]=useState<ReturnType<typeof enrollmentProofSelectionIssue>>();
   const proofInput = useRef<HTMLInputElement>(null);
   const hasBalance = !existingTransferOnly && !!order.bank && ['awaiting_payment','partial'].includes(order.status);
   useEffect(() => {
@@ -151,11 +154,24 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       <section className="enrollment-upload-section">
         <h2>{t('转账凭证', 'Transfer proof', 'Bukti transfer')}</h2>
         <label className="enrollment-file">
-          <input ref={proofInput} aria-label={chooseProof} type="file" accept="image/png,image/jpeg,application/pdf" required
-            onChange={event => setFile(event.target.files?.[0])}/>
+          <input ref={proofInput} aria-label={chooseProof} type="file" accept={enrollmentProofAccept+',.png,.jpg,.jpeg,.pdf'}
+            required={!file} disabled={busy}
+            aria-invalid={fileIssue ? true : undefined} aria-describedby={fileIssue ? 'enrollment-proof-file-issue' : undefined}
+            onChange={event => {
+              const selected=event.target.files?.[0];
+              const issue=selected ? enrollmentProofSelectionIssue(selected) : undefined;
+              setFileIssue(issue);
+              if(issue)event.target.value='';
+              setFile(issue?undefined:selected);
+            }}/>
           <span>{file?.name || t('银行回执或截图', 'Bank receipt or screenshot', 'Bukti bank atau tangkapan layar')}</span>
           <strong><Upload size={15} aria-hidden="true"/>{chooseProof}</strong>
         </label>
+        {fileIssue&&<p id="enrollment-proof-file-issue" className="enrollment-result-state" role="alert">
+          {fileIssue==='too_large'
+            ? t('凭证不能超过 2 MB，请选小一点的文件。','Choose a proof file no larger than 2 MB.','Pilih file bukti berukuran maksimal 2 MB.')
+            : t('请选择有效的 PNG、JPEG 或 PDF 文件。','Choose a valid PNG, JPEG or PDF file.','Pilih file PNG, JPEG, atau PDF yang valid.')}
+        </p>}
         <div className="enrollment-proof-transfer">
           <label>{t('转账金额（Rp，选填）','Transfer amount (Rp, optional)','Nominal transfer (Rp, opsional)')}
             <input name="reportedAmount" type="number" inputMode="numeric" min="1" max="1000000000" step="1" disabled={busy}/>
@@ -169,7 +185,9 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       <div className="enrollment-proof-actions enrollment-payment-actions">
         {onCancel&&<button className="enrollment-quiet" type="button" disabled={busy} onClick={onCancel}>{t('取消报名','Cancel enrollment','Batalkan pendaftaran')}</button>}
         {!existingTransferOnly && <p>{t('财务核实足额到账后，报名才算成功。', 'Enrollment is confirmed after Finance verifies full payment.', 'Pendaftaran berhasil setelah pembayaran penuh diverifikasi.')}</p>}
-        <button className="enrollment-primary" type="submit" disabled={busy || !file}>{existingTransferOnly
+        <button className="enrollment-primary" type="submit" disabled={busy || !file} aria-busy={submittingProof}>{submittingProof
+          ? t('正在提交凭证…','Submitting proof…','Mengirim bukti…')
+          : existingTransferOnly
           ? t('提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan')
           : proofUploadFailed ? t('重新提交凭证','Retry proof submission','Coba kirim bukti lagi')
             : t('提交凭证', 'Submit proof', 'Kirim bukti')}</button>

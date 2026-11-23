@@ -1,7 +1,8 @@
+import {enrollmentProofAccept,enrollmentProofFileIssue,matchesEnrollmentProofSignature,maxEnrollmentProofBytes} from '../../src/utils/enrollmentProofFile.ts';
 import {measureEnrollmentPhase} from '../requestTracing.ts';
 import {enrollmentSessionCookie,enrollmentVisitorDigest,readEnrollmentEmailSession,revokeEnrollmentEmailSession} from './enrollmentVisitorSession.ts';
 import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox,enrollmentMailReadiness} from './enrollmentMail.ts';
-import type { Express, Request, Response } from 'express';
+import express, {type Express, type Request, type Response} from 'express';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
@@ -88,15 +89,41 @@ function view(row: any, classState: string) {
     ...(row.data?.creditIn?{creditIn:Number(row.data.creditIn)}:{}),...(row.data?.creditOut?{creditOut:Number(row.data.creditOut)}:{}) };
 }
 
-function proofContent(raw: unknown, mime: unknown) {
-  if (typeof raw !== 'string' || raw.length > 2_800_000 || !/^[a-zA-Z0-9+/]+={0,2}$/.test(raw)) invalid('enrollment_invalid_proof');
-  const bytes = Buffer.from(raw as string, 'base64');
-  const hex = bytes.subarray(0, 8).toString('hex');
-  if (bytes.toString('base64') !== raw || bytes.length < 16 || bytes.length > 2 * 1024 * 1024 ||
-      !((mime === 'image/png' && hex === '89504e470d0a1a0a') ||
-        (mime === 'image/jpeg' && hex.startsWith('ffd8ff')) ||
-        (mime === 'application/pdf' && hex.startsWith('255044462d')))) invalid('enrollment_invalid_proof');
-  return createHash('sha256').update(bytes).digest('hex');
+export function proofContent(raw: unknown, mime: unknown) {
+  const binary = Buffer.isBuffer(raw);
+  if (!binary && (typeof raw !== 'string' || raw.length > 2_800_000 || !/^[a-zA-Z0-9+/]+={0,2}$/.test(raw))) invalid('enrollment_invalid_proof');
+  const bytes = binary ? raw : Buffer.from(raw as string, 'base64');
+  if (enrollmentProofFileIssue(bytes.length,mime) ||
+      !matchesEnrollmentProofSignature(bytes,mime)) invalid('enrollment_invalid_proof');
+  const encoded = bytes.toString('base64');
+  if (!binary && encoded !== raw) invalid('enrollment_invalid_proof');
+  return {digest:createHash('sha256').update(bytes).digest('hex'),encoded};
+}
+
+const proofMimeTypes = enrollmentProofAccept.split(',');
+const readBinaryProof = express.raw({type:proofMimeTypes,limit:maxEnrollmentProofBytes,inflate:false});
+
+export async function readProofSubmission(q:Request,r:Response) {
+  const header=q.get('X-Enrollment-Proof');
+  let metadata=q.body;
+  if(header!==undefined){
+    if(header.length>4096)invalid('enrollment_invalid_proof');
+    try { metadata=JSON.parse(decodeURIComponent(header)); }
+    catch { invalid('enrollment_invalid_proof'); }
+  }
+  const {uploadId,reportedAmount,bankReference}=metadata??{};
+  if(typeof uploadId!=='string'||!uuid.test(uploadId))invalid('enrollment_invalid_proof');
+  if(header===undefined)return {uploadId,reportedAmount,bankReference,mime:metadata.mime,content:metadata.encoded};
+  const mime=q.is(proofMimeTypes)||undefined;
+  if(mime){
+    await new Promise<void>((resolve,reject)=>readBinaryProof(q,r,(error?:{status?:number})=>{
+      // Let the existing invalid-proof path clear an oversized or unsupported attempt.
+      if(error && error.status!==413 && error.status!==415){reject(error);return;}
+      if(error)q.body=undefined;
+      resolve();
+    }));
+  }
+  return {uploadId,reportedAmount,bankReference,mime,content:Buffer.isBuffer(q.body)?q.body:undefined};
 }
 
 export async function enrollmentReadiness(c:Client,policy?:ReturnType<typeof enrollmentServicePolicy>) {
@@ -572,31 +599,49 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     if(!uuid.test(String(id))||!uuid.test(String(uploadId)))invalid('enrollment_invalid_proof');
     const result=await enrollTx(async(c:Client)=>{
       const email=await session(c,q);
-      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state, p.id AS saved_proof
+      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state, p.id AS saved_proof,
+        (o.upload_id=:p3 AND o.upload_expires_at>=UTC_TIMESTAMP(6)) AS upload_active
         FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id
         LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3
         WHERE o.id=:p1 AND o.email=:p2`,[id,email,uploadId]);
       if(!row)invalid('enrollment_order_not_found',404);
-      return row.saved_proof?{state:'saved',order:view(row,row.class_state)}:{state:'unconfirmed'};
+      return row.saved_proof?{state:'saved',order:view(row,row.class_state)}:
+        {state:'unconfirmed',proofTransport:'binary-v1',uploadActive:Number(row.upload_active)===1};
     });
     r.json(result);
   }));
 
   post(base + '/orders/:id/proofs/start', async (q, r) => {
-    const uploadId = await enrollTx(async (c: Client) => {
+    const previousUploadId=q.body?.previousUploadId;
+    if(previousUploadId!==undefined&&(typeof previousUploadId!=='string'||!uuid.test(previousUploadId)))
+      invalid('enrollment_invalid_proof');
+    const result = await enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
+      // A delayed finish may have committed while this retry waited for the
+      // same order lock. Return its result before opening another upload.
+      if(previousUploadId&&(await c.query('SELECT id FROM enrollment_proofs WHERE id=:p1 AND order_id=:p2',
+        [previousUploadId,order.id])).rows.length)return {state:'saved',order:view(order,cohort.state)};
       if (!allowsEnrollmentProof(order.state,order.data?.closureReason)) invalid('enrollment_proof_not_available', 409);
-      if (Number(order.upload_active)) return order.upload_id;
+      if (Number(order.upload_active)) {
+        if (previousUploadId && previousUploadId===order.upload_id &&
+            (order.state!=='awaiting_payment' || Number(order.before_due))) {
+          // Keep the idempotency key. After the payment deadline the original
+          // expiry still controls when an unpaid seat can be released.
+          await c.query(`UPDATE enrollment_orders SET upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE
+            WHERE id=:p1 AND upload_id=:p2 AND upload_expires_at<UTC_TIMESTAMP(6)+INTERVAL 190 SECOND
+              AND (state<>'awaiting_payment' OR payment_due_at>=UTC_TIMESTAMP(6))`,[order.id,previousUploadId]);
+        }
+        return {uploadId:order.upload_id,transport:'binary-v1'};
+      }
       const id = randomUUID();
       await c.query('UPDATE enrollment_orders SET upload_id=:p1,upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE WHERE id=:p2', [id,order.id]);
-      return id;
+      return {uploadId:id,transport:'binary-v1'};
     });
-    r.json({ uploadId });
+    r.json(result);
   });
 
   post(base + '/orders/:id/proofs/finish', async (q, r) => {
-    const { uploadId, mime, encoded, reportedAmount, bankReference } = q.body;
-    if (typeof uploadId !== 'string' || !uuid.test(uploadId)) invalid('enrollment_invalid_proof');
+    const {uploadId,reportedAmount,bankReference,mime,content}=await readProofSubmission(q,r);
     // End the current attempt on a rejected upload, so a later attempt uses a fresh server clock.
     const result = await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
@@ -605,9 +650,9 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       if (order.upload_id !== uploadId || !Number(order.upload_active) || !allowsEnrollmentProof(order.state,order.data?.closureReason)) {
         invalid('enrollment_upload_expired', 409);
       }
-      let digest, transferDetails;
+      let proof, transferDetails;
       try {
-        digest = await measureEnrollmentPhase(r,'proof_validation',()=>proofContent(encoded,mime));
+        proof = await measureEnrollmentPhase(r,'proof_validation',()=>proofContent(content,mime));
         transferDetails = proofTransferDetails(reportedAmount,bankReference);
       }
       catch {
@@ -616,7 +661,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         return null;
       }
       await c.query(`INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,transfer_details,created_at)
-        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,digest,encoded,transferDetails]);
+        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,proof.digest,proof.encoded,transferDetails]);
       const state = order.state === 'awaiting_payment' ? 'proof_review' : order.state;
       if (!order.data.firstReviewDueAt) {
         const first=(await c.query(`SELECT id,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS availableAt
@@ -630,7 +675,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         }
       }
       await c.query('UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
-      await proofNotices(c,order.id,cohort.id,digest,cohort.data.level);
+      await proofNotices(c,order.id,cohort.id,proof.digest,cohort.data.level);
       return view({...order,state},cohort.state);
     }));
     if (!result) invalid('enrollment_invalid_proof');

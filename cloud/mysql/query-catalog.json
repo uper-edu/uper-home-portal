@@ -2473,6 +2473,12 @@
       "server/portal/enrollmentCatalog.ts"
     ]
   },
+  "SELECT id FROM enrollment_proofs WHERE id=:p1 AND order_id=:p2": {
+    "sql": "SELECT id FROM enrollment_proofs WHERE id=:p1 AND order_id=:p2",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
+    ]
+  },
   "SELECT id FROM enrollment_transfer_invitations\n          WHERE order_id=:p1 AND (source_class_id=:p2 OR (state='offered' AND expires_at>UTC_TIMESTAMP(6))) LIMIT 1": {
     "sql": "SELECT id FROM enrollment_transfer_invitations\n          WHERE order_id=:p1 AND (source_class_id=:p2 OR (state='offered' AND expires_at>UTC_TIMESTAMP(6))) LIMIT 1",
     "sources": [
@@ -3319,8 +3325,8 @@
       "server/portal/enrollmentApplication.ts"
     ]
   },
-  "SELECT o.*, b.state AS class_state, p.id AS saved_proof\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3\n        WHERE o.id=:p1 AND o.email=:p2": {
-    "sql": "SELECT o.*, b.state AS class_state, p.id AS saved_proof\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3\n        WHERE o.id=:p1 AND o.email=:p2",
+  "SELECT o.*, b.state AS class_state, p.id AS saved_proof,\n        (o.upload_id=:p3 AND o.upload_expires_at>=UTC_TIMESTAMP(6)) AS upload_active\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3\n        WHERE o.id=:p1 AND o.email=:p2": {
+    "sql": "SELECT o.*, b.state AS class_state, p.id AS saved_proof,\n        (o.upload_id=:p3 AND o.upload_expires_at>=UTC_TIMESTAMP(6)) AS upload_active\n        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id\n        LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3\n        WHERE o.id=:p1 AND o.email=:p2",
     "sources": [
       "server/portal/enrollmentApplication.ts"
     ]
@@ -4386,6 +4392,12 @@
     "sql": "UPDATE enrollment_orders SET state='refunding',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",
     "sources": [
       "server/portal/enrollmentResolution.ts"
+    ]
+  },
+  "UPDATE enrollment_orders SET upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE\n            WHERE id=:p1 AND upload_id=:p2 AND upload_expires_at<UTC_TIMESTAMP(6)+INTERVAL 190 SECOND\n              AND (state<>'awaiting_payment' OR payment_due_at>=UTC_TIMESTAMP(6))": {
+    "sql": "UPDATE enrollment_orders SET upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE\n            WHERE id=:p1 AND upload_id=:p2 AND upload_expires_at<UTC_TIMESTAMP(6)+INTERVAL 190 SECOND\n              AND (state<>'awaiting_payment' OR payment_due_at>=UTC_TIMESTAMP(6))",
+    "sources": [
+      "server/portal/enrollmentApplication.ts"
     ]
   },
   "UPDATE enrollment_orders SET upload_id=:p1,upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE WHERE id=:p2": {
