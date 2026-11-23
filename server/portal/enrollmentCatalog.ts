@@ -37,24 +37,39 @@ function record(row: { id: string; revision: number; state: EnrollmentClassAdmin
   return { ...row.data, id: row.id, revision: row.revision, state: row.state };
 }
 
-export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeof tx>[0]>[0]) {
+export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeof tx>[0]>[0], {classIds=[],includeAvailability=true}: {classIds?:readonly string[];includeAvailability?:boolean} = {}) {
   return (await c.query(`
       SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,
-        (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
+        CASE WHEN :p3=1 THEN (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
           AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
-          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) AS seats
+          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) END AS seats
       FROM enrollment_classes e
       JOIN crm_courses c ON c.id=e.course_id
       LEFT JOIN enrollment_class_openings g ON g.class_id=e.id
       WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
         AND JSON_EXTRACT(c.value,'$.active')=true
+        AND (:p1 IS NULL OR e.id IN (:p2))
       ORDER BY e.first_lesson_at,e.id
-    `)).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number }) => {
+    `, [classIds.length ? 1 : null, classIds, Number(includeAvailability)])).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number | null }) => {
       const publicClass=publicEnrollmentClass(record(row));
-      const available=publicClass.classSize?publicClass.classSize.maximum-Number(row.seats):NaN;
+      const available=row.seats!==null&&publicClass.classSize?publicClass.classSize.maximum-Number(row.seats):NaN;
       const availability=Number.isFinite(available)?available<=0?'full':available<=3?'limited':'available':undefined;
       return { ...publicClass, opened: Number(row.opened) === 1, availability };
     });
+}
+
+// Match the catalog's public visibility rules without counting seats for a Chat reference.
+export async function readPublicEnrollmentClassReference(c: Parameters<Parameters<typeof tx>[0]>[0], classId: string) {
+  const row = (await c.query(`
+    SELECT e.data
+    FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
+    WHERE e.id=:p1 AND e.state='published'
+      AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+      AND JSON_EXTRACT(c.value,'$.active')=true
+  `, [classId])).rows[0] as {data: EnrollmentClassConfig} | undefined;
+  if (!row) return null;
+  const {level, period, format, batchNumber} = row.data;
+  return {level, period, format, batchNumber};
 }
 
 export async function readPublicEnrollmentAppointments(c: Parameters<Parameters<typeof tx>[0]>[0]) {

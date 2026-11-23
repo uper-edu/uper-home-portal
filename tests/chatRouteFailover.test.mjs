@@ -68,7 +68,7 @@ function sse(content, done = true) {
 function mountFixture(t, bothFail = false) {
   const priorHistory=[],messages=[],attempts=[],events=[],logs=[],calls=[],sqlTrace=[];
   const fixture = {
-    events,logs,released:0,sequence:0,
+    events,logs,released:0,sequence:0,referenceReads:[],
     async query(sql,args = []) {
       if (sql.startsWith('SELECT GET_LOCK')) return {rows:[{acquired:1}]};
       if (sql.startsWith('SELECT * FROM messages')) return {rows:messages.filter(row=>row.requestId===args[1])};
@@ -80,6 +80,10 @@ function mountFixture(t, bothFail = false) {
       if (sql.startsWith('SELECT result FROM hsk_attempts') || sql.startsWith('SELECT value FROM crm_courses')) return {rows:[]};
       if (sql.startsWith('SELECT revision,config FROM enrollment_mail_configuration')) {
         return {rows:[{revision:0,config:{delivery:{mode:'simulation',generation:'fixture'}}}]};
+      }
+      if (sql.includes('SELECT e.data') && sql.includes('FROM enrollment_classes e')) {
+        fixture.referenceReads.push(args);
+        return {rows:args[0]===classId?[{data:classData}]:[]};
       }
       if (sql.includes(' AS seats') && sql.includes('FROM enrollment_classes e')) {
         return {rows:[{id:classId,state:'published',revision:1,data:classData,opened:1,seats:4}]};
@@ -128,7 +132,7 @@ function mountFixture(t, bothFail = false) {
     const purpose = instruction.startsWith('Identify only the response language.') ? 'language'
       : instruction.startsWith('Extract only the relevant time basis') ? 'schedule' : 'answer';
     calls.push([target,purpose,body.stream]);
-    if (purpose === 'answer') fixture.modelHistory=body.messages.slice(1);
+    if (purpose === 'answer') {fixture.modelHistory=body.messages.slice(1);fixture.modelInstruction=instruction;}
     if (purpose === 'language') return response({current:'en',requested:null},body.model);
     if (purpose === 'schedule') return response({basis:'wib',basisEvidence:null},body.model);
     if (target === 'primary.invalid') return sse('incomplete primary answer',false);
@@ -138,7 +142,7 @@ function mountFixture(t, bothFail = false) {
   });
   let handle;
   mountChat({post(path,handler){assert.equal(path,'/api/chat');handle=handler;}});
-  async function send({stream = true,content = question} = {}) {
+  async function send({stream = true,content = question,enrollmentContext} = {}) {
     const packets = [];
     let reply, ended = false;
     const headers = new Map();
@@ -148,7 +152,7 @@ function mountFixture(t, bothFail = false) {
       json: body => {reply=JSON.parse(JSON.stringify(body));},
       end: () => {ended=true;},
     };
-    await handle({body:{content,stream,messageId:'learner-turn',entrySurface:'standalone_chat',lang:'en'}},res);
+    await handle({body:{content,stream,messageId:'learner-turn',entrySurface:'standalone_chat',lang:'en',enrollmentContext}},res);
     return {packets,reply,headers,ended};
   }
   return {fixture,send,messages,attempts,events,logs,calls,sqlTrace,priorHistory};
@@ -222,4 +226,22 @@ test('Chat sends the latest eligible history in its original order', async t => 
   await send();
   const expected=priorHistory.filter(row=>row.status!=='interrupted').slice(-39).map(({role,content})=>({role,content}));
   assert.deepEqual(fixture.modelHistory.filter(message=>message.content.startsWith('history-')),expected);
+});
+
+
+test('Chat class context reads only the referenced public class', async t => {
+  const {fixture,send}=mountFixture(t);
+  await send({enrollmentContext:{kind:'class',classId}});
+  assert.deepEqual(fixture.referenceReads,[[classId]]);
+  assert.ok(fixture.modelInstruction.includes(JSON.stringify({kind:'class',classId,publicClass:{
+    level:classData.level,period:classData.period,format:classData.format,batchNumber:classData.batchNumber,
+  }})));
+});
+
+test('Chat context for an unavailable class includes no class facts', async t => {
+  const {fixture,send}=mountFixture(t);
+  const unavailable='unavailable-class';
+  await send({enrollmentContext:{kind:'class',classId:unavailable}});
+  assert.deepEqual(fixture.referenceReads,[[unavailable]]);
+  assert.ok(fixture.modelInstruction.includes(JSON.stringify({kind:'class',classId:unavailable,publicClass:null})));
 });

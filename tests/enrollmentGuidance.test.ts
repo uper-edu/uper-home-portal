@@ -678,3 +678,16 @@ test('a browse intent that asks to apply verifies intake before giving applicati
     for(const key of keys)if(saved[key]===undefined)delete process.env[key];else process.env[key]=saved[key];
   }
 });
+
+test('explicit Chat inspection scopes the availability lookup and keeps reference order', async()=>{
+  const {chatEnrollmentAction}=await import('../server/portal/chatEnrollment');
+  const ids=['second-class','first-class'];
+  const result=await chatEnrollmentAction({query:async(sql,args)=>{
+    assert.match(sql,/e.id IN \(:p2\)/);
+    assert.deepEqual(args,[1,ids,1]);
+    return {rows:[{id:ids[1],data:{...sample(),capacity:15},opened:0,seats:2},
+      {id:ids[0],data:{...sample(),capacity:15},opened:0,seats:15}]};
+  }},{kind:'inspect',question:'compare_classes',referenceIds:ids},false,false,ids);
+  assert.equal(result?.kind,'class');
+  assert.deepEqual(result?.rows?.map(row=>[row.id,row.availability]),[[ids[0],'full'],[ids[1],'available']]);
+});

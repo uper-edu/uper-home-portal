@@ -131,7 +131,7 @@ export async function chatEnrollmentAction(
       const filters=matchEnrollmentGuidance(intent,[]);
       const refs=intent.referenceIds.filter(id=>knownReferences.includes(id));
       if(!refs.length)return filters;
-      const rows=await readPublicEnrollmentClasses(c);
+      const rows=await readPublicEnrollmentClasses(c,{classIds:refs});
       const matching=refs.flatMap(id=>rows.find(row=>row.id===id&&
         (!level||enrollmentLevelMatches(level,row.level))&&(!period||row.period===period)&&
         (!format||row.format===format)&&(!intent.maximumTotal||row.price<=intent.maximumTotal)&&
@@ -180,7 +180,7 @@ export async function chatEnrollmentAction(
       if(intent.invalidLevel&&!level&&!intent.quoteLevels.length)
         return {kind,format,question,detailFields:intent.detailFields,quoteMissing:true,quotes:[]};
       const noGroups=kind==='appointment'||formats.every(format=>format==='one-on-one')&&formats.length>0;
-      const quotes=enrollmentQuoteRows(intent,noGroups?[]:await readPublicEnrollmentClasses(c),
+      const quotes=enrollmentQuoteRows(intent,noGroups?[]:await readPublicEnrollmentClasses(c,{classIds:intent.referenceIds,includeAvailability:false}),
         !formats.length||formats.includes('one-on-one')||kind==='appointment'?await readPublicEnrollmentAppointments(c):[]);
       const levels=intent.quoteLevels.length?intent.quoteLevels:level?[level]:[];
       const quoteMissing=intent.invalidLevel||!quotes.length||levels.some(requested=>!quotes.some(row=>enrollmentLevelMatches(requested,row.level)))||
@@ -194,7 +194,7 @@ export async function chatEnrollmentAction(
       const levels=intent.quoteLevels.length?intent.quoteLevels:level?[level]:[];
       if(pairComparison&&intent.referenceIds.length!==2)return {kind:'unavailable',question};
       if(!intent.referenceIds.length&&(kind==='inspect'||!levels.length))return {kind:'catalog',level,format};
-      const classes=await readPublicEnrollmentClasses(c);
+      const classes=await readPublicEnrollmentClasses(c,{classIds:intent.referenceIds});
       const matched=classes.filter(row=>levels.some(requested=>enrollmentLevelMatches(requested,row.level))&&
         (!format||row.format===format)&&(!period||row.period===period)&&
         (!intent.batchNumber||row.batchNumber===intent.batchNumber)&&

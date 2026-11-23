@@ -4,7 +4,7 @@ import {chineseChatInput} from '../../src/utils/chatLanguage.ts';
 import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionFollowUp,refundConsultationIntent} from './chatEnrollment.ts';
 import {assessmentEnrollmentSelection,enrollmentGuideText,enrollmentReplyLanguage,hasConsultationEvidence,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,resolveEnrollmentComparison,sharedEnrollmentComparison,withExplicitChatAppointmentTime,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
-import {readPublicEnrollmentClasses} from './enrollmentCatalog.ts';
+import {readPublicEnrollmentClassReference} from './enrollmentCatalog.ts';
 import {normalizeEnrollmentChatSelection} from '../../src/utils/enrollmentChatJourney.ts';
 import {courseCatalogueInstruction,managedEnrollmentCatalogueSelection,parseConsultationReply,renderConsultationReply} from './coursePrices.ts';
 import {queueExtraction} from './aiExtraction.ts';
@@ -225,13 +225,9 @@ export function mountChat(app: Express) {
         const referenceContext=(previousRecommendation??[]).map((row,index)=>({
           id:row.id,position:index+1,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,firstLesson:row.firstLesson,
         }));
-        const classFromEnrollment = enrollmentContext?.kind==='class' ?
-          (await readPublicEnrollmentClasses(db).catch(()=>[])).find(row=>row.id===enrollmentContext.classId) : undefined;
         const currentEnrollmentContext = enrollmentContext?.kind==='class' ? {
-          ...enrollmentContext, publicClass:classFromEnrollment ? {
-            level:classFromEnrollment.level, period:classFromEnrollment.period, format:classFromEnrollment.format,
-            batchNumber:classFromEnrollment.batchNumber,
-          } : null,
+          ...enrollmentContext,
+          publicClass: await readPublicEnrollmentClassReference(db,enrollmentContext.classId).catch(()=>null),
         } : enrollmentContext;
         const previousConstraints=newestMessages.find(message=>
           message.role==='assistant'&&message.metadata?.consultationConstraints)?.metadata.consultationConstraints as ConsultationConstraints|undefined;
