@@ -1,7 +1,6 @@
-import {enrollmentProofAccept,enrollmentProofFileIssue,matchesEnrollmentProofSignature,maxEnrollmentProofBytes} from '../../src/utils/enrollmentProofFile.ts';
 import {measureEnrollmentPhase} from '../requestTracing.ts';
-import {enrollmentSessionCookie,enrollmentVisitorDigest,readEnrollmentEmailSession,revokeEnrollmentEmailSession} from './enrollmentVisitorSession.ts';
-import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox,enrollmentMailReadiness} from './enrollmentMail.ts';
+import {enrollmentSessionCookie,enrollmentVisitorDigest,inspectEnrollmentEmailSession,readEnrollmentEmailSession,readEnrollmentSessionDigest,revokeEnrollmentEmailSession} from './enrollmentVisitorSession.ts';
+import {dispatchEnrollmentMail,enrollmentMailDelivery,enrollmentMailDeliveryState,enrollmentMailbox,enrollmentMailReadiness} from './enrollmentMail.ts';
 import express, {type Express, type Request, type Response} from 'express';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { tx } from './store.ts';
@@ -14,6 +13,7 @@ import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitlist, startEnrollmentVacancySimulation, takenSeats } from './enrollmentInterests.ts';
 import { enrollmentInsertionPhone, enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 import { allowsEnrollmentProof, enrollmentClosureReason, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
+import {enrollmentProofAccept,enrollmentProofFileIssue,matchesEnrollmentProofSignature,maxEnrollmentProofBytes} from '../../src/utils/enrollmentProofFile.ts';
 import { isEnrollmentInsertionWindow } from '../../src/utils/enrollmentCatalog.ts';
 import { mountEnrollmentRules, readEnrollmentRules, readEnrollmentWorkCalendar } from './enrollmentRules.ts';
 import { workingDayDeadline } from '../../src/utils/workCalendar.ts';
@@ -56,6 +56,21 @@ async function session(c: Client, q: Request): Promise<string> {
   const email=await readEnrollmentEmailSession(c,q.headers.cookie,q.get('X-Enrollment-Email'));
   if (!email) invalid('enrollment_verification_required', 401);
   return email;
+}
+
+export async function enrollmentAssistancePreview(c:Client,offer:{
+  class_id:string;email:string;order_id:string|null;data:{quote:unknown;name:string;phone:string};
+},mode:unknown,cookie:string|undefined,expectedEmail?:string) {
+  const preview={classId:offer.class_id,quote:offer.data.quote};
+  if(mode!==true&&mode!=='if-verified')return preview;
+  const sessionRead=readEnrollmentEmailSession(c,cookie,expectedEmail);
+  const email=await (mode===true?sessionRead:sessionRead.catch(()=>undefined));
+  if(email&&email===offer.email)return {...preview,name:offer.data.name,phone:offer.data.phone,email,orderId:offer.order_id};
+  if(mode===true){
+    if(!email)invalid('enrollment_verification_required',401);
+    invalid('enrollment_assistance_email',403);
+  }
+  return preview;
 }
 
 async function lockClass(c: Client, classId: string) {
@@ -126,16 +141,22 @@ export async function readProofSubmission(q:Request,r:Response) {
   return {uploadId,reportedAmount,bankReference,mime,content:Buffer.isBuffer(q.body)?q.body:undefined};
 }
 
-export async function enrollmentReadiness(c:Client,policy?:ReturnType<typeof enrollmentServicePolicy>) {
-  if(!(policy??enrollmentServicePolicy()).servicing)return {accepting:false,servicing:false,reasons:['service_disabled']};
+async function readEnrollmentIntake(c:Client,policy?:ReturnType<typeof enrollmentServicePolicy>,includeBank=false) {
+  if(!(policy??enrollmentServicePolicy()).servicing)
+    return {readiness:{accepting:false,servicing:false,reasons:['service_disabled']}};
   const mail=policy?undefined:await enrollmentMailReadiness(c);
   policy??=enrollmentServicePolicy(process.env,mail?.mode);
+  const bank=includeBank||!policy.simulation?await readEnrollmentBank(c):undefined;
   const reasons:string[]=[];
   if(!policy.simulation){
-    if(!hasConfiguredEnrollmentBank(await readEnrollmentBank(c)))reasons.push('bank_required');
+    if(!bank||!hasConfiguredEnrollmentBank(bank))reasons.push('bank_required');
     if(!await (mail??await enrollmentMailReadiness(c)).smtpReady())reasons.push('mail_required');
   }
-  return {accepting:reasons.length===0,servicing:true,reasons};
+  return {readiness:{accepting:reasons.length===0,servicing:true,reasons},bank:bank?.bank};
+}
+
+export async function enrollmentReadiness(c:Client,policy?:ReturnType<typeof enrollmentServicePolicy>) {
+  return (await readEnrollmentIntake(c,policy)).readiness;
 }
 
 export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor }: {
@@ -158,7 +179,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const {reasons}=await enrollmentReadiness(c);
     if(reasons.length)invalid('enrollment_intake_'+reasons[0],503);
   }
-  app.get(base + '/availability', wrap(async (_q,r) => {
+  app.get(base + '/availability', wrap(async (q,r) => {
+    if(q.query.scope==='servicing'||!policy.servicing){
+      r.set('Cache-Control','no-store').json({accepting:false,servicing:policy.servicing,
+        reasons:policy.servicing?[]:['service_disabled']});
+      return;
+    }
     const readiness=await enrollTx(c=>enrollmentReadiness(c)).catch(()=>({
       accepting:false,servicing:policy.servicing,reasons:['check_failed'],
     }));
@@ -261,7 +287,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const id = randomUUID();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const pending=await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
-      const delivery=await enrollmentMailDelivery(c);
+      const {delivery,configured}=await enrollmentMailDeliveryState(c);
       const local=enrollmentMailbox(delivery.mode);
       if(delivery.mode==='disabled'||delivery.mode==='simulation'&&!local)invalid('enrollment_email_unavailable',503);
       await lockEnrollmentEmail(c, email);
@@ -277,7 +303,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       const message=renderEnrollmentEmail(q.body.purpose==='mine'?'otp_mine':'otp_apply',{
         language:q.body.language,code,codeMinutes:emailCodeMinutes,
       });
-      if(await enrollmentMailConfigured(c))return {message,delivery};
+      if(configured)return {message,delivery};
       if(!local)invalid('enrollment_email_unavailable',503);
       await local.deliver(id,email,code,message);
     }));
@@ -296,12 +322,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
 
   post(base + '/email/session', async (q, r) => {
     if(q.body?.email===undefined){
-      const verifiedEmail=await enrollTx(c=>readEnrollmentEmailSession(c,q.headers.cookie));
+      const verifiedEmail=await inspectEnrollmentEmailSession(enrollTx,q.headers.cookie);
       r.json({verifiedEmail:verifiedEmail??null});
       return;
     }
     const email=contact(q.body?.email);
-    const verified=await enrollTx(async c=>!!await readEnrollmentEmailSession(c,q.headers.cookie,email));
+    const verified=!!await inspectEnrollmentEmailSession(enrollTx,q.headers.cookie,email);
     r.json({verified});
   });
 
@@ -348,10 +374,9 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const id=randomUUID();
     const {email,name,phone,requestId,fingerprint,price,priority,source,actor,assistance}=input;
     const {paymentHours}=await readEnrollmentRules(c);
-    await requireNewEnrollment(c);
-    const bankSettings=await readEnrollmentBank(c);
-    if(!enrollmentMailbox((await enrollmentMailDelivery(c)).mode)&&!hasConfiguredEnrollmentBank(bankSettings))invalid('enrollment_intake_bank_required',503);
-    const {bank}=bankSettings;
+    const {readiness,bank}=await readEnrollmentIntake(c,undefined,true);
+    if(!readiness.accepting)invalid('enrollment_intake_'+readiness.reasons[0],503);
+    if(!bank)invalid('enrollment_intake_bank_required',503);
     await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
       VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)`,
     [id,cohort.id,email,requestId,fingerprint,price,{name,phone,priority,bank},paymentHours]);
@@ -368,8 +393,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     }
     await convertLearnerWaitlist(c,cohort.id,email,name,id);
     await reconcileWaitlist(c,cohort,seats+1);
-    if(!actor)await applyEnrollmentPaymentCredits(c,{order:(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0],cohort},lockOrder);
-    const reserved=(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0];
+    const reservedOrderSql='SELECT * FROM enrollment_orders WHERE id=:p1';
+    let reserved=(await c.query(reservedOrderSql,[id])).rows[0];
+    if(!actor&&await applyEnrollmentPaymentCredits(c,{order:reserved,cohort},lockOrder))
+      reserved=(await c.query(reservedOrderSql,[id])).rows[0];
     if(Number(reserved.received)<price)await orderNotice(c,'seat_reserved',id,undefined,{price:price-Number(reserved.received)});
     return view(reserved,cohort.state);
   }
@@ -445,9 +472,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const result=await enrollTx(async c=>{
       const offer=(await c.query(offerProjection,lookup)).rows[0];
       if(!offer||!Number(offer.active)&&!offer.order_id)invalid('enrollment_assistance_unavailable',404);
-      if(q.body?.verified!==true)return {classId:offer.class_id,quote:offer.data.quote};
-      if(await session(c,q)!==offer.email)invalid('enrollment_assistance_email',403);
-      return {classId:offer.class_id,quote:offer.data.quote,name:offer.data.name,phone:offer.data.phone,email:offer.email,orderId:offer.order_id};
+      return enrollmentAssistancePreview(c,offer,q.body?.verified,q.headers.cookie,q.get('X-Enrollment-Email'));
     });
     r.json(result);
   });
@@ -549,6 +574,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
   });
 
   app.get(base + '/orders', wrap(async (q, r) => {
+    if(!readEnrollmentSessionDigest(q.headers.cookie))invalid('enrollment_verification_required',401);
     const result = await enrollTx(async (c: Client) => {
       const email = await session(c, q);
       const { rows } = await c.query(`SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,
@@ -584,6 +610,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
   }));
 
   app.get(base + '/orders/:id', wrap(async (q, r) => {
+    if(!readEnrollmentSessionDigest(q.headers.cookie))invalid('enrollment_verification_required',401);
     const result = await enrollTx(async (c: Client) => {
       const verifiedEmail = await session(c,q);
       const { order,cohort } = await lockOrder(c, String(q.params.id), verifiedEmail);

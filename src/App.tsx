@@ -1,27 +1,16 @@
-import './components/admin-colors.css';
 import ApplicationErrorBoundary from './components/ApplicationErrorBoundary';
-import './components/admin-form-layout.css';
-import './components/admin/admin-dialog.css';
-import './components/admin/admin-record-actions.css';
-import './components/admin/admin-calendar-picker.css';
-
-import './components/admin/admin-list.css';
-import './components/admin/admin-disclosure.css';
-import './components/admin-form.css';
-import './components/crm/crm-form-layout.css';
 import VisitorBoundary from './components/VisitorBoundary';
 import {RouteMetadata,MetadataProvider} from './components/PageMetadata';
 import {normalizeSiteLanguage} from './utils/siteMetadata';
 import {useTranslation} from 'react-i18next';
 import CmsContentStatus from './components/CmsContentStatus';
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async';
-import Layout from './components/Layout';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { usePageTracking } from './utils/analytics';
 import { ThemeProvider } from './utils/theme';
 import {learnerPreviewToken} from './utils/enrollmentLearnerPreview';
 import {SiteChatRoutes} from './components/SiteChatRoutes';
+import {cancelUnmatchedEnrollmentPreload} from './services/enrollmentLandingState';
 
 // Robust dynamic import with automatic retry on chunk loading hiccups
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -43,9 +32,12 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
   });
 }
 
-const Home = lazyWithRetry(() => import('./pages/Home'));
+const loadHome = () => import('./pages/Home');
+const loadEnrollment = () => import('./pages/Enrollment');
+const Layout = lazyWithRetry(() => import('./components/Layout'));
+const Home = lazyWithRetry(loadHome);
 const LinkHub = lazyWithRetry(() => import('./pages/LinkHub'));
-const Enrollment = lazyWithRetry(() => import('./pages/Enrollment'));
+const Enrollment = lazyWithRetry(loadEnrollment);
 const About = lazyWithRetry(() => import('./pages/About'));
 const FAQ = lazyWithRetry(() => import('./pages/FAQ'));
 const Partners = lazyWithRetry(() => import('./pages/Partners'));
@@ -59,16 +51,54 @@ const News = lazyWithRetry(() => import('./pages/News'));
 const NewsDetail = lazyWithRetry(() => import('./pages/NewsDetail'));
 const CampaignDetail = lazyWithRetry(() => import('./pages/CampaignDetail'));
 const StyleGuide = lazyWithRetry(() => import('./pages/StyleGuide'));
-const StandAloneChat = lazyWithRetry(() => import('./pages/StandAloneChat'));
+let standaloneChatModule: Promise<typeof import('./pages/StandAloneChat')> | undefined;
+function loadStandaloneChat() {
+  return standaloneChatModule ??= import('./pages/StandAloneChat').catch(error => {
+    standaloneChatModule = undefined;
+    throw error;
+  });
+}
+const StandAloneChat = lazyWithRetry(loadStandaloneChat);
 const CrmWorkbench = lazyWithRetry(() => import('./pages/CrmWorkbench'));
 const AccessWorkbench = lazyWithRetry(() => import('./pages/AccessWorkbench'));
 const CmsWorkbench = lazyWithRetry(() => import('./pages/CmsWorkbench'));
+
+function StandaloneChatRoute() {
+  // Download the UI while VisitorBoundary verifies the cookie. Only the
+  // boundary can mount the workspace and begin reading private history.
+  useEffect(() => { void loadStandaloneChat().catch(() => {}); }, []);
+  return <VisitorBoundary><StandAloneChat /></VisitorBoundary>;
+}
+
+function WebsiteLayout({learnerPreview=false}:{learnerPreview?:boolean}) {
+  const {pathname}=useLocation();
+  // Keep these entry pages downloading alongside the website shell on cold navigation.
+  useEffect(() => {
+    if(pathname==='/')void loadHome().catch(()=>{});
+    else if(/^\/enrollment(?:\/|$)/i.test(pathname))void loadEnrollment().catch(()=>{});
+  }, [pathname]);
+  return <Suspense fallback={learnerPreview?null:<PageLoading/>}><Layout learnerPreview={learnerPreview}/></Suspense>;
+}
+
+function PageLoading() {
+  return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"/></div>;
+}
 
 function AnalyticsTracker() {
   usePageTracking();
   return null;
 }
 
+function EnrollmentPreloadCleanup() {
+  const {pathname,search}=useLocation();
+  useEffect(cancelUnmatchedEnrollmentPreload,[pathname,search]);
+  useEffect(()=>{
+    // Browser Back can run while the destination route is still downloading.
+    window.addEventListener('popstate',cancelUnmatchedEnrollmentPreload);
+    return ()=>window.removeEventListener('popstate',cancelUnmatchedEnrollmentPreload);
+  },[]);
+  return null;
+}
 
 function SiteNotFound() {
   const {i18n}=useTranslation();
@@ -77,26 +107,26 @@ function SiteNotFound() {
 }
 
 export default function App() {
-  if (learnerPreviewToken()) return <ThemeProvider><HelmetProvider><BrowserRouter>
+  if (learnerPreviewToken()) return <ThemeProvider><BrowserRouter>
     <ApplicationErrorBoundary><Suspense fallback={null}><Routes>
-      <Route element={<Layout learnerPreview/>}><Route path="/enrollment" element={<Enrollment/>}/></Route>
+      <Route element={<WebsiteLayout learnerPreview/>}><Route path="/enrollment" element={<Enrollment/>}/></Route>
     </Routes></Suspense></ApplicationErrorBoundary>
-  </BrowserRouter></HelmetProvider></ThemeProvider>;
+  </BrowserRouter></ThemeProvider>;
   return (
     <ThemeProvider>
-      <HelmetProvider>
-        <ApplicationErrorBoundary>
-          <BrowserRouter>
+      <ApplicationErrorBoundary>
+        <BrowserRouter>
         <MetadataProvider><RouteMetadata />
         <CmsContentStatus />
+            <EnrollmentPreloadCleanup />
             <AnalyticsTracker />
-            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div></div>}>
+            <Suspense fallback={<PageLoading/>}>
               <SiteChatRoutes><Routes>
                 {/* Standalone public link-in-bio hub */}
                 <Route path="link" element={<LinkHub />} />
                 {/* Standalone Seminar & Direct AI Advisory Portals */}
-                <Route path="chat" element={<VisitorBoundary><StandAloneChat /></VisitorBoundary>} />
-                <Route path="consult" element={<VisitorBoundary><StandAloneChat /></VisitorBoundary>} />
+                <Route path="chat" element={<StandaloneChatRoute />} />
+                <Route path="consult" element={<StandaloneChatRoute />} />
 
                 {/* Sales & Telemarketing CRM Workbench */}
                 <Route path="crm" element={<CrmWorkbench />} />
@@ -107,7 +137,7 @@ export default function App() {
                 <Route path="CMS" element={<CmsWorkbench />} />
 
 
-                <Route path="/" element={<Layout />}>
+                <Route path="/" element={<WebsiteLayout />}>
                   <Route index element={<Home />} />
                   <Route path="about" element={<About />} />
                   <Route path="faq" element={<FAQ />} />
@@ -134,9 +164,8 @@ export default function App() {
                 </Route>
               </Routes></SiteChatRoutes>
             </Suspense></MetadataProvider>
-          </BrowserRouter>
-        </ApplicationErrorBoundary>
-      </HelmetProvider>
+        </BrowserRouter>
+      </ApplicationErrorBoundary>
     </ThemeProvider>
   );
 }

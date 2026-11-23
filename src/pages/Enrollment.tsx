@@ -1,32 +1,62 @@
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import { enrollmentCopy,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
-import { lazy, useEffect, useLayoutEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, MessageCircle, Minus, Plus } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { normalizeSiteLanguage } from '../utils/siteMetadata';
+import { watchPromotionLanguage } from '../utils/promotionLookup';
 import { formatCurrency } from '../utils/currency';
-import { type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { type EnrollmentClassIdentity, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { PublicSingleSelect } from '../components/PublicSingleSelect';
-import { EnrollmentSupport } from '../components/EnrollmentSupport';
+import { enrollmentAppointmentUrl,enrollmentCatalogUrl,enrollmentLandingTimeoutMs,intakeReadinessUrl,servicingReadinessUrl,parseEnrollmentCatalog, parseEnrollmentReadiness,preloadEnrollmentNavigation,readEnrollmentLandingData,type PublicEnrollmentAppointment } from '../services/enrollmentClassDetails';
+import { EnrollmentModuleBoundary, lazyEnrollmentModule } from '../components/EnrollmentModuleBoundary';
+import {loadEnrollmentApplication, loadEnrollmentIntake} from '../services/enrollmentFormModule';
+import {watchReadReconnect} from '../services/readReconnect';
+import VisitorBoundary from '../components/VisitorBoundary';
+import {readEnrollmentDraft} from '../services/visitorContact';
+import {visitorScope} from '../services/visitorScope';
 
 import {learnerPreviewToken} from '../utils/enrollmentLearnerPreview';
-import {linkHubReturnUrl,promotionJourneyUrl} from '../utils/promotionNavigation';
+import {linkHubReturnUrl,promotionEntryUrl} from '../utils/promotionNavigation';
 import {normalizeEnrollmentChatSelection} from '../utils/enrollmentChatJourney';
 import {isPlainLinkClick,readChatRecommendation,readEnrollmentPosition,rememberEnrollment,returnAlongJourney,type ChatJourneyState,type EnrollmentPosition} from '../utils/chatJourneyNavigation';
 import {trackEvent} from '../utils/analytics';
 import './enrollment.css';
 
-const EnrollmentApplication = lazy(() => import('../components/EnrollmentIntake').then(module => ({default:module.EnrollmentIntake})));
-const EnrollmentPayment = lazy(() => import('../components/EnrollmentApplication').then(module => ({default:module.EnrollmentApplication})));
-const EnrollmentAssistance = lazy(() => import('../components/EnrollmentAssistance').then(module => ({default:module.EnrollmentAssistance})));
+const EnrollmentForm = lazyEnrollmentModule(() => loadEnrollmentIntake().then(module => module.EnrollmentIntake));
+const EnrollmentPaymentForm = lazyEnrollmentModule(() => loadEnrollmentApplication().then(module => module.EnrollmentForm));
+const loadEnrollmentAssistance = () => import('../components/EnrollmentAssistance');
+const EnrollmentAssistanceForm = lazyEnrollmentModule(() => loadEnrollmentAssistance().then(module => module.EnrollmentAssistanceForm));
+const EnrollmentSupport = lazyEnrollmentModule(() => import('../components/EnrollmentSupport').then(module => module.EnrollmentSupport));
+
+function EnrollmentApplication(props: ComponentProps<typeof EnrollmentForm>) {
+  return <VisitorBoundary><EnrollmentForm {...props}/></VisitorBoundary>;
+}
+
+function ClassIntakeMode({classId,application,waitlist}:{classId:string;application:ReactNode;waitlist:ReactNode}) {
+  // A committed application may have taken the last seat while its response was lost.
+  // Check the original draft only after VisitorBoundary has confirmed ownership.
+  const pending=readEnrollmentDraft<{applicationRequestId?:string}>(visitorScope(),'apply:'+classId);
+  return pending?.applicationRequestId ? application : waitlist;
+}
+
+function EnrollmentAssistance({language}: Pick<ComponentProps<typeof EnrollmentAssistanceForm>, 'language'>) {
+  const {hash}=useLocation();
+  useEffect(()=>{void loadEnrollmentAssistance().catch(()=>{});},[]);
+  return <VisitorBoundary><EnrollmentAssistanceForm key={hash} hash={hash} language={language}/></VisitorBoundary>;
+}
 
 const copy = {
   title: ['Course enrollment', 'Pendaftaran kelas', '课程报名'],
   online: ['Online classes · Find a class that fits', 'Kelas online · Pilih kelas yang sesuai', '在线学习 · 选择适合你的班次'],
   loading: ['Loading classes…', 'Memuat kelas…', '正在加载班次…'],
+  loadingSection: ['Loading this section…', 'Memuat bagian ini…', '正在加载…'],
+  sectionUnavailable: ['This section could not load. Refresh the page to try again.', 'Bagian ini belum dapat dimuat. Muat ulang halaman untuk mencoba lagi.', '此区域暂时无法加载，请刷新页面重试。'],
+  refreshPage: ['Refresh page', 'Muat ulang halaman', '刷新页面'],
   error: ['Classes could not be loaded.', 'Kelas belum dapat dimuat.', '班次暂时无法加载。'],
+  offline: ['You’re offline. We’ll check again when you reconnect.', 'Anda sedang offline. Kami akan memeriksa lagi saat koneksi kembali.', '网络已断开，恢复连接后会自动重试。'],
   retry: ['Try again', 'Coba lagi', '重试'],
   empty: ['No classes match these filters.', 'Belum ada kelas yang cocok.', '暂无符合筛选条件的班次。'],
   reset: ['View all classes', 'Lihat semua kelas', '查看全部班次'],
@@ -53,6 +83,7 @@ const copy = {
   rules: ['Class opening and refund policy', 'Ketentuan pembukaan kelas dan pengembalian dana', '查看开班与退款说明'],
   rulesTitle: ['Class opening and refund policy', 'Ketentuan pembukaan kelas dan pengembalian dana', '开班与退款说明'],
   backDetail: ['Back to class details', 'Kembali ke detail kelas', '返回班次详情'],
+  backWaitlist: ['Back to waitlist entry', 'Kembali ke detail daftar tunggu', '返回候补详情'],
   backMatch: ['Back to matching results', 'Kembali ke hasil pencocokan', '返回匹配结果'],
   noMatchBody: ['Try another level, time, or class type.', 'Coba level, waktu, atau jenis kelas lain.', '试试其他级别、时段或班型。'],
   payment: ['Transfer & proof', 'Transfer dan bukti', '转账与凭证'],
@@ -81,6 +112,9 @@ const copy = {
 
 const catalogLevels = ['all', '1', '2', '3', '4'];
 const catalogLevel = (label: string) => label === 'HSK 4A' || label === 'HSK 4B' ? '4' : label.slice(4);
+type EnrollmentNavigationState = ChatJourneyState & {
+  enrollmentClassPreview?: EnrollmentClassIdentity & {id:string};
+};
 
 export default function Enrollment() {
   const { i18n } = useTranslation();
@@ -94,29 +128,67 @@ export default function Enrollment() {
   const classId=previewToken?(previewView==='catalog'?undefined:previewRow?.id):routeClassId;
   const location = useLocation();
   const navigate = useNavigate();
-  const navigation = location.state as ChatJourneyState | undefined;
+  const navigation = location.state as EnrollmentNavigationState | undefined;
   const fromChat = readChatRecommendation(navigation);
   const chatReturnState = fromChat ? {chatRecommendation:fromChat} : undefined;
   const pathname = location.pathname.replace(/\/$/, '');
   const record = recordId && (recordKind === 'waitlist' || recordKind === 'demands') ? { kind:recordKind, id:recordId } as const : undefined;
   const mine = pathname === '/enrollment/mine' || !!recordId;
   const interest = pathname === '/enrollment/interest';
-  const payment = pathname === '/enrollment/payment';
-  const application = previewToken?previewView==='apply':params.get('apply') === '1' || params.has('order');
+  const paymentPage = pathname === '/enrollment/payment';
+  const assisted = pathname === '/enrollment/assist';
+  const hasOrder = params.has('order');
+  const application = previewToken?previewView==='apply':params.get('apply') === '1' || hasOrder;
+  const classPreview = !application && navigation?.enrollmentClassPreview?.id===classId
+    ? navigation?.enrollmentClassPreview : undefined;
   const rulesPage = !!classId && (previewToken?previewView==='rules':params.get('view')==='rules');
+  const invalidClassId = !!routeClassId && !/^[a-zA-Z0-9-]{1,64}$/.test(routeClassId);
+  // Older class links can carry an existing order. Open it through the same
+  // verified payment view even after the class leaves the public catalog.
+  const payment = paymentPage || Boolean(routeClassId&&!invalidClassId&&!previewToken&&!rulesPage&&params.get('order'));
+  const appointmentId = params.get('appointment');
+  const needsReadiness = !previewToken && !assisted && !topic && !rulesPage;
+  const servicingOnly = mine || payment;
+  const readinessUrl = needsReadiness ? servicingOnly ? servicingReadinessUrl : intakeReadinessUrl : undefined;
+  const formRoute = interest || (mine && (!recordId || !!record)) || (payment && hasOrder) ||
+    (application && !!routeClassId && !invalidClassId);
+  const catalogUrl = needsReadiness && !interest && !mine && !payment && !invalidClassId
+    ? routeClassId ? '/api/enrollment/classes?'+new URLSearchParams({classId:routeClassId}) : enrollmentCatalogUrl
+    : !previewToken && topic === 'one-on-one' && appointmentId && /^[a-zA-Z0-9-]{1,64}$/.test(appointmentId)
+      ? enrollmentAppointmentUrl(appointmentId)
+      : undefined;
   useEffect(() => {
     if (classId && (application || rulesPage)) window.scrollTo(0, 0);
   }, [classId, application, rulesPage]);
-  type Appointment={id:string;level:string;course:string;teacherType:'local'|'foreign';lessons:number;minutes:number;price:number;standardPrice:number};
-  const [appointments,setAppointments]=useState<Appointment[]>([]);
-  const [liveClasses, setClasses] = useState<PublicEnrollmentClass[]>();
-  const [failed, setFailed] = useState(false);
+  // A detail page may have been open for a while before the learner applies.
+  const classApplication = !!routeClassId && application && !hasOrder;
+  const catalogKey = catalogUrl && (classApplication ? catalogUrl+'#apply' : catalogUrl);
+  const readinessKey = readinessUrl && (classApplication ? readinessUrl+'#apply:'+routeClassId : readinessUrl);
+  const [loadedCatalog,setCatalog]=useState<{key:string;revision:number;data:ReturnType<typeof parseEnrollmentCatalog>}>();
+  const [failedKey,setFailedKey]=useState<string>();
   const [reload, setReload] = useState(0);
   const [readinessReload,setReadinessReload]=useState(0);
-  const [availability, setAvailability] = useState<{accepting:boolean;servicing:boolean;reasons:string[]}>();
-  const classes=previewToken?(previewRow?[previewRow]:undefined):liveClasses;
-  const accepting=previewToken?!!previewRow?.price:availability?.accepting;
-  const servicing=availability?.servicing;
+  const [loadedAvailability, setAvailability] = useState<{key:string;revision:number;data:ReturnType<typeof parseEnrollmentReadiness>}>();
+  const [checkingReadiness,setCheckingReadiness]=useState(false);
+  const availability = loadedAvailability?.key===readinessKey ? loadedAvailability?.data : undefined;
+  const catalog=loadedCatalog?.key===catalogKey?loadedCatalog?.data:undefined;
+  const classes=previewToken?(previewRow?[previewRow]:undefined):invalidClassId?[]:catalog?.classes;
+  const appointments=catalog?.appointments;
+  const failed=!!catalogKey&&failedKey===catalogKey;
+  const readinessFailed=needsReadiness&&availability?.accepting===false&&availability.reasons.includes('check_failed');
+  const browsingCatalog=!!catalogUrl&&readinessUrl===intakeReadinessUrl&&!application&&!formRoute;
+  useEffect(()=>{
+    if (!browsingCatalog || params.has('lang')) return;
+    return watchPromotionLanguage(params,language=>{
+      if (!new URLSearchParams(window.location.search).has('lang')) void i18n.changeLanguage(language);
+    });
+  },[browsingCatalog,params,i18n]);
+  const catalogCurrent=!!catalog&&loadedCatalog?.revision===reload;
+  const readinessCurrent=!!availability&&loadedAvailability?.revision===readinessReload;
+  const intakeAccepting=browsingCatalog&&!readinessCurrent ? undefined : availability?.accepting;
+  const accepting=previewToken?!!previewRow?.price:needsReadiness&&!servicingOnly?intakeAccepting:undefined;
+  const canApplyToClass=browsingCatalog&&accepting===true&&!catalogCurrent ? undefined : accepting;
+  const servicing=needsReadiness?availability?.servicing:undefined;
   useEffect(()=>{
     if(previewToken||!classes)return;
     performance.clearMarks('uper:enrollment:catalog-ready');
@@ -133,30 +205,68 @@ export default function Enrollment() {
   const format = params.get('format') || '';
 
   useEffect(() => {
-    if(previewToken)return;
+    setCatalog(current=>current?.key===catalogKey?current:undefined);
+    setFailedKey(undefined);
+    if(!catalogUrl||!catalogKey)return;
     const abort = new AbortController();
-    setFailed(false);
-    fetch('/api/enrollment/classes', { signal: AbortSignal.any([abort.signal,AbortSignal.timeout(15000)]), cache: 'no-store' }).then(async response => {
-      if (!response.ok) throw Error();
-      const data: { classes: PublicEnrollmentClass[]; appointments?:Appointment[] } = await response.json();
-      if(abort.signal.aborted)return;
-      setClasses(data.classes);
-      setAppointments(data.appointments??[]);
-    }).catch(() => { if (!abort.signal.aborted) setFailed(true); });
-    return () => abort.abort();
-  }, [reload,previewToken]);
+    const reconnect=watchReadReconnect(()=>setReload(reload+1),{foregroundOnly:true});
+    const signal=AbortSignal.any([abort.signal,AbortSignal.timeout(enrollmentLandingTimeoutMs)]);
+    readEnrollmentLandingData(catalogUrl,signal,parseEnrollmentCatalog,'classes').then(data => {
+      if(!abort.signal.aborted)setCatalog({key:catalogKey,revision:reload,data});
+      reconnect.stop();
+    }).catch(() => {
+      if(!abort.signal.aborted&&!reconnect.failed())setFailedKey(catalogKey);
+    });
+    return () => { reconnect.stop(); abort.abort(); };
+  }, [reload,catalogUrl,catalogKey]);
   useEffect(() => {
-    if(previewToken)return;
+    setAvailability(current=>current?.key===readinessKey?current:undefined);
+    if(!readinessUrl||!readinessKey){
+      setCheckingReadiness(false);
+      return;
+    }
+    setCheckingReadiness(true);
     const abort = new AbortController();
-    setAvailability(undefined);
-    fetch('/api/enrollment/availability', { signal: AbortSignal.any([abort.signal,AbortSignal.timeout(15000)]), cache: 'no-store' })
-      .then(response => {if(!response.ok)throw Error();return response.json();})
-      .then((data: { accepting?: boolean; servicing?:boolean; reasons?:string[] }) => {
-        if (!abort.signal.aborted) setAvailability({accepting:data.accepting===true,servicing:(data.servicing??data.accepting)===true,reasons:data.reasons??['check_failed']});
-      })
-      .catch(() => { if (!abort.signal.aborted) setAvailability({accepting:false,servicing:true,reasons:['check_failed']}); });
-    return () => abort.abort();
-  }, [reload,readinessReload,previewToken]);
+    const reconnect=watchReadReconnect(()=>setReadinessReload(readinessReload+1),{foregroundOnly:true});
+    const signal=AbortSignal.any([abort.signal,AbortSignal.timeout(enrollmentLandingTimeoutMs)]);
+    const publishReadiness=(data:ReturnType<typeof parseEnrollmentReadiness>)=>{
+      if(abort.signal.aborted)return;
+      // The API can report a temporary check failure inside a successful HTTP response.
+      if(!data.accepting&&data.reasons.includes('check_failed')){
+        if(reconnect.failed())return;
+      }else reconnect.stop();
+      setAvailability({key:readinessKey,revision:readinessReload,data});
+    };
+    readEnrollmentLandingData(readinessUrl,signal,parseEnrollmentReadiness,'availability')
+      .then(publishReadiness,()=>publishReadiness({accepting:false,servicing:true,reasons:['check_failed']}))
+      .finally(() => { if (!abort.signal.aborted) setCheckingReadiness(false); });
+    return () => { reconnect.stop(); abort.abort(); };
+  }, [readinessReload,readinessUrl,readinessKey]);
+  const catalogSettled=catalogCurrent||failed;
+  useEffect(()=>{
+    if(!browsingCatalog || (!catalogSettled&&!readinessCurrent))return;
+    let wasHidden=document.hidden;
+    const onVisibility=()=>{
+      const returning=wasHidden&&!document.hidden;
+      wasHidden=document.hidden;
+      if(returning){
+        // A pending reconnect and a foreground refresh can be triggered by the same event.
+        if(catalogSettled)setReload(reload+1);
+        if(readinessCurrent)setReadinessReload(readinessReload+1);
+      }
+    };
+    document.addEventListener('visibilitychange',onVisibility);
+    return ()=>document.removeEventListener('visibilitychange',onVisibility);
+  },[browsingCatalog,catalogSettled,readinessCurrent,reload,readinessReload]);
+  useEffect(() => {
+    // The learner has entered a form route. Download the form while its data
+    // loads, but let the existing readiness checks decide when to mount it.
+    const ready = servicingOnly ? servicing : accepting;
+    if (needsReadiness && formRoute && ready !== false) {
+      const loadForm = payment ? loadEnrollmentApplication : loadEnrollmentIntake;
+      void loadForm().catch(() => {});
+    }
+  }, [needsReadiness,formRoute,servicingOnly,servicing,accepting,payment]);
   useEffect(()=>{
     if(!previewToken)return;
     const receive=(event:MessageEvent)=>{
@@ -196,13 +306,21 @@ export default function Enrollment() {
   },[previewToken,previewRow]);
 
   const returnPosition = readEnrollmentPosition(navigation);
+  const restoredPositionKey = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
-    if (!returnPosition || previewToken || !classes && !failed || accepting===undefined) return;
+    if (restoredPositionKey.current === location.key) return;
+    restoredPositionKey.current = undefined;
+    // Browsing position depends on the public catalog, not application readiness.
+    if (!returnPosition || previewToken || !classes) return;
+    restoredPositionKey.current = location.key;
     for (const detail of document.querySelectorAll<HTMLDetailsElement>('.enrollment-course details[data-enrollment-section]'))
       detail.open = returnPosition.expanded.includes(detail.dataset.enrollmentSection!);
+    // The catalog may finish loading after the learner starts using this page.
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== document.documentElement) return;
     document.querySelector<HTMLElement>('[data-enrollment-consult="'+returnPosition.focus+'"]')?.focus({preventScroll:true});
     window.scrollTo({top:returnPosition.scrollY,behavior:'instant'});
-  }, [location.key, returnPosition, Boolean(classes), failed, accepting, previewToken]);
+  }, [location.key, returnPosition, Boolean(classes), previewToken]);
 
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -233,27 +351,43 @@ export default function Enrollment() {
     return '/enrollment/' + encodeURIComponent(id) + '?' + query.toString();
   };
   const selected = classes?.find(row => row.id === classId);
-  const matchingClasses = classes?.filter(row => (!period || row.period === period) && (!format || row.format === format));
-  const matchingAppointments = format === 'one-on-one' || (!format && !period) ? appointments : [];
-  const matchesLevel = (row: {level:string}) => level === 'all' || catalogLevel(row.level) === level;
-  const rows = matchingClasses?.filter(matchesLevel);
-  const privateLessons = matchingAppointments.filter(matchesLevel);
-  const levelCounts = new Map<string,number>();
-  for (const row of [...(matchingClasses ?? []), ...matchingAppointments]) {
-    const key = catalogLevel(row.level);
-    levelCounts.set(key, (levelCounts.get(key) ?? 0) + 1);
-    levelCounts.set('all', (levelCounts.get('all') ?? 0) + 1);
-  }
-  const appointmentPath = (item: Appointment) => {
+  const {rows,privateLessons,levelCounts}=useMemo(()=>{
+    const rows:PublicEnrollmentClass[]=[];
+    const privateLessons:PublicEnrollmentAppointment[]=[];
+    const levelCounts=new Map<string,number>();
+    if(!classId&&!topic&&!formRoute){
+      const countAndMatch=(label:string)=>{
+        const key=catalogLevel(label);
+        levelCounts.set(key,(levelCounts.get(key)??0)+1);
+        levelCounts.set('all',(levelCounts.get('all')??0)+1);
+        return level==='all'||key===level;
+      };
+      for(const row of classes??[]){
+        if((!period||row.period===period)&&(!format||row.format===format)&&countAndMatch(row.level))rows.push(row);
+      }
+      if(format==='one-on-one'||!format&&!period){
+        for(const item of appointments??[]){
+          if(countAndMatch(item.level))privateLessons.push(item);
+        }
+      }
+    }
+    return {rows,privateLessons,levelCounts};
+  },[classes,appointments,classId,topic,formRoute,period,format,level]);
+  const appointmentPath = (item: PublicEnrollmentAppointment) => {
     const query = new URLSearchParams(publicParams);
     query.set('lang', language);
     query.set('appointmentLevel', catalogLevel(item.level));
     query.set('appointment',item.id);
     return '/enrollment/help/one-on-one?' + query.toString();
   };
-  const intakeNotice=accepting===false&&!previewToken&&<div role="status" className="enrollment-form-error">
-    {availability?.reasons.map(reason=><p key={reason}>{enrollmentReadinessMessage(reason,language)}</p>)}
-    {availability?.reasons.includes('check_failed')&&<button type="button" className="enrollment-quiet" onClick={()=>setReadinessReload(value=>value+1)}>{t('retry')}</button>}
+  const offline=navigator.onLine===false;
+  const offlineReadinessFailure=offline&&readinessFailed;
+  const catalogFailure=<p role="alert">{t(offline?'offline':'error')}{!offline&&
+    <> <button className="enrollment-quiet" type="button" onClick={()=>setReload(value=>value+1)}>{t('retry')}</button></>}</p>;
+  const intakeNotice=accepting===false&&!previewToken&&!(failed&&offlineReadinessFailure)&&<div role="status" className="enrollment-form-error">
+    {availability?.reasons.map(reason=><p key={reason}>{offlineReadinessFailure&&reason==='check_failed'?t('offline'):enrollmentReadinessMessage(reason,language)}</p>)}
+    {readinessFailed&&!offline&&<button type="button" className="enrollment-quiet" disabled={checkingReadiness}
+      onClick={()=>setReadinessReload(value=>value+1)}>{t('retry')}</button>}
   </div>;
   const backChat = !previewToken && fromChat && <Link
     className="enrollment-back enrollment-chat-return" to={fromChat.url}
@@ -263,7 +397,7 @@ export default function Enrollment() {
       returnAlongJourney(navigate,fromChat,{chatMessageAnchor:fromChat.anchor});
     }}><ArrowLeft size={15} aria-hidden="true"/>{t('backChat')}</Link>;
   const hubPath = !previewToken && !fromChat && linkHubReturnUrl(params,language);
-  const chatPath = promotionJourneyUrl('/chat?lang='+language,params);
+  const chatPath = promotionEntryUrl('/chat',params,language);
   function startConsultation(event:ReactMouseEvent<HTMLAnchorElement>, row?:PublicEnrollmentClass, focus:EnrollmentPosition['focus']=row?'class':'catalog') {
     trackEvent('link_click',{target:row?'enrollment_class_consultation':'enrollment_catalog_consultation'});
     if (!isPlainLinkClick(event)) return;
@@ -280,9 +414,34 @@ export default function Enrollment() {
   const consultCatalog = !previewToken && !fromChat && <Link data-enrollment-consult="catalog"
     className="enrollment-outline enrollment-consult-action" to={chatPath} onClick={event=>startConsultation(event)}>
     <MessageCircle size={16} aria-hidden="true"/>{t('consultCatalog')}</Link>;
+  function prepareEnrollmentNavigation(event:ReactMouseEvent<HTMLAnchorElement>) {
+    if (previewToken || !isPlainLinkClick(event)) return;
+    const url = new URL(event.currentTarget.href);
+    preloadEnrollmentNavigation(url);
+    const recordPage = /^\/enrollment\/mine(?:\/|$)/.test(url.pathname);
+    if (recordPage || url.searchParams.get('apply') === '1' || url.pathname === '/enrollment/interest') {
+      void loadEnrollmentIntake().catch(() => {});
+    }
+  }
   const classCard=(row:PublicEnrollmentClass,inCatalog:boolean)=><EnrollmentClassPreview key={row.id} row={row} language={language}
-    intakePaused={!previewToken&&accepting===false} navigationState={chatReturnState} titleLink={inCatalog?detailsPath(row.id):undefined}
-    actionLink={inCatalog&&accepting&&row.price>0?detailsPath(row.id,true):undefined}/>;
+    intakeStatus={previewToken||canApplyToClass===true?undefined:canApplyToClass===false&&!readinessFailed?'paused':failed||readinessFailed?'unverified':'checking'}
+    navigationState={inCatalog?{...chatReturnState,enrollmentClassPreview:{
+      id:row.id,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,
+    }}:chatReturnState} titleLink={inCatalog?detailsPath(row.id):undefined}
+    actionLink={inCatalog&&canApplyToClass&&row.price>0?detailsPath(row.id,true):undefined} onNavigate={prepareEnrollmentNavigation}/>;
+  function deferredSection(content: ReactNode, navigation?: ReactNode, standalone = false) {
+    const notice = (message: ReactNode) => standalone
+      ? <section className="enrollment-screen">{navigation}{message}</section>
+      : <>{navigation}{message}</>;
+    return <EnrollmentModuleBoundary key={pathname}
+      pending={notice(<p role="status">{t('loadingSection')}</p>)}
+      failure={notice(<div className="enrollment-form-error" role="alert">
+        <p>{t('sectionUnavailable')}</p>
+        <button type="button" className="enrollment-quiet" onClick={() => window.location.reload()}>{t('refreshPage')}</button>
+      </div>)}>
+      {content}
+    </EnrollmentModuleBoundary>;
+  }
 
   if(previewToken&&!previewRow)return <p className="enrollment-screen" role="status">{t('loading')}</p>;
   if(previewToken&&previewView==='apply'&&previewRow)return <section className="enrollment-screen enrollment-apply-screen">
@@ -292,18 +451,24 @@ export default function Enrollment() {
     <p>{enrollmentCopy(language,['学员预览，到此为止。','End of learner preview.','Akhir pratinjau siswa.'])}</p>
   </section>;
 
-  if (pathname==='/enrollment/assist') return <EnrollmentAssistance language={language}/>;
+  const backCatalog = <Link className="enrollment-back" to={listPath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>;
+  if (assisted) return deferredSection(<EnrollmentAssistance language={language}/>, <>{backChat}{backCatalog}</>, true);
   if (topic) {
     const appointmentLevel = params.get('appointmentLevel') ?? requestedLevel;
-    const appointment=topic==='one-on-one'?appointments.find(item=>item.id===params.get('appointment')):undefined;
-    return <EnrollmentSupport topic={topic} language={language}
-      level={appointmentLevel && /^[1-4]$/.test(appointmentLevel) ? appointmentLevel : undefined}
-      appointment={appointment} period={period} format={params.get('format')??undefined} catalogPath={listPath} returnAction={backChat} navigationState={chatReturnState} offline={params.get('mode')==='offline'}/>;
+    const appointment=topic==='one-on-one'?appointments?.find(item=>item.id===appointmentId):undefined;
+    const appointmentState=topic==='one-on-one'&&appointmentId!==null&&!appointment
+      ? failed?'failed':catalogUrl&&!catalog?'loading':'unavailable' : undefined;
+    return deferredSection(<EnrollmentSupport topic={topic} language={language}
+        level={appointmentLevel && /^[1-4]$/.test(appointmentLevel) ? appointmentLevel : undefined}
+        appointment={appointment} appointmentState={appointmentState} onAppointmentRetry={()=>setReload(value=>value+1)}
+        period={period} format={params.get('format')??undefined} catalogPath={listPath} returnAction={backChat} navigationState={chatReturnState} offline={params.get('mode')==='offline'}/>,
+      <>{backChat}{topic==='one-on-one' ? backCatalog :
+        <Link className="enrollment-back" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t('backMine')}</Link>}</>, true);
   }
 
   if (rulesPage) return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
     {backChat}
-    <Link className="enrollment-back" to={detailsPath(classId!)} state={chatReturnState}><ArrowLeft size={15} aria-hidden="true"/>{t('backDetail')}</Link>
+    <Link className="enrollment-back" to={detailsPath(classId!)} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t('backDetail')}</Link>
     <h1>{t('rulesTitle')}</h1>
     <div className="enrollment-result-body">
       <article className="enrollment-record"><h2>{enrollmentCopy(language,['原班无法如期开课','If the original class won’t open','Jika kelas asal tidak dibuka'])}</h2>
@@ -323,73 +488,79 @@ export default function Enrollment() {
 
   if (payment) return <section className="enrollment-screen enrollment-payment">
     {backChat}
-    <Link className="enrollment-back" to={minePath} state={chatReturnState}><ArrowLeft size={15} aria-hidden="true"/>{t('backMine')}</Link>
+    <Link className="enrollment-back" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t('backMine')}</Link>
     <h1>{t('payment')}</h1>
     {servicing === undefined ? <p role="status">{t('loading')}</p> : servicing && params.has('order')
-      ? <EnrollmentPayment key={params.get('order')} language={language} paymentClasses={classes ?? []}/>
+      ? deferredSection(<VisitorBoundary><EnrollmentPaymentForm key={params.get('order')} language={language} payment/></VisitorBoundary>)
       : <p>{t('unavailable')}</p>}
   </section>;
   if (mine) return <section className="enrollment-screen enrollment-mine">
     {backChat}
-    <Link className="enrollment-back" to={recordId ? minePath : listPath} state={chatReturnState}><ArrowLeft size={15} aria-hidden="true"/>{t(recordId ? 'backMine' : 'back')}</Link>
+    {recordId ? <Link className="enrollment-back" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t('backMine')}</Link> : backCatalog}
     <h1>{t(record?.kind === 'waitlist' ? 'waitlistDetail' : record?.kind === 'demands' ? 'demandDetail' : 'mine')}</h1>
     {recordId && !record ? <p>{t('recordUnavailable')}</p>
       : servicing === undefined ? <p role="status">{t('loading')}</p>
-      : servicing ? <EnrollmentApplication key={pathname} language={language} mineClasses={classes ?? []} record={record}/>
+      : servicing ? deferredSection(<EnrollmentApplication key={pathname} language={language} mine record={record}/>)
       : <p>{t('unavailable')}</p>}
   </section>;
   if (interest) return <section className="enrollment-screen enrollment-apply-screen enrollment-intake">
     {backChat}
-    <Link className="enrollment-back" to={listPath} state={chatReturnState}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>
+    {backCatalog}
     <h1>{t('interest')}</h1>
     {accepting === undefined ? <p role="status">{t('loading')}</p> :
-      accepting ? <EnrollmentApplication key={String(interest)} language={language} demandOnly={interest}/> : intakeNotice}
+      accepting ? deferredSection(<EnrollmentApplication key={String(interest)} language={language} demandOnly={interest}/>) : intakeNotice}
   </section>;
 
-  if (application && selected && (selected.availability === 'full' || params.get('join')==='1') && !params.has('order') && accepting && selected.price>0) {
-    return <section className="enrollment-screen enrollment-apply-screen enrollment-intake">
-      {backChat}
-      <Link className="enrollment-back" to={listPath} state={chatReturnState}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>
-      <h1>{t('join')}</h1>
-      <EnrollmentApplication key={selected.id} classId={selected.id} language={language} full waitlistClass={selected}/>
-      <Link className="enrollment-quiet" to={minePath} state={chatReturnState}>{t('mine')}</Link>
-    </section>;
-  }
-
-  if (application && selected && selected.availability !== 'full' && !params.has('order') && accepting && selected.price>0) {
-    return <section className="enrollment-screen enrollment-apply-screen">
-      <EnrollmentApplication key={selected.id} classId={selected.id} language={language} returnAction={backChat} applicationClass={{
+  if (application && selected && !params.has('order') && accepting && selected.price>0) {
+    const details = waitlistPath ?? detailsPath(selected.id);
+    const applicationProps={classId:selected.id,language,returnAction:backChat,applicationClass:{
         title: enrollmentClassTitle(selected,language),
         schedule: enrollmentScheduleLabel(selected,language),
         price: selected.price,
-        detailsPath: waitlistPath ?? detailsPath(selected.id),
+        detailsPath: details,
         fromWaitlist: waitlistId ?? undefined,
         listPath,
-      }}/>
+    }};
+    const applicationNavigation=<>{backChat}<Link className="enrollment-back" to={details} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t(waitlistId ? 'backWaitlist' : 'backDetail')}</Link><h1>{t('apply')}</h1></>;
+    const explicitWaitlist=params.get('join')==='1';
+    if(selected.availability!=='full'&&!explicitWaitlist)return <section className="enrollment-screen enrollment-apply-screen">
+      {deferredSection(<EnrollmentApplication key={selected.id} {...applicationProps}/>,applicationNavigation)}
     </section>;
+    const applicationForm=<section className="enrollment-screen enrollment-apply-screen">
+      {deferredSection(<EnrollmentForm key={selected.id} {...applicationProps}/>,applicationNavigation)}
+    </section>;
+    const waitlistForm=<section className="enrollment-screen enrollment-apply-screen enrollment-intake">
+      {backChat}
+      {backCatalog}
+      <h1>{t('join')}</h1>
+      {deferredSection(<EnrollmentForm key={selected.id} classId={selected.id} language={language} full waitlistClass={selected}/>)}
+      <Link className="enrollment-quiet" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('mine')}</Link>
+    </section>;
+    return <VisitorBoundary>{explicitWaitlist?waitlistForm:<ClassIntakeMode classId={selected.id} application={applicationForm} waitlist={waitlistForm}/>}</VisitorBoundary>;
   }
 
   if (classId) return <section className="enrollment-screen enrollment-detail">
     {backChat}
-    <Link className="enrollment-back" to={application ? detailsPath(classId) : matchPath ?? listPath} state={chatReturnState}><ArrowLeft size={15} aria-hidden="true"/>{t(application ? 'backDetail' : matchPath ? 'backMatch' : 'back')}</Link>
+    <Link className="enrollment-back" to={application ? detailsPath(classId) : matchPath ?? listPath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t(application ? 'backDetail' : matchPath ? 'backMatch' : 'back')}</Link>
     <h1>{t(application && selected ? selected.availability === 'full' ? 'join' : 'apply' : 'details')}</h1>
-    {failed ? <p role="alert">{t('error')} <button type="button" onClick={() => setReload(value => value + 1)}>{t('retry')}</button></p>
-      : !classes ? <p role="status">{t('loading')}</p>
+    {failed ? catalogFailure
+      : !classes ? <>{classPreview&&<h2>{enrollmentClassTitle(classPreview,language)}</h2>}<p role="status">{t('loading')}</p></>
       : !selected ? <><p>{t('unavailable')}</p>
-        {application&&<Link className="enrollment-quiet" to={minePath} state={chatReturnState}>{t('mine')}</Link>}
+        {application&&<Link className="enrollment-quiet" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('mine')}</Link>}
       </>
       : application ? <div className="enrollment-apply-layout">
         {classCard(selected, false)}
-        {accepting && selected.price>0 && <EnrollmentApplication key={selected.id} classId={selected.id} language={language} full={selected.availability==='full'}/>}
+        {accepting && selected.price>0 && deferredSection(<EnrollmentApplication key={selected.id} classId={selected.id} language={language} full={selected.availability==='full'}/>)}
         {intakeNotice}
-        {accepting===false&&servicing&&<Link className="enrollment-quiet" to={minePath} state={chatReturnState}>{t('mine')}</Link>}
+        {accepting===false&&servicing&&<Link className="enrollment-quiet" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('mine')}</Link>}
       </div> : <div className="enrollment-detail-layout">
         <aside className="enrollment-detail-aside">
           {classCard(selected, false)}
           {intakeNotice}
           <div className="enrollment-detail-actions">
             <Link className="enrollment-quiet" to={detailsPath(selected.id)+'&view=rules'} state={chatReturnState}>{t('rules')}</Link>
-            {accepting && selected.price>0 && <Link className="enrollment-primary" to={detailsPath(selected.id, true)} state={chatReturnState}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>}
+            {canApplyToClass && selected.price>0 && <Link className="enrollment-primary" to={detailsPath(selected.id, true)}
+              state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>}
             {!previewToken && !fromChat && <Link data-enrollment-consult="class" className="enrollment-outline enrollment-consult-action"
               to={chatPath} onClick={event=>startConsultation(event,selected)}><MessageCircle size={16} aria-hidden="true"/>{t('consultClass')}</Link>}
           </div>
@@ -422,7 +593,7 @@ export default function Enrollment() {
       </div>
       {(consultCatalog || servicing) && <div className="enrollment-title-actions">
         {consultCatalog}
-        {servicing && <Link className="enrollment-outline" to={minePath} state={chatReturnState}>{t('mine')}<ChevronRight size={16} aria-hidden="true"/></Link>}
+        {servicing && <Link className="enrollment-outline" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('mine')}<ChevronRight size={16} aria-hidden="true"/></Link>}
       </div>}
     </header>
     {intakeNotice}
@@ -441,10 +612,10 @@ export default function Enrollment() {
       </div>
     </div>
     {failed
-      ? <p role="alert">{t('error')} <button className="enrollment-quiet" type="button" onClick={() => setReload(value => value + 1)}>{t('retry')}</button></p>
+      ? catalogFailure
       : !classes && <p role="status">{t('loading')}</p>}
-    {rows?.length || privateLessons.length ? <div className="enrollment-class-grid">
-      {rows?.map(row => classCard(row, true))}
+    {rows.length || privateLessons.length ? <div className="enrollment-class-grid">
+      {rows.map(row => classCard(row, true))}
       {privateLessons.map(item=><article key={item.id} className="enrollment-class-card enrollment-appointment-card">
         <h2>{item.level} · {t('one-on-one')}</h2>
         <p>{item.course} · {enrollmentTeacherLabel(item.teacherType,language)}</p>
@@ -459,7 +630,7 @@ export default function Enrollment() {
               `${item.lessons} jam pelajaran · ${item.minutes} menit per jam pelajaran · perkiraan total ${formatCurrency(item.price*item.lessons,language)}`,
             ])}</small>
           </div>
-          <Link className="enrollment-primary" to={appointmentPath(item)} state={chatReturnState}>{t('appointmentAction')}</Link>
+          <Link className="enrollment-primary" to={appointmentPath(item)} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('appointmentAction')}</Link>
         </div>
       </article>)}
     </div>
@@ -476,6 +647,6 @@ export default function Enrollment() {
             <MessageCircle size={16} aria-hidden="true"/>{t('consultCatalog')}</Link>}
         </div>
       </div>}
-    {accepting && <div className="enrollment-interest-link"><p>{t('noMatch')}</p><Link className="enrollment-quiet" to={interestPath} state={chatReturnState}>{t('interest')}<ArrowUpRight size={15} aria-hidden="true"/></Link></div>}
+    {accepting && <div className="enrollment-interest-link"><p>{t('noMatch')}</p><Link className="enrollment-quiet" to={interestPath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('interest')}<ArrowUpRight size={15} aria-hidden="true"/></Link></div>}
   </section>;
 }

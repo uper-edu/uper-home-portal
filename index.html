@@ -3,6 +3,67 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        var landing = /^\/enrollment(?:\/([^/]+))?\/?$/.exec(location.pathname);
+        var record = /^\/enrollment\/mine\/(?:waitlist|demands)\/[^/]+\/?$/.test(location.pathname);
+        var appointmentPage = /^\/enrollment\/help\/one-on-one\/?$/.test(location.pathname);
+        if ((!landing && !record && !appointmentPage) || typeof AbortController === 'undefined' || navigator.onLine === false) return;
+        var params = new URLSearchParams(location.search);
+        if (params.has('learnerPreview')) return;
+        var catalogUrl = '/api/enrollment/classes?view=summary';
+        var readinessUrl = '/api/enrollment/availability';
+        var appointmentId;
+        if (appointmentPage) {
+          appointmentId = params.get('appointment');
+          if (!appointmentId || !/^[a-zA-Z0-9-]{1,64}$/.test(appointmentId) || params.get('view') === 'rules') return;
+          catalogUrl = '/api/enrollment/classes?appointmentId=' + encodeURIComponent(appointmentId);
+          readinessUrl = null;
+        } else if (record) {
+          catalogUrl = null;
+          readinessUrl += '?scope=servicing';
+        } else if (landing[1]) {
+          var classId;
+          try { classId = decodeURIComponent(landing[1]); } catch (_) { return; }
+          if (/^(mine|payment)$/i.test(classId)) {
+            catalogUrl = null;
+            readinessUrl += '?scope=servicing';
+          } else if (classId === 'interest') {
+            catalogUrl = null;
+          } else {
+            if (!/^[a-zA-Z0-9-]{1,64}$/.test(classId) || /^(interest|assist)$/i.test(classId) || params.get('view') === 'rules') return;
+            if (params.get('order')) {
+              catalogUrl = null;
+              readinessUrl += '?scope=servicing';
+            } else catalogUrl = '/api/enrollment/classes?classId=' + encodeURIComponent(classId);
+          }
+        }
+        function read(url) {
+          const controller = new AbortController();
+          // Match enrollmentLandingTimeoutMs for a direct landing before JavaScript loads.
+          const timer = setTimeout(function() { controller.abort(); }, 15000);
+          const entry = {url: url, cancel: function() { controller.abort(); }};
+          entry.response = fetch(url, {
+            cache: 'no-store', signal: controller.signal
+          }).then(function(response) {
+            return response.ok ? response.json() : null;
+          }).catch(function() { return null; }).then(function(data) {
+            clearTimeout(timer);
+            if (data !== null) entry.receivedAt = performance.now();
+            return data;
+          });
+          return entry;
+        }
+        window.__uperEnrollmentLanding = {
+          pathname: location.pathname,
+          application: params.get('apply') === '1',
+          hasOrder: Boolean(params.get('order')),
+          appointmentId: appointmentId,
+          classes: catalogUrl ? read(catalogUrl) : undefined,
+          availability: readinessUrl ? read(readinessUrl) : undefined
+        };
+      })();
+    </script>
     
     <!-- Android / Older WebView Compatibility Polyfill Guard -->
     <script>
@@ -20,6 +81,9 @@
     <link rel="apple-touch-icon" href="/uper-app-192.png" />
     <link rel="manifest" href="/uper.webmanifest" />
     <meta name="theme-color" content="#0d9488" />
+    <!-- Web fonts may arrive after the first render; the page starts with its system font stack. -->
+    <link rel="stylesheet" media="print" onload="this.onload=null;this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=Outfit:wght@300;400;500;600;700&amp;family=Noto+Sans+SC:wght@300;400;500;700&amp;display=swap" />
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <script>
       (function() {

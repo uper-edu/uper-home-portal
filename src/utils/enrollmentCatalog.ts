@@ -2,6 +2,7 @@ export const enrollmentLevels = ['HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 4A', '
 export const enrollmentOpportunityLevels:readonly string[]=enrollmentLevels;
 export const enrollmentFormats = ['standard', 'small'] as const;
 export const enrollmentPeriods = ['weekday-evening', 'weekend', 'mixed'] as const;
+export const enrollmentClassLookupLimit = 40;
 
 export const enrollmentScheduleReviewFields = ['firstLesson', 'days', 'start', 'holidayDates'] as const;
 export type EnrollmentScheduleReviewField = typeof enrollmentScheduleReviewFields[number];

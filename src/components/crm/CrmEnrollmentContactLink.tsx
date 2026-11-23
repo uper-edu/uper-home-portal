@@ -5,7 +5,7 @@ import {AdminListState} from '../admin/AdminList';
 import {AdminFormGrid} from '../AdminFormLayout';
 import {enrollmentClassTitle,enrollmentFormats,enrollmentLevels,enrollmentPeriods,type PublicEnrollmentClass} from '../../utils/enrollmentCatalog';
 import {enrollmentGuideHref,enrollmentGuideText,type EnrollmentGuideAction,type EnrollmentGuideLanguage} from '../../utils/enrollmentGuidance';
-import {interestOption} from '../EnrollmentInterests';
+import {interestOption} from '../../utils/enrollmentInterestCopy';
 import {CrmSingleSelect} from './CrmSingleSelect';
 
 export function CrmEnrollmentContactLink({lang,language,isLight,disabled,onInsert}:{

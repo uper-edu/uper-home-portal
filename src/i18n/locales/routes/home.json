@@ -1,0 +1,596 @@
+{
+  "id": {
+    "hero": {
+      "tag": "Jembatan Pendidikan Utama dari Indonesia ke Tiongkok",
+      "heading1": "Memberdayakan Masa Depan Global Anda:",
+      "heading2": "Jalan Anda Menuju Universitas Top Tiongkok.",
+      "desc": "Dapatkan panduan memilih universitas, mencari beasiswa, mempersiapkan HSK dan CSCA, serta mengurus pendaftaran kuliah.",
+      "explore": "Lihat Program Persiapan",
+      "chat": "Konsultasi Rencana Kuliah",
+      "join": "Bergabung dengan",
+      "students": "500+ siswa dari Indonesia",
+      "partnership": {
+        "prefix": "Bekerjasama dengan:",
+        "highlight": "40+ entitas",
+        "suffix": " (universitas dari Tiongkok & Indonesia, sekolah dari Indonesia dan perusahaan Tiongkok di Indonesia)"
+      }
+    },
+    "audience": {
+      "students": {
+        "tag": "Untuk Siswa & Orang Tua",
+        "title": "Siswa & Orang Tua",
+        "desc": "Jelajahi pilihan studi di Tiongkok, persiapkan HSK dan CSCA, serta dapatkan panduan pendaftaran.",
+        "items": [
+          "HSK",
+          "CSCA",
+          "Studi Luar Negeri",
+          "Tur Kampus"
+        ],
+        "cta": "Lihat Layanan Siswa"
+      },
+      "schools": {
+        "tag": "Untuk Sekolah & Institusi",
+        "title": "Sekolah & Institusi",
+        "desc": "Jelajahi peluang kerja sama untuk sekolah dan institusi.",
+        "items": [
+          "Kelas Wajib HSK / Kelas Peminatan HSK",
+          "Pusat Bahasa",
+          "Kemitraan"
+        ],
+        "cta": "Hubungi Tim Kemitraan"
+      },
+      "companies": {
+        "tag": "Untuk Perusahaan",
+        "title": "Perusahaan",
+        "desc": "Hubungi UPER untuk membahas kerja sama perusahaan.",
+        "items": [
+          "Pelatihan Bahasa Mandarin Perusahaan",
+          "Perekrutan Bakat",
+          "Kerja Sama Sekolah-Perusahaan"
+        ],
+        "cta": "Hubungi Tim UPER"
+      }
+    },
+    "services": {
+      "tag": "Solusi Pendidikan",
+      "title1": "Program",
+      "title2": "Utama Kami",
+      "desc": "Temukan solusi pendidikan komprehensif kami yang dirancang untuk mempercepat perjalanan global Anda.",
+      "explore": "Jelajahi Program"
+    },
+    "trending": {
+      "tag": "Sangat Direkomendasikan",
+      "title1": "Populer &",
+      "title2": "Unggulan",
+      "desc": "Temukan kursus kami yang paling banyak dicari dan tur studi yang akan datang."
+    },
+    "campaign": {
+      "tag": "Penawaran Waktu Terbatas"
+    },
+    "news": {
+      "tag": "Berita & Pembaruan",
+      "title1": "Wawasan",
+      "title2": "Terbaru",
+      "desc": "Ikuti perkembangan UPER dan tren pendidikan global.",
+      "viewAll": "Lihat Semua"
+    },
+    "stories": {
+      "tag": "Kisah Sukses",
+      "title1": "Pengalaman",
+      "title2": "Siswa",
+      "desc": "Dengarkan dari alumni kami yang telah berhasil memulai perjalanan global mereka."
+    },
+    "schoolPartnerships": {
+      "tag": "Kemitraan Sekolah",
+      "title1": "30+ Sekolah Indonesia",
+      "title2": "Mempercayai UPER",
+      "desc": "Memberdayakan sekolah dengan program bahasa Mandarin kelas dunia dan kelas kredit khusus.",
+      "storiesTitle": "Kisah Sukses",
+      "story1": {
+        "name": "SMA Negeri 1 Jakarta",
+        "type": "Pusat Bahasa",
+        "stats": "150+ siswa"
+      },
+      "story2": {
+        "name": "SMA Muhammadiyah 8 Ciputat",
+        "type": "Kelas Kredit",
+        "stats": "80+ siswa"
+      },
+      "processTitle": "Proses Kemitraan",
+      "process": [
+        "Konsultasi",
+        "Penilaian Kebutuhan",
+        "Proposal Khusus",
+        "Kelas Uji Coba",
+        "Perjanjian",
+        "Dukungan Berkelanjutan"
+      ],
+      "cta": "Mulai Kemitraan"
+    },
+    "partners": {
+      "tag": "Mitra Strategis",
+      "title1": "Dipercaya oleh",
+      "title2": "Institusi Terkemuka",
+      "partners": "Mitra"
+    },
+    "servicesData": {
+      "hsk": {
+        "title": "Persiapan HSK Sesuai Level Anda",
+        "desc": "Persiapkan diri untuk level HSK yang Anda tuju bersama pengajar dan platform belajar UPER.",
+        "cta": "Tanya tentang Persiapan HSK"
+      },
+      "csca": {
+        "title": "Persiapan Ujian CSCA",
+        "desc": "Kenali isi dan format ujian CSCA, lalu rencanakan persiapan sesuai mata pelajaran yang Anda perlukan.",
+        "cta": "Tanya tentang Persiapan CSCA"
+      },
+      "tours": {
+        "title": "Program Kunjungan Belajar ke Tiongkok",
+        "desc": "Jelajahi pengalaman pendidikan dan budaya di Tiongkok melalui kegiatan dalam program pilihan Anda.",
+        "cta": "Lihat Detail Program"
+      },
+      "consultancy": {
+        "title": "Konsultasi Studi di Tiongkok",
+        "desc": "Diskusikan pilihan universitas, peluang beasiswa, dan persiapan pendaftaran sesuai rencana studi Anda.",
+        "cta": "Diskusikan Rencana Studi Anda"
+      }
+    },
+    "corporate": {
+      "tag": "Pelatihan Perusahaan",
+      "title1": "Pelatihan",
+      "title2": "Memajukan Tim Lokal Anda",
+      "desc": "Bekali tim Anda dengan keterampilan bahasa yang diperlukan untuk berkembang dalam lingkungan bisnis internasional.",
+      "solutionsTitle": "Solusi Industri",
+      "industries": [
+        "Pertambangan",
+        "Manufaktur",
+        "Perbankan",
+        "Infrastruktur",
+        "Ritel",
+        "Teknologi"
+      ],
+      "storiesTitle": "Kisah Sukses Klien",
+      "story1": {
+        "name": "HAND Enterprise Solutions Indonesia",
+        "highlight": "Kosakata Bisnis",
+        "stats": "30 karyawan"
+      },
+      "features": [
+        "Kosakata industri",
+        "Penjadwalan fleksibel",
+        "Pelacakan kemajuan"
+      ],
+      "ctaTitle": "Berdayakan tim Anda",
+      "ctaDesc": "Bermitra dengan UPER untuk membuat program bahasa sesuai tujuan perusahaan.",
+      "ctaBtn": "Minta Proposal"
+    },
+    "trendingFallbacks": {
+      "hsk4": {
+        "title": "Bootcamp HSK 4",
+        "desc": "Kuasai HSK 4 dengan cepat. Belajar online atau di kampus Jakarta. Sangat cocok untuk pemburu beasiswa.",
+        "badge": "🔥 Daftar"
+      },
+      "csca": {
+        "title": "Persiapan Beasiswa CSCA",
+        "desc": "Persiapan ahli di Jakarta untuk membantu Anda berkuliah di universitas top Tiongkok.",
+        "badge": "⭐ Daftar"
+      },
+      "tourBeijing": {
+        "title": "Beijing · Tur Budaya",
+        "desc": "Universitas Tsinghua base. Jelajahi Kota Terlarang, Tembok Besar, dan tes HSK.",
+        "badge": "🏃 Rekrutmen"
+      },
+      "tourHangzhou": {
+        "title": "Hangzhou · Tur Jiangnan",
+        "desc": "Universitas Zhejiang base. Danau Barat, Longjing, dan Kantor Pusat Alibaba.",
+        "badge": "🏃 Rekrutmen"
+      },
+      "tourWuhan": {
+        "title": "Wuhan · Tur Budaya Chu",
+        "desc": "Universitas Wuhan base. Kunjungi Menara Bangau Kuning, dan Pesiar Yangtze.",
+        "badge": "🏃 Rekrutmen"
+      },
+      "hsk3": {
+        "title": "Kelas Dasar HSK 3",
+        "desc": "Perkuat fondasi Mandarin Anda. Kelas interaktif bersama tutor berpengalaman.",
+        "badge": "🎯 Kelas Baru"
+      }
+    }
+  },
+  "en": {
+    "hero": {
+      "tag": "The Premier Educational Bridge from Indonesia to China",
+      "heading1": "Empowering Your Global Future:",
+      "heading2": "Your Pathway to China's Top Universities.",
+      "desc": "Get guidance on choosing a university, exploring scholarships, preparing for HSK and CSCA, and applying to study in China.",
+      "explore": "View Preparation Programs",
+      "chat": "Discuss Your Study Plans",
+      "join": "Join",
+      "students": "500+ students from Indonesia",
+      "partnership": {
+        "prefix": "In partnership with:",
+        "highlight": "40+ entities",
+        "suffix": " (universities from China & Indonesia, schools from Indonesia and Chinese companies in Indonesia)"
+      }
+    },
+    "audience": {
+      "students": {
+        "tag": "For Students & Parents",
+        "title": "Students & Parents",
+        "desc": "Explore study options in China, prepare for HSK and CSCA, and get application guidance.",
+        "items": [
+          "HSK",
+          "CSCA",
+          "Study Abroad",
+          "Study Tours"
+        ],
+        "cta": "View Student Services"
+      },
+      "schools": {
+        "tag": "For Schools & Institutions",
+        "title": "Schools & Institutions",
+        "desc": "Explore partnership opportunities for schools and institutions.",
+        "items": [
+          "HSK Compulsory / Interest Classes",
+          "Language Centers",
+          "Partnerships"
+        ],
+        "cta": "Contact the Partnerships Team"
+      },
+      "companies": {
+        "tag": "For Companies",
+        "title": "Companies",
+        "desc": "Contact UPER to discuss corporate partnerships.",
+        "items": [
+          "Corporate Chinese Training",
+          "Talent Recruitment",
+          "School-Enterprise Collaboration"
+        ],
+        "cta": "Contact UPER"
+      }
+    },
+    "services": {
+      "tag": "Educational Solutions",
+      "title1": "Our Core",
+      "title2": "Programs",
+      "desc": "Discover our comprehensive educational solutions designed to accelerate your global journey.",
+      "explore": "Explore Program"
+    },
+    "trending": {
+      "tag": "Highly Recommended",
+      "title1": "Trending &",
+      "title2": "Featured",
+      "desc": "Discover our most highly sought-after courses and upcoming study tours."
+    },
+    "campaign": {
+      "tag": "Limited Time Offer"
+    },
+    "news": {
+      "tag": "News & Updates",
+      "title1": "Latest",
+      "title2": "Insights",
+      "desc": "Stay updated with UPER and global education trends.",
+      "viewAll": "View All"
+    },
+    "stories": {
+      "tag": "Success Stories",
+      "title1": "Student",
+      "title2": "Experiences",
+      "desc": "Hear from our alumni who have successfully embarked on their global journeys."
+    },
+    "schoolPartnerships": {
+      "tag": "School Partnerships",
+      "title1": "30+ Indonesian Schools",
+      "title2": "Trust UPER",
+      "desc": "Empowering schools with world-class Chinese language programs and custom credit classes.",
+      "storiesTitle": "Success Stories",
+      "story1": {
+        "name": "SMA Negeri 1 Jakarta",
+        "type": "Language Center",
+        "stats": "150+ students"
+      },
+      "story2": {
+        "name": "SMA Muhammadiyah 8 Ciputat",
+        "type": "Credit Classes",
+        "stats": "80+ students"
+      },
+      "processTitle": "Partnership Process",
+      "process": [
+        "Consultation",
+        "Needs Assessment",
+        "Custom Proposal",
+        "Trial Class",
+        "Agreement",
+        "Ongoing Support"
+      ],
+      "cta": "Start Partnership"
+    },
+    "partners": {
+      "tag": "Strategic Partners",
+      "title1": "Trusted by",
+      "title2": "Leading Institutions",
+      "partners": "Partners"
+    },
+    "servicesData": {
+      "hsk": {
+        "title": "HSK Preparation for Your Level",
+        "desc": "Prepare for your target HSK level with UPER’s teachers and learning platform.",
+        "cta": "Ask About HSK Preparation"
+      },
+      "csca": {
+        "title": "CSCA Exam Preparation",
+        "desc": "Understand the CSCA exam content and format, then plan your preparation around the subjects you need.",
+        "cta": "Ask About CSCA Preparation"
+      },
+      "tours": {
+        "title": "Study Tours to China",
+        "desc": "Explore educational and cultural experiences in China through the activities included in your chosen program.",
+        "cta": "View Tour Details"
+      },
+      "consultancy": {
+        "title": "Consultation for Studying in China",
+        "desc": "Discuss university options, scholarship opportunities, and application preparation based on your study plans.",
+        "cta": "Discuss Your Study Plans"
+      }
+    },
+    "corporate": {
+      "tag": "Corporate Training",
+      "title1": "Corporate Training",
+      "title2": "Empowering Your Local Workforce",
+      "desc": "Equip your team with the language skills needed to thrive in an international business environment.",
+      "solutionsTitle": "Industry Solutions",
+      "industries": [
+        "Mining",
+        "Manufacturing",
+        "Banking",
+        "Infrastructure",
+        "Retail",
+        "Tech"
+      ],
+      "storiesTitle": "Client Success Stories",
+      "story1": {
+        "name": "HAND Enterprise Solutions Indonesia",
+        "highlight": "Custom vocabulary",
+        "stats": "30 employees"
+      },
+      "features": [
+        "Custom vocabulary",
+        "Flexible scheduling",
+        "Progress tracking"
+      ],
+      "ctaTitle": "Empower your workforce today",
+      "ctaDesc": "Partner with UPER to create a customized language training program that meets your company's specific needs and goals.",
+      "ctaBtn": "Request a Proposal"
+    },
+    "trendingFallbacks": {
+      "hsk4": {
+        "title": "HSK 4 Intensive Bootcamp",
+        "desc": "Master HSK 4 efficiently. Study online or at our Jakarta center. Perfect for scholarship seekers.",
+        "badge": "🔥 Enroll Now"
+      },
+      "csca": {
+        "title": "CSCA Scholarship Prep",
+        "desc": "Expert preparation on our Jakarta Campus to help you secure prestigious Chinese university scholarships.",
+        "badge": "⭐ Enroll Now"
+      },
+      "tourBeijing": {
+        "title": "Beijing · Cultural Tour",
+        "desc": "Tsinghua Univ base. Explore Forbidden City, Great Wall, Hutong, and experience an actual HSK Trial.",
+        "badge": "🏃 Recruiting"
+      },
+      "tourHangzhou": {
+        "title": "Hangzhou · Jiangnan Tour",
+        "desc": "Zhejiang University base. Discover West Lake, Longjing Tea, Alibaba HQ, and Songcheng Show.",
+        "badge": "🏃 Recruiting"
+      },
+      "tourWuhan": {
+        "title": "Wuhan · Chu Culture Tour",
+        "desc": "Wuhan University base. Visit Yellow Crane Tower, East Lake, Hubei Museum, and take a Yangtze Cruise.",
+        "badge": "🏃 Recruiting"
+      },
+      "hsk3": {
+        "title": "HSK 3 Foundation Build",
+        "desc": "Solidify your Chinese foundation. Interactive classes with native speakers. Perfect for beginners.",
+        "badge": "🎯 New Batch"
+      }
+    }
+  },
+  "zh": {
+    "hero": {
+      "tag": "专注印尼至中国的教育桥梁",
+      "heading1": "赋能您的全球未来：",
+      "heading2": "留学中国，在此启航",
+      "desc": "了解如何选校、寻找奖学金、准备 HSK 和 CSCA，并获得留学申请指导。",
+      "explore": "查看留学准备项目",
+      "chat": "咨询留学规划",
+      "join": "加入 来自印尼的",
+      "students": "500多名学生",
+      "partnership": {
+        "prefix": "合作机构：",
+        "highlight": "40余家机构",
+        "suffix": "（包含中印两国的大学、印尼的中学以及驻印尼中资机构）"
+      }
+    },
+    "audience": {
+      "students": {
+        "tag": "面向学生与家长",
+        "title": "学生与家长",
+        "desc": "了解赴华留学选项、准备 HSK 和 CSCA，并获得申请指导。",
+        "items": [
+          "HSK",
+          "CSCA",
+          "留学咨询",
+          "游学项目"
+        ],
+        "cta": "查看学生服务"
+      },
+      "schools": {
+        "tag": "面向学校与机构",
+        "title": "学校与机构",
+        "desc": "了解学校与机构合作机会。",
+        "items": [
+          "HSK必修班/HSK兴趣班",
+          "语言中心",
+          "合作项目"
+        ],
+        "cta": "联系合作团队"
+      },
+      "companies": {
+        "tag": "面向企业",
+        "title": "企业",
+        "desc": "联系 UPER 洽谈企业合作。",
+        "items": [
+          "企业中文培训",
+          "人才招聘",
+          "校企合作"
+        ],
+        "cta": "联系 UPER"
+      }
+    },
+    "services": {
+      "tag": "教育解决方案",
+      "title1": "我们的核心",
+      "title2": "项目",
+      "desc": "探索我们精心设计的综合教育方案，加速您的全球发展之旅。",
+      "explore": "探索项目"
+    },
+    "trending": {
+      "tag": "强烈推荐",
+      "title1": "热门与",
+      "title2": "精选",
+      "desc": "发现我们最受欢迎的课程和即将出行的游学团。"
+    },
+    "campaign": {
+      "tag": "限时优惠"
+    },
+    "news": {
+      "tag": "新闻与更新",
+      "title1": "最新",
+      "title2": "见解",
+      "desc": "关注UPER与全球教育发展趋势。",
+      "viewAll": "查看全部"
+    },
+    "stories": {
+      "tag": "成功案例",
+      "title1": "学生",
+      "title2": "体验",
+      "desc": "听听成功开启全球旅程的校友们怎么说。"
+    },
+    "schoolPartnerships": {
+      "tag": "学校合作",
+      "title1": "超过30所印尼学校",
+      "title2": "信任UPER",
+      "desc": "通过世界一流的中文项目和定制学分课程，为学校赋能。",
+      "storiesTitle": "成功案例",
+      "story1": {
+        "name": "SMA Negeri 1 Jakarta",
+        "type": "语言中心",
+        "stats": "150+ 学生"
+      },
+      "story2": {
+        "name": "SMA Muhammadiyah 8 Ciputat",
+        "type": "学分课程",
+        "stats": "80+ 学生"
+      },
+      "processTitle": "合作流程",
+      "process": [
+        "初步咨询",
+        "需求评估",
+        "定制方案",
+        "体验课程",
+        "签署协议",
+        "持续支持"
+      ],
+      "cta": "开启合作"
+    },
+    "partners": {
+      "tag": "战略合作伙伴",
+      "title1": "备受",
+      "title2": "领先机构信任",
+      "partners": "个合作伙伴"
+    },
+    "servicesData": {
+      "hsk": {
+        "title": "按目标级别准备 HSK",
+        "desc": "通过 UPER 老师的指导和学习平台，为目标 HSK 级别做好准备。",
+        "cta": "咨询 HSK 备考"
+      },
+      "csca": {
+        "title": "CSCA 考试准备",
+        "desc": "了解 CSCA 的考试内容和形式，并根据所需科目规划备考。",
+        "cta": "咨询 CSCA 备考"
+      },
+      "tours": {
+        "title": "中国研学",
+        "desc": "通过所选项目的实际行程，体验中国的教育和文化活动。",
+        "cta": "查看研学详情"
+      },
+      "consultancy": {
+        "title": "赴华留学咨询",
+        "desc": "根据你的留学计划，讨论院校选择、奖学金机会和申请准备。",
+        "cta": "讨论留学计划"
+      }
+    },
+    "corporate": {
+      "tag": "企业培训",
+      "title1": "企业培训",
+      "title2": "赋能您的本地员工",
+      "desc": "为您的团队配备在国际商业环境中茁壮成长的语言沟通技能与跨文化能力。",
+      "solutionsTitle": "行业解决方案",
+      "industries": [
+        "矿业",
+        "制造业",
+        "银行业",
+        "基础设施",
+        "零售业",
+        "科技业"
+      ],
+      "storiesTitle": "客户成功案例",
+      "story1": {
+        "name": "HAND Enterprise Solutions Indonesia",
+        "highlight": "定制行业词汇",
+        "stats": "30 名员工"
+      },
+      "features": [
+        "定制行业词汇",
+        "灵活排课周期",
+        "学习进度追踪"
+      ],
+      "ctaTitle": "今天就开始赋能您的团队",
+      "ctaDesc": "与UPER建立合作，为您的企业打造符合特定需求和战略目标的定制化语言培训系统。",
+      "ctaBtn": "获取合作方案"
+    },
+    "trendingFallbacks": {
+      "hsk4": {
+        "title": "HSK 4级 强化冲刺营",
+        "desc": "高效攻克HSK 4级。支持线上或线下（雅加达中心）学习，非常适合申请奖学金的同学。",
+        "badge": "🔥 马上报名"
+      },
+      "csca": {
+        "title": "CSCA 奖学金直通班",
+        "desc": "雅加达校区专家级辅导，助您稳拿名牌中国大学奖学金名额。",
+        "badge": "⭐ 立即报名"
+      },
+      "tourBeijing": {
+        "title": "北京 · 文化探索营",
+        "desc": "以清华大学为基地。探索紫禁城、长城、胡同，并体验真实的HSK线下机考。",
+        "badge": "🏃 招募中"
+      },
+      "tourHangzhou": {
+        "title": "杭州 · 江南研学营",
+        "desc": "以浙江大学为基地。游览西湖、龙井茶园、阿里巴巴总部，观看宋城演艺。",
+        "badge": "🏃 招募中"
+      },
+      "tourWuhan": {
+        "title": "武汉 · 荆楚文化营",
+        "desc": "以武汉大学为基地。参观黄鹤楼、东湖、湖北省博物馆，并体验长江游轮。",
+        "badge": "🏃 招募中"
+      },
+      "hsk3": {
+        "title": "HSK 3级 基础建设班",
+        "desc": "夯实中文基础底盘。真人互动课堂，非常适合初学者。",
+        "badge": "🎯 最新开班"
+      }
+    }
+  }
+}

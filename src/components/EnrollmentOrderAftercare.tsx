@@ -7,29 +7,16 @@ import { interestOption, interestText, type InterestLanguage } from '../utils/en
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import { enrollmentSupportPath } from './EnrollmentSupport';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
+import type { AftercareCourse as Course, EnrollmentAftercare } from '../utils/enrollmentAftercare';
 
 type Copy = readonly [string, string, string];
-type Course = Partial<PublicEnrollmentClass> & { level?: string; format?: string; opened?: boolean; firstLesson: string; schedule: string };
-type TransferTarget = Course & { id: string };
-type Invitation = Course & { id: string; targetClassId: string; state: string; expiresAt: string };
-export type EnrollmentAftercare = {
-  originalClassState: string;
-  currentClass: Course;
-  transfers: TransferTarget[];
-  invitations: Invitation[];
-  transferHistory: { source_class_id: string; target_class_id: string; created_at: string }[];
-  lateProofSubmitted?: boolean;
-  priorityRequested?: boolean;
-  refundProgress?: { expected: number; refunded: number; returned?: number; sendBy?:string } | null;
-  refund: { mode: string; maximum?: number };
-};
 
 export function EnrollmentOrderAftercare({
   order, details, catalog, search, language, minePath, proofPath, busy, onTransfer, onEnablePriority, onRefresh, onCancel,
 }: {
   order: EnrollmentOrder;
   details?: EnrollmentAftercare;
-  catalog: PublicEnrollmentClass[];
+  catalog: ReadonlyMap<string,PublicEnrollmentClass>;
   search: URLSearchParams;
   language: InterestLanguage;
   minePath: string;
@@ -46,7 +33,7 @@ export function EnrollmentOrderAftercare({
   const locale = t(['zh-CN','en-GB','id-ID']);
   const dateFormat = new Intl.DateTimeFormat(locale,{month:'long',day:'numeric',timeZone:'Asia/Jakarta'});
   const timeFormat = new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Asia/Jakarta'});
-  const course = catalog.find(row=>row.id===order.classId) ?? details?.currentClass;
+  const course = catalog.get(order.classId) ?? details?.currentClass;
   const closed = details?.originalClassState==='cancelled';
   const expired = order.status==='expired' && !order.restored;
   const learnerCancelled=order.closureReason==='learner_cancelled';
@@ -226,7 +213,7 @@ export function EnrollmentOrderAftercare({
     back = {text:backOriginal,path:originalPath};
     body = <>
       {transfers.map(row=>{
-        const option = catalog.find(item=>item.id===row.id);
+        const option = catalog.get(row.id);
         return <article key={row.id} className="enrollment-record enrollment-transfer-card">
           <h2>{courseTitle(row,course,option?.opened===false)}</h2>
           {option&&<p>{t([option.sessions+' 次课 · 每次 '+option.minutes+' 分钟',option.sessions+' sessions · '+option.minutes+' min each',option.sessions+' sesi · '+option.minutes+' menit per sesi'])}</p>}

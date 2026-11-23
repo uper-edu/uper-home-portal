@@ -192,6 +192,15 @@ async function currentVisitorChat(db: Pick<typeof pool, 'query'>, visitorId: str
     [visitorId],
   )).rows[0];
 }
+export async function conversationSnapshot(row: {id:string;source:string;attribution:unknown}, view:'full'|'workspace'='full') {
+  const messages = (await pool.query(
+    view==='workspace'
+      ? "SELECT conversation_id,request_id,role,content,status,metadata,created_at FROM messages WHERE conversation_id=:p1 ORDER BY sequence"
+      : "SELECT * FROM messages WHERE conversation_id=:p1 ORDER BY sequence",
+    [row.id],
+  )).rows;
+  return {conversation:{id:row.id,source:row.source,attribution:row.attribution},messages};
+}
 function sharedChatLanding(page: unknown) {
   if (typeof page !== 'string' || !page.startsWith('/') || page.startsWith('//')) return '';
   const url = new URL(page, 'https://portal.invalid');
@@ -517,7 +526,13 @@ export async function mountPortal(app: Express) {
         }
         return row;
       });
-      res.json({ conversationId: row.id });
+      if (shared && req.body.includeHistory === true) {
+        const snapshot = await conversationSnapshot(row,'workspace');
+        const historyDigest = crypto.createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+        res.setHeader('Cache-Control','no-store');
+        res.json({conversationId:row.id,historyDigest,
+          ...(req.body.historyDigest===historyDigest ? {historyUnchanged:true} : {snapshot})});
+      } else res.json({ conversationId: row.id });
     }),
   );
   app.get(
@@ -525,15 +540,11 @@ export async function mountPortal(app: Express) {
     wrap(async (req, res) => {
       const c = await own(req, res);
       res.setHeader('Cache-Control','no-store');
-      res.json({
-        conversation: {id:c.id, source:c.source, attribution:c.attribution},
-        messages: (
-          await pool.query(
-            "SELECT * FROM messages WHERE conversation_id=:p1 ORDER BY sequence",
-            [c.id],
-          )
-        ).rows,
-      });
+      if(req.query.view==='reference'){
+        res.json({conversation:{id:c.id,source:c.source}});
+        return;
+      }
+      res.json(await conversationSnapshot(c));
     }),
   );
   mountHskAssessments(app);

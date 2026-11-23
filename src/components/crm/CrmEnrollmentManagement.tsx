@@ -1,4 +1,4 @@
-import {enrollmentClassTitle} from '../../utils/enrollmentCatalog';
+import {enrollmentClassTitle,enrollmentCopy} from '../../utils/enrollmentCatalog';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminListTable,AdminListState,AdminListPagination} from '../admin/AdminList';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
@@ -11,8 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import {Settings } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { containPaneKeys, revealRecord } from '../adminScroll';
-import { interestOption } from '../EnrollmentInterests';
-import { enrollmentCopy } from '../EnrollmentApplication';
+import { interestOption } from '../../utils/enrollmentInterestCopy';
 import { formatCrmEventTime } from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';

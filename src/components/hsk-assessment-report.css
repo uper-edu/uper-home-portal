@@ -93,18 +93,6 @@
 .hsk-report-count strong { color: var(--report-ink); font-weight: 700; }
 .hsk-report-scope { margin-top: 10px; color: var(--report-muted); font-size: 12px; }
 
-.hsk-report-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: 9px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  background: #fff5e3;
-  color: #6b4715;
-  font-size: 13px;
-}
-
 .hsk-report-notice svg { flex: none; margin-top: 2px; }
 .hsk-report-save { align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .hsk-report-save button { min-height: 44px; margin-block: -5px; text-decoration: underline; text-underline-offset: 3px; font-weight: 650; }

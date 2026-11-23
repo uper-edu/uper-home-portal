@@ -1,17 +1,12 @@
+import {createBrowserUuid} from '../utils/browserUuid';
 import {readEnrollmentDraft,writeEnrollmentDraft} from '../services/visitorContact';
-import {ContactPhoneInput} from './ContactPhoneInput';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
+import {ContactPhoneInput} from './ContactPhoneInput';
 import * as phoneValidation from '../utils/contactPhone';
 import { useState, type ReactNode } from 'react';
 import { PublicSingleSelect } from './PublicSingleSelect';
-import { demandFormats, demandLevels, demandPeriods, parseDemand, type DemandCriteria } from '../utils/enrollmentInterests';
-
+import { demandFormats, demandLevels, demandPeriods, parseDemand, type DemandCriteria, type DemandItem } from '../utils/enrollmentInterests';
 import {interestOption,interestText,type InterestLanguage} from '../utils/enrollmentInterestCopy';
-export {interestOption,interestText,waitlistStates,type InterestLanguage} from '../utils/enrollmentInterestCopy';
-type Copy = readonly [string,string,string];
-export type WaitlistItem = { id:string; classId:string; learnerName?:string; state:string; orderId?:string; available:boolean; level:string; firstLesson:string; updatedAt?:string };
-export type DemandItem = { id:string; revision:number; state:string; criteria:DemandCriteria; matches:{id:string;level:string;firstLesson:string}[]; updatedAt?:string };
-export type Interests = { waitlist:WaitlistItem[]; demands:DemandItem[] };
 
 export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy, awaitingCode, emailVerified, contact, draft }: {
   language:InterestLanguage; initial?:DemandItem; prefill?:DemandCriteria;
@@ -20,8 +15,8 @@ export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy,
   draft?:{owner:string;key:string};
   busy:boolean; awaitingCode?:boolean; emailVerified?:boolean;
 }) {
-  const t=(text:Copy)=>interestText(language,text);
-  const [id]=useState(initial?.id||crypto.randomUUID());
+  const t=(text:readonly [string,string,string])=>interestText(language,text);
+  const [id]=useState(initial?.id||createBrowserUuid());
   const [localName,setLocalName]=useState('');
   const [localCriteria,setLocalCriteria]=useState<DemandCriteria>(()=>initial?.criteria ??
     (draft&&readEnrollmentDraft<DemandCriteria>(draft.owner,draft.key)) ?? prefill ??
@@ -33,7 +28,7 @@ export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy,
     setLocalCriteria(next);
     if(draft)writeEnrollmentDraft(draft.owner,draft.key,next);
   }
-  const phoneField = useEnrollmentPhoneField(language,criteria.phone,phoneValidation);
+  const phoneField = useEnrollmentPhoneField(language,contact ? '' : criteria.phone,phoneValidation);
   const notesRequired=[criteria.level,criteria.period,criteria.format].includes('other');
   const [invalid,setInvalid]=useState(false);
   const fields=[

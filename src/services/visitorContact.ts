@@ -5,24 +5,35 @@ const lifetime = 24 * 60 * 60 * 1000;
 const contactKey = 'uper_visitor_contact';
 const formKey = 'uper_enrollment_draft';
 const changed='uper_visitor_contact_changed';
+// A failed clear must also hide an older value which is still readable.
+const temporaryEnrollmentDrafts = new Map<string,string|null>();
 
 function read<T>(where:'localStorage'|'sessionStorage',key:string,owner:string):T|undefined {
   if (!owner || owner!==visitorScope()) return;
+  const scoped=key+':'+owner;
   try {
-    const storage=window[where], scoped=key+':'+owner;
-    const saved=JSON.parse(storage.getItem(scoped)??'null') as {value:T;expiresAt:number}|null;
+    const temporary=where==='sessionStorage'?temporaryEnrollmentDrafts.get(scoped):undefined;
+    const saved=JSON.parse((temporary===undefined?window[where].getItem(scoped):temporary)??'null') as {value:T;expiresAt:number}|null;
     if (saved && saved.expiresAt>Date.now()) return saved.value;
-    if (saved) storage.removeItem(scoped);
+    if (saved) {
+      if(temporary!==undefined)temporaryEnrollmentDrafts.set(scoped,null);
+      else window[where].removeItem(scoped);
+    }
   } catch { /* Form use remains available without browser storage. */ }
 }
 
 function write<T>(where:'localStorage'|'sessionStorage',key:string,owner:string,value?:T) {
   if (!owner || owner!==visitorScope()) return;
+  const scoped=key+':'+owner;
+  let encoded:string|null|undefined;
   try {
-    const storage=window[where], scoped=key+':'+owner;
-    if (value===undefined) storage.removeItem(scoped);
-    else storage.setItem(scoped,JSON.stringify({value,expiresAt:Date.now()+lifetime}));
-  } catch { /* Keep the current form in memory. */ }
+    encoded=value===undefined?null:JSON.stringify({value,expiresAt:Date.now()+lifetime});
+    if (encoded===null) window[where].removeItem(scoped);
+    else window[where].setItem(scoped,encoded);
+    if(where==='sessionStorage')temporaryEnrollmentDrafts.delete(scoped);
+  } catch {
+    if(where==='sessionStorage'&&encoded!==undefined)temporaryEnrollmentDrafts.set(scoped,encoded);
+  }
 }
 
 export function readVisitorContact(owner:string):VisitorContact|undefined {

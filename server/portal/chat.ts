@@ -17,7 +17,6 @@ import {engagement} from "./trustWorkflow.ts";
 import type { Express } from "express";
 import {
   pool,
-  tx,
   id,
   event,
   connection,
@@ -30,14 +29,7 @@ import { learnerAssessmentGuidance } from "../../src/data/hskLearnerGuidance.ts"
 import { assessedBeginnerNextStep, assessmentIntroOpening, assessmentScopeNote, consultationNextStep, consultationProfile, profileIntroQuote, resolveRecommendationTiming, type DeferredRecommendation } from "./consultationGuidance.ts";
 import { enrollmentConsultationPolicy } from "./enrollmentConsultationPolicy.ts";
 import { log } from "../logger.ts";
-// Follow-up prompts are plain text learner utterances, never actions or URLs.
-export function chatFollowupPrompts(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  const prompts = value.filter((item): item is string => typeof item === 'string')
-    .map(item => item.trim())
-    .filter(item => item.length > 0 && item.length <= 110 && !/[\r\n<>]|https?:|www\./iu.test(item));
-  return [...new Set(prompts)].slice(0, 3);
-}
+import { chatFollowupPrompts } from "../../src/utils/chatReplyMetadata.ts";
 
 const admitChat = chatAdmission(mysqlConnectionLimit-1);
 
@@ -210,17 +202,23 @@ export function mountChat(app: Express) {
         }
         saved = true;
         const stream = req.body.stream === true;
+        const terminalReply = req.body.streamReply === 'terminal';
         if (stream) {
           res.setHeader("Content-Type", "text/event-stream");
           res.setHeader("Cache-Control", "no-cache, no-transform");
           res.write(`data: ${JSON.stringify({ saved: true, messageId })}\n\n`);
         }
-        const recentMessages = (
-          await db.query(
+        // A retry keeps its original position. Later turns can belong to a different learner or class.
+        const historyResult = previousUser && !introduction
+          ? await db.query(
+            "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND sequence<=CAST(:p2 AS UNSIGNED) AND status IN ('saved','completed') ORDER BY sequence DESC LIMIT 40",
+            [conv.id,previousUser.sequence],
+          )
+          : await db.query(
             "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence DESC LIMIT 40",
             [conv.id],
-          )
-        ).rows.reverse();
+          );
+        const recentMessages=historyResult.rows.reverse();
         const history=recentMessages.map(({role,content})=>({role,content}));
         const newestMessages=[...recentMessages].reverse();
         const learnerTexts=history.filter(message=>message.role==='user').map(message=>message.content);
@@ -288,7 +286,7 @@ export function mountChat(app: Express) {
               ),
             })
           : "";
-        const currentPriceBook = await managedCoursePrices(pool) ?? { courses: [] };
+        const currentPriceBook = await managedCoursePrices(db) ?? { courses: [] };
         const lang = req.body.lang === 'id' || req.body.lang === 'en' ? req.body.lang : 'zh';
         let catalogueUsed = false;
         let enrollment:EnrollmentGuideAction|undefined;
@@ -298,7 +296,7 @@ export function mountChat(app: Express) {
         let workspaceEntry:ChatWorkspaceEntry|undefined;
         let reply = "", modelUsed: string | null = null;
         const chineseInput = !introduction && chineseChatInput(content);
-        await runChatProviderAttempts(await runtimeProviders(), async attempt => {
+        await runChatProviderAttempts(await runtimeProviders(db), async attempt => {
             const {provider} = attempt;
             const consultationMessages = [
                   {
@@ -616,8 +614,12 @@ export function mountChat(app: Express) {
           error: modelUsed ? undefined : "all_providers_failed",
         };
         if (stream) {
-          res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
-          res.write(`data: ${JSON.stringify({ chunk: result.reply })}\n\n`);
+          // Current clients render the validated terminal reply. Older clients
+          // still receive the separate body frame they expect.
+          if (!terminalReply) {
+            res.write(`data: ${JSON.stringify({ reset: true })}\n\n`);
+            res.write(`data: ${JSON.stringify({ chunk: result.reply })}\n\n`);
+          }
           res.write(`data: ${JSON.stringify({ ...result, done: true })}\n\n`);
           res.end();
         } else res.json(result);

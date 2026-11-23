@@ -10,6 +10,10 @@ import { hskFaqsByLang } from '../data/hskFaqs';
 import { useDesignStyle } from '../utils/theme';
 import { promotionJourneyUrl } from '../utils/promotionNavigation';
 import ProgramFAQPortal from '../components/ProgramFAQPortal';
+import { addRouteTranslations } from '../i18n';
+import translations from '../i18n/locales/routes/hsk.json';
+
+addRouteTranslations('hsk', translations);
 
 export default function HSK() {
   const { t, i18n } = useTranslation();

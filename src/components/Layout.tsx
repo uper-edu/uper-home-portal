@@ -1,9 +1,9 @@
 import {promotionEntryPoint, promotionJourneyUrl, promotionLandingPaths, websitePromotionUrl} from '../utils/promotionNavigation';
 import VisitorBoundary from './VisitorBoundary';
 import React, { lazy, useState, useEffect, useId, useRef, Suspense } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'motion/react';
 import { Link, Outlet, useLocation, useMatch, useNavigationType, useNavigate } from 'react-router-dom';
-import { Globe2, ArrowRight, X, MapPin, User, Phone, MessageCircle, CalendarCheck, ChevronDown, GraduationCap, Palette, Settings2, Sliders, Check, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, X, MapPin, User, Phone, MessageCircle, CalendarCheck, ChevronDown, GraduationCap, Palette, Settings2, Sliders, Check, RotateCcw, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {useSiteChatBackground} from './SiteChatRoutes';
 import {readEnrollmentPosition} from '../utils/chatJourneyNavigation';
@@ -13,15 +13,14 @@ import { trackLanguageSwitch, trackEvent } from '../utils/analytics';
 import { useDesignStyle, useColorTheme } from '../utils/theme';
 import { useStudentName, STUDENT_PORTAL_URL } from '../utils/studentAuth';
 import { SocialProfileIcon, socialProfileOrder, socialProfiles } from './SocialProfileIcon';
-import { PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenuIcon, publicHeaderLanguages, publicHeaderMenuButtonClass } from './PublicHeaderMenu';
+import { PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenuIcon, publicHeaderMenuButtonClass } from './PublicHeaderMenu';
 import { PublicPageLinkActions } from './PublicLinkActions';
 
 const prefTranslations = {
   id: {
     btnTitle: "Preferensi",
     title: "Pengaturan Tampilan",
-    subtitle: "Sesuaikan bahasa, gaya, dan warna situs",
-    language: "Bahasa",
+    subtitle: "Sesuaikan gaya dan warna situs",
     designStyle: "Gaya Desain",
     colorTheme: "Skema Warna",
     styles: {
@@ -40,8 +39,7 @@ const prefTranslations = {
   en: {
     btnTitle: "Preferences",
     title: "Display Preferences",
-    subtitle: "Customize language, design style, and colors",
-    language: "Language",
+    subtitle: "Customize design style and colors",
     designStyle: "Design Style",
     colorTheme: "Color Scheme",
     styles: {
@@ -60,8 +58,7 @@ const prefTranslations = {
   zh: {
     btnTitle: "个性化偏好",
     title: "个性化偏好设置",
-    subtitle: "自定义语言、设计风格与界面色彩",
-    language: "显示语言",
+    subtitle: "自定义设计风格与界面色彩",
     designStyle: "设计风格",
     colorTheme: "界面色彩",
     styles: {
@@ -151,7 +148,8 @@ const Navbar = ({ onOpenAppearance, onOpenCourseAdvice, learnerPreview, navbarRe
   const navigateLanguage = useNavigate();
   const switchLanguage = (code: string) => {
     const url = new URL(window.location.href);
-    if (code === "id") url.searchParams.delete("lang"); else url.searchParams.set("lang", code);
+    if (code === "id" && !(enrollmentSection && url.searchParams.has('p'))) url.searchParams.delete("lang");
+    else url.searchParams.set("lang", code);
     url.searchParams.delete("lng");
     navigateLanguage(url.pathname + url.search + url.hash, {replace:true});
     i18n.changeLanguage(code);
@@ -225,7 +223,7 @@ const Navbar = ({ onOpenAppearance, onOpenCourseAdvice, learnerPreview, navbarRe
                 </button>
                 <AnimatePresence>
                   {activeDropdown === link.nameKey && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
@@ -241,7 +239,7 @@ const Navbar = ({ onOpenAppearance, onOpenCourseAdvice, learnerPreview, navbarRe
                           {t(dropLink.nameKey)}
                         </Link>
                       ))}
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
               </div>
@@ -311,45 +309,13 @@ const Navbar = ({ onOpenAppearance, onOpenCourseAdvice, learnerPreview, navbarRe
       {/* Mobile Menu Drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div 
+          <m.div
             id={mobileMenuId}
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             className={`xl:hidden absolute top-full left-0 w-full p-5 flex flex-col gap-3.5 shadow-2xl border-b max-h-[85vh] overflow-y-auto ${isApple ? 'bg-white/95 backdrop-blur-2xl border-slate-200/80' : 'bg-white border-slate-200'}`}
           >
-            {/* 1. High-Visibility Mobile Language Card */}
-            <div className={`p-3.5 rounded-2xl border ${isApple ? 'bg-slate-100/80 border-slate-200/70' : 'bg-primary-50/60 border-primary-100'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-                  <Globe2 className="w-3.5 h-3.5 text-primary-600" />
-                  Language / 语言 / Bahasa
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">1-Tap Switch</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {publicHeaderLanguages.map((lng) => {
-                  const isSelected = i18n.language && i18n.language.startsWith(lng.code);
-                  return (
-                    <button
-                      key={lng.code}
-                      onClick={() => switchLanguage(lng.code)}
-                      className={`py-2 px-1 text-center font-bold rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                        isSelected
-                          ? isApple
-                            ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-900/10'
-                            : 'bg-primary-600 text-white shadow-sm'
-                          : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/60'
-                      }`}
-                    >
-                      <span className="text-sm">{lng.flag}</span>
-                      <span className="text-[11px] leading-tight">{lng.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Navigation Links */}
             {navLinks.map(link => (
               link.dropdown ? (
@@ -428,7 +394,7 @@ const Navbar = ({ onOpenAppearance, onOpenCourseAdvice, learnerPreview, navbarRe
                 <MessageCircle className="w-5 h-5" /> {t('fab.chat')}
               </a>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </nav>
@@ -467,7 +433,7 @@ const AppearanceModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     <AnimatePresence>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         {/* Backdrop */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -476,7 +442,7 @@ const AppearanceModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         />
 
         {/* Modal Dialog */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -604,7 +570,7 @@ const AppearanceModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
               {prefText.confirm}
             </button>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </AnimatePresence>
   );
@@ -897,12 +863,13 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
     if (navType === 'POP') {
       if (!isCustomScrollRestoredPage) {
         // Try to restore scroll position with a slight delay to allow rendering
-        const savedScroll = sessionStorage.getItem(`scrollPos-${pathname}`);
-        if (savedScroll) {
-          setTimeout(() => {
-            window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'auto' });
-          }, 50);
-        }
+        let savedScroll: string | null;
+        try { savedScroll = sessionStorage.getItem(`scrollPos-${pathname}`); }
+        catch { return; }
+        const top = savedScroll && parseInt(savedScroll, 10);
+        if (typeof top !== 'number' || !Number.isFinite(top)) return;
+        const timer = setTimeout(() => window.scrollTo({top, behavior:'auto'}), 50);
+        return () => clearTimeout(timer);
       }
     } else {
       // Navigating to a new page, scroll to top
@@ -916,7 +883,8 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
     if (isCustomScrollRestoredPage) return;
 
     const handleScroll = () => {
-      sessionStorage.setItem(`scrollPos-${pathname}`, window.scrollY.toString());
+      try { sessionStorage.setItem(`scrollPos-${pathname}`, window.scrollY.toString()); }
+      catch { /* Page navigation still works when storage is unavailable. */ }
     };
     
     let debounceTimer: ReturnType<typeof setTimeout>;
@@ -933,37 +901,39 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
   }, [pathname]);
 
   return (
-    <div data-enrollment-screen={enrollmentScreen || undefined} className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
+    <LazyMotion features={domAnimation}>
+      <div data-enrollment-screen={enrollmentScreen || undefined} className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
 
-      <Navbar navbarRef={navbarRef} learnerPreview={learnerPreview} onOpenAppearance={() => setAppearanceOpen(true)} onOpenCourseAdvice={trigger=>{
-        if (enrollmentScreen) setEnrollmentChatEntry(location.key);
-        setChatLaunchRequest(trigger);
-      }}/>
-      <main className="flex-grow">
-        <motion.div
-          key={location.pathname}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-        >
-          <Suspense fallback={
-            <div className="min-h-[60vh] flex flex-col items-center justify-center bg-transparent">
-              <div className={`w-10 h-10 border-4 ${isApple ? 'border-slate-800' : 'border-primary-600'} border-t-transparent rounded-full animate-spin`} />
-            </div>
-          }>
-            <Outlet />
-          </Suspense>
-        </motion.div>
-      </main>
-      {!learnerPreview && (!enrollmentScreen || chatBackground || enrollmentChatEntry===location.key) &&
-        <Suspense fallback={null}><VisitorBoundary><AIChatbot navbarRef={navbarRef} expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}
-          launchRequest={chatLaunchRequest} onLaunchHandled={setChatLaunchRequest}/></VisitorBoundary></Suspense>}
-      {!enrollmentScreen && <>
-        <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
-        <BackToTop />
-        <MobileBottomBar />
-      </>}
-      <AppearanceModal isOpen={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
-    </div>
+        <Navbar navbarRef={navbarRef} learnerPreview={learnerPreview} onOpenAppearance={() => setAppearanceOpen(true)} onOpenCourseAdvice={trigger=>{
+          if (enrollmentScreen) setEnrollmentChatEntry(location.key);
+          setChatLaunchRequest(trigger);
+        }}/>
+        <main className="flex-grow">
+          <m.div
+            key={location.pathname}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+          >
+            <Suspense fallback={
+              <div className="min-h-[60vh] flex flex-col items-center justify-center bg-transparent">
+                <div className={`w-10 h-10 border-4 ${isApple ? 'border-slate-800' : 'border-primary-600'} border-t-transparent rounded-full animate-spin`} />
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
+          </m.div>
+        </main>
+        {!learnerPreview && (!enrollmentScreen || chatBackground || enrollmentChatEntry===location.key) &&
+          <Suspense fallback={null}><VisitorBoundary><AIChatbot navbarRef={navbarRef} expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}
+            launchRequest={chatLaunchRequest} onLaunchHandled={setChatLaunchRequest}/></VisitorBoundary></Suspense>}
+        {!enrollmentScreen && <>
+          <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
+          <BackToTop />
+          <MobileBottomBar />
+        </>}
+        <AppearanceModal isOpen={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
+      </div>
+    </LazyMotion>
   );
 }

@@ -637,12 +637,14 @@ test('a browse intent that asks to apply verifies intake before giving applicati
     PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/tmp/chat-apply-fixture'});
   const broad={kind:'browse',question:'apply'};
   const scoped={...broad,level:'HSK 1',period:'weekend',format:'standard'};
-  const run=async(intent:unknown,rows:PublicEnrollmentClass[])=>{
-    const result=await chatEnrollmentAction({query:async(sql)=>{
+  const run=async(intent:unknown,rows:PublicEnrollmentClass[],references:string[]=[])=>{
+    const result=await chatEnrollmentAction({query:async(sql,args)=>{
       if(sql.includes('enrollment_mail_configuration'))return {rows:[{revision:1,config:{accounts:[],delivery:{mode:'simulation',generation:'fixture'}}}]};
       assert.match(sql,/FROM enrollment_classes e/);
-      return {rows:rows.map(({id,availability,...data})=>({id,data:{...data,capacity:15},opened:0,seats:availability==='full'?15:0}))};
-    }},intent,false,false);
+      assert.deepEqual(args,[references.length?1:null,references,1,0]);
+      return {rows:rows.filter(row=>!references.length||references.includes(row.id)).map(({id,availability,...data})=>
+        ({id,data:{...data,capacity:15},opened:0,seats:availability==='full'?15:0}))};
+    }},intent,false,false,references);
     assert.ok(result);
     return result;
   };
@@ -659,6 +661,19 @@ test('a browse intent that asks to apply verifies intake before giving applicati
     const none=await run(scoped,[sample({period:'weekday-evening'})]);
     assert.equal(none.kind,'demand');
     assert.match(enrollmentGuideHref(none,'zh','ai_chat'),/^\/enrollment\/interest\?/);
+    const referenceIds=['selected-class'];
+    const selected=sample({id:referenceIds[0],availability:'full'});
+    const unrelated=sample({id:'unrelated-class',availability:'available'});
+    const explicit={...scoped,referenceIds};
+    const waitlist=await run(explicit,[selected,unrelated],referenceIds);
+    assert.equal(waitlist.kind,'waitlist');
+    assert.deepEqual(waitlist.rows?.map(row=>row.id),referenceIds);
+    const missing=await run(explicit,[unrelated],referenceIds);
+    assert.equal(missing.kind,'unavailable');
+    assert.equal(missing.referenceUnavailable,true);
+    const recommendation=await run({kind:'recommend',level:'HSK 1',period:'weekend',referenceIds},
+      [{...selected,availability:'available'},unrelated],referenceIds);
+    assert.deepEqual(recommendation.rows?.map(row=>row.id),referenceIds);
     const failure=await chatEnrollmentAction({query:async()=>{throw Error('query failed');}},broad,false,false);
     assert.equal(failure?.kind,'unavailable');
     assert.match(enrollmentReply(failure!,'zh'),/^暂时无法确认现在能否报名/);
@@ -669,11 +684,28 @@ test('a browse intent that asks to apply verifies intake before giving applicati
     assert.deepEqual(paused?.readinessReasons,['bank_required','mail_required']);
     assert.match(enrollmentReply(paused!,'zh'),/^收款资料尚未就绪.*验证码邮件暂不可用/);
     assert.match(enrollmentGuideHref(paused!,'zh','ai_chat'),/^\/enrollment\/mine\?/);
+    const recordsIntent={kind:'records',question:'records_location'};
+    const readRecords=async()=>{
+      const calls:string[]=[];
+      const result=await chatEnrollmentAction({query:async(sql)=>{
+        calls.push(sql);
+        throw Error('Mail or payment configuration is unavailable');
+      }},recordsIntent,false,false);
+      assert.deepEqual(calls,[]);
+      assert.ok(result);
+      return result;
+    };
+    const records=await readRecords();
+    assert.equal(records.kind,'records');
+    assert.match(enrollmentGuideHref(records,'zh','ai_chat'),/^\/enrollment\/mine\?/);
     process.env.PORTAL_DEPLOYMENT='remote-dev';
     const disabled=await chatEnrollmentAction({query:async()=>assert.fail('Should not query')},broad,false,false);
     assert.equal(disabled?.recordsAvailable,false);
     assert.deepEqual(disabled?.readinessReasons,['service_disabled']);
     assert.doesNotMatch(enrollmentGuideHref(disabled!,'zh','ai_chat'),/\/mine/);
+    const support=await readRecords();
+    assert.equal(support.kind,'advisor');
+    assert.doesNotMatch(enrollmentGuideHref(support,'zh','ai_chat'),/\/mine/);
   }finally{
     for(const key of keys)if(saved[key]===undefined)delete process.env[key];else process.env[key]=saved[key];
   }
@@ -684,7 +716,7 @@ test('explicit Chat inspection scopes the availability lookup and keeps referenc
   const ids=['second-class','first-class'];
   const result=await chatEnrollmentAction({query:async(sql,args)=>{
     assert.match(sql,/e.id IN \(:p2\)/);
-    assert.deepEqual(args,[1,ids,1]);
+    assert.deepEqual(args,[1,ids,1,0]);
     return {rows:[{id:ids[1],data:{...sample(),capacity:15},opened:0,seats:2},
       {id:ids[0],data:{...sample(),capacity:15},opened:0,seats:15}]};
   }},{kind:'inspect',question:'compare_classes',referenceIds:ids},false,false,ids);
@@ -717,7 +749,7 @@ test('mixed tuition quotes skip availability reads and retain group totals and p
   const result=await chatEnrollmentAction({query:async(sql,args)=>{
     if(sql.includes('FROM enrollment_classes e')){
       lookups.push('classes');
-      assert.deepEqual(args,[null,[],0]);
+      assert.deepEqual(args,[null,[],0,0]);
       return {rows:[{id:group.id,data:group,opened:0,seats:null}]};
     }
     lookups.push('appointments');

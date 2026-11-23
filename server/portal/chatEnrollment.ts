@@ -1,6 +1,7 @@
 import {enrollmentReadinessMessage} from '../../src/utils/enrollmentReadinessCopy.ts';
 import { readPublicEnrollmentAppointments, readPublicEnrollmentClasses } from './enrollmentCatalog.ts';
 import { enrollmentReadiness } from './enrollmentApplication.ts';
+import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { formatCurrency } from '../../src/utils/currency.ts';
 import {
   enrollmentClassSizeText, enrollmentClassTitle, enrollmentInstant, enrollmentTeacherLabel, enrollmentWeeklyScheduleText, enrollmentWeekdays,
@@ -145,7 +146,7 @@ export async function chatEnrollmentAction(
       if(invalidReference)return {kind:'unavailable',referenceUnavailable:true,question};
       if(format==='one-on-one')return {kind:'appointment',level,period,format,question};
       if(intent.needsReview)return {kind:'unavailable',level,period,format,question};
-      const classes=await readPublicEnrollmentClasses(c);
+      const classes=await readPublicEnrollmentClasses(c,{classIds:intent.referenceIds});
       const selection=matchEnrollmentGuidance({...intent,kind:'recommend'},classes);
       if(selection.kind!=='catalog'||selection.levelUnavailable)return selection;
       // Without enough constraints for a recommendation, verify the filtered directory
@@ -223,11 +224,11 @@ export async function chatEnrollmentAction(
         detailFields:intent.detailFields.length?intent.detailFields:kind==='specifications'?['duration','materials','teacher']:undefined,
         referenceUnavailable:rows.length<intent.referenceIds.length};
     }
+    if(kind==='records')return enrollmentServicePolicy().servicing?{kind,question}:{kind:'advisor',question};
     const readiness=await enrollmentReadiness(c);
-    if(kind==='records')return readiness.servicing?{kind,question}:{kind:'advisor',question};
     if(!readiness.accepting)return {kind:'paused',level,period,format,question,readinessReasons:readiness.reasons,recordsAvailable:readiness.servicing};
     if(kind==='demand')return matchEnrollmentGuidance(intent,[]);
-    return matchEnrollmentGuidance(intent,await readPublicEnrollmentClasses(c));
+    return matchEnrollmentGuidance(intent,await readPublicEnrollmentClasses(c,{classIds:intent.referenceIds}));
   }catch{return {kind:'unavailable',level,period,format,question};}
 }
 

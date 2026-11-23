@@ -1,4 +1,4 @@
-import {enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox} from './enrollmentMail.ts';
+import {enrollmentMailDeliveryState,enrollmentMailbox} from './enrollmentMail.ts';
 import {smtpRecipientPolicy} from './enrollmentMailRecipientPolicy.ts';
 import { enrollmentOrderEmailPath, renderEnrollmentEmail, type EnrollmentEmailKind } from './enrollmentEmail.ts';
 import { cardMoney, enrollmentCard } from './enrollmentCards.ts';
@@ -10,9 +10,12 @@ type Client = { query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}> };
 type Notice = Exclude<EnrollmentEmailKind,'otp_apply'|'otp_mine'|'assistance_confirmation'>;
 const pendingMoney=(amount:number|null,unknown:number)=>cardMoney(amount)+(amount!==null&&unknown?'（另有 '+unknown+' 笔金额未知）':'');
 
-async function record(c:Client,key:string,channel:'email'|'lark',kind:string,subjectId:string,payload:object) {
-  const delivery=channel==='email'?await enrollmentMailDelivery(c):undefined;
-  const queued=delivery&&delivery.mode!=='disabled'&&await enrollmentMailConfigured(c);
+async function record(c:Client,key:string,channel:'email'|'lark',kind:string,subjectId:string,payload:object,
+  mailState?:Awaited<ReturnType<typeof enrollmentMailDeliveryState>>,
+) {
+  const state=channel==='email'?mailState??await enrollmentMailDeliveryState(c):undefined;
+  const delivery=state?.delivery;
+  const queued=state?.configured&&state.delivery.mode!=='disabled';
   const marker=delivery?.mode==='smtp'?{...delivery,recipientPolicy:smtpRecipientPolicy}:delivery;
   await c.query(`INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at)
     VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key`,
@@ -25,17 +28,18 @@ export async function latestAssistanceMail(c:Client,id:string){
 }
 
 export async function sendAssistanceMail(c:Client,offer:any,attempt:string){
-  const {mode}=await enrollmentMailDelivery(c);
+  const mailState=await enrollmentMailDeliveryState(c);
+  const {mode}=mailState.delivery;
   const local=enrollmentMailbox(mode);
   const {id,email,data,expiresAt}=offer;
   const content={salutation:data.name,language:data.lang,class:data.quote.level,format:data.quote.format,period:data.quote.period,firstLesson:data.quote.firstLesson,
     schedule:data.quote.schedule,weeklySchedule:data.quote.weeklySchedule,minutes:data.quote.minutes,
     price:data.quote.price,deadline:expiresAt,url:enrollmentAssistancePath(id,data.lang)};
   const message=renderEnrollmentEmail('assistance_confirmation',content);
-  if((mode==='smtp'||local)&&await enrollmentMailConfigured(c)){
+  if((mode==='smtp'||local)&&mailState.configured){
     await record(c,'email:assistance_confirmation:'+id+':'+attempt,'email','assistance_confirmation',id,{
       ...message,recipient:email,environment:process.env.PORTAL_ENV,deliveryId:'assistance-'+attempt,
-    });
+    },mailState);
     return latestAssistanceMail(c,id);
   }
   let state=local?'simulated':'failed';

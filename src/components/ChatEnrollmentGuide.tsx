@@ -1,46 +1,153 @@
 import {Link,useLocation,useNavigate} from 'react-router-dom';
-import {useEffect,useState,type MouseEvent} from 'react';
-import {enrollmentClassTitle,enrollmentInstant,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {useEffect,useRef,useState,type MouseEvent} from 'react';
+import {enrollmentClassLookupLimit,enrollmentClassTitle,enrollmentInstant,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import {ChatClassSchedule,EnrollmentClassPreview} from './EnrollmentClassPreview';
 import {enrollmentAppointmentRequested,enrollmentGuideHref,enrollmentGuideText,type sharedEnrollmentComparison,type EnrollmentGuideAction,type EnrollmentGuideLanguage} from '../utils/enrollmentGuidance';
 import {trackEvent} from '../utils/analytics';
 import {chatPromotionParams,type ChatOrigin,type ChatSource} from '../services/portalChat';
 import {isPlainLinkClick,rememberChat,type ChatMessageAnchor} from '../utils/chatJourneyNavigation';
 import {formatCurrency} from '../utils/currency';
+import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
+import {preloadEnrollmentNavigation,readEnrollmentClassDetails} from '../services/enrollmentClassDetails';
+import {loadEnrollmentIntake} from '../services/enrollmentFormModule';
+import {watchReadReconnect} from '../services/readReconnect';
 
-let catalogRequest:Promise<Map<string,PublicEnrollmentClass>>|undefined;
-function readPublicClasses(){
-  return catalogRequest??=(async()=>{
-    const response=await fetch('/api/enrollment/classes',{cache:'no-store',signal:AbortSignal.timeout(8000)});
-    if(!response.ok)throw Error('Class catalog unavailable');
-    const {classes}:{classes:PublicEnrollmentClass[]}=await response.json();
-    return new Map(classes.map(row=>[row.id,row]));
-  })().finally(()=>{catalogRequest=undefined;});
+type ClassCatalog=Map<string,PublicEnrollmentClass>;
+type ClassBatchResult={rows:PublicEnrollmentClass[];temporaryFailure:boolean};
+type CatalogBatch={ids:Set<string>;request:Promise<ClassBatchResult>;controller:AbortController;readers:number};
+const inFlightClasses=new Map<string,CatalogBatch>();
+let pendingCatalog:CatalogBatch|undefined;
+function prepareCatalogBatch(){
+  const ids=new Set<string>();
+  const controller=new AbortController();
+  // Nearby cards may enter the viewport in separate observer callbacks.
+  const request=new Promise<void>(resolve=>setTimeout(resolve,32)).then(async()=>{
+    if(pendingCatalog===batch)pendingCatalog=undefined;
+    if(controller.signal.aborted)return {rows:[],temporaryFailure:false};
+    if(navigator.onLine===false)return {rows:[],temporaryFailure:true};
+    let temporaryFailure=false;
+    const rows=await readEnrollmentClassDetails([...ids],AbortSignal.any([controller.signal,AbortSignal.timeout(8000)]),{
+      onTemporaryFailure:()=>{temporaryFailure=true;},
+    });
+    return {rows,temporaryFailure};
+  }).finally(()=>forgetCatalogBatch(batch));
+  const batch:CatalogBatch={ids,request,controller,readers:0};
+  return batch;
+}
+function forgetCatalogBatch(batch:CatalogBatch) {
+  if(pendingCatalog===batch)pendingCatalog=undefined;
+  for(const id of batch.ids){
+    if(inFlightClasses.get(id)===batch)inFlightClasses.delete(id);
+  }
+}
+function releaseCatalogBatch(batch:CatalogBatch) {
+  batch.readers--;
+  if(batch.readers)return;
+  // React can replace one reader with another during the same render.
+  queueMicrotask(()=>{
+    if(batch.readers)return;
+    forgetCatalogBatch(batch);
+    batch.controller.abort();
+  });
+}
+function readPublicClasses(ids:string[],onBatch:(rows:PublicEnrollmentClass[])=>void,onSettled:(temporaryFailure:boolean)=>void){
+  const requested=new Set(ids);
+  const batches=new Set<CatalogBatch>();
+  for(const id of requested){
+    let batch=inFlightClasses.get(id);
+    if(!batch){
+      if(!pendingCatalog||pendingCatalog.ids.size===enrollmentClassLookupLimit)pendingCatalog=prepareCatalogBatch();
+      batch=pendingCatalog;
+      batch.ids.add(id);
+      inFlightClasses.set(id,batch);
+    }
+    batches.add(batch);
+  }
+  let active=true;
+  let failed=false;
+  for(const batch of batches){
+    batch.readers++;
+    void batch.request.then(result=>{
+      batches.delete(batch);
+      if(!active)return;
+      failed ||= result.temporaryFailure;
+      onBatch(result.rows.filter(row=>requested.has(row.id)));
+      if(!batches.size)onSettled(failed);
+    },()=>{
+      batches.delete(batch);
+      if(active&&!batches.size)onSettled(failed);
+    });
+  }
+  return ()=>{
+    active=false;
+    for(const batch of batches)releaseCatalogBatch(batch);
+    batches.clear();
+  };
 }
 
-export function ChatEnrollmentGuide({action,language,entry,origin,anchor,comparison,cards=false}:{
+export function ChatEnrollmentGuide({action,language,entry,origin,anchor,comparison,cards=false,active=true}:{
   action:EnrollmentGuideAction;language:string;entry:ChatSource;origin?:ChatOrigin;anchor?:ChatMessageAnchor;
-  comparison?:ReturnType<typeof sharedEnrollmentComparison>;cards?:boolean;
+  comparison?:ReturnType<typeof sharedEnrollmentComparison>;cards?:boolean;active?:boolean;
 }){
   const {search}=useLocation();
   const navigate=useNavigate();
   const rows=action.rows;
   const linkOnly=action.linkOnlyClassIds;
-  const [catalog,setCatalog]=useState<Map<string,PublicEnrollmentClass>>();
+  const missingClassKey=cards&&rows ? JSON.stringify([...new Set(rows
+    .filter(row=>!linkOnly?.includes(row.id)&&(row.sessions===undefined||row.opened===undefined))
+    .map(row=>row.id))].sort()) : '[]';
+  const [catalog,setCatalog]=useState<{key:string;rows:ClassCatalog}>();
+  const receivedClasses=useRef<typeof catalog>(undefined);
+  const cardGroup=useRef<HTMLDivElement>(null);
   useEffect(()=>{
-    if(!cards||!rows?.some(row=>!linkOnly?.includes(row.id)&&(row.sessions===undefined||row.opened===undefined)))return;
-    let active=true;
-    void readPublicClasses().then(result=>{if(active)setCatalog(result);},()=>{});
-    return ()=>{active=false;};
-  },[cards,rows,linkOnly]);
+    if(!active)return;
+    if(receivedClasses.current?.key!==missingClassKey)receivedClasses.current={key:missingClassKey,rows:new Map()};
+    const collected=receivedClasses.current.rows;
+    const ids=JSON.parse(missingClassKey) as string[];
+    if(ids.every(id=>collected.has(id)))return;
+    let disposed=false;
+    let unsubscribe:(()=>void)|undefined;
+    let reconnect:ReturnType<typeof watchReadReconnect>|undefined;
+    const load=()=>{
+      if(disposed||unsubscribe)return;
+      const missing=ids.filter(id=>!collected.has(id));
+      if(!missing.length)return;
+      reconnect??=watchReadReconnect(load,{foregroundOnly:true});
+      unsubscribe=readPublicClasses(missing,result=>{
+        if(!result.length)return;
+        for(const row of result)collected.set(row.id,row);
+        setCatalog({key:missingClassKey,rows:new Map(collected)});
+      },temporaryFailure=>{
+        unsubscribe=undefined;
+        if(temporaryFailure)reconnect?.failed();
+        else reconnect?.stop();
+      });
+    };
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    const group=cardGroup.current;
+    const observer=group && typeof IntersectionObserver==='function' ? new IntersectionObserver(([visibility])=>{
+      clearTimeout(timer);
+      if(visibility.isIntersecting)timer=setTimeout(()=>{
+        observer?.disconnect();
+        load();
+      },150);
+    },{rootMargin:'200px 0px'}) : undefined;
+    if(observer&&group)observer.observe(group);
+    else load();
+    return ()=>{disposed=true;unsubscribe?.();reconnect?.stop();observer?.disconnect();clearTimeout(timer);};
+  },[missingClassKey,active]);
   const lang:EnrollmentGuideLanguage=action.replyLanguage??(language.startsWith('zh')?'zh':language.startsWith('id')?'id':'en');
   const t=(zh:string,en:string,id:string)=>enrollmentGuideText(lang,zh,en,id);
   const source=chatPromotionParams(origin ?? {source:entry},search);
   function onClick(event:MouseEvent<HTMLAnchorElement>) {
     trackEvent('link_click',{target:'enrollment',entry_point:entry});
-    if (!anchor || !isPlainLinkClick(event)) return;
+    if (!isPlainLinkClick(event)) return;
     const url = new URL(event.currentTarget.href);
     if (url.origin !== location.origin) return;
+    preloadEnrollmentNavigation(url);
+    if ((/^\/enrollment\/[a-zA-Z0-9-]{1,64}\/?$/.test(url.pathname)&&url.searchParams.get('apply')==='1') ||
+      ['/enrollment/interest','/enrollment/mine'].includes(url.pathname)) void loadEnrollmentIntake().catch(()=>{});
+    if (!anchor) return;
     event.preventDefault();
     const chatRecommendation = rememberChat(anchor);
     navigate(url.pathname+url.search+url.hash,{state:{chatRecommendation}});
@@ -51,9 +158,8 @@ export function ChatEnrollmentGuide({action,language,entry,origin,anchor,compari
     const perPeriod=formatCurrency(Math.round(first.price/periods),lang);
     const approximate=first.price%periods!==0;
     const showFirstTime=action.detailFields?.includes('first')||first.firstLesson.slice(11)!==second.firstLesson.slice(11);
-    const dateFormat=new Intl.DateTimeFormat({zh:'zh-CN',en:'en-GB',id:'id-ID'}[lang],{
-      ...(first.firstLesson.slice(0,4)!==second.firstLesson.slice(0,4)?{year:'numeric'}:{}),month:'short',day:'numeric',timeZone:'Asia/Jakarta',
-    });
+    const dateFormat=enrollmentDateFormatter(lang,
+      first.firstLesson.slice(0,4)!==second.firstLesson.slice(0,4)?'shortDayWithYear':'shortDay');
     return <div className="chat-comparison">
       <dl className="chat-comparison-facts">
         <div><dt>{t('课表（WIB）','Schedule (WIB)','Jadwal (WIB)')}</dt>
@@ -84,14 +190,15 @@ export function ChatEnrollmentGuide({action,language,entry,origin,anchor,compari
       </div>
     </div>;
   }
-  if(cards&&rows?.length)return <div className="not-prose enrollment-class-grid" data-enrollment-card-group>
+  if(cards&&rows?.length)return <div ref={cardGroup} className="not-prose enrollment-class-grid" data-enrollment-card-group>
     {rows.filter(row=>!linkOnly?.includes(row.id)).map(snapshot=>{
-      const current=(snapshot.sessions===undefined||snapshot.opened===undefined)?catalog?.get(snapshot.id):undefined;
+      const current=catalog?.key===missingClassKey&&(snapshot.sessions===undefined||snapshot.opened===undefined)
+        ?catalog.rows.get(snapshot.id):undefined;
       const row=current??snapshot;
       const titleLink=classHref(row.id);
       return <EnrollmentClassPreview key={row.id} row={row} language={lang} titleLink={titleLink} chatPresentation chatPrimaryAction={rows.length===1}
         actionLink={action.inspection||action.intakePaused||action.question==='view_without_contact'||!row.price?undefined:titleLink+'&apply=1'}
-        intakePaused={action.intakePaused} availabilitySnapshot={!current} onNavigate={onClick}/>;
+        intakeStatus={action.intakePaused?'paused':undefined} availabilitySnapshot={!current} onNavigate={onClick}/>;
     })}
   </div>;
   if(rows?.length){

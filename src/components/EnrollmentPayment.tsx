@@ -1,11 +1,14 @@
-import {enrollmentProofAccept,enrollmentProofSelectionIssue} from '../utils/enrollmentProofFile';
 import type { EnrollmentClosureReason } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
-import { enrollmentTeacherLabel, enrollmentClassTitle, enrollmentScheduleLabel, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { enrollmentInstant, enrollmentTeacherLabel, enrollmentClassTitle, enrollmentScheduleLabel, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { formatCurrency } from '../utils/currency';
+import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
+import type {AftercareCourse} from '../utils/enrollmentAftercare';
+import {nextPaymentClockDelay,paymentMinuteMs} from '../utils/enrollmentPaymentClock';
 import { EnrollmentJoiningNote } from './EnrollmentSupport';
-import type { EnrollmentBank } from '../utils/enrollmentBank';
+import {hasEnrollmentBankPlaceholder,type EnrollmentBank} from '../utils/enrollmentBank';
+import {enrollmentProofAccept,enrollmentProofSelectionIssue} from '../utils/enrollmentProofFile';
 
 export type EnrollmentOrder = {
   id: string;
@@ -20,20 +23,24 @@ export type EnrollmentOrder = {
   creditOut?: number;
   deadline: string;
   bank?: EnrollmentBank;
+  bankDetailsInvalid?: boolean;
+  serverClockOffsetMs?: number;
 };
 
 type Language = 'zh' | 'en' | 'id';
 
-export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, upload, existingTransferOnly = false, proofUploadFailed = false, submittingProof = false, onCancel }: {
+export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, proofTransfer, onProofTransferChange, upload, existingTransferOnly = false, proofUploadFailed = false, submittingProof = false, onCancel }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
-  classInfo?:Partial<PublicEnrollmentClass> & {firstLesson:string;schedule:string;level?:string;format?:string;opened?:boolean};
+  classInfo?:AftercareCourse;
   language: Language;
   status: string;
   canUpload: boolean;
   file?: File;
   busy: boolean;
   setFile: (file?: File) => void;
+  proofTransfer: {amount:string;reference:string};
+  onProofTransferChange: (draft:{amount:string;reference:string}) => void;
   upload: (transfer:{reportedAmount?:number;bankReference?:string}) => void;
   existingTransferOnly?: boolean;
   onCancel?: ()=>void;
@@ -41,30 +48,53 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   submittingProof?: boolean;
 }) {
   const t = (zh: string, en: string, id: string) => language === 'zh' ? zh : language === 'en' ? en : id;
-  const locale = t('zh-CN', 'en-GB', 'id-ID');
   const [now, setNow] = useState(Date.now);
   const [copied, setCopied] = useState('');
   const [copyFailed, setCopyFailed] = useState(false);
-  const [fileIssue,setFileIssue]=useState<ReturnType<typeof enrollmentProofSelectionIssue>>();
+  const [fileIssue, setFileIssue] = useState<ReturnType<typeof enrollmentProofSelectionIssue>>();
   const proofInput = useRef<HTMLInputElement>(null);
-  const hasBalance = !existingTransferOnly && !!order.bank && ['awaiting_payment','partial'].includes(order.status);
+  const deadline = new Date(order.deadline);
+  const clockOffset = order.serverClockOffsetMs ?? 0;
+  const serverNow = now + clockOffset;
+  const awaitingPayment = order.status === 'awaiting_payment';
+  const deadlinePassed = awaitingPayment && Number.isFinite(deadline.valueOf()) && serverNow >= deadline.valueOf();
+  const bank = deadlinePassed ? undefined : order.bank;
+  const hasBalance = !existingTransferOnly && !!bank && (awaitingPayment || order.status === 'partial');
+  const cohort=classInfo?{...course,...classInfo}:course;
+  const classStart=enrollmentInstant(cohort?.firstLesson);
+  const cutoff=awaitingPayment?deadline.valueOf():NaN;
+  const firstLesson=hasBalance?classStart?.valueOf()??NaN:NaN;
   useEffect(() => {
     if (!file && proofInput.current) proofInput.current.value = '';
   }, [file]);
   useEffect(() => {
-    if (!hasBalance) return;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [hasBalance]);
+    if (!Number.isFinite(cutoff) && !Number.isFinite(firstLesson)) return;
+    let timer:number|undefined;
+    const updateClock = () => {
+      window.clearTimeout(timer);
+      if(document.hidden)return;
+      const currentTime=Date.now();
+      setNow(currentTime);
+      const delay=nextPaymentClockDelay(currentTime+clockOffset,cutoff,firstLesson);
+      if(delay!==undefined)timer=window.setTimeout(updateClock,delay);
+    };
+    updateClock();
+    window.addEventListener('focus',updateClock);
+    document.addEventListener('visibilitychange',updateClock);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('focus',updateClock);
+      document.removeEventListener('visibilitychange',updateClock);
+    };
+  }, [cutoff,firstLesson,clockOffset]);
   useEffect(() => {
     if (!copied && !copyFailed) return;
     const id = window.setTimeout(() => { setCopied(''); setCopyFailed(false); }, 2000);
     return () => window.clearTimeout(id);
   }, [copied, copyFailed]);
 
-  const dayFormat = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone: 'Asia/Jakarta' });
-  const deadline = new Date(order.deadline);
-  const minutes = Math.max(0, Math.ceil((deadline.valueOf() - now) / 60000));
+  const dayFormat = enrollmentDateFormatter(language,'shortDay');
+  const minutes = Math.max(0, Math.ceil((deadline.valueOf() - serverNow) / paymentMinuteMs));
   const hours = Math.floor(minutes / 60);
   const shortMinutes = minutes % 60;
   const timeLeft = t(
@@ -72,11 +102,9 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
     (hours ? hours + ' hr ' : '') + shortMinutes + ' min left',
     'Sisa ' + (hours ? hours + ' jam ' : '') + shortMinutes + ' mnt',
   );
-  const cohort=classInfo??course;
   const schedule=enrollmentScheduleLabel(cohort,language);
-  const start = cohort && dayFormat.format(new Date(cohort.firstLesson + ':00+07:00'));
-  const title = cohort && enrollmentClassTitle({...course,...classInfo},language);
-  const bank = order.bank;
+  const start = classStart ? dayFormat.format(classStart) : '';
+  const title = cohort && enrollmentClassTitle(cohort,language);
   const bankRows = bank ? [
     [t('银行', 'Bank', 'Bank'), bank.name],
     [t('收款户名', 'Account holder', 'Nama pemilik rekening'), bank.accountName],
@@ -88,6 +116,11 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   const amountLabel = order.received ? t('剩余应付', 'Remaining balance', 'Sisa tagihan') : t('应付金额', 'Amount due', 'Jumlah tagihan');
 
   async function copyValue(label: string, value: string) {
+    const currentTime = Date.now();
+    if (awaitingPayment && currentTime + clockOffset >= deadline.valueOf()) {
+      setNow(currentTime);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(value);
       setCopyFailed(false);
@@ -109,16 +142,14 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       <h2>{title || status}</h2>
       {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('首课 '+start,'First session '+start,'Pertemuan pertama '+start))].filter(Boolean).join(' · ')}</p>}
       {schedule&&<p>{schedule}</p>}
-      {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={now} language={language}/>}
-      {course && order.status !== 'awaiting_payment' && <p className="enrollment-payment-status">{status}</p>}
+      {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={serverNow} language={language}/>}
+      {cohort && order.status !== 'awaiting_payment' && <p className="enrollment-payment-status">{status}</p>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}
       {!!order.creditIn&&<p>{t('旧订单已冲抵','Credit applied from an earlier order','Dana pesanan sebelumnya yang digunakan')} · {formatCurrency(order.creditIn,language)}</p>}
     </div>
     {order.status === 'awaiting_payment' && Number.isFinite(deadline.valueOf()) && <div className="enrollment-payment-deadline">
       <span><Clock3 size={16} aria-hidden="true"/>{minutes ? timeLeft : t('付款时间已到', 'Payment deadline reached', 'Batas pembayaran tercapai')}</span>
-      <time dateTime={deadline.toISOString()}>{dayFormat.format(deadline)} {new Intl.DateTimeFormat(locale, {
-        hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Jakarta',
-      }).format(deadline)} WIB <span>{t('截止', 'deadline', 'batas')}</span></time>
+      <time dateTime={deadline.toISOString()}>{dayFormat.format(deadline)} {enrollmentDateFormatter(language,'time').format(deadline)} WIB <span>{t('截止', 'deadline', 'batas')}</span></time>
     </div>}
     {bank ? <>
       <div className="enrollment-payment-amount">
@@ -135,10 +166,11 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
         </dl>
         <span className="sr-only" role="status">{copied ? t('已复制' + copied, 'Copied ' + copied, copied + ' disalin') :
           copyFailed ? t('复制失败，请手动复制。', 'Could not copy. Select the value to copy it.', 'Gagal menyalin. Salin nilainya secara manual.') : ''}</span>
-        <p className="enrollment-payment-test-note">{t('模拟账号，请勿转账。', 'Test account. Do not transfer funds.', 'Rekening uji. Jangan transfer dana.')}</p>
+        {hasEnrollmentBankPlaceholder(bank)&&<p className="enrollment-payment-test-note">{t('模拟账号，请勿转账。', 'Test account. Do not transfer funds.', 'Rekening uji. Jangan transfer dana.')}</p>}
       </section>
     </> : <div className="enrollment-payment-summary">
-      {existingTransferOnly ? <p>{t('原付款入口已关闭。此处可提交已发生的转账记录。','The original payment link is closed. Only submit proof of a transfer you already made.','Pembayaran awal telah ditutup. Kirim bukti transfer yang sudah dilakukan.')}</p>
+      {existingTransferOnly || deadlinePassed ? <p>{t('原付款入口已关闭。此处可提交已发生的转账记录。','The original payment link is closed. Only submit proof of a transfer you already made.','Pembayaran awal telah ditutup. Kirim bukti transfer yang sudah dilakukan.')}</p>
+        : order.bankDetailsInvalid ? <p role="status">{t('暂时无法读取收款资料。请刷新状态后再转账。','Bank details are temporarily unavailable. Refresh the status before transferring funds.','Informasi rekening belum dapat dimuat. Muat ulang status sebelum transfer.')}</p>
         : <p>{t('实际到账', 'Verified receipts', 'Dana terverifikasi')} · {formatCurrency(order.received, language)}</p>}
     </div>}
     {proofUploadFailed && <p className="enrollment-result-state" role="alert">{t(
@@ -146,9 +178,8 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
     )}</p>}
     {canUpload && <form className="enrollment-payment-form" onSubmit={event => {
       event.preventDefault();
-      const fields=new FormData(event.currentTarget);
-      const amount=String(fields.get('reportedAmount')??'').trim();
-      const bankReference=String(fields.get('bankReference')??'').trim()||undefined;
+      const amount=proofTransfer.amount.trim();
+      const bankReference=proofTransfer.reference.trim()||undefined;
       upload({reportedAmount:amount?Number(amount):undefined,bankReference});
     }}>
       <section className="enrollment-upload-section">
@@ -174,10 +205,12 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
         </p>}
         <div className="enrollment-proof-transfer">
           <label>{t('转账金额（Rp，选填）','Transfer amount (Rp, optional)','Nominal transfer (Rp, opsional)')}
-            <input name="reportedAmount" type="number" inputMode="numeric" min="1" max="1000000000" step="1" disabled={busy}/>
+            <input name="reportedAmount" type="number" inputMode="numeric" min="1" max="1000000000" step="1" disabled={busy}
+              value={proofTransfer.amount} onChange={event=>onProofTransferChange({...proofTransfer,amount:event.target.value})}/>
           </label>
           <label>{t('银行流水号（选填）','Bank reference (optional)','Referensi bank (opsional)')}
-            <input name="bankReference" maxLength={120} autoComplete="off" disabled={busy}/>
+            <input name="bankReference" maxLength={120} autoComplete="off" disabled={busy}
+              value={proofTransfer.reference} onChange={event=>onProofTransferChange({...proofTransfer,reference:event.target.value})}/>
           </label>
           <p>{t('请按银行回执填写。财务会核对实际到账。','Use the details on your bank receipt. Finance will verify the amount received.','Isi sesuai bukti bank. Tim keuangan akan memverifikasi dana yang diterima.')}</p>
         </div>

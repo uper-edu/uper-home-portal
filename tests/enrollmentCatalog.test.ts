@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentScheduleDefaults, enrollmentScheduleLabel, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
+import {enrollmentDateFormatter} from '../src/utils/enrollmentDateFormat';
 
 const sample = {
   courseId: 'hsk1', level: 'HSK 1', format: 'standard', period: 'weekend',
@@ -198,4 +199,14 @@ test('learner schedule uses the current language while preserving legacy text-on
   assert.equal(enrollmentScheduleLabel(row,'zh'),schedule);
   assert.equal(enrollmentScheduleLabel({schedule},'id'),schedule);
   assert.equal(enrollmentScheduleLabel({...row,weeklySchedule:{...row.weeklySchedule,days:[]}},'en'),schedule);
+});
+test('learner date formatting reuses each locale and style while preserving the Jakarta day boundary',()=>{
+  const nearMidnight = new Date('2026-12-31T17:15:00Z');
+  for(const [language,locale] of [['zh','zh-CN'],['en','en-GB'],['id','id-ID']] as const){
+    const withYear=enrollmentDateFormatter(language,'shortDayWithYear');
+    assert.equal(withYear,enrollmentDateFormatter(language,'shortDayWithYear'));
+    assert.match(withYear.format(nearMidnight),/2027/);
+    assert.equal(enrollmentDateFormatter(language,'time').format(nearMidnight),
+      new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Asia/Jakarta'}).format(nearMidnight));
+  }
 });

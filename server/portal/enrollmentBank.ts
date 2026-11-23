@@ -1,5 +1,5 @@
 import type { Express,Request,Response } from 'express';
-import { enrollmentBankFields,enrollmentBankPlaceholder,type EnrollmentBank } from '../../src/utils/enrollmentBank.ts';
+import { enrollmentBankFields,enrollmentBankPlaceholder,parseEnrollmentBank,type EnrollmentBank } from '../../src/utils/enrollmentBank.ts';
 export {hasConfiguredEnrollmentBank} from '../../src/utils/enrollmentBank.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { invalid,operation } from './trustWorkflow.ts';
@@ -11,18 +11,10 @@ const path='/api/crm/enrollment/bank';
 const scope={leadId:'enrollment-bank',kind:'enrollment.bank.save'};
 const fields=Object.keys(enrollmentBankFields) as (keyof EnrollmentBank)[];
 
-function parseBank(input:unknown):EnrollmentBank|null {
-  if(!input||typeof input!=='object')return null;
-  const values=input as Record<string,unknown>;
-  const entries=fields.map(key=>[key,typeof values[key]==='string'?(values[key] as string).trim():null] as const);
-  if(entries.some(([key,value])=>!value||value.length>enrollmentBankFields[key]||/[\x00-\x1f\x7f]/u.test(value)))return null;
-  return Object.fromEntries(entries) as EnrollmentBank;
-}
-
 export async function readEnrollmentBank(c:Client):Promise<{bank:EnrollmentBank;revision:number}> {
   const row=(await c.query("SELECT value FROM portal_settings WHERE id='enrollment_bank'")).rows[0];
   if(!row)return defaults;
-  const bank=parseBank(row.value?.bank);
+  const bank=parseEnrollmentBank(row.value?.bank);
   if(!bank||!Number.isSafeInteger(row.value?.revision)||row.value.revision<0)invalid('enrollment_bank_unavailable',503);
   return {bank,revision:row.value.revision};
 }
@@ -39,7 +31,7 @@ export function mountEnrollmentBank(app:Express,{wrap,transact,authorize}:{
   app.post(path,wrap(async(q,r)=>{
     if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
     const actor=await authorize(q);
-    const bank=parseBank(q.body?.bank);
+    const bank=parseEnrollmentBank(q.body?.bank);
     const revision=q.body?.revision;
     if(!bank||!Number.isSafeInteger(revision)||revision<0)invalid('enrollment_bank_invalid');
     const result=await transact(c=>operation(c,actor.id,q.body,{...scope,authorize:()=>authorize(q)},async()=>{

@@ -2,8 +2,9 @@ import {Link} from 'react-router-dom';
 import type {MouseEventHandler} from 'react';
 import {BookOpen,CalendarDays,ChevronRight,Clock3} from 'lucide-react';
 import {formatCurrency} from '../utils/currency';
+import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
 import {enrollmentCopy,enrollmentClassSizeText,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel,enrollmentWeeklyScheduleGroups,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
-import '../pages/enrollment.css';
+import './enrollment-class-card.css';
 
 type Language='zh'|'en'|'id';
 type EnrollmentCardRow=Pick<PublicEnrollmentClass,'level'|'format'|'period'|'batchNumber'|'teacherType'|
@@ -20,27 +21,29 @@ export function ChatClassSchedule({row,language,withZone=false}:{
   </span>)}</span>;
 }
 
-export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDetails=false,intakePaused=false,availabilitySnapshot=false,onNavigate,navigationState,chatPresentation=false,chatPrimaryAction=false}:{
-  row:EnrollmentCardRow;language:Language;titleLink?:string;actionLink?:string;showDetails?:boolean;intakePaused?:boolean;
+export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDetails=false,intakeStatus,availabilitySnapshot=false,onNavigate,navigationState,chatPresentation=false,chatPrimaryAction=false}:{
+  row:EnrollmentCardRow;language:Language;titleLink?:string;actionLink?:string;showDetails?:boolean;intakeStatus?:'checking'|'paused'|'unverified';
   availabilitySnapshot?:boolean;onNavigate?:MouseEventHandler<HTMLAnchorElement>;navigationState?:unknown;chatPresentation?:boolean;chatPrimaryAction?:boolean;
 }){
  const t=(zh:string,en:string,id:string)=>enrollmentCopy(language,[zh,en,id]);
  const dateValue=new Date(row.firstLesson+':00+07:00');
- const date=Number.isFinite(dateValue.valueOf())?new Intl.DateTimeFormat({zh:'zh-CN',en:'en-GB',id:'id-ID'}[language],{
-   month:'long',day:'numeric',timeZone:'Asia/Jakarta',
- }).format(dateValue).replaceAll(' ','\u00a0'):'';
+ const date=Number.isFinite(dateValue.valueOf())?enrollmentDateFormatter(language,'day').format(dateValue).replaceAll(' ','\u00a0'):'';
  const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('首课 '+date,'First session '+date,'Pertemuan pertama '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
  const size=enrollmentClassSizeText(row.classSize,language);
  const periods=row.sessions&&row.sessions>0?row.sessions:undefined;
  const title=enrollmentClassTitle(row,language);
  const titleContent=<span className="enrollment-card-title">{title.split(' · ').map((part,index)=><span className="enrollment-title-part" key={index}>{(index?' · ':'')+part}</span>)}</span>;
- const availability=!intakePaused&&row.availability&&({
+ const availability=!intakeStatus&&row.availability&&({
    full:t('满班','Full','Penuh'),limited:t('空位紧张','Limited seats','Kursi terbatas'),available:t('有空位','Seats available','Kursi tersedia'),
  })[row.availability];
  const heading=<h2>{titleLink?<Link to={titleLink} state={navigationState} onClick={onNavigate}>{titleContent}{!chatPresentation&&<ChevronRight size={15} aria-hidden="true"/>}</Link>:titleContent}</h2>;
  const availableText=availability&&((availabilitySnapshot?t('查询时','When checked: ','Saat diperiksa: '):'')+availability);
- const status=!row.price||intakePaused?t('暂不可申请','Applications unavailable','Pendaftaran belum tersedia'):row.opened?t('已成班','Confirmed','Dikonfirmasi'):t('报名中','Open for applications','Pendaftaran dibuka');
- const state=(chatPresentation&&intakePaused)||(!intakePaused&&row.availability==='full')
+ const checkingIntake=!!row.price&&(intakeStatus==='checking'||intakeStatus==='unverified');
+ const status=!row.price||intakeStatus==='paused'?t('暂不可申请','Applications unavailable','Pendaftaran belum tersedia'):
+   intakeStatus==='unverified'?t('报名状态待确认','Application status unconfirmed','Status pendaftaran belum terkonfirmasi'):
+   checkingIntake?t('正在确认报名状态','Checking application status','Memeriksa status pendaftaran'):
+   row.opened?t('已成班','Confirmed','Dikonfirmasi'):t('报名中','Open for applications','Pendaftaran dibuka');
+ const state=checkingIntake?'pending':(chatPresentation&&intakeStatus==='paused')||(!intakeStatus&&row.availability==='full')
    ? 'full' : row.opened||(chatPresentation&&row.availability==='available')?'confirmed':'pending';
  const statusText=chatPresentation&&row.price&&availableText?availableText:status+(availableText&&(!chatPresentation||row.price)?' · '+availableText:'');
  return <article className={`enrollment-class-card${chatPresentation?' enrollment-class-card--chat':''}`}>

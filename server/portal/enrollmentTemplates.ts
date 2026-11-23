@@ -17,6 +17,7 @@ export function enrollmentTeaching(value:any):EnrollmentTeaching {
 }
 
 const prefix='enrollment_template:';
+export const enrollmentTemplateKey=(id:string)=>prefix+id;
 export const enrollmentTemplateIdPattern=prefix.replace('_','\\_')+'%';
 const isId=(value:unknown):value is string=>typeof value==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(value);
 export async function listEnrollmentTemplates(c:any):Promise<EnrollmentTemplate[]>{
@@ -25,7 +26,7 @@ export async function listEnrollmentTemplates(c:any):Promise<EnrollmentTemplate[
 }
 export async function readEnrollmentTemplate(c:any,id:string):Promise<EnrollmentTemplate|undefined>{
   if(!isId(id))invalid('enrollment_template_invalid');
-  return (await c.query('SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE',[prefix+id])).rows[0]?.value;
+  return (await c.query('SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE',[enrollmentTemplateKey(id)])).rows[0]?.value;
 }
 
 export function mountEnrollmentTemplates(app:Express,{wrap,staff}:{

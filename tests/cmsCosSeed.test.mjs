@@ -35,4 +35,21 @@ test('COS-18: COS migration is additive, packaged, and contains no new foreign k
  const release=await buildPortalPackage({directory});
  const packaged=await fs.readFile(path.join(release.directory,'runtime','cloud','mysql',migration));
  assert.deepEqual(packaged,source);
+ const marker=JSON.parse(await fs.readFile(path.join(directory,'.uper-release.json'),'utf8'));
+ for(const scope of ['web','runtime']){
+  const identity=JSON.parse(await fs.readFile(path.join(directory,scope,'portal-build.json'),'utf8'));
+  for(const key of ['buildId','gitCommit','dirty','sourceDigest','publicConfigDigest'])assert.equal(marker[key],identity[key]);
+ }
+});
+
+test('A failed rebuild does not leave the previous release marker on new artifacts',{timeout:120_000},async t=>{
+ await fs.mkdir('build',{recursive:true});
+ const directory=await fs.mkdtemp(path.join('build','release-marker-test-'));
+ t.after(()=>fs.rm(directory,{recursive:true,force:true}));
+ const marker=path.join(directory,'.uper-release.json');
+ await fs.writeFile(marker,JSON.stringify({buildId:'fixture-previous-release'}));
+ await fs.writeFile(path.join(directory,'.env.synthetic-fixture'),'# fixture, no credentials');
+ await assert.rejects(buildPortalPackage({directory}),/Forbidden deployment payload/);
+ assert.equal((await fs.stat(path.join(directory,'web','index.html'))).isFile(),true);
+ await assert.rejects(fs.access(marker),{code:'ENOENT'});
 });

@@ -16,7 +16,7 @@ function bindings(owner:string):AssessmentReturn[] {
 
 export function chatAssessmentReturn(owner:string,attemptId?:string):AssessmentReturn|undefined {
   const saved=bindings(owner);
-  return attemptId?saved.find(binding=>binding.attemptId===attemptId):saved.at(-1);
+  return attemptId?saved.find(binding=>binding.attemptId===attemptId):saved[saved.length-1];
 }
 
 export function rememberChatAssessment(owner:string,attemptId:string,conversationId:string) {

@@ -1,0 +1,121 @@
+[data-enrollment-screen], [data-enrollment-card-group] {
+  --enrollment-ink: #162830;
+  --enrollment-muted: #4d6065;
+  --enrollment-border: #dce7e4;
+  --enrollment-accent: #08796e;
+  --enrollment-wash: #f3f7f6;
+}
+
+.enrollment-class-grid { display: grid; gap: 10px; }
+[data-enrollment-card-group].enrollment-class-grid { grid-template-columns: minmax(0, 1fr); min-width: 0; max-width: 28rem; color: var(--enrollment-ink); }
+[data-enrollment-card-group] .enrollment-class-bottom { flex-wrap: wrap; }
+[data-enrollment-card-group] .enrollment-class-bottom .enrollment-primary { max-width: 100%; }
+.enrollment-class-card {
+  border: 1px solid var(--enrollment-border);
+  border-radius: 11px;
+  padding: 12px;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  background: #fff;
+}
+.enrollment-class-card h2 { font-size: 15px; font-weight: 720; line-height: 1.4; }
+.enrollment-class-card h2 a { display: flex; align-items: baseline; justify-content: space-between; gap: 5px; }
+.enrollment-class-card h2 a:hover { color: var(--enrollment-accent); }
+.enrollment-class-card h2 a svg { align-self: center; flex: none; color: var(--enrollment-accent); }
+.enrollment-class-card p { font-size: 13px; color: var(--enrollment-muted); }
+.enrollment-class-status { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 6px; }
+.enrollment-class-status small { color: var(--enrollment-muted); font-size: 12px; }
+.enrollment-status { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 11px; font-weight: 700; }
+.enrollment-status[data-state="pending"] { color: #744909; background: #faf0dc; }
+.enrollment-status[data-state="confirmed"] { color: #08654e; background: #e8f5ed; }
+.enrollment-status[data-state="full"] { color: #475b62; background: #eef2f2; }
+.enrollment-class-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-end;
+  border-top: 1px solid var(--enrollment-border);
+  margin-top: auto;
+  padding-top: 7px;
+}
+.enrollment-class-bottom .enrollment-primary { max-width: 52%; font-size: 13px; align-self: center; border-radius: 999px; }
+.enrollment-prices { display: grid; color: var(--enrollment-muted); gap: 1px; }
+.enrollment-prices strong { color: var(--enrollment-ink); line-height: 1.25; font-size: 17px; font-weight: 750; letter-spacing: -.015em; }
+.enrollment-prices small { font-size: 11px; }
+
+@media (min-width: 768px) {
+  .enrollment-class-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+  .enrollment-class-card { padding: 17px 19px; gap: 5px; }
+  .enrollment-class-card h2 { font-size: 17px; }
+  .enrollment-class-card p { font-size: 14px; }
+  .enrollment-class-status { gap: 5px; margin-bottom: 6px; }
+  .enrollment-status { font-size: 12px; }
+  .enrollment-class-bottom { padding-top: 10px; }
+  .enrollment-prices strong { font-size: 20px; }
+  .enrollment-prices small { font-size: 12px; }
+}
+
+/* Learner class cards: readable mobile hierarchy, shared by catalog and detail. */
+@media (max-width: 767px) {
+  .enrollment-class-grid { gap: 16px; }
+  .enrollment-class-card {
+    padding: 16px;
+    border-radius: 14px;
+    gap: 6px;
+  }
+  .enrollment-class-card h2 {
+    margin: 0 0 2px;
+    font-size: 17px;
+    font-weight: 680;
+    line-height: 1.45;
+    letter-spacing: -.015em;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+  }
+  .enrollment-class-card h2 a { gap: 12px; }
+  .enrollment-class-card .enrollment-card-title { min-width: 0; }
+  .enrollment-class-card .enrollment-title-part { display: inline-block; max-width: 100%; vertical-align: top; }
+  .enrollment-class-card h2 a svg { align-self: flex-start; margin-top: 5px; }
+  .enrollment-class-card p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .enrollment-class-card .enrollment-schedule {
+    color: var(--enrollment-ink);
+    font-weight: 550;
+    font-variant-numeric: tabular-nums;
+  }
+  .enrollment-class-card .enrollment-class-status {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    margin: 6px 0 8px;
+  }
+  .enrollment-class-card .enrollment-status { font-size: 12px; line-height: 1.5; padding: 3px 8px; font-weight: 600; }
+  .enrollment-class-card .enrollment-class-status small { font-size: 12px; line-height: 1.6; }
+  .enrollment-class-card .enrollment-class-bottom {
+    gap: 12px;
+    padding-top: 12px;
+    align-items: center;
+  }
+  .enrollment-class-card .enrollment-prices { min-width: 0; gap: 4px; }
+  .enrollment-class-card .enrollment-prices strong {
+    font-size: 23px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -.025em;
+    overflow-wrap: anywhere;
+  }
+  .enrollment-class-card .enrollment-prices small { font-size: 12px; line-height: 1.5; }
+  .enrollment-class-card .enrollment-prices small:last-child { font-size: 13px; }
+  .enrollment-class-card .enrollment-primary { min-height: 44px; padding: 10px 16px; font-size: 14px; line-height: 1.4; flex-shrink: 0; }
+  .enrollment-class-card section { margin-top: 6px; }
+}
+@media (max-width: 359px) {
+  .enrollment-class-card .enrollment-class-bottom { flex-direction: column; align-items: stretch; }
+  .enrollment-class-card .enrollment-primary { max-width: 100%; width: 100%; }
+}

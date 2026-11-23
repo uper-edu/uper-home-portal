@@ -20,7 +20,8 @@ export function watchReadReconnect(retry:()=>void,{foregroundOnly=false}={}) {
     else state='reconnected';
   };
   const onVisible=()=>{
-    if(state==='ready'&&!document.hidden&&navigator.onLine!==false)recover();
+    // A background tab may return online without receiving a separate online event.
+    if((state==='waiting'||state==='ready')&&!document.hidden&&navigator.onLine!==false)recover();
   };
   window.addEventListener('online',onOnline);
   if(foregroundOnly)document.addEventListener('visibilitychange',onVisible);

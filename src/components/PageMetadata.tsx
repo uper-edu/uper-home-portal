@@ -18,6 +18,7 @@ import {
   type Metadata,
 } from "../utils/siteMetadata";
 import { readAdminLanguage } from "../utils/adminLanguagePreference";
+import { promotionIdentity } from "../utils/promotionNavigation";
 type Entry = { path: string; priority: number; meta: Metadata };
 const Registry = createContext<
   ((id: string, entry: Entry) => () => void) | null
@@ -93,10 +94,10 @@ export function MetadataProvider({ children }: { children: React.ReactNode }) {
       : normalizeSiteLanguage(i18n.resolvedLanguage || i18n.language),
   };
   const sync = useCallback(() => {
-    const selected = [...entries.current.values()]
-      .filter((e) => e.path === current.current.path)
-      .sort((a, b) => a.priority - b.priority)
-      .at(-1);
+    let selected: Entry | undefined;
+    for (const entry of entries.current.values()) {
+      if (entry.path === current.current.path && (!selected || entry.priority >= selected.priority)) selected = entry;
+    }
     applyPageMetadata(
       document,
       selected?.meta ||
@@ -175,6 +176,9 @@ export function RouteMetadata() {
       )
         void i18n.changeLanguage(explicit);
     } else {
+      const {p,invalid}=promotionIdentity(search);
+      // These entry pages resolve the promotion language after rendering.
+      if (!search.has('lang') && p && !invalid && /^\/(?:link\/?|chat\/?|enrollment(?:\/.*)?)$/i.test(location.pathname)) return;
       const lang = normalizeSiteLanguage(
         i18n.resolvedLanguage || i18n.language,
       );
@@ -186,11 +190,11 @@ export function RouteMetadata() {
             search: search.toString(),
             hash: location.hash,
           },
-          { replace: true },
+          { replace: true, state: location.state },
         );
       }
     }
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, location.state]);
   return (
     <PageMetadata
       fallback

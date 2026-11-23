@@ -41,10 +41,10 @@ export function PublicHeaderMenu({label, children}: {
   </details>;
 }
 
-export const publicHeaderLanguages = [
-  {code:'id', shortLabel:'ID', name:'Bahasa Indonesia', flag:'🇮🇩'},
-  {code:'en', shortLabel:'EN', name:'English', flag:'🇬🇧'},
-  {code:'zh', shortLabel:'中文', name:'简体中文', flag:'🇨🇳'},
+const publicHeaderLanguages = [
+  {code:'id', shortLabel:'ID', name:'Bahasa Indonesia'},
+  {code:'en', shortLabel:'EN', name:'English'},
+  {code:'zh', shortLabel:'中文', name:'简体中文'},
 ] as const;
 
 export function PublicHeaderLanguage({language, onChange}: {

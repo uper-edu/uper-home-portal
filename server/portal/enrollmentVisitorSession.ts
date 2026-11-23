@@ -21,13 +21,28 @@ export function readEnrollmentSessionDigest(cookies:string|undefined) {
   if (visitorId) return enrollmentVisitorDigest(match[2],visitorId);
 }
 
+type SessionReader = {query:(sql:string,args?:unknown[])=>Promise<{rows:{email:string}[]}>};
+
+export async function inspectEnrollmentEmailSession(
+  transact:(read:(client:SessionReader)=>Promise<string|undefined>)=>Promise<string|undefined>,
+  cookies:string|undefined,
+  expected?:string,
+) {
+  const digest=readEnrollmentSessionDigest(cookies);
+  return digest ? transact(client=>readEmailByDigest(client,digest,expected)) : undefined;
+}
+
 export async function readEnrollmentEmailSession(
-  client:{query:(sql:string,args?:unknown[])=>Promise<{rows:{email:string}[]}>},
+  client:SessionReader,
   cookies:string|undefined,
   expected?:string,
 ):Promise<string|undefined> {
   const digest=readEnrollmentSessionDigest(cookies);
   if(!digest)return;
+  return readEmailByDigest(client,digest,expected);
+}
+
+async function readEmailByDigest(client:SessionReader,digest:string,expected?:string) {
   const {rows:[row]}=await client.query(
     'SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE',[digest]);
   if(expected!==undefined&&expected.trim().toLowerCase()!==row?.email)return;

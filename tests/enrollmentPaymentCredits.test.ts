@@ -61,7 +61,7 @@ test('bank receipts credit the only later same-learner order in either arrival o
   const differentlyFormatted = {...current,data:{...learner,phone:'+62 08123456789'}};
   for (const trigger of [expired,differentlyFormatted]) {
     const fixture = creditFixture([expired,differentlyFormatted,sharedEmail], differentlyFormatted);
-    await applyEnrollmentPaymentCredits(fixture.db,{order:trigger,cohort},fixture.lockOrder);
+    assert.equal(await applyEnrollmentPaymentCredits(fixture.db,{order:trigger,cohort},fixture.lockOrder),true);
     assert.deepEqual(fixture.locks,trigger===expired?[current.id]:[expired.id,current.id]);
     assert.deepEqual(fixture.allocations,[
       ['receipt-a',expired.id,current.id,100],
@@ -75,15 +75,23 @@ test('bank receipts credit the only later same-learner order in either arrival o
 });
 
 test('ambiguous later orders and a target no longer payable under the lock receive no funds', async () => {
+  const firstEnrollment=creditFixture([current]);
+  assert.equal(await applyEnrollmentPaymentCredits(firstEnrollment.db,{order:current,cohort},firstEnrollment.lockOrder),false);
+  assert.deepEqual(firstEnrollment.adjustments,[]);
+
   const ambiguous=creditFixture([expired,current,{...current,id:'third-order'}]);
-  await applyEnrollmentPaymentCredits(ambiguous.db,{order:expired,cohort},ambiguous.lockOrder);
+  assert.equal(await applyEnrollmentPaymentCredits(ambiguous.db,{order:expired,cohort},ambiguous.lockOrder),false);
   assert.deepEqual(ambiguous.locks,[]);
   assert.deepEqual(ambiguous.allocations,[]);
   assert.deepEqual(ambiguous.adjustments,[]);
 
   const changed=creditFixture([expired,current],{...current,state:'cancelled'});
-  await applyEnrollmentPaymentCredits(changed.db,{order:expired,cohort},changed.lockOrder);
+  assert.equal(await applyEnrollmentPaymentCredits(changed.db,{order:expired,cohort},changed.lockOrder),false);
   assert.deepEqual(changed.locks,[current.id]);
   assert.deepEqual(changed.allocations,[]);
   assert.deepEqual(changed.adjustments,[]);
+
+  const expiredDuringCheck=creditFixture([expired,current],{...current,state:'expired'});
+  assert.equal(await applyEnrollmentPaymentCredits(expiredDuringCheck.db,{order:current,cohort},expiredDuringCheck.lockOrder),true);
+  assert.deepEqual(expiredDuringCheck.adjustments,[]);
 });

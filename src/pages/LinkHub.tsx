@@ -1,7 +1,9 @@
-import {lookupPromotion} from '../utils/promotionLookup';
-import {promotionJourneyUrl} from '../utils/promotionNavigation';
+import {watchPromotionLanguage} from '../utils/promotionLookup';
+import {promotionEntryUrl,promotionJourneyUrl} from '../utils/promotionNavigation';
+import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
 import {trackEvent} from '../utils/analytics';
-import { useEffect, useState } from "react";
+import {preloadEnrollmentNavigation} from '../services/enrollmentClassDetails';
+import { useEffect, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FileText,
@@ -14,10 +16,9 @@ import { PublicPageLinkActions, PublicLinkDialog, PublicLinkModal } from "../com
 import { PageMetadata } from "../components/PageMetadata";
 import { PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenu } from "../components/PublicHeaderMenu";
 import "./link-hub.css";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import LinkHandbookPreview from "../components/LinkHandbookPreview";
 import { SocialProfileIcon, socialProfileOrder, socialProfiles } from "../components/SocialProfileIcon";
-import { linkHubConsultUrl } from '../utils/instagramBioCampaign';
 
 const whatsapp = "https://wa.me/6281116612062";
 const handbook = "/link-assets/uper-handbook-2026.pdf";
@@ -40,6 +41,7 @@ const words = {
     view: "Open PDF",
     download: "Download",
     home: "UPER Official Website",
+    pdfLoading: "Loading handbook preview…",
     pdfError: "Preview unavailable. Use Open PDF or Download below.",
   },
   id: {
@@ -60,6 +62,7 @@ const words = {
     view: "Buka PDF",
     download: "Unduh",
     home: "Situs Resmi UPER",
+    pdfLoading: "Memuat pratinjau panduan…",
     pdfError: "Pratinjau tidak tersedia. Gunakan Buka PDF atau Unduh di bawah.",
   },
   zh: {
@@ -79,6 +82,7 @@ const words = {
     view: "打开PDF",
     download: "下载",
     home: "UPER官方网站",
+    pdfLoading: "正在加载手册预览…",
     pdfError: "预览暂不可用，请使用下方打开PDF或下载。",
   },
 };
@@ -93,16 +97,20 @@ export default function LinkHub() {
       : "en";
   useEffect(() => {
     if (params.has('lang')) return;
-    let active = true;
-    void Promise.resolve(lookupPromotion(params)).then(result => {
-      if (active && result?.state === 'verified') void i18n.changeLanguage(result.promotion.language);
+    return watchPromotionLanguage(params,language=>{
+      if (!new URLSearchParams(window.location.search).has('lang')) void i18n.changeLanguage(language);
     });
-    return () => { active = false; };
   }, [params, i18n]);
   const t = words[lang];
   const homeUrl = promotionJourneyUrl("/", params);
-  const enrollmentUrl = promotionJourneyUrl(`/enrollment?lang=${lang}`, params, 'linkhub');
-  const consultUrl = linkHubConsultUrl(params, lang);
+  const enrollmentUrl = promotionEntryUrl('/enrollment',params,lang,'linkhub');
+  const consultUrl = promotionEntryUrl('/chat',params,lang,'linkhub');
+  function openJourney(event: MouseEvent<HTMLAnchorElement>, target: 'enrollment' | 'consultation') {
+    trackEvent('link_click',{target,entry_point:'linkhub'});
+    if(!isPlainLinkClick(event))return;
+    if(target==='enrollment')preloadEnrollmentNavigation(new URL(event.currentTarget.href));
+    window.scrollTo(0,0);
+  }
   const selectLanguage = (value: string) => {
     const next = new URLSearchParams(params);
     next.set("lang", value);
@@ -127,8 +135,8 @@ export default function LinkHub() {
           <PublicHeaderMenu label={lang==='zh'?'网站菜单':lang==='id'?'Menu situs':'Site menu'}>
             {close=><>
               <a href={homeUrl} onClick={close}>{t.home}</a>
-              <a href={enrollmentUrl} onClick={()=>{close();trackEvent('link_click',{target:'enrollment',entry_point:'linkhub'});}}>{t.enrollment}</a>
-              <a href={consultUrl} onClick={()=>{close();trackEvent('link_click',{target:'consultation',entry_point:'linkhub'});}}>{t.consult}</a>
+              <Link to={enrollmentUrl} onClick={event=>{close();openJourney(event,'enrollment');}}>{t.enrollment}</Link>
+              <Link to={consultUrl} onClick={event=>{close();openJourney(event,'consultation');}}>{t.consult}</Link>
             </>}
           </PublicHeaderMenu>
         </div>
@@ -147,19 +155,19 @@ export default function LinkHub() {
         </header>
         <section className="linkhub-links" aria-label={t.links}>
           <div className="linkhub-card linkhub-card--enrollment">
-            <a className="linkhub-card-main" href={enrollmentUrl} onClick={()=>trackEvent('link_click',{target:'enrollment',entry_point:'linkhub'})}>
+            <Link className="linkhub-card-main" to={enrollmentUrl} onClick={event=>openJourney(event,'enrollment')}>
               <span>{t.enrollment}</span>
               <small>{t.enrollmentNote}</small>
-            </a>
+            </Link>
             <button className="linkhub-card-share" type="button" aria-label={`${t.share}: ${t.enrollment}`} onClick={() => shareItem(t.enrollment, enrollmentUrl)}>
               <MoreVertical size={19} />
             </button>
           </div>
           <div className="linkhub-card">
-            <a className="linkhub-card-main" href={consultUrl} onClick={()=>trackEvent('link_click',{target:'consultation',entry_point:'linkhub'})}>
+            <Link className="linkhub-card-main" to={consultUrl} onClick={event=>openJourney(event,'consultation')}>
               <span>{t.consult}</span>
               <small>{t.consultNote}</small>
-            </a>
+            </Link>
             <button
               className="linkhub-card-share"
               type="button"
@@ -237,7 +245,7 @@ export default function LinkHub() {
           className="linkhub-document"
         >
           <p className="linkhub-document-summary">{t.description}</p>
-          <LinkHandbookPreview url={handbook} errorText={t.pdfError} />
+          <LinkHandbookPreview url={handbook} loadingText={t.pdfLoading} errorText={t.pdfError} />
           <footer>
             <a href={handbook} target="_blank" rel="noopener noreferrer" onClick={() => trackHandbook("view")}>
               <ExternalLink size={17} />

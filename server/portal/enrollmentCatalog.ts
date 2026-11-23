@@ -1,13 +1,13 @@
 import {portalPublicOrigin} from './enrollmentEmail.ts';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
-import {enrollmentTemplateIdPattern,listEnrollmentTemplates,mountEnrollmentTemplates,readEnrollmentTemplate} from './enrollmentTemplates.ts';
+import {enrollmentTemplateIdPattern,enrollmentTemplateKey,listEnrollmentTemplates,mountEnrollmentTemplates,readEnrollmentTemplate} from './enrollmentTemplates.ts';
 import {enrollmentTemplateClassFields} from '../../src/utils/enrollmentTemplates.ts';
 import type { Express, Request, Response } from 'express';
-import { tx } from './store.ts';
+import { pool, tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
-import { enrollmentInstant, enrollmentScheduleReviewFields, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validEnrollmentHolidayDate, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
+import { enrollmentClassLookupLimit, enrollmentInstant, enrollmentScheduleReviewFields, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validEnrollmentHolidayDate, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
 import { enrollmentMailDelivery } from './enrollmentMail.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { enrollmentReadiness } from './enrollmentApplication.ts';
@@ -37,9 +37,14 @@ function record(row: { id: string; revision: number; state: EnrollmentClassAdmin
   return { ...row.data, id: row.id, revision: row.revision, state: row.state };
 }
 
-export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeof tx>[0]>[0], {classIds=[],includeAvailability=true}: {classIds?:readonly string[];includeAvailability?:boolean} = {}) {
+export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeof tx>[0]>[0], {
+  classIds=[],includeAvailability=true,summaryOnly=false,
+}: {classIds?:readonly string[];includeAvailability?:boolean;summaryOnly?:boolean} = {}) {
   return (await c.query(`
-      SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,
+      SELECT e.id,e.revision,e.state,
+        CAST(CASE WHEN :p4=1 THEN JSON_REMOVE(e.data,'$.learningOutcomes','$.material','$.resources','$.teacher')
+          ELSE e.data END AS JSON) AS data,
+        (g.class_id IS NOT NULL) AS opened,
         CASE WHEN :p3=1 THEN (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
           AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
           WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) END AS seats
@@ -50,7 +55,7 @@ export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeo
         AND JSON_EXTRACT(c.value,'$.active')=true
         AND (:p1 IS NULL OR e.id IN (:p2))
       ORDER BY e.first_lesson_at,e.id
-    `, [classIds.length ? 1 : null, classIds, Number(includeAvailability)])).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number | null }) => {
+    `, [classIds.length ? 1 : null, classIds, Number(includeAvailability), Number(summaryOnly)])).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number | null }) => {
       const publicClass=publicEnrollmentClass(record(row));
       const available=row.seats!==null&&publicClass.classSize?publicClass.classSize.maximum-Number(row.seats):NaN;
       const availability=Number.isFinite(available)?available<=0?'full':available<=3?'limited':'available':undefined;
@@ -72,15 +77,16 @@ export async function readPublicEnrollmentClassReference(c: Parameters<Parameter
   return {level, period, format, batchNumber};
 }
 
-export async function readPublicEnrollmentAppointments(c: Parameters<Parameters<typeof tx>[0]>[0]) {
+export async function readPublicEnrollmentAppointments(c: Parameters<Parameters<typeof tx>[0]>[0], appointmentId?:string) {
   const {rows}=await c.query(`
     SELECT t.value AS template, c.value AS course
     FROM portal_settings t JOIN crm_courses c ON c.id=t.value->>'$.courseId'
       AND CAST(c.id AS BINARY)=CAST(t.value->>'$.courseId' AS BINARY)
     WHERE t.id LIKE :p1 AND JSON_TYPE(t.value->'$.courseId')='STRING'
       AND CAST(t.value->>'$.format' AS BINARY)='one-on-one'
+      AND (:p2 IS NULL OR t.id=:p2)
     ORDER BY t.id
-  `,[enrollmentTemplateIdPattern]);
+  `,[enrollmentTemplateIdPattern,appointmentId ? enrollmentTemplateKey(appointmentId) : null]);
   return rows.flatMap(({template,course})=>{
     if(!template.saleUnitPrice||!template.standardUnitPrice||!course?.active||!course.teaching)return [];
     return [{id:template.id,level:course.teaching.level,course:course.name,teacherType:template.teacherType,
@@ -232,11 +238,36 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     if (![kind,deleteKind,'enrollment.order.insert'].includes(result?.operationKind)) invalid('enrollment_result_missing', 404);
     r.set('Cache-Control', 'no-store').json(result);
   }));
-  app.get('/api/enrollment/classes', wrap(async (_q, r) => {
+  app.get('/api/enrollment/classes', wrap(async (q, r) => {
+    const requested=q.query.classId;
+    const appointmentId=q.query.appointmentId;
+    if(appointmentId!==undefined){
+      if(requested!==undefined||typeof appointmentId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(appointmentId))
+        invalid('enrollment_template_invalid');
+      const appointments=await readPublicEnrollmentAppointments(pool,appointmentId);
+      r.set('Cache-Control','no-store').json({classes:[],appointments,publicOrigin:portalPublicOrigin()});
+      return;
+    }
+    if(requested!==undefined){
+      const classIds=Array.isArray(requested)?requested:[requested];
+      if(classIds.length===0||classIds.length>enrollmentClassLookupLimit||
+        !classIds.every((id):id is string=>typeof id==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(id))) {
+        invalid('enrollment_class_invalid');
+      }
+      const classes=await readPublicEnrollmentClasses(pool,{
+        classIds:[...new Set(classIds)],includeAvailability:q.query.availability!=='0',
+      });
+      r.set('Cache-Control','no-store').json({classes,appointments:[],publicOrigin:portalPublicOrigin()});
+      return;
+    }
+    const summaryOnly=q.query.view==='summary';
     const {classes,appointments}=await tx(async c=>({
-      classes:await readPublicEnrollmentClasses(c),
+      classes:await readPublicEnrollmentClasses(c,{summaryOnly}),
       appointments:await readPublicEnrollmentAppointments(c),
     }));
-    r.set('Cache-Control', 'no-store').json({ classes,appointments,publicOrigin:portalPublicOrigin() });
+    const catalog=summaryOnly
+      ? classes.map(({learningOutcomes,material,resources,teacher,...card})=>card)
+      : classes;
+    r.set('Cache-Control', 'no-store').json({classes:catalog,appointments,publicOrigin:portalPublicOrigin()});
   }));
 }

@@ -2,6 +2,35 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {aiModels,validateSelection,isAiAdministrator,probeModel,providerFor} from '../server/portal/aiServiceConfig';
 import {aiServiceText} from '../src/utils/aiServiceLanguage';
 const permissions=['access.read','access.users','access.roles','access.sessions','access.audit'];
+test('runtime providers read each credential once per turn on the supplied connection',async()=>{
+ const {runtimeProviders}=await import('../server/portal/aiServiceConfig');
+ const keys=['MYSQL_TRIAL_URL','PORTAL_ENV','OPENAI_API_KEY','DEEPSEEK_API_KEY'];
+ const previous=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
+ Object.assign(process.env,{MYSQL_TRIAL_URL:'mysql://fixture.invalid/fixture',PORTAL_ENV:'test',OPENAI_API_KEY:'fixture-openai',DEEPSEEK_API_KEY:'fixture-deepseek'});
+ let selection={primary:'gpt-6-luna',primaryEffort:'medium',fallback:'gpt-6.2-sol'};
+ let openaiRevoked=false;
+ const reads:string[]=[];
+ const db={query:async(sql:string,args?:any[])=>{
+  if(sql.includes('portal_settings')){reads.push('settings');return {rows:[{value:{current:selection}}]};}
+  assert.match(sql,/FROM integration_credentials/);
+  assert.deepEqual(args?.slice(0,2),['test','ai']);
+  reads.push(args?.[2]);
+  return {rows:args?.[2]==='openai'&&openaiRevoked?[{state:{managed:true}}]:[]};
+ }};
+ try {
+  const same=await runtimeProviders(db);
+  assert.deepEqual(same.map(({model,key,reasoningEffort})=>[model,key,reasoningEffort]),[
+   ['gpt-6-luna','fixture-openai','medium'],['gpt-6.2-sol','fixture-openai',undefined],
+  ]);
+  assert.deepEqual(reads.splice(0),['settings','openai']);
+  selection={...selection,fallback:'deepseek-v4-pro'};
+  openaiRevoked=true;
+  assert.deepEqual((await runtimeProviders(db)).map(({key})=>key),[undefined,'fixture-deepseek']);
+  assert.deepEqual(reads,['settings','openai','deepseek']);
+ } finally {
+  for(const key of keys)if(previous[key]===undefined)delete process.env[key];else process.env[key]=previous[key];
+ }
+});
 test('only complete System Administrator can manage AI, not CRM Manager or Sales',()=>{
  assert.equal(isAiAdministrator({roles:['access_admin'],permissions}),true);
  for(const roles of [['sales'],['leader'],[]])assert.equal(isAiAdministrator({roles,permissions}),false);

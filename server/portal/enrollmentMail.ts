@@ -70,7 +70,12 @@ export async function initializeEnrollmentMailDelivery(){
 }
 
 export async function enrollmentMailDelivery(c:Client=pool){
-  return (await configuration(c)).delivery;
+  return (await enrollmentMailDeliveryState(c)).delivery;
+}
+
+export async function enrollmentMailDeliveryState(c:Client){
+  const {delivery,revision}=await configuration(c);
+  return {delivery,configured:revision>0};
 }
 
 export function enrollmentMailbox(mode:EnrollmentMailMode){
@@ -87,28 +92,34 @@ function smtpPassword(account:StoredMailAccount,c?:Client){
   },c).then(value=>value?.password);
 }
 
-async function deliveryReadiness(c:Client,{config,delivery,revision}:Awaited<ReturnType<typeof configuration>>){
-  if(delivery.mode==='disabled')return ['delivery_disabled'];
-  if(delivery.mode==='simulation')return enrollmentMailbox(delivery.mode)?[]:['simulation_mailbox_required'];
+function smtpRuntimeReasons(){
   const reasons:string[]=[];
   if(!smtpDeployment()||!portalPublicOrigin())reasons.push('smtp_origin_required');
   if(process.env.PORTAL_WORKER_ENABLED==='false')reasons.push('mail_worker_required');
-  if(!revision||!config.enabled)reasons.push('mail_pool_required');
-  else {
-    const members=new Set(mailPoolMembers(config));
-    let sender=false;
-    for(const account of config.accounts){
-      if(account.enabled&&members.has(account.address)&&mailSmtpEndpoint(account)&&await smtpPassword(account,c)){sender=true;break;}
-    }
-    if(!sender)reasons.push('mail_sender_required');
-  }
   return reasons;
 }
+
+async function smtpPoolReasons(c:Client,{config,revision}:Awaited<ReturnType<typeof configuration>>){
+  if(!revision||!config.enabled)return ['mail_pool_required'];
+  const members=new Set(mailPoolMembers(config));
+  for(const account of config.accounts){
+    if(account.enabled&&members.has(account.address)&&mailSmtpEndpoint(account)&&await smtpPassword(account,c))return [];
+  }
+  return ['mail_sender_required'];
+}
+
+async function deliveryReadiness(c:Client,saved:Awaited<ReturnType<typeof configuration>>){
+  const {mode}=saved.delivery;
+  if(mode==='disabled')return ['delivery_disabled'];
+  if(mode==='simulation')return enrollmentMailbox(mode)?[]:['simulation_mailbox_required'];
+  return [...smtpRuntimeReasons(),...await smtpPoolReasons(c,saved)];
+}
+
 export async function enrollmentMailReadiness(c:Client){
   const saved=await configuration(c);
   return {
     mode:saved.delivery.mode,
-    smtpReady:async()=>saved.delivery.mode==='smtp'&&!(await deliveryReadiness(c,saved)).length,
+    smtpReady:async()=>saved.delivery.mode==='smtp'&&!smtpRuntimeReasons().length&&!(await smtpPoolReasons(c,saved)).length,
   };
 }
 async function counters(c:Client,now:number,recipient=''){
@@ -359,10 +370,6 @@ function parseConfig(value:any):Omit<EnrollmentMailConfig,'sticky'>{
     config.selectedPool=value.selectedPool;
   }
   return config;
-}
-
-export async function enrollmentMailConfigured(c:Client){
-  return (await configuration(c)).revision>0;
 }
 
 function mailOperationId(value:unknown){

@@ -245,6 +245,39 @@ test("a blocked local store still returns usable server reports and their isolat
     assert.equal(state.results.length, 1);
     assert.equal(state.problems.length, 2);
   }));
+test("history restore reads and writes one snapshot without a second storage round trip", () =>
+  storage((values, store) => {
+    const saved = {...report(), saveStatus: "saved"};
+    const conflict = {...saved, saveStatus: "local", attempt: {...saved.attempt, answers: {}}};
+    const legacy = unknown(report("express", 500));
+    const latest = {...report("express", 1000), saveStatus: "saved"};
+    values.set(historyKey, JSON.stringify([saved, legacy]));
+    const reads: string[] = [], writes: string[] = [];
+    store.getItem = key => { reads.push(key); return values.get(key) ?? null; };
+    store.setItem = (key, value) => { writes.push(key); values.set(key, value); };
+
+    const state = mergeHskHistoryRows([legacy, conflict, latest], "zh");
+
+    assert.deepEqual(reads, [historyKey]);
+    assert.deepEqual(writes, [historyKey]);
+    assert.deepEqual(state.results.map(row => [row.attempt.attemptId, row.score]), [
+      [latest.attempt.attemptId, latest.score], [saved.attempt.attemptId, saved.score],
+    ]);
+    assert.deepEqual(state.problems, [{key: "history-1", reason: "unknown_version", record: legacy}]);
+    assert.deepEqual(JSON.parse(values.get(historyKey)!), [saved, legacy, latest]);
+  }));
+test("replaying an unchanged assessment history or confirmed receipt does not rewrite storage", () =>
+  storage((values, store) => {
+    const saved = {...report(), saveStatus: "saved" as const};
+    const legacy = unknown(report("express"));
+    const initial = mergeHskHistoryRows([legacy, saved], "zh");
+    const snapshot = values.get(historyKey);
+    store.setItem = () => assert.fail("An unchanged snapshot should not be written");
+
+    assert.deepEqual(mergeHskHistoryRows([legacy, saved], "zh"), initial);
+    assert.equal(writeHskResult(saved), true);
+    assert.equal(values.get(historyKey), snapshot);
+  }));
 test("local history displays latest twenty but retains older rows instead of truncating storage", () =>
   storage((values) => {
     for (let n = 0; n < 23; n++)

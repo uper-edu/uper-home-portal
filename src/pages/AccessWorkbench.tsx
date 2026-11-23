@@ -1,3 +1,4 @@
+import '../components/crm/crm-detail-workspace.css';
 import {IntegrationCredentialsOverview,resolveIntegrationTopic,type IntegrationTopic} from '../components/IntegrationCredentials';
 import {EnrollmentMailWorkspace} from '../components/EnrollmentMailWorkspace';
 import {SystemAccessGuide} from '../components/SystemAccessGuide';
@@ -25,7 +26,6 @@ import {AdminDetailActions,AdminRecordFilters,AdminRecordRow,AdminRecordSidebar,
 import {AdminStatus} from '../components/AdminStatus';
 import {containPaneKeys,recordSplitMinWidth} from '../components/adminScroll';
 import {useCrmShellHeight,useRecordScrollMode} from '../components/crm/CrmDetailWorkspace';
-import '../components/crm/crm-detail-workspace.css';
 import '../components/crm/crm-record-workspace.css';
 import '../components/admin-workspace.css';
 import '../components/crm/crm-operations-workspace.css';

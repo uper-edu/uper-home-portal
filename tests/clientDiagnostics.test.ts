@@ -1,11 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {registerHooks} from 'node:module';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {classifyClientFailure,diagnosticFrames,sanitizeClientDiagnostic,clientFailureText} from '../src/utils/clientDiagnostics';
 import {ApplicationErrorNotice} from '../src/components/ApplicationErrorBoundary';
-import GFormOnboardingModal from '../src/components/GFormOnboardingModal';
 import {mountClientDiagnostics} from '../server/clientDiagnostics';
+
+const cssHook=registerHooks({
+  load(url,context,next) {
+    if (url.endsWith('.css')) return {format:'module',source:'',shortCircuit:true};
+    return next(url,context);
+  },
+});
+const {default:GFormOnboardingModal}=await import('../src/components/GFormOnboardingModal');
+cssHook.deregister();
+
 const id='12345678-1234-4234-8234-123456789012';
 const input={schema:1,id,kind:'dom-interference',source:'react',errorName:'NotFoundError',route:'/chat',buildId:'test-build',frames:['index-abcd1234.js:33:42','GFormOnboardingModal']};
 test('DOM translation interference, chunk load, network and generic runtime errors stay distinct',()=>{

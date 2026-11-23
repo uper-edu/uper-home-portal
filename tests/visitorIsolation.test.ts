@@ -1,10 +1,10 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {selectVisitorScope, visitorKey, visitorScope, verifyVisitorSession, invalidateVisitorScope, assertVisitorScope} from '../src/services/visitorScope';
+import {selectVisitorScope, visitorKey, visitorScope, verifyVisitorSession, invalidateVisitorScope, assertVisitorScope, subscribeVisitorScope, VISITOR_MARKER} from '../src/services/visitorScope';
 import {writeHskResult, readHskHistory, mergeHskHistoryRows, readHskDraft, writeHskDraft} from '../src/services/hskAttemptStorage';
 import {saveStudentContext,getStudentContext,subscribeStudentContext} from '../src/services/studentProfileStorage';
-import {saveHskAttempt,restoreHskHistory,registerContact,startAnotherVisitor} from '../src/services/portalChat';
+import {saveHskAttempt,restoreHskHistory,restoreVerifiedHskAttempts,registerContact,startAnotherVisitor} from '../src/services/portalChat';
 import {newHskAttempt,gradeHskAttempt} from '../src/data/hskAssessment';
 const A='a'.repeat(64),B='b'.repeat(64);
 function environment() {
@@ -52,8 +52,127 @@ test('confirmed assessment save caches the server result for the submitting visi
   assert.deepEqual(readHskHistory(),[]);
  }finally{e.restore();}
 });
+test('a cancelled assessment history response cannot merge records after decoding',async()=>{
+ const e=environment();
+ try {
+  const controller=new AbortController(),saved=result();
+  globalThis.fetch=async(url)=>{
+   if(String(url).endsWith('/session'))return Response.json({registered:true,cacheScope:A});
+   const response=new Response();
+   response.json=async()=>{
+    controller.abort();
+    return {results:[saved]};
+   };
+   return response;
+  };
+  await assert.rejects(restoreHskHistory('en',controller.signal),{name:'AbortError'});
+  assert.deepEqual(readHskHistory(),[]);
+ }finally{e.restore();}
+});
+test('overlapping assessment history requests share a read without sharing cancellation',async()=>{
+ const e=environment();
+ try {
+  let reads=0, transport:AbortSignal|undefined,release!:(response:Response)=>void;
+  const record=result();
+  globalThis.fetch=async(url,init)=>{
+   if(String(url).endsWith('/session'))return Response.json({registered:true,cacheScope:A});
+   reads++;
+   transport=init?.signal??undefined;
+   if(reads>1)return Response.json({results:[record]});
+   return new Promise(resolve=>release=resolve);
+  };
+  const controller=new AbortController();
+  const cancelled=restoreHskHistory('en',controller.signal);
+  const remaining=restoreHskHistory('zh');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(reads,1);
+  controller.abort();
+  await assert.rejects(cancelled,{name:'AbortError'});
+  assert.equal(transport?.aborted,false);
+  release(Response.json({results:[record]}));
+  assert.equal((await remaining).results[0].attempt.attemptId,record.attempt.attemptId);
+  await restoreHskHistory();
+  assert.equal(reads,2);
+ }finally{e.restore();}
+});
+test('Chat reads assessment history with its verified scope and discards mismatched sessions', async()=>{
+ const e=environment();
+ try {
+  const record=result(), requests:string[]=[];
+  let changed=false;
+  globalThis.fetch=async(url,init)=>{
+   requests.push(String(url));
+   assert.equal(new Headers(init?.headers).get('X-Visitor-Scope'),A);
+   return changed ? Response.json({error:'Visitor identity changed'},{status:409}) : Response.json({results:[record]});
+  };
+  await assert.rejects(restoreVerifiedHskAttempts(B),/Visitor changed/);
+  assert.equal((await restoreVerifiedHskAttempts(A))[0].attempt.attemptId,record.attempt.attemptId);
+  changed=true;
+  await assert.rejects(restoreVerifiedHskAttempts(A),/Visitor changed/);
+  assert.equal(visitorScope(),'');
+  assert.deepEqual(requests,['/api/portal/assessments','/api/portal/assessments']);
+  selectVisitorScope(B);
+  assert.deepEqual(readHskHistory(),[]);
+ }finally{e.restore();}
+});
+test('abandoning the final assessment history reader aborts the request and permits a new read',async()=>{
+ const e=environment();
+ try {
+  let reads=0,transport:AbortSignal|undefined;
+  globalThis.fetch=async(url,init)=>{
+   if(String(url).endsWith('/session'))return Response.json({registered:true,cacheScope:A});
+   if(++reads>1)return Response.json({results:[]});
+   transport=init?.signal??undefined;
+   return new Promise((_,reject)=>transport?.addEventListener('abort',()=>reject(transport?.reason),{once:true}));
+  };
+  const controller=new AbortController();
+  const cancelled=restoreHskHistory('en',controller.signal);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(reads,1);
+  controller.abort();
+  await assert.rejects(cancelled,{name:'AbortError'});
+  assert.equal(transport?.aborted,true);
+  await restoreHskHistory();
+  assert.equal(reads,2);
+ }finally{e.restore();}
+});
 test('657: session reply after invalidation cannot restore an old identity; network failure never selects an identity',async()=>{
  const e=environment();try{let release!:(r:Response)=>void;globalThis.fetch=async()=>new Promise<Response>(r=>release=r);const s=verifyVisitorSession();invalidateVisitorScope();release(Response.json({cacheScope:A,registered:true}));await assert.rejects(s,/Visitor changed/);assert.equal(visitorScope(),'');globalThis.fetch=async()=>{throw Error('offline');};await assert.rejects(verifyVisitorSession(),/offline/);assert.equal(visitorScope(),'');}finally{e.restore();}
+});
+
+test('a visitor change supersedes the first session check before any visitor is selected', async () => {
+  const e = environment();
+  invalidateVisitorScope();
+  const replies: Array<(response: Response) => void> = [];
+  const signals: AbortSignal[] = [];
+  globalThis.fetch = async (_url, init) => {
+    signals.push(init!.signal!);
+    return new Promise<Response>(resolve => replies.push(resolve));
+  };
+  let replacement: Promise<unknown> | undefined;
+  const unsubscribe = subscribeVisitorScope(() => { replacement = verifyVisitorSession(); });
+  try {
+    const original = verifyVisitorSession();
+    invalidateVisitorScope();
+    assert.equal(replies.length, 2);
+    assert.ok(replacement);
+    assert.equal(signals[0].aborted, true);
+    assert.equal(signals[1].aborted, false);
+
+    replies[0](Response.json({ cacheScope: A, registered: true }));
+    await assert.rejects(original, /Visitor changed/);
+    assert.equal(visitorScope(), '');
+    assert.equal(e.values.has(VISITOR_MARKER), false);
+    assert.equal(verifyVisitorSession(), replacement);
+
+    replies[1](Response.json({ cacheScope: B, registered: false }));
+    await replacement;
+    assert.equal(visitorScope(), B);
+    assert.equal(e.values.get(VISITOR_MARKER), B);
+  } finally {
+    unsubscribe();
+    e.restore();
+  }
 });
 
 test('657: storage notification while another tab invalidates identity does not read an unverified cache',()=>{

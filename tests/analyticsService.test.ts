@@ -120,7 +120,6 @@ test("actual portal services emit only scope-checked saved receipts; failures an
     assert.equal(registrations().length, 1);
     assert.equal(events.filter(e=>e[1]==='advisor_request').length,0);
     api.selectVisitorScope(A);
-    api.setDraftScope(A);
     const run = async (id: string, result: any, action?: string) => {
       api.saveDraft("standalone_chat", {
         id,
@@ -163,12 +162,12 @@ test("actual portal services emit only scope-checked saved receipts; failures an
     );
     await run(
       "request-1",
-      { saved: true, status: "awaiting_advisor", taskOperation: "recorded" },
+      { saved: true, status: "awaiting_advisor", taskOperation: "recorded", reply: "Fixture reply" },
       "handoff",
     );
     await run(
       "request-1",
-      { saved: true, status: "awaiting_advisor", taskOperation: "recorded" },
+      { saved: true, status: "awaiting_advisor", taskOperation: "recorded", reply: "Fixture reply" },
       "handoff",
     );
     assert.equal(events.filter((e) => e[1] === "advisor_request").length, 1);
@@ -176,6 +175,7 @@ test("actual portal services emit only scope-checked saved receipts; failures an
       saved: true,
       status: "awaiting_advisor",
       taskOperation: "recorded",
+      reply: "Fixture reply",
     });
     assert.equal(events.filter((e) => e[1] === "advisor_request").length, 1);
     assert.ok(
@@ -183,11 +183,14 @@ test("actual portal services emit only scope-checked saved receipts; failures an
         !JSON.stringify(events).includes("private@"),
     );
     // An anonymous request is confirmed only when registration commits it.
-    const C='c'.repeat(64);api.selectVisitorScope(C);api.setDraftScope(C);
-    let savedRegistration:any;let drop=true;
+    const C='c'.repeat(64);api.selectVisitorScope(C);
+    let savedRegistration:any;let drop=true;let receiptReads=0;
     globalThis.fetch=async(url:any,init:any)=>{
       if(String(url).endsWith('/session'))return Response.json({registered:false,cacheScope:C});
-      if(String(url).includes('/registrations/'))return Response.json(savedRegistration);
+      if(String(url).includes('/registrations/')){
+        // The first automatic receipt read also loses connectivity. A later manual query can confirm it.
+        return ++receiptReads===1 ? Response.json({}, {status:503}) : Response.json(savedRegistration);
+      }
       const body=JSON.parse(init.body);
       savedRegistration={saved:true,submissionId:body.submissionId,lead:{id:'PRIVATE-C'},advisorRequests:[{leadId:'PRIVATE-C',messageId:'anonymous-request',action:'handoff',status:'awaiting_advisor',taskOperation:'recorded'}]};
       if(drop){drop=false;throw new TypeError('TEST response lost after commit');}
@@ -195,9 +198,11 @@ test("actual portal services emit only scope-checked saved receipts; failures an
     };
     const advisorCount=()=>events.filter(e=>e[1]==='advisor_request').length,beforeAnonymous=advisorCount();
     await assert.rejects(api.registerContact({fullName:'PRIVATE-C',email:'private-c@example.test'}));
+    assert.equal(receiptReads,1);
     assert.equal(advisorCount(),beforeAnonymous);
     await api.registerContact({}, {queryOnly:true});assert.equal(advisorCount(),beforeAnonymous+1);
-    await run('anonymous-request',{saved:true,status:'awaiting_advisor',taskOperation:'recorded'},'handoff');assert.equal(advisorCount(),beforeAnonymous+1);
+    assert.equal(receiptReads,2);
+    await run('anonymous-request',{saved:true,status:'awaiting_advisor',taskOperation:'recorded',reply:'Fixture reply'},'handoff');assert.equal(advisorCount(),beforeAnonymous+1);
     assert.doesNotMatch(JSON.stringify(events),/PRIVATE|private@|private-c@/);
   } finally {
     for (const k of [

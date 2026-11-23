@@ -1,33 +1,33 @@
+import {createBrowserUuid} from '../utils/browserUuid';
 import {chatWorkspaceEntry,type ChatWorkspaceEntry} from '../utils/chatWorkspaceAction';
 import {ChatComposer,ChatFollowups,ChatMessage as ChatBubble,ChatTyping} from './ChatConversation';
 import type {EnrollmentGuideAction} from '../utils/enrollmentGuidance';
-import {lookupPromotion} from '../utils/promotionLookup';
+import {watchPromotionLanguage} from '../utils/promotionLookup';
 import {linkHubReturnUrl,promotionIdentity,promotionParameters} from '../utils/promotionNavigation';
 import {trackEvent} from '../utils/analytics';
 import {chatLanguage} from '../utils/chatLanguage';
-import {visitorScope} from '../services/visitorScope';
+import {subscribeVisitorScope,visitorScope} from '../services/visitorScope';
 import {PageMetadata} from './PageMetadata';
 import { safeHskResult } from "../data/hskReportHistory";
 import {draft,type Delivery} from "../services/chatDelivery";
 import {chatFetch, chatPromotionParams, registerContact, finishChat, startAnotherVisitor, sharedChatDrafts} from '../services/portalChat';
 import {announceChatChange,useSharedChat} from '../hooks/useSharedChat';
-import {useChatInputDraft} from '../hooks/useChatInputDraft';
+import {readChatInputDraft,writeChatInputDraft} from '../hooks/useChatInputDraft';
+import {preloadEnrollmentNavigation} from '../services/enrollmentClassDetails';
 import {trackChatbotInteraction} from '../utils/analytics';
-import type {ChatSource} from '../services/portalChat';
+import type {ChatOrigin,ChatSource} from '../services/portalChat';
 import type {ChatPresentation} from './StandaloneChatChrome';
-import {readChatMessageAnchor,readEnrollmentConsultation,returnAlongJourney} from '../utils/chatJourneyNavigation';
+import {clearChatMessageAnchor,readChatMessageAnchor,readEnrollmentConsultation,returnAlongJourney} from '../utils/chatJourneyNavigation';
 import type {EnrollmentChatSelection} from '../utils/enrollmentChatJourney';
-import {useState,useEffect,useRef} from 'react';
+import {lazy,memo,Suspense,useState,useCallback,useEffect,useEffectEvent,useMemo,useRef,type ComponentProps,type ComponentType} from 'react';
+import {reportClientFailure} from '../services/clientDiagnostics';
 import {useLocation,useNavigate} from 'react-router-dom';
-import {motion} from 'motion/react';
 import {ChatAssessmentSummary,ChatWelcome,ChatWelcomeSocials,StandaloneChatDialog,StandaloneChatHeader} from './StandaloneChatChrome';
 import '../pages/standalone-chat.css';
-import GFormOnboardingModal from './GFormOnboardingModal';
-import HskAssessmentReport from './HskAssessmentReport';
 import {type HskResult, chooseText} from '../data/hskAssessment';
-import {retryHskAttempt, restoreHskAttempts, assessmentConsultation, profileConsultation} from '../services/portalChat';
-import {writeHskResult,readHskHistory,readHskDraft,clearHskDraft} from '../services/hskAttemptStorage';
-import HSKPlacementAssessment from './HSKPlacementAssessment';
+import {retryHskAttempt, restoreVerifiedHskAttempts, assessmentConsultation, profileConsultation} from '../services/portalChat';
+import {writeHskResult,readHskHistory,readHskDraft,hasHskDraft,clearHskDraft} from '../services/hskAttemptStorage';
+import {watchReadReconnect} from '../services/readReconnect';
 import {hskWhatsAppDraft} from '../services/hskWhatsApp';
 import {chatAssessmentReturn,rememberChatAssessment,chatAssessmentSummaryId,chatAssessmentReplyId} from '../services/chatAssessmentReturn';
 import type {ChatRegistrationStep} from '../services/chatRegistrationDraft';
@@ -38,6 +38,54 @@ import {
   saveStudentContext,
   subscribeStudentContext
 } from '../services/studentProfileStorage';
+
+type DeferredAssessmentProps=ComponentProps<typeof import('./HSKPlacementAssessment').default>&{onLoadCancel:()=>void};
+const HskAssessmentReport=lazy(()=>Promise.all([
+  import('./HskAssessmentReport'),
+  import('./hsk-assessment-report.css'),
+]).then(([report])=>report).catch(error=>{
+  reportClientFailure(error,'preload');
+  return {default:({lang='en'}:ComponentProps<typeof import('./HskAssessmentReport').default>)=>
+    <div className="hsk-report-notice" role="alert">
+      <p>{chooseText(lang,'暂时无法加载测评详情。','Assessment details could not load.','Detail hasil tes belum dapat dimuat.')}</p>
+      <button type="button" className="chat-enrollment-next" onClick={()=>window.location.reload()}>
+        {chooseText(lang,'刷新页面','Refresh page','Muat ulang halaman')}
+      </button>
+    </div>};
+}));
+const HSKPlacementAssessment=lazy<ComponentType<DeferredAssessmentProps>>(()=>Promise.all([
+  import('./HSKPlacementAssessment'),
+  import('./hsk-picture-layout.css'),
+  import('./hsk-assessment-report.css'),
+]).then(([assessment])=>assessment).catch(error=>{
+  reportClientFailure(error,'preload');
+  // The browser can cache failed module imports for this document. Refresh starts a new request.
+  return {default:({lang='en',onLoadCancel}:DeferredAssessmentProps)=><div className="space-y-3 p-4 text-sm">
+    <p role="alert">{chooseText(lang,'暂时无法加载测评。可以刷新页面重试，也可以先返回咨询。','The assessment could not load. Refresh to try again or return to chat.','Tes belum dapat dimuat. Muat ulang untuk mencoba lagi atau kembali ke chat.')}</p>
+    <div className="flex flex-wrap items-center gap-3">
+      <button type="button" className="chat-enrollment-next chat-enrollment-next--primary" onClick={()=>window.location.reload()}>{chooseText(lang,'刷新页面','Refresh page','Muat ulang halaman')}</button>
+      <button type="button" className="chat-enrollment-next" onClick={onLoadCancel}>{chooseText(lang,'返回咨询','Return to chat','Kembali ke chat')}</button>
+    </div>
+  </div>};
+}));
+
+type LearningProfileProps=ComponentProps<typeof import('./GFormOnboardingModal').default>;
+function LearningProfileLoadNotice({lang,onClose,failed=false}:{lang:LearningProfileProps['initialLang'];onClose:()=>void;failed?:boolean}){
+  const t=(zh:string,en:string,id:string)=>chooseText(lang??'en',zh,en,id);
+  return <StandaloneChatDialog title={t('学习资料','Learning profile','Profil belajar')}
+    closeLabel={t('关闭资料登记','Close registration','Tutup pendaftaran')} onClose={onClose}>
+    {failed?<p role="alert">{t('暂时无法加载学习资料。可刷新页面重试。','The learning profile could not load. Refresh the page to try again.','Profil belajar belum dapat dimuat. Muat ulang halaman untuk mencoba lagi.')}</p>:
+      <p role="status">{t('正在加载学习资料…','Loading learning profile…','Memuat profil belajar…')}</p>}
+    <div className="chat-dialog-actions">
+      <button type="button" onClick={onClose}>{t('返回咨询','Return to chat','Kembali ke chat')}</button>
+      {failed&&<button type="button" className="chat-primary" onClick={()=>window.location.reload()}>{t('刷新页面','Refresh page','Muat ulang halaman')}</button>}
+    </div>
+  </StandaloneChatDialog>;
+}
+const GFormOnboardingModal=lazy(()=>import('./GFormOnboardingModal').catch(error=>{
+  reportClientFailure(error,'preload');
+  return {default:({initialLang='en',onConsultFirst}:LearningProfileProps)=><LearningProfileLoadNotice lang={initialLang} onClose={()=>onConsultFirst?.(initialLang)} failed/>};
+}));
 
 interface ChatMessage {
   enrollment?:EnrollmentGuideAction;
@@ -53,6 +101,27 @@ interface ChatMessage {
   isAssessmentResult?: boolean;
   assessmentData?: HskResult & { whatsapp?: string };
 }
+
+type MessageEntry = (value:ChatWorkspaceEntry) => {label:string;open:()=>void}|undefined;
+
+const WorkspaceMessage = memo(function WorkspaceMessage({message,lang,source,page,conversationId,owner,entry,
+  widget,compact,active,busy,retry,checkReply,checkingReply,onReport,messageEntry}:{
+  message:ChatMessage;lang:'zh'|'en'|'id';source:ChatSource;page:ChatOrigin['page'];conversationId:string;owner:string;
+  entry:ChatSource;widget:boolean;compact:boolean;active:boolean;busy:boolean;retry?:()=>void;checkReply?:()=>void;checkingReply?:boolean;
+  onReport:(report:HskResult)=>void;messageEntry?:MessageEntry;
+}){
+  const action=message.role==='assistant'&&message.workspaceEntry&&message.content.trim()
+    ? messageEntry?.(message.workspaceEntry) : undefined;
+  return <ChatBubble role={message.role==='user'?'user':'assistant'} content={message.content} language={lang} entry={entry}
+    origin={{source,page}} enrollment={message.enrollment}
+    anchor={message.enrollment?{owner,conversationId,messageId:message.id,widget}:undefined}
+    delivery={message.delivery} compact={compact} active={active} busy={busy} onRetry={retry} onCheckReply={checkReply} checkingReply={checkingReply}
+    entryAction={action&&<button type="button" className="chat-enrollment-next chat-enrollment-next--primary" data-chat-workspace-action
+      disabled={busy} onClick={action.open}>{action.label}</button>}>
+    {message.isAssessmentResult&&message.assessmentData?<ChatAssessmentSummary result={message.assessmentData} lang={lang}
+      onDetails={onReport}/>:undefined}
+  </ChatBubble>;
+});
 
 function assessmentMessage(result:HskResult):ChatMessage {
   return {id:chatAssessmentSummaryId(result.attempt.attemptId),role:'assistant',content:result.summary,
@@ -87,45 +156,96 @@ export default function ChatWorkspace({
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [report,setReport] = useState<HskResult|null>(null);
   const [confirm,setConfirm] = useState<'restart'|'switch'|'retake'|null>(null);
+  const [restartFrom,setRestartFrom] = useState<string>();
   const [isTakingAssessment, setIsTakingAssessment] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const lastMessage=messages[messages.length-1];
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [lang, setLang] = useState<'en' | 'id' | 'zh'>(()=>chatLanguage(initialContext?.preferredLanguage ?? initialLanguage,window.location.search));
+  const [{language:lang}, setChatLanguage] = useState(()=>({
+    language:chatLanguage(initialContext?.preferredLanguage ?? initialLanguage,window.location.search),
+    selected:false,
+  }));
 
-  const {thread, failed:chatFailed, starting, startNew, refresh:refreshChat} = useSharedChat(chatSource, isTyping || !active, threadId);
-  const {value:inputValue, setValue:setInputValue} = useChatInputDraft(thread?.conversationId);
+  const {thread, failed:chatFailed, readbackFailed, starting, checkingReply, replyPending, replyStalled, stalledQuestion, startNew, refresh:refreshChat, refreshInBackground} = useSharedChat(chatSource, isTyping || !active, threadId);
   const [assessment, setAssessment] = useState<HskResult|null|undefined>();
+  const assessmentRestore = useRef<AbortController | undefined>(undefined);
+  const assessmentHistoryConfirmed = useRef(false);
   const [owner] = useState(visitorScope);
   const previousThread = useRef<string | undefined>(undefined);
-  const sending = useRef(false);
+  const appliedSnapshot = useRef<{thread:typeof thread;assessment:typeof assessment} | undefined>(undefined);
+  const sending = useRef<AbortController|undefined>(undefined);
+
+  useEffect(()=>{
+    const unsubscribe=subscribeVisitorScope(()=>{
+      if(visitorScope()!==owner)sending.current?.abort();
+    });
+    return ()=>{
+      unsubscribe();
+      sending.current?.abort();
+    };
+  },[owner]);
 
   useEffect(() => {
-    let active = true;
-    const owner = visitorScope();
+    if(!active||assessmentHistoryConfirmed.current)return;
+    const request = new AbortController();
+    assessmentRestore.current = request;
     const language = initialContext?.preferredLanguage || lang;
-    void restoreHskAttempts().catch(() => readHskHistory(language)).then(attempts => {
-      if (!active || visitorScope() !== owner) return;
+    const isCurrent = () => !request.signal.aborted && visitorScope() === owner;
+    const applyHistory = (attempts:HskResult[]) => {
       const returnTo=chatAssessmentReturn(owner);
       const bound=returnTo && attempts.find(item=>item.attempt.attemptId===returnTo.attemptId);
-      const latest = bound ?? attempts[0] ?? safeHskResult(initialContext?.assessment?.result, language);
-      if (latest) writeHskResult(latest);
-      setAssessment(latest ?? null);
-    });
-    return () => { active = false; };
-  }, []);
+      const restored = bound ?? attempts[0];
+      const fallback = restored ? undefined : safeHskResult(initialContext?.assessment?.result, language);
+      if (fallback) writeHskResult(fallback);
+      setAssessment(restored ?? fallback ?? null);
+    };
+    const reconnect=watchReadReconnect(readHistory);
+    function readHistory() {
+      if (!isCurrent()) return;
+      void restoreVerifiedHskAttempts(owner,request.signal).then(attempts=>{
+        if (!isCurrent()) return;
+        assessmentHistoryConfirmed.current=true;
+        reconnect.stop();
+        applyHistory(attempts);
+      },()=>{
+        if (!isCurrent()) return;
+        applyHistory(readHskHistory(language));
+        reconnect.failed();
+      });
+    }
+    request.signal.addEventListener('abort',reconnect.stop,{once:true});
+    readHistory();
+    return () => { request.abort(); };
+  }, [active,owner]);
 
   useEffect(() => {
-    if (!thread || assessment === undefined || isTyping) return;
-    const firstLoad = previousThread.current === undefined;
-    const changed = !firstLoad && previousThread.current !== thread.conversationId;
-    previousThread.current = thread.conversationId;
-    const rows = thread.messages;
-    if (changed) {
+    if (!thread || isTyping) return;
+    const previous=appliedSnapshot.current;
+    const sameSnapshot=previous?.thread===thread;
+    if(sameSnapshot && previous?.assessment===assessment)return;
+    appliedSnapshot.current={thread,assessment};
+    // Close the previous conversation's UI even if assessment history is still loading.
+    if (previous?.thread && previous.thread.conversationId !== thread.conversationId) {
       setShowOnboardingModal(false);
       setReport(null);
       setIsTakingAssessment(false);
+      setConsultationError(null);
+      setProfileConsultationError(false);
     }
+    const rows = thread.messages;
+    const visibleRows = rows.filter(row => !(
+      (row.id.startsWith('reply-hsk-intro-') || row.id.startsWith('reply-profile-intro-'))
+      && ['failed','interrupted'].includes(row.status)
+    ));
+    if (assessment === undefined) {
+      // The conversation is ready even while its assessment summary is being restored.
+      setMessages(visibleRows);
+      return;
+    }
+    const firstLoad = previousThread.current === undefined;
+    const changed = !firstLoad && previousThread.current !== thread.conversationId;
+    previousThread.current = thread.conversationId;
     const assessmentId=assessment?.attempt.attemptId;
     const returnTo=assessmentId && chatAssessmentReturn(owner,assessmentId);
     const bound=!!assessmentId && assessmentId===returnTo?.attemptId && returnTo.conversationId===thread.conversationId;
@@ -139,27 +259,28 @@ export default function ChatWorkspace({
         !(assessmentId===draft.attempt.attemptId && assessment?.saveStatus==='saved')) setIsTakingAssessment(true);
     }
     const failedProfile = rows.some(row => row.id.startsWith('reply-profile-intro-') && ['failed','interrupted'].includes(row.status));
-    const visibleRows = rows.filter(row => !(
-      (row.id.startsWith('reply-hsk-intro-') || row.id.startsWith('reply-profile-intro-'))
-      && ['failed','interrupted'].includes(row.status)
-    ));
     const initialStandalone = firstLoad && !embedded && !fromEnrollment && !thread.restarted && thread.source === chatSource && !rows.length;
     const introIndex = replyId ? visibleRows.findIndex(row => row.id === replyId) : -1;
     const summary = assessment && (bound || introIndex >= 0 || failedIntro || initialStandalone&&!returnTo)
       ? [assessmentMessage(assessment)]
       : [];
-    setMessages(introIndex<0?[...visibleRows,...summary]:[...visibleRows.slice(0,introIndex),...summary,...visibleRows.slice(introIndex)]);
+    setMessages(current=>{
+      // A late assessment must not overwrite messages sent after this snapshot was read.
+      const base=sameSnapshot?current.filter(row=>!row.isAssessmentResult):visibleRows;
+      const index=sameSnapshot?base.findIndex(row=>row.id===replyId):introIndex;
+      return index<0?[...base,...summary]:[...base.slice(0,index),...summary,...base.slice(index)];
+    });
     if (changed || failedIntro || introIndex >= 0) setConsultationError(failedIntro ? assessment : null);
     if (changed || failedProfile || visibleRows.some(row => row.id.startsWith('reply-profile-intro-') && row.status === 'completed'))
       setProfileConsultationError(failedProfile);
     if (firstLoad && assessment?.saveStatus==='saved' && !savedReply &&
-      (bound || initialStandalone&&!returnTo&&!readHskDraft())) {
+      (bound || initialStandalone&&!returnTo&&!hasHskDraft())) {
       void beginAssessmentConsultation(assessment);
-    } else if (initialStandalone && !assessment && !readHskDraft() && initialContext?.leadProfile?.goal &&
+    } else if (initialStandalone && !assessment && !hasHskDraft() && initialContext?.leadProfile?.goal &&
       getChatAssessmentStatus(initialContext)!=='completed') {
       void beginProfileConsultation();
     }
-  }, [thread, assessment]);
+  }, [thread, assessment, isTyping]);
 
   // A saved promotion entry also selects the interface language for returning visitors.
   // Existing customer records, messages and assessment state are not rewritten.
@@ -167,18 +288,17 @@ export default function ChatWorkspace({
     if (embedded && !new URLSearchParams(window.location.search).has('p')) return;
     const params = new URLSearchParams(window.location.search);
     if (params.has('lang')) return;
-    let active = true;
-    void Promise.resolve(lookupPromotion(params)).then(result => {
-      if (active && !new URLSearchParams(window.location.search).has('lang') && result?.state === 'verified') setLang(result.promotion.language);
+    return watchPromotionLanguage(params,language=>{
+      if (!new URLSearchParams(window.location.search).has('lang'))
+        setChatLanguage(current=>current.selected||current.language===language?current:{language,selected:false});
     });
-    return () => { active = false; };
   }, []);
 
   const changeLanguage = (language: 'en' | 'id' | 'zh') => {
     const url = new URL(window.location.href);
     url.searchParams.set('lang', language);
     if (presentation === 'page' || presentation === 'expanded') window.history.replaceState(window.history.state, '', url);
-    setLang(language);
+    setChatLanguage({language,selected:true});
     saveStudentContext({ preferredLanguage: language });
   };
 
@@ -188,25 +308,37 @@ export default function ChatWorkspace({
     requestAnimationFrame(()=>inputRef.current?.focus());
   };
 
-  const handleAssessmentCancel = () => {
-    trackEvent('assessment_exit',{reason:readHskDraft()?'paused':'skipped'});
+  const leaveAssessment = () => {
+    const status=hasHskDraft()?'paused':'skipped';
+    followLatest.current=true;
     setIsTakingAssessment(false);
-    saveStudentContext({ chatAssessmentStatus: readHskDraft()?'paused':'skipped' });
+    saveStudentContext({chatAssessmentStatus:status});
+    return status;
+  };
+  const handleAssessmentCancel = () => {
+    trackEvent('assessment_exit',{reason:leaveAssessment()});
     if (profile?.goal && !thread?.messages.length) void beginProfileConsultation();
   };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const positionedThread = useRef<string | undefined>(undefined);
+  const followLatest = useRef(true);
 
   const mainRef = useRef<HTMLElement>(null);
+  const flowRef = useRef<HTMLDivElement>(null);
+  const followExpandedReply = useEffectEvent(() => {
+    const region=mainRef.current;
+    if(!region||!followLatest.current)return;
+    if(returnAnchor && restoredAnchor.current===routeKey+':'+returnAnchor.messageId)return;
+    if(lastMessage?.isAssessmentResult||lastMessage?.id.startsWith('reply-hsk-intro-'))return;
+    region.scrollTop=region.scrollHeight;
+  });
   useEffect(() => {
     if (active && !isTakingAssessment) {
       const anchorKey = returnAnchor && routeKey+':'+returnAnchor.messageId;
-      if (anchorKey && restoredAnchor.current!==anchorKey && returnAnchor.owner===visitorScope() &&
-        returnAnchor.conversationId===thread?.conversationId) {
+      if (anchorKey && returnAnchor.owner===visitorScope() && returnAnchor.conversationId===thread?.conversationId) {
+        // Late assessment and history reads must not pull the learner away from the returned message.
+        if(restoredAnchor.current===anchorKey)return;
         const target=mainRef.current?.querySelector<HTMLElement>('[data-chat-message-id="'+CSS.escape(returnAnchor.messageId)+'"]');
         if (target) {
           restoredAnchor.current=anchorKey;
@@ -215,9 +347,21 @@ export default function ChatWorkspace({
           return;
         }
       }
-      const last=messages.at(-1);
-      if(last?.isAssessmentResult || last?.id.startsWith('reply-hsk-intro-'))mainRef.current?.querySelector('[data-hsk-result-anchor]')?.scrollIntoView({behavior:'auto',block:'start'});
-      else scrollToBottom();
+      const last=lastMessage;
+      const firstPosition=!!(last&&thread&&positionedThread.current!==thread.conversationId);
+      if(firstPosition){
+        positionedThread.current=thread?.conversationId;
+        followLatest.current=true;
+      }
+      // Keep the reader's position when a reply grows or another tab syncs.
+      if(!followLatest.current)return;
+      const frame=requestAnimationFrame(()=>{
+        if(!followLatest.current)return;
+        if(last?.isAssessmentResult || last?.id.startsWith('reply-hsk-intro-'))
+          mainRef.current?.querySelector('[data-hsk-result-anchor]')?.scrollIntoView({behavior:'instant',block:'start'});
+        else messagesEndRef.current?.scrollIntoView({behavior:'instant'});
+      });
+      return ()=>cancelAnimationFrame(frame);
     }
   }, [messages, isTyping, isTakingAssessment, active, thread?.conversationId, routeKey]);
   useEffect(() => {
@@ -228,7 +372,8 @@ export default function ChatWorkspace({
   useEffect(() => {
     const unsubscribe = subscribeStudentContext((ctx) => {
       setProfile(ctx?.leadProfile || null);
-      if(ctx?.preferredLanguage)setLang(ctx.preferredLanguage);
+      const language=ctx?.preferredLanguage;
+      if(language)setChatLanguage(current=>current.language===language?current:{...current,language});
       if (ctx?.assessment?.result) {
         const owned=safeHskResult(ctx.assessment.result,ctx.preferredLanguage??'en');
         if (owned) setAssessment(owned);
@@ -237,16 +382,20 @@ export default function ChatWorkspace({
     return unsubscribe;
   }, []);
 
-  const handleStartVoluntaryAssessment = () => {
+  const handleStartVoluntaryAssessment = useCallback(() => {
+    clearChatMessageAnchor();
     setIsTakingAssessment(true);
     saveStudentContext({chatAssessmentStatus:'pending',preferredLanguage:lang});
-  };
+  },[lang]);
 
   const handleOnboardingComplete = async (answers: object, selectedLang: 'en'|'id'|'zh',
     options:{queryOnly?:boolean;retryOriginal?:boolean},step:ChatRegistrationStep) => {
+    const conversationId=thread?.conversationId;
     const contacts=step==='preferences'&&profile?{fullName:profile.fullName,whatsapp:profile.whatsapp,email:profile.email}:{};
     const origin=fromEnrollment&&thread?{source:thread.source,page:fromEnrollment.url}:thread;
     const registration=await registerContact({...answers,...contacts,language:selectedLang},{...options,chatOrigin:origin,contactConversion:step==='contact'});
+    // The saved profile belongs to the visitor; the follow-up belongs to the conversation that submitted it.
+    if(visitorScope()!==owner||appliedSnapshot.current?.thread?.conversationId!==conversationId)return;
     const savedProfile={...profile,...registration.lead};
     setProfile(savedProfile);
     if (selectedLang!==lang) changeLanguage(selectedLang);
@@ -258,6 +407,9 @@ export default function ChatWorkspace({
   };
 
   const handleAssessmentComplete = (result: HskResult) => {
+    assessmentHistoryConfirmed.current=true;
+    assessmentRestore.current?.abort();
+    followLatest.current=true;
     setIsTakingAssessment(false);
     setAssessment(result);
     const attemptId=result.attempt.attemptId;
@@ -278,6 +430,26 @@ export default function ChatWorkspace({
   const [consultationError,setConsultationError]=useState<HskResult|null>(null);
   const [profileConsultationError,setProfileConsultationError]=useState(false);
   const consultationRunning=useRef(new Set<string>());
+  const replyProgress=(botId:string)=>{
+    let reply='';
+    let frame:number|undefined;
+    return {
+      update(event:{done?:boolean;reset?:boolean;chunk?:string;reply?:string}){
+        if(event.done)return;
+        const next=event.chunk ? (event.reset?'':reply)+event.chunk : event.reply||(event.reset?'':reply);
+        if(next===reply)return;
+        reply=next;
+        if(frame!==undefined)return;
+        frame=requestAnimationFrame(()=>{
+          frame=undefined;
+          if(visitorScope()!==owner)return;
+          const content=reply;
+          setMessages(prev=>prev.map(message=>message.id===botId?{...message,content}:message));
+        });
+      },
+      cancel(){if(frame!==undefined)cancelAnimationFrame(frame);},
+    };
+  };
   const beginAssessmentConsultation=async(result:HskResult)=>{
     const attemptId=result.attempt.attemptId;
     const botId=chatAssessmentReplyId(attemptId);
@@ -285,13 +457,13 @@ export default function ChatWorkspace({
     consultationRunning.current.add(attemptId);setConsultationError(null);setIsTyping(true);
     setMessages(prev=>[...prev.filter(m=>m.id!==botId),{id:botId,role:'assistant',content:'',timestamp:new Date()}]);
     const owner=visitorScope();
-    let reply='';
+    const progress=replyProgress(botId);
     try{
       const res=await assessmentConsultation(attemptId,lang,thread.conversationId,chatSource);
-      const response=await finishChat(res,chatSource,'hsk-intro-'+attemptId,e=>{if(e.reset)reply='';if(e.chunk)reply+=e.chunk;setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:reply}:m));});
+      const response=await finishChat(res,chatSource,'hsk-intro-'+attemptId,progress.update);
       setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:response.reply,enrollment:response.enrollment,suggestedPrompts:response.suggestedPrompts}:m));
     }catch{setMessages(prev=>prev.filter(m=>m.id!==botId));setConsultationError(result);}
-    finally{announceChatChange(owner);consultationRunning.current.delete(attemptId);setIsTyping(false);}
+    finally{progress.cancel();announceChatChange(owner);consultationRunning.current.delete(attemptId);setIsTyping(false);}
   };
   const beginProfileConsultation=async(language=lang)=>{
     const botId='reply-profile-intro';
@@ -299,13 +471,13 @@ export default function ChatWorkspace({
     consultationRunning.current.add(botId);setProfileConsultationError(false);setIsTyping(true);
     setMessages(prev=>[...prev.filter(m=>m.id!==botId),{id:botId,role:'assistant',content:'',timestamp:new Date()}]);
     const owner=visitorScope();
-    let reply='';
+    const progress=replyProgress(botId);
     try{
       const res=await profileConsultation(language,thread.conversationId,chatSource);
-      const response=await finishChat(res,chatSource,'profile-intro',e=>{if(e.reset)reply='';if(e.chunk)reply+=e.chunk;setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:reply}:m));});
+      const response=await finishChat(res,chatSource,'profile-intro',progress.update);
       setMessages(prev=>prev.map(m=>m.id===botId?{...m,content:response.reply,enrollment:response.enrollment,suggestedPrompts:response.suggestedPrompts}:m));
     }catch{setMessages(prev=>prev.filter(m=>m.id!==botId));setProfileConsultationError(true);}
-    finally{announceChatChange(owner);consultationRunning.current.delete(botId);setIsTyping(false);}
+    finally{progress.cancel();announceChatChange(owner);consultationRunning.current.delete(botId);setIsTyping(false);}
   };
   const [savingReport,setSavingReport]=useState(false);
   const [reportError,setReportError]=useState<HskResult|null>(null);
@@ -329,42 +501,74 @@ export default function ChatWorkspace({
   };
 
   const handleSendMessage = async (textToSend?: string, retry?: ChatMessage, action?: ChatMessage['action']) => {
+    const inputValue=readChatInputDraft(owner,thread?.conversationId);
     const messageContent=(retry?.content || textToSend || inputValue).trim();
-    if(!messageContent || isTyping || starting || chatFailed || !thread || sending.current)return;
-    sending.current = true;
+    if(!messageContent || isTyping || starting || chatFailed || !thread || sending.current || visitorScope()!==owner)return;
+    clearChatMessageAnchor();
+    followLatest.current=true;
+    const controller = new AbortController();
+    sending.current = controller;
+    const current=()=>!controller.signal.aborted&&visitorScope()===owner;
     const requestAction = retry?.action ?? action;
     if (chatSource === 'homepage_widget') {
       if (textToSend && !requestAction) trackChatbotInteraction('click_shortcut', {prompt_text:textToSend});
       else if (!requestAction) trackChatbotInteraction('send_message', {message_length:messageContent.length});
     }
-    if (!textToSend && !retry) {
-      setInputValue('');
-      inputRef.current?.focus({ preventScroll: true });
-    }
+    // Only a composer submission consumes its draft. A retry belongs to the message in history.
+    const typedMessage = !textToSend && !retry;
     setIsTyping(true);
-    const userMessage:ChatMessage=retry || {id:crypto.randomUUID(),role:'user',content:messageContent,timestamp:new Date(),action:requestAction,
+    const userMessage:ChatMessage=retry || {id:createBrowserUuid(),role:'user',content:messageContent,timestamp:new Date(),action:requestAction,
       enrollmentContext:fromEnrollment?.selection};
     const botMessageId='reply-'+userMessage.id;
-    setMessages(prev=>[...prev.filter(m=>m.id!==botMessageId && m.id!==userMessage.id),{...userMessage,delivery:'pending'},{id:botMessageId,role:'assistant',content:'',timestamp:new Date()}]);
-    const owner=visitorScope();
-    let reply='';
+    setMessages(prev=>{
+      const rows=prev.filter(message=>message.id!==botMessageId);
+      const questionIndex=rows.findIndex(message=>message.id===userMessage.id);
+      const pending:ChatMessage[]=[{...userMessage,delivery:'pending'},
+        {id:botMessageId,role:'assistant',content:'',timestamp:new Date()}];
+      if(questionIndex<0)return [...rows,...pending];
+      rows.splice(questionIndex,1,...pending);
+      return rows;
+    });
+    const progress=replyProgress(botMessageId);
+    let acknowledged=false;
     try{
-      const res=await chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[userMessage],action:requestAction,language:lang,stream:!requestAction,enrollmentContext:userMessage.enrollmentContext})},chatSource,thread.conversationId,true);
+      const request=chatFetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({messages:[userMessage],action:requestAction,language:lang,stream:!requestAction,enrollmentContext:userMessage.enrollmentContext})},chatSource,thread.conversationId,true);
+      const queued=draft(sharedChatDrafts,userMessage.id);
+      const stored=queued?.conversationId===thread.conversationId && queued.content===messageContent;
+      if (typedMessage && stored) writeChatInputDraft(owner,thread.conversationId,'',inputValue);
+      if (!textToSend && !retry) inputRef.current?.focus({ preventScroll: true });
+      const res=await request;
       const result=await finishChat(res,chatSource,userMessage.id,e=>{
-        if(e.reset)reply='';if(e.chunk)reply+=e.chunk;if(e.reply && !e.chunk)reply=e.reply;
-        setMessages(prev=>prev.map(m=>m.id===userMessage.id&&e.saved?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:reply}:m));
+        if(!current())return;
+        if(!e.done&&!acknowledged&&e.saved===true){
+          acknowledged=true;
+          setMessages(prev=>prev.map(m=>m.id===userMessage.id?{...m,delivery:'saved'}:m));
+        }
+        progress.update(e);
       });
+      if(!current())return;
+      if (typedMessage && !stored) writeChatInputDraft(owner,thread.conversationId,'',inputValue);
       if (result.status === 'contact_required') setShowOnboardingModal(true);
       setMessages(prev=>prev.map(m=>m.id===userMessage.id?{...m,delivery:'saved'}:m.id===botMessageId?{...m,content:result.reply,enrollment:result.enrollment,suggestedPrompts:result.suggestedPrompts,workspaceEntry:result.workspaceEntry}:m));
     }catch(e){
-      const delivery=draft(sharedChatDrafts,userMessage.id)?.delivery || 'unknown';
+      if(!current())return;
+      const delivery=(visitorScope()===owner && draft(sharedChatDrafts,userMessage.id)?.delivery) || 'unknown';
       setMessages(prev=>prev.filter(m=>m.id!==botMessageId).map(m=>m.id===userMessage.id?{...m,delivery}:m));
-    }finally{announceChatChange(owner);sending.current=false;setIsTyping(false);}
+      if(visitorScope()===owner&&(delivery==='unknown'||delivery==='interrupted'||delivery==='pending'))refreshInBackground();
+    }finally{
+      progress.cancel();
+      announceChatChange(owner);
+      if(sending.current===controller)sending.current=undefined;
+      if(current())setIsTyping(false);
+    }
   };
 
-  const whatsappDraft=hskWhatsAppDraft(profile,messages.filter(m=>m.isAssessmentResult).at(-1)?.assessmentData,lang);
+  const assessments=messages.filter(message=>message.isAssessmentResult);
+  const conversationAssessment=assessments[assessments.length-1]?.assessmentData;
+  const whatsappDraft=useMemo(()=>hskWhatsAppDraft(profile,conversationAssessment,lang),[profile,conversationAssessment,lang]);
   const [switchingPerson,setSwitchingPerson]=useState(false);
-  const [personError,setPersonError]=useState(false);
+  const [personSwitchUnconfirmed,setPersonSwitchUnconfirmed]=useState(false);
+  const checkPersonSwitch=confirm==='switch'&&personSwitchUnconfirmed;
   const freshChatHref = () => {
     const url = new URL(location.href);
     url.hash = '';
@@ -374,26 +578,43 @@ export default function ChatWorkspace({
   };
   const performPersonSwitch=async()=>{
 
-    setSwitchingPerson(true);setPersonError(false);
+    setSwitchingPerson(true);
     try{
       await startAnotherVisitor(freshChatHref());
-    }catch{setPersonError(true);setSwitchingPerson(false);}
+    }catch{setPersonSwitchUnconfirmed(true);setSwitchingPerson(false);}
   };
   const t=(zh:string,en:string,id:string)=>chooseText(lang,zh,en,id);
+  const replyCheckFailure=t('暂时无法查询回复，请重试。','The reply could not be checked. Try again.','Balasan belum dapat diperiksa. Coba lagi.');
   const emptyChat=!messages.length&&!thread?.messages.length&&!isTyping;
-  const hasAssessmentDraft=Boolean(readHskDraft());
-  const retainedReport=messages.filter(message=>message.isAssessmentResult).at(-1)?.assessmentData || assessment;
-  const assessmentAction=()=>{
-    if(retainedReport&&!hasAssessmentDraft)setConfirm('retake');
+  useEffect(()=>{
+    const flow=flowRef.current;
+    if(!active||isTakingAssessment||!flow||typeof ResizeObserver!=='function')return;
+    let height=flow.offsetHeight;
+    // Lazy cards and formatting can grow a reply without a workspace render.
+    const observer=new ResizeObserver(()=>{
+      const nextHeight=flow.offsetHeight;
+      if(nextHeight===height)return;
+      height=nextHeight;
+      followExpandedReply();
+    });
+    observer.observe(flow);
+    return ()=>observer.disconnect();
+  },[active,isTakingAssessment,emptyChat,thread?.conversationId]);
+  const hasAssessmentDraft=hasHskDraft();
+  const retainedReport=conversationAssessment || assessment;
+  const hasRetainedReport=Boolean(retainedReport);
+  const assessmentAction=useCallback(()=>{
+    if(hasRetainedReport&&!hasAssessmentDraft)setConfirm('retake');
     else handleStartVoluntaryAssessment();
-  };
+  },[hasRetainedReport,hasAssessmentDraft,handleStartVoluntaryAssessment]);
   const busy=isTyping||starting||chatFailed;
-  const openLearningProfile=()=>setShowOnboardingModal(true);
-  function messageEntry(value:ChatWorkspaceEntry|undefined) {
+  const openLearningProfile=useCallback(()=>setShowOnboardingModal(true),[]);
+  const hasProfile=Boolean(profile);
+  const messageEntry=useCallback<MessageEntry>((value)=>{
     const entry=chatWorkspaceEntry(value?.action,value?.language);
     if (!entry) return;
     const label=(zh:string,en:string,id:string)=>chooseText(entry.language,zh,en,id);
-    if (entry.action==='learning_profile') return {label:profile?
+    if (entry.action==='learning_profile') return {label:hasProfile?
       label('补充学习资料','Add learning preferences','Tambahkan preferensi belajar'):
       label('填写学习资料','Add learning profile','Isi profil belajar'),open:openLearningProfile};
     if (entry.action==='assessment_result'&&retainedReport) return {
@@ -401,7 +622,7 @@ export default function ChatWorkspace({
     return {label:hasAssessmentDraft?label('继续测评','Resume assessment','Lanjutkan tes'):
       retainedReport?label('重新测评','Retake assessment','Ulangi tes'):
         label('开始免费测评','Start free assessment','Mulai tes gratis'),open:assessmentAction};
-  }
+  },[assessmentAction,hasAssessmentDraft,hasProfile,openLearningProfile,retainedReport]);
   const headerActions=[
     {label:profile?t('补充学习资料','Add learning preferences','Tambahkan preferensi belajar'):
       t('填写学习资料','Add learning profile','Isi profil belajar'),onClick:openLearningProfile,disabled:busy},
@@ -411,27 +632,38 @@ export default function ChatWorkspace({
     {label:t('联系真人顾问（WhatsApp）','Contact an advisor on WhatsApp','Hubungi konsultan lewat WhatsApp'),href:whatsappDraft.url},
     ...(embedded ? [{label:t('申请顾问跟进','Request advisor follow-up','Minta tindak lanjut konsultan'),
       onClick:()=>void handleSendMessage(t('请安排顾问联系我','Please arrange advisor follow-up','Mohon tindak lanjut konsultan'),undefined,'handoff'),disabled:busy}] : []),
-    {label:t('开始新对话','Start a new conversation','Mulai percakapan baru'),onClick:()=>setConfirm('restart'),disabled:busy},
+    {label:t('开始新对话','Start a new conversation','Mulai percakapan baru'),onClick:()=>{
+      if(!thread)return;
+      setRestartFrom(thread.conversationId);
+      setConfirm('restart');
+    },disabled:busy},
     {label:t('切换使用者','Switch user','Ganti pengguna'),onClick:()=>setConfirm('switch'),disabled:isTyping||starting},
   ];
   const cancelLabel=t('取消','Cancel','Batal');
   const closeLabel=t('关闭','Close','Tutup');
   const confirmationTitle=confirm==='restart'?t('开始新对话','Start a new conversation','Mulai percakapan baru'):
     confirm==='switch'?t('切换使用者','Switch user','Ganti pengguna'):t('重新测评','Retake assessment','Ulangi tes');
+  const restartReadBack=confirm==='restart'&&!!restartFrom&&!!thread&&thread.conversationId!==restartFrom;
+  const restartLabel=restartReadBack?t('继续咨询','Continue chatting','Lanjutkan konsultasi'):
+    chatFailed?t('重试','Retry','Coba lagi'):confirmationTitle;
   async function handleConfirm(){
+    if(checkPersonSwitch){window.location.reload();return;}
     if(confirm==='switch'){await performPersonSwitch();return;}
     if(confirm==='retake'){
       setConfirm(null);
       handleStartVoluntaryAssessment();
       return;
     }
-    if(confirm==='restart'&&await startNew())setConfirm(null);
+    if(confirm==='restart'&&restartFrom&&await startNew(restartFrom))setConfirm(null);
   }
   const backToEnrollment = fromEnrollment && {
     label:fromEnrollment.selection.kind==='class'?t('返回该班','Back to this class','Kembali ke kelas ini'):
       t('返回选班','Back to class selection','Kembali memilih kelas'),
     href:fromEnrollment.url,
-    onReturn:()=>returnAlongJourney(navigate,fromEnrollment,{enrollmentPosition:fromEnrollment.position}),
+    onReturn:()=>{
+      preloadEnrollmentNavigation(new URL(fromEnrollment.url,location.origin));
+      returnAlongJourney(navigate,fromEnrollment,{enrollmentPosition:fromEnrollment.position});
+    },
   };
   const browsing = fromEnrollment?.selection.kind==='catalog'?fromEnrollment.selection:undefined;
   const filterSummary = browsing && [
@@ -445,7 +677,8 @@ export default function ChatWorkspace({
   ].filter(Boolean).join(' · ');
   const showMetadata = presentation === 'page' || presentation === 'expanded';
   const entryParams = new URLSearchParams(search);
-  const linkHubPath = !embedded ? linkHubReturnUrl(entryParams,lang) : undefined;
+  // Changing Chat's language updates the browser URL without replacing the React Router entry.
+  const linkHubPath = !embedded ? linkHubReturnUrl(new URLSearchParams(window.location.search),lang) : undefined;
   const recommendationPage = fromEnrollment?.url ?? (linkHubPath && promotionIdentity(entryParams).tagged ? pathname+search : undefined);
   const header = <StandaloneChatHeader lang={lang} onLanguageChange={changeLanguage} actions={thread ? headerActions : []}
     presentation={presentation} enrollmentReturn={backToEnrollment} linkHubReturn={linkHubPath} onDismiss={onDismiss} onExpand={onExpand && thread ? ()=>onExpand(thread,lang) : undefined}
@@ -468,13 +701,9 @@ export default function ChatWorkspace({
   return (
     <div className="standalone-chat-page font-sans" data-chat-presentation={presentation} data-chat-conversation={thread.conversationId}>
       {showMetadata&&<PageMetadata lang={lang}/>}
-      <GFormOnboardingModal
-        isOpen={showOnboardingModal}
-        onComplete={handleOnboardingComplete}
-        initialLang={lang}
-        profile={profile}
-        onConsultFirst={consultFirst}
-      />
+      {showOnboardingModal&&<Suspense fallback={<LearningProfileLoadNotice lang={lang} onClose={()=>consultFirst(lang)}/>}>
+        <GFormOnboardingModal isOpen onComplete={handleOnboardingComplete} initialLang={lang} profile={profile} onConsultFirst={consultFirst}/>
+      </Suspense>}
 
       {header}
       {fromEnrollment&&!isTakingAssessment&&<div className="chat-enrollment-context" data-enrollment-chat-context>
@@ -484,24 +713,25 @@ export default function ChatWorkspace({
       </div>}
 
       {confirm&&<StandaloneChatDialog title={confirmationTitle} closeLabel={closeLabel} variant={confirm==='retake'?'retake':undefined}
-        locked={switchingPerson||starting} onClose={()=>{setConfirm(null);setPersonError(false);}}>
-        <p>{confirm==='restart'
+        locked={switchingPerson||starting} onClose={()=>setConfirm(null)}>
+        <p>{restartReadBack?t('新对话已打开。','The new conversation is ready.','Percakapan baru sudah siap.') : confirm==='restart'
           ? t('为当前使用者开始一段新对话。原有对话会保留。','Start a new conversation for this user. Earlier conversations will be kept.','Mulai percakapan baru untuk pengguna ini. Percakapan sebelumnya tetap disimpan.')
           : confirm==='switch'
             ? t('另一位使用者将开启独立咨询。原对话和测评记录会保留。查看原使用者的报名需要重新验证邮箱。','Another person will open a separate consultation. Earlier chats and assessments will be kept. Verify the email again to access the previous user’s enrollments.','Pengguna lain akan membuka konsultasi terpisah. Percakapan dan hasil tes sebelumnya tetap disimpan. Verifikasi kembali email untuk melihat pendaftaran pengguna sebelumnya.')
             : t('开始新一轮测评，之前的结果和对话都会保留。','Your earlier results and conversation will be kept.','Hasil sebelumnya dan percakapan Anda tetap tersimpan.')}</p>
-        {personError&&<p role="alert" className="chat-assessment-review">{t('切换未确认成功，请刷新后核对当前使用者。','Switch not confirmed. Reload and check the current user.','Pergantian belum dikonfirmasi. Muat ulang dan periksa pengguna saat ini.')}</p>}
-        {confirm==='restart'&&chatFailed&&<p role="alert" className="chat-assessment-review">{t('新对话暂未确认，请重试。','New conversation not confirmed. Please retry.','Percakapan baru belum dikonfirmasi. Coba lagi.')}</p>}
+        {checkPersonSwitch&&<p role="alert" className="chat-assessment-review">{t('切换未确认成功，请刷新后核对当前使用者。','Switch not confirmed. Reload and check the current user.','Pergantian belum dikonfirmasi. Muat ulang dan periksa pengguna saat ini.')}</p>}
+        {confirm==='restart'&&!restartReadBack&&chatFailed&&<p role="alert" className="chat-assessment-review">{t('新对话暂未确认，请重试。','New conversation not confirmed. Please retry.','Percakapan baru belum dikonfirmasi. Coba lagi.')}</p>}
         {confirm==='retake'&&<div className="chat-retake-person">
           <span>{t('为其他人测评？','Taking the test for someone else?','Tes ini untuk orang lain?')}</span>
           <button type="button" onClick={()=>setConfirm('switch')}>{t('切换使用者','Switch user','Ganti pengguna')}</button>
         </div>}
         <div className="chat-dialog-actions">
-          <button type="button" disabled={switchingPerson||starting} onClick={()=>{setConfirm(null);setPersonError(false);}}>{cancelLabel}</button>
+          <button type="button" disabled={switchingPerson||starting} onClick={()=>setConfirm(null)}>{cancelLabel}</button>
           <button type="button" className="chat-primary disabled:opacity-50" disabled={switchingPerson||starting} onClick={()=>void handleConfirm()}>
             {switchingPerson||starting?t('处理中…','Working…','Memproses…'):
+              checkPersonSwitch?t('刷新核对','Reload to check','Muat ulang untuk memeriksa'):
               confirm==='switch'?t('继续切换','Continue','Lanjutkan'):
-              confirm==='retake'?t('开始测评','Start assessment','Mulai tes'):confirmationTitle}
+              confirm==='retake'?t('开始测评','Start assessment','Mulai tes'):restartLabel}
           </button>
         </div>
       </StandaloneChatDialog>}
@@ -509,37 +739,46 @@ export default function ChatWorkspace({
         {reportError===report&&<p role="alert" className="hsk-report-notice">
           {t('仍无法同步测评。结果已保留，可以再次重试。','Results still could not sync. Your result is kept. You can try again.','Hasil masih belum tersinkron. Hasil Anda tersimpan di perangkat dan bisa dicoba lagi.')}
         </p>}
-        <HskAssessmentReport result={report} lang={lang} saving={savingReport} onRetry={()=>void retryReport(report)}/>
+        <Suspense fallback={<p role="status" className="hsk-report-notice">
+          {t('正在加载测评详情…','Loading assessment details…','Memuat detail hasil tes…')}
+        </p>}>
+          <HskAssessmentReport result={report} lang={lang} saving={savingReport} onRetry={()=>void retryReport(report)}/>
+        </Suspense>
         <div className="chat-dialog-actions"><button className="chat-enrollment-next" type="button" disabled={savingReport} onClick={()=>{setReport(null);setConfirm('retake');}}>
           {t('重新测评','Retake assessment','Ulangi tes')}
         </button></div>
       </StandaloneChatDialog>}
 
-      <ConversationRegion ref={node=>{mainRef.current=node;}} inert={showOnboardingModal} className="standalone-chat-main">
+      <ConversationRegion ref={node=>{mainRef.current=node;}} inert={showOnboardingModal} className="standalone-chat-main"
+        onScroll={event=>{
+          if(isTakingAssessment)return;
+          const region=event.currentTarget;
+          followLatest.current=region.scrollHeight-region.scrollTop-region.clientHeight<=72;
+        }}>
         {!isTakingAssessment && emptyChat && <div className="chat-welcome-layout">
           <ChatWelcome lang={lang} hasDraft={hasAssessmentDraft} hasResult={Boolean(retainedReport)}
             hasProfile={Boolean(profile)} onLearningProfile={!busy?openLearningProfile:undefined}
             onAssessment={()=>retainedReport&&!hasAssessmentDraft?setReport(retainedReport):assessmentAction()}
-            onPrompt={prompt=>{setInputValue(prompt);inputRef.current?.focus({preventScroll:true});}}/>
+            onPrompt={prompt=>{
+              writeChatInputDraft(owner,thread.conversationId,prompt,'');
+              inputRef.current?.focus({preventScroll:true});
+            }}/>
           <ChatWelcomeSocials lang={lang}/>
         </div>}
-        {!isTakingAssessment && !emptyChat && <div className="standalone-chat-flow">
-        {!isTakingAssessment && messages.map((msg) => {
-          const entry=msg.role==='assistant'&&msg.content.trim()?messageEntry(msg.workspaceEntry):undefined;
+        {!isTakingAssessment && !emptyChat && <div ref={flowRef} className="standalone-chat-flow">
+        {messages.map((msg) => {
+          const canRetry=msg.role==='user'&&!!msg.delivery&&msg.delivery!=='saved'&&msg.delivery!=='pending';
           return (
           <div key={msg.id} data-chat-message-id={msg.id} tabIndex={-1}>
-            <ChatBubble role={msg.role==='user'?'user':'assistant'} content={msg.content} language={lang} entry={chatSource}
-              origin={recommendationPage ? {source:thread.source,page:recommendationPage} : thread} enrollment={msg.enrollment}
-              anchor={msg.enrollment?{owner:visitorScope(),conversationId:thread.conversationId,messageId:msg.id,
-                widget:presentation==='panel'||presentation==='mobile'}:undefined}
-              delivery={msg.delivery} compact={compact} busy={isTyping} onRetry={()=>void handleSendMessage(undefined,msg)}
-              entryAction={entry&&<button type="button" className="chat-enrollment-next chat-enrollment-next--primary" data-chat-workspace-action
-                disabled={busy} onClick={entry.open}>{entry.label}</button>}>
-              {msg.isAssessmentResult&&msg.assessmentData?<ChatAssessmentSummary result={msg.assessmentData} lang={lang}
-                onDetails={()=>setReport(msg.assessmentData!)}/>:undefined}
-            </ChatBubble>
+            <WorkspaceMessage message={msg} lang={lang} source={thread.source} page={recommendationPage??thread.page}
+              entry={chatSource} owner={owner} conversationId={thread.conversationId} widget={presentation==='panel'||presentation==='mobile'}
+              compact={compact} active={active} busy={msg.workspaceEntry?busy:canRetry&&(isTyping||checkingReply)}
+              retry={canRetry?()=>void handleSendMessage(undefined,msg):undefined}
+              checkReply={msg.delivery==='unknown'&&!replyPending?refreshChat:undefined}
+              checkingReply={msg.delivery==='unknown'&&checkingReply}
+              onReport={setReport} messageEntry={msg.workspaceEntry?messageEntry:undefined}/>
 
-            {!isTyping && !starting && msg === messages.at(-1) && msg.role === 'assistant' &&
+            {!isTyping && !starting && msg === lastMessage && msg.role === 'assistant' &&
               <ChatFollowups prompts={msg.suggestedPrompts} onSelect={prompt=>void handleSendMessage(prompt)}/>}
 
           </div>
@@ -548,19 +787,38 @@ export default function ChatWorkspace({
           {consultationError&&<p role="alert" className="text-sm">{t('咨询暂不可用，测评结果已保存。','Consultation is temporarily unavailable; your results are saved.','Konsultasi belum tersedia; hasil tes tersimpan.')} <button className="underline min-h-11" onClick={()=>void beginAssessmentConsultation(consultationError)}>{t('重试咨询','Retry consultation','Coba konsultasi lagi')}</button></p>}
           {profileConsultationError&&<p role="alert" className="text-sm">{t('咨询暂不可用，请重试。','Consultation is temporarily unavailable. Please retry.','Konsultasi belum tersedia. Silakan coba lagi.')} <button className="underline min-h-11" onClick={()=>void beginProfileConsultation()}>{t('重试咨询','Retry consultation','Coba konsultasi lagi')}</button></p>}
           {isTyping&&<ChatTyping language={lang}/>}
+          {!isTyping&&!replyPending&&!chatFailed&&readbackFailed&&messages.some(message=>message.delivery==='unknown')&&
+            <p role="status" className="text-sm text-slate-600">{replyCheckFailure}</p>}
+          {!isTyping&&replyPending&&!chatFailed&&<p role="status" className="text-sm text-slate-600">
+            {readbackFailed ? replyCheckFailure
+              : replyStalled ? t('上一条回复尚未完成。','The previous reply has not finished.','Balasan sebelumnya belum selesai.')
+              : t('正在等候上一条回复。','Waiting for the previous reply.','Menunggu balasan sebelumnya.')} {' '}
+            <button type="button" className="underline" disabled={starting||checkingReply} onClick={refreshChat}>
+              {checkingReply?t('正在查询…','Checking…','Memeriksa…'):t('查询回复','Check for reply','Periksa balasan')}
+            </button>
+            {stalledQuestion&&<>{' '}<button type="button" className="underline" disabled={starting||checkingReply}
+              onClick={()=>void handleSendMessage(undefined,stalledQuestion)}>
+              {t('重试原问题','Retry original question','Coba ulang pertanyaan awal')}
+            </button></>}
+          </p>}
           <div ref={messagesEndRef}/>
         </div>}
 
-        {isTakingAssessment&&<motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} className="standalone-chat-assessment">
-          <HSKPlacementAssessment studentName={profile?.fullName || 'Student'} onComplete={handleAssessmentComplete}
-            onCancel={handleAssessmentCancel} active={active}
-            onAttemptStart={attemptId=>rememberChatAssessment(owner,attemptId,thread.conversationId)}
-            lang={lang} initialMode="express"/>
-        </motion.div>}
+        {isTakingAssessment&&<div className="standalone-chat-assessment">
+          <Suspense fallback={<div className="flex items-center gap-3 p-4 text-sm">
+            <p role="status">{t('正在加载测评…','Loading assessment…','Memuat tes…')}</p>
+            <button type="button" className="underline" onClick={leaveAssessment}>{cancelLabel}</button>
+          </div>}>
+            <HSKPlacementAssessment studentName={profile?.fullName || 'Student'} onComplete={handleAssessmentComplete}
+              onCancel={handleAssessmentCancel} onLoadCancel={leaveAssessment} active={active}
+              onAttemptStart={attemptId=>rememberChatAssessment(owner,attemptId,thread.conversationId)}
+              lang={lang} initialMode="express"/>
+          </Suspense>
+        </div>}
       </ConversationRegion>
 
       {!isTakingAssessment && <footer inert={showOnboardingModal}>
-        <ChatComposer language={lang} value={inputValue} onChange={setInputValue} onSend={()=>void handleSendMessage()} busy={busy} inputRef={inputRef} compact={compact}
+        <ChatComposer language={lang} conversationId={thread.conversationId} onSend={()=>void handleSendMessage()} busy={busy} inputRef={inputRef} compact={compact}
           placeholder={emptyChat?t('直接提问，例如：零基础学中文要多久？','Ask a question, such as where to start as a beginner','Tanya langsung, misalnya cara mulai sebagai pemula'):t('继续提问…','Ask a follow-up…','Tanya lagi…')}>
           {chatFailed && <p role="alert" className="text-sm">{chooseText(lang,'对话同步失败。','Conversation could not sync.','Percakapan gagal disinkronkan.')} <button type="button" className="underline" onClick={refreshChat}>{chooseText(lang,'重试','Retry','Coba lagi')}</button></p>}
         </ChatComposer>

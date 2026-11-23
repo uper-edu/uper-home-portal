@@ -1,27 +1,36 @@
 import { useEffect, useRef, useState } from "react";
+import type { PDFDocumentLoadingTask, RenderTask } from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 /** Render the original PDF locally: no third-party document viewer or iframe plugin. */
 export default function LinkHandbookPreview({
   url,
+  loadingText,
   errorText,
 }: {
   url: string;
+  loadingText: string;
   errorText: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [failed, setFailed] = useState(false);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
   useEffect(() => {
     let disposed = false,
       observer: IntersectionObserver | undefined,
       resize: ResizeObserver | undefined,
       resizeFrame = 0,
-      loading: any;
-    const tasks = new Set<any>();
+      loading: PDFDocumentLoadingTask | undefined;
+    const tasks = new Map<HTMLCanvasElement, RenderTask>();
     const rendered = new WeakMap<HTMLCanvasElement, number>();
     const pending = new WeakSet<HTMLCanvasElement>();
+    const nearby = new Set<HTMLCanvasElement>();
     const root = ref.current!;
+    const release = (canvas: HTMLCanvasElement) => {
+      rendered.delete(canvas);
+      canvas.width = 0;
+      canvas.height = 0;
+    };
     let removeScroll = () => {};
-    setFailed(false);
+    setStatus('loading');
     (async () => {
       const pdfjs = await import("pdfjs-dist");
       if (disposed) return;
@@ -31,17 +40,19 @@ export default function LinkHandbookPreview({
       loading = pdfjs.getDocument({ url, disableStream: true, disableAutoFetch: true });
       const pdf = await loading.promise;
       if (disposed) return;
-      const first = await pdf.getPage(1),
-        viewport = first.getViewport({ scale: 1 });
+      const first = await pdf.getPage(1);
+      if (disposed) return;
+      const viewport = first.getViewport({ scale: 1 });
       const draw = async (canvas: HTMLCanvasElement) => {
-        if (pending.has(canvas) || disposed) return;
+        if (pending.has(canvas) || disposed || !nearby.has(canvas)) return;
         const width = Math.max(1, root.clientWidth - 24);
         if (rendered.get(canvas) === width) return;
         pending.add(canvas);
         let completed = false;
+        let cancelled = false;
         try {
           const page = await pdf.getPage(Number(canvas.dataset.page));
-          if (disposed) return;
+          if (disposed || !nearby.has(canvas)) return;
           const natural = page.getViewport({ scale: 1 });
           const v = page.getViewport({
             scale:
@@ -55,39 +66,43 @@ export default function LinkHandbookPreview({
             canvas,
             viewport: v,
           });
-          tasks.add(task);
+          tasks.set(canvas, task);
           try {
             await task.promise;
           } finally {
-            tasks.delete(task);
+            tasks.delete(canvas);
           }
           rendered.set(canvas, width);
           completed = true;
+          if (!disposed) setStatus(current => current === 'loading' ? 'ready' : current);
         } catch (error) {
-          if (
-            !disposed &&
-            (error as Error).name !== "RenderingCancelledException"
-          )
-            setFailed(true);
+          cancelled = (error as Error).name === "RenderingCancelledException";
+          if (!disposed && !cancelled) setStatus('failed');
         } finally {
           pending.delete(canvas);
-          if (
-            !disposed &&
-            rendered.get(canvas) !== Math.max(1, root.clientWidth - 24)
-          ) {
-            // A rotation during rendering needs one more pass at the latest width.
-            if (completed) void draw(canvas);
+          const visible = !disposed && nearby.has(canvas);
+          if (cancelled || !visible) release(canvas);
+          if (visible && (cancelled || (completed && rendered.get(canvas) !== Math.max(1, root.clientWidth - 24)))) {
+            // A page can return to view before its cancellation settles.
+            void draw(canvas);
           }
         }
       };
       observer = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
-            if (entry.isIntersecting)
-              void draw(entry.target.querySelector("canvas")!);
+            const canvas = entry.target.querySelector("canvas")!;
+            if (entry.isIntersecting) {
+              nearby.add(canvas);
+              void draw(canvas);
+            } else {
+              nearby.delete(canvas);
+              tasks.get(canvas)?.cancel();
+              if (!pending.has(canvas) && canvas.width) release(canvas);
+            }
           }
         },
-        { root, rootMargin: "500px" },
+        { root, rootMargin: "160px 0px" },
       );
       let previousWidth = root.clientWidth;
       let anchorPage = 0,
@@ -95,12 +110,17 @@ export default function LinkHandbookPreview({
       const frames: HTMLElement[] = [];
       const remember = () => {
         const top = root.getBoundingClientRect().top + root.clientTop;
-        const index = frames.findIndex(
-          (frame) => frame.getBoundingClientRect().bottom > top,
-        );
-        if (index >= 0) {
-          anchorPage = index;
-          const rect = frames[index].getBoundingClientRect();
+        // Frames are stacked in page order. Locate the first visible page without measuring every preceding page.
+        let start = 0;
+        let end = frames.length;
+        while (start < end) {
+          const mid = Math.floor((start + end) / 2);
+          if (frames[mid].getBoundingClientRect().bottom > top) end = mid;
+          else start = mid + 1;
+        }
+        if (start < frames.length) {
+          anchorPage = start;
+          const rect = frames[start].getBoundingClientRect();
           anchorFraction = (top - rect.top) / rect.height;
         }
       };
@@ -119,15 +139,7 @@ export default function LinkHandbookPreview({
               top +
               anchorFraction * frame.getBoundingClientRect().height;
           }
-          const bounds = root.getBoundingClientRect();
-          for (const frame of frames) {
-            const rect = frame.getBoundingClientRect();
-            if (
-              rect.bottom >= bounds.top - 500 &&
-              rect.top <= bounds.bottom + 500
-            )
-              void draw(frame.querySelector("canvas")!);
-          }
+          for (const canvas of nearby) void draw(canvas);
         });
       });
       resize.observe(root);
@@ -138,6 +150,9 @@ export default function LinkHandbookPreview({
         frame.className = "linkhub-pdf-page";
         const canvas = document.createElement("canvas");
         canvas.dataset.page = String(n);
+        // The CSS aspect ratio preserves the page position with no bitmap.
+        canvas.width = 0;
+        canvas.height = 0;
         canvas.setAttribute("role", "img");
         canvas.setAttribute(
           "aria-label",
@@ -152,7 +167,7 @@ export default function LinkHandbookPreview({
         observer.observe(frame);
       }
     })().catch(() => {
-      if (!disposed) setFailed(true);
+      if (!disposed) setStatus('failed');
     });
     return () => {
       disposed = true;
@@ -160,20 +175,19 @@ export default function LinkHandbookPreview({
       resize?.disconnect();
       cancelAnimationFrame(resizeFrame);
       removeScroll();
-      for (const task of tasks) task.cancel();
-      void loading?.destroy();
+      for (const task of tasks.values()) task.cancel();
+      void loading?.destroy().catch(() => {});
       root.replaceChildren();
     };
   }, [url]);
   return (
     <>
-      <div
-        ref={ref}
-        className="linkhub-pdf-preview"
-        aria-label="Handbook 2026 PDF"
-        tabIndex={0}
-      />
-      {failed && (
+      <div className="linkhub-pdf-frame">
+        <div ref={ref} className="linkhub-pdf-preview" aria-label="Handbook 2026 PDF"
+          aria-busy={status === 'loading'} tabIndex={0}/>
+        {status === 'loading' && <p role="status" className="linkhub-pdf-loading">{loadingText}</p>}
+      </div>
+      {status === 'failed' && (
         <p role="status" className="linkhub-document-summary">
           {errorText}
         </p>

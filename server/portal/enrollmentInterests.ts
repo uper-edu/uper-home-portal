@@ -7,6 +7,7 @@ import { recordEnrollmentCustomer } from './enrollmentCrm.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { activeLearnerOrder, learnerWaitlist } from './enrollmentLearners.ts';
 import { interestNotice } from './enrollmentNotices.ts';
+import { readEnrollmentSessionDigest } from './enrollmentVisitorSession.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> };
 type Handler = (q: Request, r: Response) => Promise<unknown>;
@@ -162,7 +163,12 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       await expireSeats(c,id);
       const seats=await takenSeats(c,id);
       if (!allowsEnrollment(cohort)) invalid('enrollment_class_unavailable',409);
-      if (seats<cohort.data.capacity) invalid('enrollment_seat_available',409);
+      if (seats<cohort.data.capacity) {
+        // A lost response can be retried after a seat opens. Confirm the existing entry first.
+        const prior=await learnerWaitlist(c,id,email,name);
+        if (prior && !await activeLearnerOrder(c,id,email,name)) return { id:prior.id };
+        invalid('enrollment_seat_available',409);
+      }
       await reconcileWaitlist(c,cohort,seats);
       const own=await activeLearnerOrder(c,id,email,name);
       if (own) invalid('enrollment_already_has_seat',409);
@@ -191,6 +197,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
   });
 
   app.get(base+'/interests',wrap(async(q,r)=>{
+    if(!readEnrollmentSessionDigest(q.headers.cookie))invalid('enrollment_verification_required',401);
     const data=await transact(async c=>{
       const email=await session(c,q);
       const {rows:waiting}=await c.query('SELECT id,class_id,state,order_id,learner_name FROM enrollment_waitlist WHERE email=:p1 ORDER BY created_at DESC,id DESC',[email]);
@@ -216,21 +223,27 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
         enriched.push({id:demand.id,criteria:demand.criteria,state:demand.state,revision:demand.revision,updatedAt:demand.updatedAt,
           matches:matched.map(v=>({id:v.id,level:v.data.level,firstLesson:v.data.firstLesson}))});
       }
-      const interestIds=[...waiting,...demands].map(row=>row.id);
-      const activity=interestIds.length?(await c.query(`SELECT interest_id,
-        DATE_FORMAT(MAX(created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt FROM enrollment_interest_events
-        WHERE JSON_CONTAINS(:p1,JSON_QUOTE(interest_id)) GROUP BY interest_id`,[JSON.stringify(interestIds)])).rows:[];
-      const latestActivity=new Map(activity.map(row=>[row.interest_id,row.updatedAt]));
-      const mostRecent=(row:{id:string;updatedAt:string})=>[row.updatedAt,latestActivity.get(row.id)].filter(Boolean).sort().at(-1);
+      const activity=waiting.length||demands.length?(await c.query(`SELECT e.kind,e.interest_id,
+        DATE_FORMAT(MAX(e.created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt
+        FROM enrollment_waitlist w JOIN enrollment_interest_events e ON e.kind='vacancy' AND e.interest_id=w.id
+        WHERE w.email=:p1 GROUP BY e.kind,e.interest_id
+        UNION ALL
+        SELECT e.kind,e.interest_id,DATE_FORMAT(MAX(e.created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt
+        FROM enrollment_demands d JOIN enrollment_interest_events e ON e.kind='match' AND e.interest_id=d.id
+        WHERE d.email=:p1 GROUP BY e.kind,e.interest_id`,[email])).rows:[];
+      const latestActivity=new Map(activity.map(row=>[row.kind+':'+row.interest_id,row.updatedAt]));
+      const mostRecent=(row:{id:string;updatedAt:string},kind:'vacancy'|'match')=>
+        [row.updatedAt,latestActivity.get(kind+':'+row.id)].filter(Boolean).sort().at(-1);
       return {
+        verifiedEmail:email,
         waitlist:waiting.map(w=>{
           const current=availability.get(w.class_id);
           const latest=latestWaitlist.get(w.id) ?? w;
           const state=latest.state;
-          return {id:w.id,classId:w.class_id,learnerName:w.learner_name,state,orderId:latest.order_id,available:state==='waiting'&&current?.available,updatedAt:mostRecent(latest),
+          return {id:w.id,classId:w.class_id,learnerName:w.learner_name,state,orderId:latest.order_id,available:state==='waiting'&&current?.available,updatedAt:mostRecent(latest,'vacancy'),
             level:current?.cohort.data.level,firstLesson:current?.cohort.data.firstLesson};
         }),
-        demands:enriched.map(row=>({...row,updatedAt:mostRecent(row)})),
+        demands:enriched.map(row=>({...row,updatedAt:mostRecent(row,'match')})),
       };
     });
     send(r,data);

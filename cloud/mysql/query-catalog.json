@@ -1938,6 +1938,12 @@
       "server/portal/aiExtraction.ts"
     ]
   },
+  "SELECT conversation_id,request_id,role,content,status,metadata,created_at FROM messages WHERE conversation_id=:p1 ORDER BY sequence": {
+    "sql": "SELECT conversation_id,request_id,role,content,status,metadata,created_at FROM messages WHERE conversation_id=:p1 ORDER BY sequence",
+    "sources": [
+      "server/portal/runtime.ts"
+    ]
+  },
   "SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')": {
     "sql": "SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')",
     "sources": [
@@ -2151,8 +2157,8 @@
       "server/portal/enrollmentResolution.ts"
     ]
   },
-  "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n        CASE WHEN :p3=1 THEN (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) END AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n        AND (:p1 IS NULL OR e.id IN (:p2))\n      ORDER BY e.first_lesson_at,e.id": {
-    "sql": "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n        CASE WHEN :p3=1 THEN (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) END AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n        AND (:p1 IS NULL OR e.id IN (:p2))\n      ORDER BY e.first_lesson_at,e.id",
+  "SELECT e.id,e.revision,e.state,\n        CAST(CASE WHEN :p4=1 THEN JSON_REMOVE(e.data,'$.learningOutcomes','$.material','$.resources','$.teacher')\n          ELSE e.data END AS JSON) AS data,\n        (g.class_id IS NOT NULL) AS opened,\n        CASE WHEN :p3=1 THEN (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) END AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n        AND (:p1 IS NULL OR e.id IN (:p2))\n      ORDER BY e.first_lesson_at,e.id": {
+    "sql": "SELECT e.id,e.revision,e.state,\n        CAST(CASE WHEN :p4=1 THEN JSON_REMOVE(e.data,'$.learningOutcomes','$.material','$.resources','$.teacher')\n          ELSE e.data END AS JSON) AS data,\n        (g.class_id IS NOT NULL) AS opened,\n        CASE WHEN :p3=1 THEN (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')\n          AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i\n          WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6)) END AS seats\n      FROM enrollment_classes e\n      JOIN crm_courses c ON c.id=e.course_id\n      LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)\n        AND JSON_EXTRACT(c.value,'$.active')=true\n        AND (:p1 IS NULL OR e.id IN (:p2))\n      ORDER BY e.first_lesson_at,e.id",
     "sources": [
       "server/portal/enrollmentCatalog.ts"
     ]
@@ -2161,6 +2167,12 @@
     "sql": "SELECT e.id,e.revision,e.state,e.data,(g.class_id IS NOT NULL) AS opened,\n    EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id) AS hasOrders,\n    (e.state='draft' AND g.class_id IS NULL AND JSON_EXTRACT(e.data,'$.batchNumber') IS NULL\n      AND NOT EXISTS (SELECT 1 FROM enrollment_assisted_applications a WHERE a.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_waitlist w WHERE w.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfer_invitations i WHERE i.source_class_id=e.id OR i.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_transfers x WHERE x.source_class_id=e.id OR x.target_class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_refund_cases f WHERE f.class_id=e.id)\n      AND NOT EXISTS (SELECT 1 FROM enrollment_interest_events n WHERE n.class_id=e.id)) AS canDelete\n    FROM enrollment_classes e LEFT JOIN enrollment_class_openings g ON g.class_id=e.id\n    WHERE (:p1 IS NULL OR e.id=:p1) ORDER BY e.first_lesson_at,e.id",
     "sources": [
       "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "SELECT e.kind,e.interest_id,\n        DATE_FORMAT(MAX(e.created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_waitlist w JOIN enrollment_interest_events e ON e.kind='vacancy' AND e.interest_id=w.id\n        WHERE w.email=:p1 GROUP BY e.kind,e.interest_id\n        UNION ALL\n        SELECT e.kind,e.interest_id,DATE_FORMAT(MAX(e.created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_demands d JOIN enrollment_interest_events e ON e.kind='match' AND e.interest_id=d.id\n        WHERE d.email=:p1 GROUP BY e.kind,e.interest_id": {
+    "sql": "SELECT e.kind,e.interest_id,\n        DATE_FORMAT(MAX(e.created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_waitlist w JOIN enrollment_interest_events e ON e.kind='vacancy' AND e.interest_id=w.id\n        WHERE w.email=:p1 GROUP BY e.kind,e.interest_id\n        UNION ALL\n        SELECT e.kind,e.interest_id,DATE_FORMAT(MAX(e.created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt\n        FROM enrollment_demands d JOIN enrollment_interest_events e ON e.kind='match' AND e.interest_id=d.id\n        WHERE d.email=:p1 GROUP BY e.kind,e.interest_id",
+    "sources": [
+      "server/portal/enrollmentInterests.ts"
     ]
   },
   "SELECT email FROM enrollment_demands WHERE id=:p1 FOR UPDATE": {
@@ -3071,12 +3083,6 @@
       "server/portal/runtime.ts"
     ]
   },
-  "SELECT interest_id,\n        DATE_FORMAT(MAX(created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt FROM enrollment_interest_events\n        WHERE JSON_CONTAINS(:p1,JSON_QUOTE(interest_id)) GROUP BY interest_id": {
-    "sql": "SELECT interest_id,\n        DATE_FORMAT(MAX(created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt FROM enrollment_interest_events\n        WHERE JSON_CONTAINS(:p1,JSON_QUOTE(interest_id)) GROUP BY interest_id",
-    "sources": [
-      "server/portal/enrollmentInterests.ts"
-    ]
-  },
   "SELECT is_full,cycle FROM enrollment_vacancy_cycles WHERE class_id=:p1 FOR UPDATE": {
     "sql": "SELECT is_full,cycle FROM enrollment_vacancy_cycles WHERE class_id=:p1 FOR UPDATE",
     "sources": [
@@ -3675,6 +3681,12 @@
       "server/portal/enrollmentCatalog.ts"
     ]
   },
+  "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND sequence<=CAST(:p2 AS UNSIGNED) AND status IN ('saved','completed') ORDER BY sequence DESC LIMIT 40": {
+    "sql": "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND sequence<=CAST(:p2 AS UNSIGNED) AND status IN ('saved','completed') ORDER BY sequence DESC LIMIT 40",
+    "sources": [
+      "server/portal/chat.ts"
+    ]
+  },
   "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence DESC LIMIT 40": {
     "sql": "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence DESC LIMIT 40",
     "sources": [
@@ -3759,8 +3771,8 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
-  "SELECT t.value AS template, c.value AS course\n    FROM portal_settings t JOIN crm_courses c ON c.id=t.value->>'$.courseId'\n      AND CAST(c.id AS BINARY)=CAST(t.value->>'$.courseId' AS BINARY)\n    WHERE t.id LIKE :p1 AND JSON_TYPE(t.value->'$.courseId')='STRING'\n      AND CAST(t.value->>'$.format' AS BINARY)='one-on-one'\n    ORDER BY t.id": {
-    "sql": "SELECT t.value AS template, c.value AS course\n    FROM portal_settings t JOIN crm_courses c ON c.id=t.value->>'$.courseId'\n      AND CAST(c.id AS BINARY)=CAST(t.value->>'$.courseId' AS BINARY)\n    WHERE t.id LIKE :p1 AND JSON_TYPE(t.value->'$.courseId')='STRING'\n      AND CAST(t.value->>'$.format' AS BINARY)='one-on-one'\n    ORDER BY t.id",
+  "SELECT t.value AS template, c.value AS course\n    FROM portal_settings t JOIN crm_courses c ON c.id=t.value->>'$.courseId'\n      AND CAST(c.id AS BINARY)=CAST(t.value->>'$.courseId' AS BINARY)\n    WHERE t.id LIKE :p1 AND JSON_TYPE(t.value->'$.courseId')='STRING'\n      AND CAST(t.value->>'$.format' AS BINARY)='one-on-one'\n      AND (:p2 IS NULL OR t.id=:p2)\n    ORDER BY t.id": {
+    "sql": "SELECT t.value AS template, c.value AS course\n    FROM portal_settings t JOIN crm_courses c ON c.id=t.value->>'$.courseId'\n      AND CAST(c.id AS BINARY)=CAST(t.value->>'$.courseId' AS BINARY)\n    WHERE t.id LIKE :p1 AND JSON_TYPE(t.value->'$.courseId')='STRING'\n      AND CAST(t.value->>'$.format' AS BINARY)='one-on-one'\n      AND (:p2 IS NULL OR t.id=:p2)\n    ORDER BY t.id",
     "sources": [
       "server/portal/enrollmentCatalog.ts"
     ]

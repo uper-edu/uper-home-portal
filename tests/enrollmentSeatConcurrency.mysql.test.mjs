@@ -93,12 +93,19 @@ test('one final seat, idempotent reservations and cross-class credit from a veri
   const params={id:order.id};
   const {uploadId}=await winningLearner.invoke(routes.get(proofRoot+'/start'),{},params);
   const readProof=routes.get('GET '+proofRoot+'/:uploadId/result');
-  assert.deepEqual(await winningLearner.invoke(readProof,{},{...params,uploadId}),{state:'unconfirmed'});
+  assert.deepEqual(await winningLearner.invoke(readProof,{},{...params,uploadId}),
+    {state:'unconfirmed',proofTransport:'binary-v1',uploadActive:true});
+  assert.deepEqual(await winningLearner.invoke(readProof,{},{...params,uploadId:randomUUID()}),
+    {state:'unconfirmed',proofTransport:'binary-v1',uploadActive:false});
   const encoded=Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'),Buffer.alloc(8)]).toString('base64');
   const proof={uploadId,encoded,mime:'image/png'};
   const finish=routes.get(proofRoot+'/finish');
   await winningLearner.invoke(finish,proof,params);
   assert.equal((await winningLearner.invoke(readProof,{},{...params,uploadId})).order.status,'proof_review');
+  const replay=await winningLearner.invoke(routes.get(proofRoot+'/start'),{previousUploadId:uploadId},params);
+  assert.equal(replay.state,'saved');
+  assert.equal(replay.order.id,order.id);
+  assert.equal(replay.uploadId,undefined);
   await winningLearner.invoke(finish,proof,params);
   assert.equal(Number((await pool.query('SELECT COUNT(*) n FROM enrollment_proofs WHERE order_id=:p1',[order.id])).rows[0].n),1);
   await assert.rejects(otherLearner.invoke(readProof,{},{...params,uploadId}),/enrollment_order_not_found/);

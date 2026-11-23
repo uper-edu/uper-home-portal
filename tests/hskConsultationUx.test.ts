@@ -148,3 +148,43 @@ test('assessment retry reads the owned receipt before deciding whether to save',
   await assert.rejects(retryHskAttempt(attempt,'en',scope),/Visitor changed/);
   assert.deepEqual(requests,['GET']);
 });
+
+test('an uncertain assessment save reads the exact attempt once and never resubmits it',async t=>{
+  const {saveHskAttempt}=await import('../src/services/portalChat');
+  const {selectVisitorScope}=await import('../src/services/visitorScope');
+  const scope='a'.repeat(64);
+  selectVisitorScope(scope);
+  t.after(()=>selectVisitorScope(''));
+  const attempt=sample();
+  const result={...gradeHskAttempt(attempt,'en'),saveStatus:'saved'};
+  const requests:string[]=[];
+  let post=():Response=>{throw new TypeError('Connection dropped');};
+  let receipt=()=>Response.json({result});
+  t.mock.method(globalThis,'fetch',async(url:string,init?:RequestInit)=>{
+    if(url==='/api/portal/session')return Response.json({registered:false,cacheScope:scope});
+    assert.equal(new Headers(init?.headers).get('X-Visitor-Scope'),scope);
+    if(init?.method==='POST'){requests.push('POST');return post();}
+    assert.equal(url,'/api/portal/assessments/'+attempt.attemptId);
+    requests.push('GET');
+    return receipt();
+  });
+  const save=()=>saveHskAttempt(attempt,'en',scope);
+  assert.deepEqual(await save(),result);
+  assert.deepEqual(requests.splice(0),['POST','GET']);
+  post=()=>Response.json({});
+  assert.deepEqual(await save(),result);
+  assert.deepEqual(requests.splice(0),['POST','GET']);
+  post=()=>Response.json({error:'Unavailable'},{status:503});
+  receipt=()=>Response.json({error:'Attempt not found'},{status:404});
+  await assert.rejects(save(),/Unavailable/);
+  assert.deepEqual(requests.splice(0),['POST','GET']);
+  receipt=()=>Response.json({result:{...result,attempt:{...attempt,answers:{...attempt.answers,[Object.keys(attempt.answers)[0]]:null}}}});
+  await assert.rejects(save(),/different answers/);
+  assert.deepEqual(requests.splice(0),['POST','GET']);
+  post=()=>Response.json({error:'Request rejected'},{status:409});
+  await assert.rejects(save(),/Request rejected/);
+  assert.deepEqual(requests.splice(0),['POST']);
+  post=()=>Response.json({result});
+  assert.deepEqual(await save(),result);
+  assert.deepEqual(requests.splice(0),['POST']);
+});

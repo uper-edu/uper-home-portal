@@ -1,11 +1,32 @@
-import {contentStatus} from './components/CmsContentStatus';
+import { beginContentRead } from './components/CmsContentStatus';
+
 /** MySQL CMS reads are authoritative; never fall back to stale compiled content. */
-export const client={projectId:'local',dataset:'mysql',async fetch<R=any>(query:string,params?:any):Promise<R>{
- try{
- const response=await fetch('/api/content',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,params}),cache:'no-store'});
- const data=await response.json();if(!response.ok)throw Error(data.error||'Content unavailable');contentStatus(query,false);return data.result as R;
- }catch(error){contentStatus(query,true);throw error;}
-}};
+export const client = {
+  projectId: 'local',
+  dataset: 'mysql',
+  async fetch<R = any>(query: string, params?: any): Promise<R> {
+    const body = JSON.stringify({ query, params });
+    const finish = beginContentRead(body);
+    try {
+      const response = await fetch('/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = await response.json();
+      if (!response.ok || !data || !Object.hasOwn(data, 'result')) {
+        throw Error(data?.error || 'Content unavailable');
+      }
+      finish(false);
+      return data.result as R;
+    } catch (error) {
+      finish(true);
+      throw error;
+    }
+  },
+};
 /**
  * Resolves CMS image URLs, including legacy Sanity image references.
  */

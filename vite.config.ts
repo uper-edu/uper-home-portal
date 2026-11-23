@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, type Plugin} from 'vite';
 import {frontendEnvironment} from './server/environment.mjs';
-import {hskArchiveBundle} from './scripts/lib/hskArchiveBundle.mjs';
 import {verifyFrontendBuildIdentity} from './server/runtimeVersion.mjs';
 import {analyticsBuildConfiguration} from './server/analyticsEnvironment.mjs';
+import {hskArchiveBundle} from './scripts/lib/hskArchiveBundle.mjs';
 
 const preventFetchOverwritePlugin = () => {
   return {
@@ -77,9 +77,10 @@ export default defineConfig(({mode}) => {
       chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {
+          onlyExplicitManualChunks: true,
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('lucide-react') || id.includes('motion')) {
+              if (id.includes('lucide-react')) {
                 return 'vendor-ui';
               }
               if (id.includes('recharts') || id.includes('d3-')) {

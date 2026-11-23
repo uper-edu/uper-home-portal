@@ -3,7 +3,8 @@ import { AdminPageHeader } from '../admin/AdminPageHeader';
 import { crmLocale, type CrmLanguage } from '../../utils/crmLanguage';
 import { useAdminTheme } from '../../utils/adminPreferences';
 import { formatCurrency } from '../../utils/currency';
-import { enrollmentCopy, enrollmentStatuses } from '../EnrollmentApplication';
+import {enrollmentCopy} from '../../utils/enrollmentCatalog';
+import {enrollmentStatuses} from '../../utils/enrollmentOrderStatus';
 
 type Summary={received:number;waiting:number;pending:number;pendingAmount:number|null;pendingUnknownCount?:number};
 type Target =

@@ -6,13 +6,14 @@ import { useEnrollmentOpeningClock } from '../utils/useEnrollmentOpeningClock';
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import { EnrollmentJoiningNote, enrollmentSupportPath } from './EnrollmentSupport';
 import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
+import type {AftercareCourse} from '../utils/enrollmentAftercare';
 
 type Copy = readonly [string, string, string];
 
 export function EnrollmentOrderResult({ order, course, classInfo, classState, language, backPath, uploadPath, refundPath, balancePath, busy, onRefresh }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
-  classInfo?: Partial<PublicEnrollmentClass> & {firstLesson:string;schedule:string;level?:string;format?:string;opened?:boolean};
+  classInfo?: AftercareCourse;
   classState?: string;
   language: InterestLanguage;
   backPath: string;
@@ -35,7 +36,8 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
     return date && Number.isFinite(date.valueOf()) ? dateFormat.format(date) : '';
   }
   const courseDay = day(course?.firstLesson ?? classInfo?.firstLesson);
-  const openingClock=useEnrollmentOpeningClock();
+  const firstLesson=classInfo?.firstLesson??course?.firstLesson;
+  const openingClock=useEnrollmentOpeningClock(!paid&&!cancelled?firstLesson:undefined,order.serverClockOffsetMs);
   const classFormat=classInfo?.format??course?.format;
   const schedule = enrollmentScheduleLabel(classInfo,language) || enrollmentScheduleLabel(course,language);
   const openingDate = courseDay && (opened
@@ -57,7 +59,7 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
         {cancelled ? <p>{t(['原班已确认不开班。','The original class will not open.','Kelas asal tidak dibuka.'])}</p>
           : opened && <p>{t(['已确认开班','Class opening confirmed','Pembukaan kelas dikonfirmasi'])}</p>}
         {!paid && schedule && <p>{schedule}</p>}
-        {!paid && !cancelled && <EnrollmentJoiningNote firstLesson={classInfo?.firstLesson??course?.firstLesson}
+        {!paid && !cancelled && <EnrollmentJoiningNote firstLesson={firstLesson}
           now={openingClock} language={language}/>}
       </article>
       <p className="enrollment-result-state" data-paid={paid} role="status">

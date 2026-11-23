@@ -1,4 +1,4 @@
-import {integrationCredential} from './integrationCredentials.ts';
+import {integrationCredential,type CredentialClient} from './integrationCredentials.ts';
 import {aiCredentialTarget,aiCredentialUrl, legacyAiCredential} from './integrationCredentialTargets.ts';
 import {aiModels,initialAiSelection} from '../../src/data/system-defaults/ai.ts';
 import {randomUUID} from 'node:crypto';
@@ -22,14 +22,21 @@ export function validateSelection(v:any):AiSelection {
 }
 export function providerFor(model:string,reasoningEffort?:ReasoningEffort){const deep=model==='deepseek-v4-pro'||model==='deepseek-chat';return {model,provider:deep?'deepseek':'openai',key:deep?process.env.DEEPSEEK_API_KEY:process.env.OPENAI_API_KEY,url:aiCredentialUrl(deep?'deepseek':'openai'),...(supportsReasoningEffort(model)&&reasoningEffort?{reasoningEffort}:{})};}
 export async function aiState(db?:any){db ||= (await import('./store.ts')).pool;return (await db.query("SELECT value FROM portal_settings WHERE id='ai_service'")).rows[0]?.value||{revision:0,current:defaults(),previous:null,checks:[],history:[]};}
-export async function configuredAiKey(provider:string){
- return (await integrationCredential('ai',provider,aiCredentialTarget(provider),()=>legacyAiCredential(provider)))?.key;
+export async function configuredAiKey(provider:string,db?:CredentialClient){
+ return (await integrationCredential('ai',provider,aiCredentialTarget(provider),()=>legacyAiCredential(provider),db))?.key;
 }
-export async function runtimeProviders(){
- const s=process.env.MYSQL_TRIAL_URL?await aiState():{current:defaults()};
+export async function runtimeProviders(db?:CredentialClient){
+ const usesDatabase=Boolean(process.env.MYSQL_TRIAL_URL);
+ const s=usesDatabase?await aiState(db):{current:defaults()};
+ const keys=new Map<string,ReturnType<typeof configuredAiKey>>();
  return Promise.all(aiModelSlots.map(async role=>{
   const provider=providerFor(s.current[role],s.current[effortField[role]]);
-  return {...provider,key:await configuredAiKey(provider.provider)};
+  let key=keys.get(provider.provider);
+  if(!key){
+   key=configuredAiKey(provider.provider,usesDatabase?db:undefined);
+   keys.set(provider.provider,key);
+  }
+  return {...provider,key:await key};
  }));
 }
 import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';

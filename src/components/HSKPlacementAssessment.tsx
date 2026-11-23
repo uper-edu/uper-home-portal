@@ -1,3 +1,4 @@
+import {createBrowserUuid} from '../utils/browserUuid';
 import {trackEvent} from '../utils/analytics';
 import {visitorScope, assertVisitorScope} from '../services/visitorScope';
 import React, { useEffect, useRef, useState } from "react";
@@ -140,15 +141,13 @@ export default function HSKPlacementAssessment({
     };
   }, []);
   useEffect(() => {
-    let active = true;
-    restoreHskHistory(lang)
+    const request=new AbortController();
+    restoreHskHistory(lang,request.signal)
       .then((h) => {
-        if (active) setHistory(h);
+        if (!request.signal.aborted) setHistory(h);
       })
       .catch(() => {});
-    return () => {
-      active = false;
-    };
+    return () => request.abort();
   }, [lang]);
   const activate = (a: HskAttempt, i: number, position = 0, auto = true) => {
     const item = getVersionQuestions(a.mode, a.examVersion, a.scoringVersion)[
@@ -293,7 +292,7 @@ export default function HSKPlacementAssessment({
   };
   const start = (restore = false) => {
     const old = restore && continuing ? draft : null;
-    const a = old ? old.attempt : newHskAttempt(mode, crypto.randomUUID());
+    const a = old ? old.attempt : newHskAttempt(mode, createBrowserUuid());
     const i = old ? old.currentIdx : 0;
     onAttemptStart?.(a.attemptId);
     trackEvent(old?'assessment_resume':'assessment_start',{assessment_mode:a.mode});

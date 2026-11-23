@@ -12,7 +12,7 @@ test('queued mail can only use the delivery generation and mode recorded when qu
 
 test('migration and CRM mode changes apply immediately and cannot replay old queues',async t=>{
   await import('./helpers/mockPortalDatabase.mjs');
-  const [{dispatchEnrollmentMail,enrollmentMailDelivery,initializeEnrollmentMailDelivery,mountEnrollmentMail},
+  const [{dispatchEnrollmentMail,enrollmentMailDelivery,enrollmentMailReadiness,initializeEnrollmentMailDelivery,mountEnrollmentMail},
     {operationContext},{mailAccountDefaults},{smtpRecipientPolicy},{default:nodemailer},fs,os,path]=await Promise.all([
     import('../server/portal/enrollmentMail.ts'),import('../server/portal/operationContext.ts'),
     import('../src/utils/enrollmentMailConfig.ts'),import('../server/portal/enrollmentMailRecipientPolicy.ts'),
@@ -39,11 +39,17 @@ test('migration and CRM mode changes apply immediately and cannot replay old que
     {id:'fixture',name:'Fixture',enabled:true,members:[sender.address],transport:'smtp',dailyLimit:null,dailyRecipientLimit:null,strategy:'balanced'},
   ]};
   let config:{delivery?:EnrollmentMailDelivery} & typeof legacy=structuredClone(legacy);
-  let revision=3,migrationWrites=0;
+  let revision=3,migrationWrites=0,credentialReads=0;
+  let configurationReads=0;
   const audit:unknown[]=[];
   const queuedRows=new Map<string,{delivery?:EnrollmentMailDelivery & {recipientPolicy?:string};smtpRecipientPolicy?:string}>([['legacy',{smtpRecipientPolicy}]]);
   const client={transactionIsolation:'READ COMMITTED',query:async(sql:string,args?:unknown[])=>{
-    if(sql.startsWith('SELECT revision,config'))return {rows:[{revision,config:structuredClone(config)}]};
+    if(sql.includes('FROM integration_credentials'))credentialReads++;
+    if(sql.startsWith('SELECT revision,config')){
+      configurationReads++;
+      return {rows:[{revision,config:structuredClone(config)}]};
+    }
+    if(sql.includes(' AS blocked,locked_until'))return {rows:[{blocked:0,locked:0}]};
     if(sql.startsWith('UPDATE enrollment_mail_configuration')){
       if(sql.includes('revision=revision+1'))revision++;
       else migrationWrites++;
@@ -76,6 +82,9 @@ test('migration and CRM mode changes apply immediately and cannot replay old que
       return actor;
     },
   });
+  const {mountEnrollmentApplication}=await import('../server/portal/enrollmentApplication.ts');
+  const unexpectedIdentity=async()=>assert.fail('Sending a code does not use staff or visitor lookup');
+  mountEnrollmentApplication(routes as any,{wrap:handler=>handler,staff:unexpectedIdentity,visitor:unexpectedIdentity});
   const call=(method:'get'|'put',actor=admin,body?:object)=>handlers.get(method+' '+modePath+(method==='put'?'/pool':''))!(
     {actor,body,headers:{origin:'http://localhost:3000'},protocol:'http',get:()=> 'localhost:3000',is:()=>true},
     {set(){return this;},json(value:unknown){return value;}},
@@ -113,6 +122,22 @@ test('migration and CRM mode changes apply immediately and cannot replay old que
     assert.equal(JSON.parse(await fs.readFile(path.join(directory,'simulated-now.json'),'utf8')).email,learner);
     assert.deepEqual(sent,[]);
 
+    const previousRevision=revision;
+    revision=0;
+    const readsBeforeCode=configurationReads;
+    let challengeId='';
+    await handlers.get('post /api/enrollment/email/request')!(
+      {body:{email:learner,language:'en',purpose:'apply'},headers:{origin:'http://localhost:3000'},protocol:'http',get:()=> 'localhost:3000',is:()=>true},
+      {set(){return this;},json:(value:{challengeId:string})=>{challengeId=value.challengeId;}},
+    );
+    revision=previousRevision;
+    assert.equal(configurationReads-readsBeforeCode,1);
+    assert.ok(challengeId);
+    const delivered=JSON.parse(await fs.readFile(path.join(directory,challengeId+'.json'),'utf8'));
+    assert.equal(delivered.email,learner);
+    assert.match(delivered.code,/^[0-9]{6}$/);
+    assert.deepEqual(sent,[]);
+
     assert.equal((await save('disabled')).settings.mode,'disabled');
     assert.deepEqual((await call('get')).deliveryReasons,['delivery_disabled']);
     assert.equal((await dispatchEnrollmentMail('disabled',learner,mail)).state,'waiting');
@@ -121,6 +146,14 @@ test('migration and CRM mode changes apply immediately and cannot replay old que
     assert.equal((await call('get')).mode,'smtp');
     assert.deepEqual((await call('get')).deliveryReasons,[]);
     const smtp=await enrollmentMailDelivery();
+    process.env.PORTAL_WORKER_ENABLED='false';
+    const readsBefore=credentialReads;
+    assert.equal(await (await enrollmentMailReadiness(client)).smtpReady(),false);
+    assert.equal(credentialReads,readsBefore);
+    assert.deepEqual((await call('get')).deliveryReasons,['mail_worker_required']);
+    assert.ok(credentialReads>readsBefore);
+    process.env.PORTAL_WORKER_ENABLED='true';
+    assert.equal(await (await enrollmentMailReadiness(client)).smtpReady(),true);
     assert.notEqual(smtp.generation,imported.generation);
     queuedRows.set('previous-smtp',{delivery:{...imported,recipientPolicy:smtpRecipientPolicy}});
     queuedRows.set('missing-policy',{delivery:smtp});

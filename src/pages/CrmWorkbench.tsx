@@ -1,3 +1,5 @@
+import '../components/crm/crm-detail-workspace.css';
+import '../components/crm/campaign-workspace.css';
 import {AdminSavedReadError} from '../components/AdminFormLayout';
 import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
 import {AdminRecordHeader,type AdminBackTarget} from '../components/admin/AdminRecordHeader';
@@ -32,6 +34,7 @@ import {CrmPurchaseIntentReview,CrmPurchaseIntentReviewAction} from '../componen
 import type {PurchaseIntentSuggestion} from '../utils/crmPurchaseIntentSuggestion';
 import '../components/crm/crm-opportunities.css';
 import '../components/crm/crm-list.css';
+import '../components/crm/crm-lead-filters.css';
 import '../components/crm/crm-record-workspace.css';
 import {CrmCustomerHistoryWindow} from '../components/crm/CrmCustomerHistoryWindow';
 import {progressSaveSummary} from '../utils/crmProgressRecord';

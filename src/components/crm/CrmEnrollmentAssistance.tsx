@@ -4,16 +4,15 @@ import {AdminCopyAction} from '../admin/AdminRecordActions';
 import {useEffect,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
 import {AdminFormActions,AdminFormFeedback,AdminFormGrid,type AdminFeedbackState} from '../AdminFormLayout';
-import {enrollmentCopy} from '../EnrollmentApplication';
+import {enrollmentCopy,type PublicEnrollmentClass} from '../../utils/enrollmentCatalog';
 import {enrollmentPost} from '../../services/enrollmentSession';
 import {CrmOperationLayer} from './CrmOperationLayer';
 import {CrmDiscardDialog} from './CrmDetailWorkspace';
 import {CrmSingleSelect} from './CrmSingleSelect';
-import {interestOption} from '../EnrollmentInterests';
+import {interestOption} from '../../utils/enrollmentInterestCopy';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {formatCurrency} from '../../utils/currency';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-import type {PublicEnrollmentClass} from '../../utils/enrollmentCatalog';
 import {enrollmentAssistancePath,enrollmentPreviewOrigin,type EnrollmentAssistanceMail} from '../../utils/enrollmentAssistance';
 
 export type AssistanceResult={id:string;expiresAt:string;lang:string;mail?:EnrollmentAssistanceMail};

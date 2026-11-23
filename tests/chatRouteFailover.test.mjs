@@ -9,9 +9,10 @@ const fixtureKey = Symbol.for('uper.chatRouteFailover');
 const database = `
   const get = () => globalThis[Symbol.for('uper.chatRouteFailover')];
   export const nativePool = {query: (...args) => get().query(...args)};
-  export const pool = nativePool;
+  export const pool = {query: (...args) => {get().poolReads.push(args[0]); return get().query(...args);}};
   export const connection = async () => {
     get().checkouts++;
+    get().leasedClient=nativePool;
     return {client:nativePool,release:async () => {await get().releaseGate; get().released++;}};
   };
   export const id = () => 'fixture-' + (++get().sequence);
@@ -28,10 +29,13 @@ const modules = new Map([
     export const fail = (status,message) => {throw Object.assign(Error(message),{status});};
   `],
   ['/server/portal/aiServiceConfig.ts',`
-    export const runtimeProviders = async () => [
+    export const runtimeProviders = async db => {
+      if (db!==globalThis[Symbol.for('uper.chatRouteFailover')].leasedClient) throw Error('Chat must use its leased connection for provider settings');
+      return [
       {model:'gpt-6-luna',provider:'openai',key:'mock-primary',url:'https://primary.invalid',reasoningEffort:'medium'},
       {model:'deepseek-v4-pro',provider:'deepseek',key:'mock-backup',url:'https://backup.invalid'},
-    ];
+      ];
+    };
     export const providerFor = () => {throw Error('Unexpected provider lookup');};
   `],
   ['/server/logger.ts',`
@@ -73,13 +77,15 @@ function sse(content, done = true) {
 function mountFixture(t, bothFail = false) {
   const priorHistory=[],messages=[],attempts=[],events=[],logs=[],calls=[],sqlTrace=[];
   const fixture = {
-    events,logs,released:0,checkouts:0,sequence:0,referenceReads:[],
+    events,logs,released:0,checkouts:0,sequence:0,referenceReads:[],poolReads:[],
     async query(sql,args = []) {
       if (sql.startsWith('SELECT GET_LOCK')) return {rows:[{acquired:fixture.busy?0:1}]};
       if (sql.startsWith('SELECT * FROM messages')) return {rows:messages.filter(row=>row.requestId===args[1])};
       if (sql.startsWith('SELECT role,content,metadata')) {
         assert.match(sql, /status IN \('saved','completed'\) ORDER BY sequence DESC LIMIT 40$/);
-        const eligible = [...priorHistory,...messages.filter(row=>row.conversationId===args[0])].filter(row=>['saved','completed'].includes(row.status));
+        const cutoff = sql.includes('sequence<=CAST(:p2 AS UNSIGNED)') ? BigInt(args[1]) : undefined;
+        const eligible = [...priorHistory,...messages.filter(row=>row.conversationId===args[0])].filter(row=>
+          ['saved','completed'].includes(row.status) && (cutoff===undefined || BigInt(row.sequence)<=cutoff));
         return {rows:eligible.slice(-40).reverse().map(row=>({...row,request_id:row.requestId}))};
       }
       if (sql.startsWith('SELECT result FROM hsk_attempts') || sql.startsWith('SELECT value FROM crm_courses')) return {rows:[]};
@@ -98,6 +104,10 @@ function mountFixture(t, bothFail = false) {
         const [userId,conversationId,requestId,content,assistantId,metadata] = args;
         messages.push({id:userId,conversationId,requestId,role:'user',content,status:'saved',metadata});
         messages.push({id:assistantId,conversationId,requestId,role:'assistant',content:'',status:'generating',metadata});
+      } else if (sql.startsWith("UPDATE messages SET status='generating'")) {
+        const assistant=messages.find(row=>row.id===args[0]&&row.role==='assistant');
+        assert.ok(assistant);
+        Object.assign(assistant,{status:'generating',content:''});
       } else if (sql.startsWith('INSERT INTO ai_attempts')) {
         const [id,model,content,error] = args;
         assert.ok(messages.some(row=>row.id===id&&row.role==='assistant'));
@@ -149,7 +159,7 @@ function mountFixture(t, bothFail = false) {
   });
   let handle;
   mountChat({post(path,handler){assert.equal(path,'/api/chat');handle=handler;}});
-  async function send({stream = true,content = question,enrollmentContext,fixtureConversation, messageId = 'learner-turn', response = new EventEmitter()} = {}) {
+  async function send({stream = true,streamReply,content = question,enrollmentContext,fixtureConversation, messageId = 'learner-turn', response = new EventEmitter()} = {}) {
     const packets = [];
     let reply, ended = false;
     const headers = new Map();
@@ -159,7 +169,7 @@ function mountFixture(t, bothFail = false) {
       json: body => {reply=JSON.parse(JSON.stringify(body));},
       end: () => {ended=true;},
     });
-    await handle({body:{content,stream,messageId,fixtureConversation,entrySurface:'standalone_chat',lang:'en',enrollmentContext}},res);
+    await handle({body:{content,stream,streamReply,messageId,fixtureConversation,entrySurface:'standalone_chat',lang:'en',enrollmentContext}},res);
     return {packets,reply,headers,ended};
   }
   return {fixture,send,messages,attempts,events,logs,calls,sqlTrace,priorHistory};
@@ -209,6 +219,21 @@ test('Chat publishes only the validated backup reply and preserves class guidanc
   assert.equal(messages.length,2);
   assert.equal(calls.length,6);
   assert.equal(fixture.released,3);
+  assert.ok(!fixture.poolReads.some(sql=>sql.startsWith('SELECT value FROM crm_courses')));
+});
+
+test('terminal Chat stream sends the validated reply once and keeps the saved acknowledgment', async t => {
+  const {send,messages} = mountFixture(t);
+  const {packets,ended} = await send({streamReply:'terminal'});
+  const final = packets.at(-1);
+  assert.equal(ended,true);
+  assert.deepEqual(packets.slice(0,-1),[{saved:true,messageId:'learner-turn'},{reset:true}]);
+  assert.equal(final.done,true);
+  assert.equal(final.saved,true);
+  assert.equal(final.status,'completed');
+  assert.equal(final.reply,messages[1].content);
+  assert.equal(final.enrollment.rows[0].id,classId);
+  assert.equal(packets.some(packet=>Object.hasOwn(packet,'chunk')),false);
 });
 
 test('Chat retains the learner turn and a queryable failure when both providers fail', async t => {
@@ -233,6 +258,30 @@ test('Chat sends the latest eligible history in its original order', async t => 
   await send();
   const expected=priorHistory.filter(row=>row.status!=='interrupted').slice(-39).map(({role,content})=>({role,content}));
   assert.deepEqual(fixture.modelHistory.filter(message=>message.content.startsWith('history-')),expected);
+});
+
+test('retrying a historical question uses the original turn even after 40 newer messages', async t => {
+  const {fixture,send,messages}=mountFixture(t);
+  const oldQuestion='Can I look at the same weekend option?';
+  const latestQuestion='I am asking for someone else and only want private lessons.';
+  const add=(requestId,role,content,status) => messages.push({
+    conversationId:'chat-fixture',id:'saved-'+messages.length,sequence:String(9007199254740992n+BigInt(messages.length)),requestId,role,content,status,
+  });
+  add('earlier','user','I can attend weekends.', 'saved');
+  add('earlier','assistant','Let us look at the weekend class.', 'completed');
+  add('old','user',oldQuestion,'saved');
+  add('old','assistant','','interrupted');
+  for(let index=0;index<22;index++){
+    add('later-'+index,'user',latestQuestion,'saved');
+    add('later-'+index,'assistant','Here are later options.', 'completed');
+  }
+  await send({messageId:'old',content:oldQuestion});
+  assert.deepEqual(fixture.modelHistory.filter(row=>row.role!=='system'),[
+    {role:'user',content:'I can attend weekends.'},
+    {role:'assistant',content:'Let us look at the weekend class.'},
+    {role:'user',content:oldQuestion},
+  ]);
+  assert.equal(messages.filter(row=>row.requestId==='old'&&row.role==='user').length,1);
 });
 
 

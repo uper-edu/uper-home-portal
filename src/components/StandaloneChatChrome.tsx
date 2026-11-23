@@ -1,4 +1,4 @@
-import {useEffect,useId,useRef,type ReactNode} from 'react';
+import {memo,useEffect,useId,useRef,type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
 import {ArrowLeft,ArrowRight,ChevronRight,ClipboardCheck,ClipboardList,Maximize2,Minimize2,X,type LucideIcon} from 'lucide-react';
 import {chooseText,type HskLanguage,type HskResult} from '../data/hskAssessment';
@@ -111,8 +111,8 @@ export function ChatWelcomeSocials({lang}:{lang:HskLanguage}) {
   </nav>;
 }
 
-export function ChatAssessmentSummary({result,lang,onDetails}:{
-  result:HskResult;lang:HskLanguage;onDetails:()=>void;
+export const ChatAssessmentSummary=memo(function ChatAssessmentSummary({result,lang,onDetails}:{
+  result:HskResult;lang:HskLanguage;onDetails:(result:HskResult)=>void;
 }){
   const t:Translate=(zh,en,id)=>chooseText(lang,zh,en,id);
   const guidance=learnerAssessmentGuidance(result,lang);
@@ -127,9 +127,9 @@ export function ChatAssessmentSummary({result,lang,onDetails}:{
     {result.saveStatus!=='saved'&&<p className="chat-assessment-review" role="status">
       {t('结果暂未同步。','Results have not synced yet.','Hasil belum tersinkron.')}
     </p>}
-    <button type="button" className="chat-enrollment-next" onClick={onDetails}>{t('查看详细结果','View detailed results','Lihat hasil lengkap')}</button>
+    <button type="button" className="chat-enrollment-next" onClick={()=>onDetails(result)}>{t('查看详细结果','View detailed results','Lihat hasil lengkap')}</button>
   </section>;
-}
+});
 
 export function StandaloneChatDialog({title,closeLabel,onClose,children,wide=false,locked=false,variant}:{
   title:string;closeLabel:string;onClose:()=>void;children:ReactNode;wide?:boolean;locked?:boolean;variant?:'retake'|'assessment-report';

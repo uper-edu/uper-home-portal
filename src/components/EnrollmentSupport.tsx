@@ -69,8 +69,10 @@ export function EnrollmentJoiningNote({firstLesson,now,language}:{
   ])}</Link></p>;
 }
 
-export function EnrollmentSupport({topic,language,level,appointment:selection,period,format,catalogPath,offline,returnAction,navigationState}:{
-  topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};period?:string;format?:string;catalogPath?:string;offline?:boolean;returnAction?:ReactNode;navigationState?:unknown;
+export function EnrollmentSupport({topic,language,level,appointment:selection,appointmentState,onAppointmentRetry,period,format,catalogPath,offline,returnAction,navigationState}:{
+  topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};
+  appointmentState?:'loading'|'failed'|'unavailable';onAppointmentRetry?:()=>void;
+  period?:string;format?:string;catalogPath?:string;offline?:boolean;returnAction?:ReactNode;navigationState?:unknown;
 }) {
   const t = (value: Copy) => interestText(language,value);
   const info = Object.hasOwn(topics,topic) ? topics[topic as keyof typeof topics] : undefined;
@@ -116,10 +118,17 @@ export function EnrollmentSupport({topic,language,level,appointment:selection,pe
         <p>{t(info.instructions)}</p>
       </article>
       <div className="enrollment-journey-actions">
-        <a className="enrollment-primary enrollment-whatsapp-action" href={whatsapp.toString()} target="_blank" rel="noopener noreferrer">
+        {appointmentState==='loading'?<p role="status">{t(['正在读取预约资料…','Loading appointment details…','Memuat detail janji…'])}</p>
+          : appointmentState==='failed'?<div role="status">
+            <p>{t(['暂时无法读取所选课程，请重试。','The selected course could not load. Try again.','Kelas yang dipilih belum dapat dimuat. Coba lagi.'])}</p>
+            <button type="button" className="enrollment-quiet" onClick={onAppointmentRetry}>{t(['重试','Try again','Coba lagi'])}</button>
+          </div>:<>
+          {appointmentState==='unavailable'&&<p role="status">{t(['所选课程当前不可预约。','The selected course is unavailable for booking.','Kelas yang dipilih tidak tersedia untuk dipesan.'])}</p>}
+          <a className="enrollment-primary enrollment-whatsapp-action" href={whatsapp.toString()} target="_blank" rel="noopener noreferrer">
           <SocialProfileIcon platform="whatsapp" className="size-4"/>
-          {t(['通过 WhatsApp 联系','Contact on WhatsApp','Hubungi via WhatsApp'])}
-        </a>
+          {appointmentState==='unavailable'?t(['咨询其他一对一课程','Ask about other private lessons','Tanya kelas privat lainnya']):
+            t(['通过 WhatsApp 联系','Contact on WhatsApp','Hubungi via WhatsApp'])}
+        </a></>}
       </div>
     </> : <h1>{t(['此帮助页面不可用。','This help page is unavailable.','Halaman bantuan ini tidak tersedia.'])}</h1>}
   </section>;

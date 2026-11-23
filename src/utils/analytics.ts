@@ -31,24 +31,31 @@ export function setAnalyticsRole(role?: string) {
     ? role
     : undefined;
 }
-const context = (): AnalyticsParams => {
+function contextInputs(href:string) {
   let storage: Storage | undefined;
   try {
     storage = window.sessionStorage;
   } catch {}
-  const route = new URL(window.location.href);
-  const lookup = /^\/(crm|cms|system|studio)(?:\/|$)/i.test(route.pathname) ? undefined : lookupPromotion(route.searchParams);
-  const resolved = lookup instanceof Promise ? undefined : lookup;
-  const value = analyticsContext({
-    href: window.location.href,
+  return {
+    href,
     referrer: document.referrer,
     mode: build?.environment || (import.meta as any).env?.MODE,
     language: document.documentElement.lang,
     buildId: build?.buildId,
-    internalTest: analyticsInternalTest(window.location.href, storage),
+    internalTest: analyticsInternalTest(href, storage),
+  };
+}
+function resolvedContext(inputs:ReturnType<typeof contextInputs>,resolved:Awaited<ReturnType<typeof lookupPromotion>>) {
+  return analyticsContext({
+    ...inputs,
     promotion: resolved?.state === 'verified' ? resolved.promotion : undefined,
     promotionState: resolved && resolved.state !== 'verified' ? resolved.state : undefined,
   });
+}
+const context = (): AnalyticsParams => {
+  const route = new URL(window.location.href);
+  const lookup = /^\/(crm|cms|system|studio)(?:\/|$)/i.test(route.pathname) ? undefined : lookupPromotion(route.searchParams);
+  const value=resolvedContext(contextInputs(route.href),lookup instanceof Promise?undefined:lookup);
   return {
     ...value,
     ...(value.workspace !== "public" && actorRole ? { role: actorRole } : {}),
@@ -106,7 +113,7 @@ function initGA() {
     /* Analytics must never block business flows. */
   }
 }
-function withAnalytics(send: (current: NonNullable<typeof client>) => boolean) {
+function withAnalytics(send: (current: NonNullable<typeof client>, captured?:AnalyticsParams) => boolean, retainLinkOrigin=false) {
   try {
     const href = window.location.href;
     if (!GA_MEASUREMENT_ID || !analyticsDestinationAllowed(
@@ -122,7 +129,16 @@ function withAnalytics(send: (current: NonNullable<typeof client>) => boolean) {
       return client ? send(client) : false;
     };
     if (lookup instanceof Promise) {
-      void lookup.then(sendCurrent).catch(() => {});
+      if(retainLinkOrigin){
+        // A link click belongs to the page where it happened, even when routing
+        // finishes before the promotion lookup.
+        const inputs=contextInputs(href);
+        void lookup.then(result=>{
+          if(window.location.origin!==route.origin)return;
+          initGA();
+          if(client)send(client,resolvedContext(inputs,result));
+        }).catch(()=>{});
+      }else void lookup.then(sendCurrent).catch(() => {});
       return true;
     }
     return sendCurrent();
@@ -131,7 +147,7 @@ function withAnalytics(send: (current: NonNullable<typeof client>) => boolean) {
   }
 }
 export const trackEvent = (event: string, params: Record<string, unknown> = {}) =>
-  withAnalytics(current => current.track(event, params));
+  withAnalytics((current,captured) => current.track(event, params, captured),event==='link_click');
 export const trackReceipt = (event: string, key: string, params: Record<string, unknown> = {}, confirmed = true) =>
   withAnalytics(current => current.confirmed(event, key, confirmed, params));
 export const trackPageView = (_path?: string, _title?: string) =>

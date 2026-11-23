@@ -6,6 +6,7 @@ import { Search, ChevronDown, Check, HelpCircle, MessageCircle, ArrowRight, Book
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SEO } from '../components/SEO';
+import {localizedFaqItems} from '../i18n/faqItems';
 import { hskFaqsByLang } from '../data/hskFaqs';
 import { cscaFaqsByLang } from '../data/cscaFaqs';
 import { trackFAQExpand } from '../utils/analytics';
@@ -206,23 +207,8 @@ export default function FAQ() {
     { id: 'career', label: t('faq.categories.career', 'Career & Future'), icon: Briefcase }
   ];
 
-  // Retrieve translated FAQ items securely
   const faqItems = useMemo<FAQItem[]>(() => {
-    const items = t('faq.items', { returnObjects: true });
-    let baseItems: FAQItem[] = [];
-    if (Array.isArray(items)) {
-      baseItems = items as FAQItem[];
-    } else {
-      // Fallback if translations are not fully loaded yet
-      baseItems = [
-        {
-          id: 'q1',
-          category: 'academic',
-          question: 'What is UPER Education?',
-          answer: t('faq.items.0.answer', 'UPER is Indonesia’s leading educational technology platform...')
-        }
-      ];
-    }
+    const baseItems = localizedFaqItems(i18n.resolvedLanguage || i18n.language);
 
     const lang = (i18n.language || 'en').split('-')[0];
     const currentLang = ['en', 'zh', 'id'].includes(lang) ? lang : 'en';

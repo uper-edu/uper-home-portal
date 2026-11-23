@@ -8,6 +8,10 @@ import { client } from '../cmsClient';
 import imageUrlBuilder from '../cmsClient';
 import { promotionJourneyUrl } from '../utils/promotionNavigation';
 import { useDesignStyle } from '../utils/theme';
+import { addRouteTranslations } from '../i18n';
+import translations from '../i18n/locales/routes/home.json';
+
+addRouteTranslations('home', translations);
 
 const programLinkTypography = 'font-bold text-lg';
 
@@ -619,10 +623,10 @@ const Hero = () => {
 
             <div className="mt-6 flex items-center gap-5 text-xs sm:text-sm font-medium text-slate-500">
               <div className="flex -space-x-3 shrink-0">
-                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[4] shadow-sm"><img src="/blcu-logo.png" alt="BLCU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
-                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[3] shadow-sm"><img src="/ccnu-logo.png" alt="CCNU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
+                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[4] shadow-sm"><img src="/blcu-logo-thumbnail.webp" alt="BLCU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
+                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[3] shadow-sm"><img src="/ccnu-logo-thumbnail.webp" alt="CCNU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
                 {/* 暂时隐藏昆山杜克大学 logo，待确认后恢复显示。 */}
-                <div className="w-10 h-10 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden z-[1] shadow-sm"><img src="/muh-logo.png" alt="MUH" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
+                <div className="w-10 h-10 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden z-[1] shadow-sm"><img src="/muh-logo-thumbnail.webp" alt="MUH" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
               </div>
               <p className="leading-snug max-w-[380px]">
                 {t('home.hero.partnership.prefix')} <span className="text-slate-900 font-bold">{t('home.hero.partnership.highlight')}</span>{t('home.hero.partnership.suffix')}

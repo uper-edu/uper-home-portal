@@ -6,6 +6,50 @@ import { enrollmentCard } from '../server/portal/enrollmentCards';
 import { proofTransferDetails,summarizeEnrollmentProofs } from '../server/portal/enrollmentProofTotals';
 import { workingDayDeadline } from '../src/utils/workCalendar';
 
+test('enrollment notices enqueue with one consistent mail configuration read',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {orderNotice,sendAssistanceMail,proofNotices}=await import('../server/portal/enrollmentNotices');
+  const {smtpRecipientPolicy}=await import('../server/portal/enrollmentMailRecipientPolicy');
+  const learner='notice-learner@example.invalid';
+  const quote={level:'HSK 1',format:'standard',period:'weekend',firstLesson:'2027-01-09T09:00',schedule:'Sat 09:00'};
+  const expiresAt='2027-01-02T09:00:00Z';
+  let mode:'smtp'|'disabled'='smtp',revision=1,reads=0;
+  const receipts:unknown[][]=[];
+  const client={query:async(sql:string,args:unknown[] = [])=>{
+    if(sql.includes('enrollment_mail_configuration')){
+      reads++;
+      return {rows:[{revision,config:{accounts:[],delivery:{mode,generation:'fixture-generation'}}}]};
+    }
+    if(sql.includes('FROM enrollment_orders'))return {rows:[{email:learner,data:{name:'Fixture'},class_data:quote,deadline:expiresAt}]};
+    if(sql.includes('INSERT INTO enrollment_notification_receipts')){receipts.push(args);return {rows:[]};}
+    if(sql.includes('FROM enrollment_notification_receipts'))return {rows:[{state:receipts.at(-1)?.[5]}]};
+    assert.fail('Unexpected query: '+sql);
+  }};
+  await orderNotice(client,'seat_reserved','fixture-order');
+  assert.equal(reads,1);
+  assert.equal(receipts[0][5],'queued');
+  assert.deepEqual((receipts[0][4] as {delivery:unknown}).delivery,
+    {mode:'smtp',generation:'fixture-generation',recipientPolicy:smtpRecipientPolicy});
+
+  assert.deepEqual(await sendAssistanceMail(client,{
+    id:'fixture-assistance',email:learner,data:{name:'Fixture',lang:'en',quote},expiresAt,
+  },'fixture-attempt'),{state:'queued'});
+  assert.equal(reads,2);
+  assert.deepEqual((receipts[1][4] as {delivery:unknown}).delivery,(receipts[0][4] as {delivery:unknown}).delivery);
+
+  mode='disabled';
+  await proofNotices(client,'fixture-order','fixture-class','fixture-proof','HSK 1');
+  assert.equal(reads,3);
+  assert.deepEqual(receipts.slice(-2).map(row=>[row[1],row[5]]),[['email','simulated'],['lark','simulated']]);
+  assert.equal(Object.hasOwn(receipts[2][4] as object,'delivery'),false);
+
+  mode='smtp';
+  revision=0;
+  await orderNotice(client,'seat_reserved','unconfigured-fixture-order');
+  assert.equal(reads,4);
+  assert.equal(receipts.at(-1)?.[5],'simulated');
+});
+
 test('refund deadline counts configured working dates across a weekend',()=>{
   const calendar={timezone:'Asia/Jakarta',workDays:[1,2,3,4,5],endTime:'17:00'};
   assert.equal(workingDayDeadline(new Date('2026-11-13T08:00:00Z'),3,calendar),'2026-11-18T10:00:00.000Z');

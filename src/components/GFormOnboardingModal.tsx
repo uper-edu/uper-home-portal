@@ -1,11 +1,10 @@
 import {useEffect,useId,useRef,useState,type FormEvent} from 'react';
-import {ContactPhoneInput} from './ContactPhoneInput';
 import {chooseText,type HskLanguage} from '../data/hskAssessment';
 import {trackEvent} from '../utils/analytics';
 import {questionnaireOptions} from '../utils/crmQuestionnaire';
 import {validContactPhone,contactPhoneText,CONTACT_PHONE_ERROR} from '../utils/contactPhone';
 import {validContactEmail,contactEmailText,CONTACT_EMAIL_ERROR} from '../utils/contactEmail';
-import {pendingRegistrationDraft,RegistrationSaveError,registrationSaveText} from '../services/registrationSave';
+import {hasPendingRegistration,pendingRegistrationDraft,RegistrationSaveError,registrationSaveText} from '../services/registrationSave';
 import {readVisitorContact,subscribeVisitorContact} from '../services/visitorContact';
 import {visitorScope} from '../services/visitorScope';
 import {
@@ -13,6 +12,7 @@ import {
   type ChatRegistrationDraft,type ChatRegistrationStep,
 } from '../services/chatRegistrationDraft';
 import {StandaloneChatDialog} from './StandaloneChatChrome';
+import {ContactPhoneInput} from './ContactPhoneInput';
 import type {LeadProfile} from '../types/leadSystem';
 
 type RegistrationOptions={queryOnly?:boolean;retryOriginal?:boolean};
@@ -55,7 +55,9 @@ function ChatRegistrationForm({initialLang='en',profile,onConsultFirst,onComplet
     });
   },[owner,step,pending]);
   const [submitting,setSubmitting]=useState(false);
-  const [saveUnknown,setSaveUnknown]=useState(Boolean(pending));
+  const [saveUnknown,setSaveUnknown]=useState(()=>{
+    try{return hasPendingRegistration(owner,sessionStorage);}catch{return hasPendingRegistration(owner);}
+  });
   const [error,setError]=useState<RegistrationSaveError['state']>();
   const [phoneRejected,setPhoneRejected]=useState(false);
   const [emailRejected,setEmailRejected]=useState(false);
@@ -193,7 +195,7 @@ function ChatRegistrationForm({initialLang='en',profile,onConsultFirst,onComplet
         <div className="chat-dialog-actions">
           <button type="button" onClick={close} disabled={submitting}>{returnLabel}</button>
           {saveUnknown?<><button type="button" disabled={submitting} onClick={()=>void submit({queryOnly:true})}>{t('核对保存结果','Check save result','Periksa hasil simpan')}</button>
-            <button type="button" className="chat-primary" disabled={submitting} onClick={()=>void submit({retryOriginal:true})}>{t('重试原提交','Retry original submission','Coba kembali kiriman awal')}</button></>:
+            {pendingRegistrationDraft(owner)&&<button type="button" className="chat-primary" disabled={submitting} onClick={()=>void submit({retryOriginal:true})}>{t('重试原提交','Retry original submission','Coba kembali kiriman awal')}</button>}</>:
             <button className="chat-primary" type="submit" disabled={submitting||step==='preferences'&&!hasPreferences}>
               {submitting?t('保存中…','Saving…','Menyimpan…'):step==='contact'?t('保存联系方式','Save contact details','Simpan kontak'):
                 t('保存学习资料','Save learning preferences','Simpan preferensi')}
