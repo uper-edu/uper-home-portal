@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Clock3, Copy as CopyIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import { formatCurrency } from '../utils/currency';
 import {enrollmentTeacherLabel,enrollmentClassTitle,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
@@ -108,7 +108,7 @@ export function EnrollmentOrderAftercare({
       {onCancel&&<button type="button" className="enrollment-quiet" disabled={busy} onClick={onCancel}>{t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}</button>}</div>}
     {primary}
   </div>;
-  const link = (label: string,to: string,primary = false) => <Link className={primary?'enrollment-primary':'enrollment-quiet'} to={to}>{label}</Link>;
+  const link = (label: string,to: string,primary = false) => <EnrollmentJourneyLink className={primary?'enrollment-primary':'enrollment-quiet'} to={to}>{label}</EnrollmentJourneyLink>;
 
   let heading = t(['报名详情','Enrollment details','Detail pendaftaran']);
   let back = {text:backMine,path:minePath};
@@ -235,7 +235,7 @@ export function EnrollmentOrderAftercare({
           <div className="enrollment-transfer-card-actions">
             <div><strong>{t(['原款转入','Existing payment carries over','Pembayaran awal dialihkan'])}</strong>
               <p>{t(['无需再次付款','No additional payment','Tidak perlu membayar lagi'])}</p></div>
-            <Link className="enrollment-primary" to={orderLink('transfer',row.id)}>{t(['查看转班详情','Review transfer','Lihat detail pindah kelas'])}<ArrowRight size={14} aria-hidden="true"/></Link>
+            <EnrollmentJourneyLink className="enrollment-primary" to={orderLink('transfer',row.id)}>{t(['查看转班详情','Review transfer','Lihat detail pindah kelas'])}<ArrowRight size={14} aria-hidden="true"/></EnrollmentJourneyLink>
           </div>
         </article>;
       })}
@@ -372,10 +372,10 @@ export function EnrollmentOrderAftercare({
         </dl>
       </article>}
       {showTransfers&&invitations.filter(row=>['declined','expired'].includes(row.state)).map(row=>
-        <Link className="enrollment-record-link" key={row.id} to={orderLink('invitation',row.id)}>
+        <EnrollmentJourneyLink className="enrollment-record-link" key={row.id} to={orderLink('invitation',row.id)}>
           {t(row.state==='declined'?['转班邀请 · 已拒绝','Transfer invitation · Declined','Undangan pindah kelas · Ditolak']
             : ['转班邀请 · 已过期','Transfer invitation · Expired','Undangan pindah kelas · Kedaluwarsa'])}<ArrowRight size={14} aria-hidden="true"/>
-        </Link>)}
+        </EnrollmentJourneyLink>)}
       <button type="button" className="enrollment-quiet enrollment-aftercare-refresh" disabled={busy} onClick={onRefresh}>{refresh}</button>
       {foot(primary, <>
         {showTransfers&&activeInvitation&&link(viewTransfers,listPath)}
@@ -388,7 +388,7 @@ export function EnrollmentOrderAftercare({
   }
 
   return <div className="enrollment-order-result enrollment-aftercare">
-    <Link className="enrollment-back" to={back.path}><ArrowLeft size={15} aria-hidden="true"/>{back.text}</Link>
+    <EnrollmentJourneyLink className="enrollment-back" to={back.path}><ArrowLeft size={15} aria-hidden="true"/>{back.text}</EnrollmentJourneyLink>
     <h1>{heading}</h1>
     <div className="enrollment-result-body">{body}</div>
   </div>;

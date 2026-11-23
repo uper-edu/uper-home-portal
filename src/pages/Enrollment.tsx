@@ -364,7 +364,6 @@ export default function Enrollment() {
         detailsPath: waitlistPath ?? detailsPath(selected.id),
         fromWaitlist: waitlistId ?? undefined,
         listPath,
-        navigationState:chatReturnState,
       }}/>
     </section>;
   }

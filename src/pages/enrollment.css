@@ -641,7 +641,7 @@
   font-weight: 400;
 }
 .enrollment-intake-complete { display: grid; gap: 12px; justify-items: start; }
-.enrollment-screen:has(.enrollment-order-result) > :is(.enrollment-back, h1) { display: none; }
+.enrollment-screen:has(.enrollment-order-result) > :is(.enrollment-back:not(.enrollment-chat-return), h1) { display: none; }
 .enrollment-mine:has(.enrollment-order-result) { max-width: 664px; }
 .enrollment-order-result-shell { display: grid; gap: 12px; }
 .enrollment-result-body { display: grid; gap: 10px; }

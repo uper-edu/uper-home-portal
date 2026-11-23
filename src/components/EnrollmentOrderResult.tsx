@@ -1,5 +1,5 @@
 import { ArrowLeft, CircleCheck, Clock3 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import { formatCurrency } from '../utils/currency';
 import {enrollmentScheduleLabel, enrollmentTeacherLabel, enrollmentClassTitle, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { useEnrollmentOpeningClock } from '../utils/useEnrollmentOpeningClock';
@@ -48,7 +48,7 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
   const support = t(['联系销售或客服','Contact sales or support','Hubungi tim penjualan atau layanan pelanggan']);
 
   return <div className="enrollment-order-result">
-    <Link className="enrollment-back" to={backPath}><ArrowLeft size={15} aria-hidden="true"/>{back}</Link>
+    <EnrollmentJourneyLink className="enrollment-back" to={backPath}><ArrowLeft size={15} aria-hidden="true"/>{back}</EnrollmentJourneyLink>
     <h1>{t(['报名详情','Enrollment details','Detail pendaftaran'])}</h1>
     <div className="enrollment-result-body">
       <article className="enrollment-record">
@@ -87,14 +87,14 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
       </article>}
       <div className="enrollment-result-tools">
         <button type="button" className="enrollment-quiet" disabled={busy} onClick={onRefresh}>{t(['刷新状态','Refresh status','Muat ulang status'])}</button>
-        {balancePath ? <Link className="enrollment-quiet" to={balancePath}>{t(['查看剩余应付','View remaining payment','Lihat sisa tagihan'])}</Link>
-          : uploadPath && <Link className="enrollment-quiet" to={uploadPath}>{t(['补交凭证','Submit another proof','Kirim bukti tambahan'])}</Link>}
-        {refundPath && <Link className="enrollment-quiet" to={refundPath}>{t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}</Link>}
+        {balancePath ? <EnrollmentJourneyLink className="enrollment-quiet" to={balancePath}>{t(['查看剩余应付','View remaining payment','Lihat sisa tagihan'])}</EnrollmentJourneyLink>
+          : uploadPath && <EnrollmentJourneyLink className="enrollment-quiet" to={uploadPath}>{t(['补交凭证','Submit another proof','Kirim bukti tambahan'])}</EnrollmentJourneyLink>}
+        {refundPath && <EnrollmentJourneyLink className="enrollment-quiet" to={refundPath}>{t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}</EnrollmentJourneyLink>}
       </div>
       <div className="enrollment-journey-actions">
-        {!partial&&<Link className="enrollment-quiet" to={enrollmentSupportPath(paid?'advisor':'payment',language)}>{support}</Link>}
-        <Link className="enrollment-primary" to={partial?enrollmentSupportPath('payment',language):backPath}>
-          {partial?t(['联系销售运营','Contact sales operations','Hubungi tim penjualan']):back}</Link>
+        {!partial&&<EnrollmentJourneyLink className="enrollment-quiet" to={enrollmentSupportPath(paid?'advisor':'payment',language)}>{support}</EnrollmentJourneyLink>}
+        <EnrollmentJourneyLink className="enrollment-primary" to={partial?enrollmentSupportPath('payment',language):backPath}>
+          {partial?t(['联系销售运营','Contact sales operations','Hubungi tim penjualan']):back}</EnrollmentJourneyLink>
       </div>
     </div>
   </div>;

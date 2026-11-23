@@ -11,7 +11,9 @@ import { enrollmentCopy, enrollmentClassTitle, enrollmentScheduleLabel } from '.
 import { allowsEnrollmentProof } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {EnrollmentJourneyLink,useEnrollmentChatReturnState} from './EnrollmentJourneyLink';
+import {promotionJourneyUrl} from '../utils/promotionNavigation';
 import { formatCurrency } from '../utils/currency';
 import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { EnrollmentOrderAftercare, type EnrollmentAftercare } from './EnrollmentOrderAftercare';
@@ -41,7 +43,7 @@ export {enrollmentCopy} from '../utils/enrollmentCatalog';
 type OrderSummary = Order & {level:string;firstLesson:string;classCancelled?:boolean;updatedAt?:string;needsPayment?:boolean;invitation?:{id:string;deadline:string}};
 type AssistedApplication={id:string;name:string;quote:{level:string;format:string;firstLesson:string;schedule:string;price:number};
   createdAt:string;expiresAt:string;active:boolean};
-type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string; listPath: string; fromWaitlist?: string; navigationState?:unknown };
+type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string; listPath: string; fromWaitlist?: string };
 type InterestRecord = { kind: 'waitlist' | 'demands'; id: string };
 
 export function EnrollmentApplication(props:Parameters<typeof EnrollmentForm>[0]) {
@@ -65,6 +67,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   const t = (text: Copy) => enrollmentCopy(language,text);
   const [params,setParams] = useSearchParams();
   const navigate = useNavigate();
+  const chatReturnState = useEnrollmentChatReturnState();
   const orderId = record ? null : params.get('order');
   const [order,setOrder] = useState<Order>();
   const [loadingPayment,setLoadingPayment] = useState(!!paymentClasses && !!orderId);
@@ -78,7 +81,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     const next = new URLSearchParams(params);
     if (value === 'all') next.delete('tab');
     else next.set('tab', value);
-    setParams(next, { replace: true, preventScrollReset: true });
+    setParams(next, { replace: true, preventScrollReset: true, state:chatReturnState });
     setEditDemand(undefined);
   }
   const [editDemand,setEditDemand] = useState<DemandItem>();
@@ -377,7 +380,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     const next=new URLSearchParams(params);
     next.set('order',result.id);
     next.delete('apply');
-    navigate('/enrollment/payment?' + next.toString(), { replace:true });
+    navigate('/enrollment/payment?' + next.toString(), { replace:true,state:chatReturnState });
   }
   async function checkApplication() {
     await verifyEnteredEmail();
@@ -493,7 +496,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     if (params.has('proof')) {
       const next = new URLSearchParams(params);
       next.delete('proof');
-      setParams(next,{replace:true,preventScrollReset:true});
+      setParams(next,{replace:true,preventScrollReset:true,state:chatReturnState});
     }
     window.scrollTo(0,0);
     void refreshSavedProof(saved.id);
@@ -543,7 +546,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     });
   }
   const publicQuery = '?lang='+language;
-  const mineLink='/enrollment/mine'+publicQuery;
+  const mineLink=promotionJourneyUrl('/enrollment/mine'+publicQuery,params);
   const joinText=t(['加入候补','Join waitlist','Masuk daftar tunggu']);
   const applyText=t(['申请这个班','Apply for this class','Daftar kelas ini']);
   function selectOrder(id?:string) {
@@ -591,7 +594,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         const next = new URLSearchParams(params);
         next.delete('view');
         next.delete('target');
-        setParams(next,{replace:true,preventScrollReset:true});
+        setParams(next,{replace:true,preventScrollReset:true,state:chatReturnState});
       }
       window.scrollTo(0,0);
     });
@@ -693,8 +696,8 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     next.delete('waitlist');
     return <div className="enrollment-last-seat">
       {returnAction}
-      <Link className="enrollment-back" to={applicationClass.listPath} state={applicationClass.navigationState}><ArrowLeft size={15} aria-hidden="true"/>
-        {t(['返回课程报名','Back to classes','Kembali ke daftar kelas'])}</Link>
+      <EnrollmentJourneyLink className="enrollment-back" to={applicationClass.listPath}><ArrowLeft size={15} aria-hidden="true"/>
+        {t(['返回课程报名','Back to classes','Kembali ke daftar kelas'])}</EnrollmentJourneyLink>
       <h1>{t(['本班已满','This class is full','Kelas ini penuh'])}</h1>
       <div className="enrollment-result-body">
         <article className="enrollment-record"><h2>{applicationClass.title}</h2><p>{applicationClass.schedule}</p></article>
@@ -702,9 +705,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         {stillWaiting&&<p className="enrollment-journey-note">{t(['你的候补仍有效，无需重新加入。','Your waitlist entry is still active. You don’t need to join again.','Posisi daftar tunggu Anda masih aktif. Anda tidak perlu mendaftar ulang.'])}</p>}
       </div>
       <div className="enrollment-journey-actions">
-        <Link className="enrollment-quiet" to={applicationClass.listPath} state={applicationClass.navigationState}>{t(['查看其他班次','Browse other classes','Lihat kelas lain'])}</Link>
-        {stillWaiting ? <Link className="enrollment-primary" to={applicationClass.detailsPath} state={applicationClass.navigationState}>{t(['返回候补详情','Back to waitlist entry','Kembali ke detail daftar tunggu'])}</Link>
-          : <Link className="enrollment-primary" to={'/enrollment/'+encodeURIComponent(classId ?? '')+'?'+next.toString()}>{joinText}</Link>}
+        <EnrollmentJourneyLink className="enrollment-quiet" to={applicationClass.listPath}>{t(['查看其他班次','Browse other classes','Lihat kelas lain'])}</EnrollmentJourneyLink>
+        {stillWaiting ? <EnrollmentJourneyLink className="enrollment-primary" to={applicationClass.detailsPath}>{t(['返回候补详情','Back to waitlist entry','Kembali ke detail daftar tunggu'])}</EnrollmentJourneyLink>
+          : <EnrollmentJourneyLink className="enrollment-primary" to={'/enrollment/'+encodeURIComponent(classId ?? '')+'?'+next.toString()}>{joinText}</EnrollmentJourneyLink>}
       </div>
     </div>;
   }
@@ -714,11 +717,11 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       ? <button type="button" className="enrollment-back" onClick={()=>{setVerificationStep(false);persistEmailStep(false,challenge);setError('');}} disabled={busy}>
         <ArrowLeft size={15} aria-hidden="true"/>{t(['返回申请表','Back to application','Kembali ke formulir'])}
       </button>
-      : <Link className="enrollment-back" to={applicationClass.detailsPath} state={applicationClass.navigationState}>
+      : <EnrollmentJourneyLink className="enrollment-back" to={applicationClass.detailsPath}>
         <ArrowLeft size={15} aria-hidden="true"/>{t(applicationClass.fromWaitlist
           ? ['返回候补详情','Back to waitlist entry','Kembali ke detail daftar tunggu']
           : ['返回班次详情','Back to class details','Kembali ke detail kelas'])}
-      </Link>}
+      </EnrollmentJourneyLink>}
     <h1 ref={applicationHeading} tabIndex={-1}>{verificationStep ? t(['验证邮箱','Verify your email','Verifikasi email']) : applyText}</h1>
     {error && <p className="enrollment-form-error" role="alert">{message}</p>}
     {pendingApplication&&emailConfirmed&&<button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>void run(checkApplication)}>
@@ -795,9 +798,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         <p className="enrollment-result-state" data-paid="true" role="status">{t(waitlist
           ? ['候补已登记。','You joined the waitlist.','Anda masuk daftar tunggu.']
           : ['选课需求已保存。','Course preferences saved.','Preferensi kursus disimpan.'])}</p>
-        <Link className="enrollment-primary" to={mineLink+'&tab='+(waitlist?'waitlist':'demands')}>{t(waitlist
+        <EnrollmentJourneyLink className="enrollment-primary" to={mineLink+'&tab='+(waitlist?'waitlist':'demands')}>{t(waitlist
           ? ['查看我的候补','View my waitlist','Lihat daftar tunggu saya']
-          : ['查看我的需求','See my preferences','Lihat preferensi saya'])}</Link>
+          : ['查看我的需求','See my preferences','Lihat preferensi saya'])}</EnrollmentJourneyLink>
       </div> : waitlistClass ? <form className="enrollment-journey-form" onSubmit={event=>{event.preventDefault();void join();}}>
         <article className="enrollment-record">
           <h2>{classTitle(waitlistClass.level,waitlistClass.firstLesson,waitlistClass.id)}</h2>
@@ -813,9 +816,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
             <button type="submit" className="enrollment-primary" disabled={busy||awaitingCode}>
               {t(emailConfirmed?['加入候补','Join waitlist','Masuk daftar tunggu']:['验证并加入候补','Verify and join waitlist','Verifikasi dan masuk daftar tunggu'])}
             </button>
-          </> : <Link className="enrollment-primary" to={'/enrollment?'+sourceQuery()}>
+          </> : <EnrollmentJourneyLink className="enrollment-primary" to={'/enrollment?'+sourceQuery()}>
             {t(['返回课程报名','Back to classes','Kembali ke daftar kelas'])}
-          </Link>}
+          </EnrollmentJourneyLink>}
         </div>
       </form> : <EnrollmentDemandForm language={language} prefill={enrollmentDemandPrefill(params,language)} busy={busy} onSave={savePreferences}
         awaitingCode={awaitingCode} emailVerified={emailConfirmed}
@@ -856,9 +859,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       {row.status==='expired'&&!row.restored && <p>{t(['付款凭证未按时提交','Proof was not submitted by the deadline','Bukti tidak dikirim sebelum batas waktu'])}</p>}
       {row.status==='paid' && schedule && <p>{[course?.opened&&t(['已确认开班','Class confirmed','Kelas dikonfirmasi']),schedule].filter(Boolean).join(' · ')}</p>}
       {row.learnerName&&<p>{row.learnerName}</p>}
-      {row.invitation ? <Link className="enrollment-record-link" to={transferInvitationPath(row.id,row.invitation.id)}>
-        {t(['查看转班邀请','View transfer invitation','Lihat undangan pindah kelas'])}<ChevronRight size={15} aria-hidden="true"/></Link>
-        : payable ? <Link className="enrollment-record-link" to={paymentPath(row.id)}>{action}<ChevronRight size={15} aria-hidden="true"/></Link>
+      {row.invitation ? <EnrollmentJourneyLink className="enrollment-record-link" to={transferInvitationPath(row.id,row.invitation.id)}>
+        {t(['查看转班邀请','View transfer invitation','Lihat undangan pindah kelas'])}<ChevronRight size={15} aria-hidden="true"/></EnrollmentJourneyLink>
+        : payable ? <EnrollmentJourneyLink className="enrollment-record-link" to={paymentPath(row.id)}>{action}<ChevronRight size={15} aria-hidden="true"/></EnrollmentJourneyLink>
         : <button type="button" className="enrollment-record-link" onClick={()=>selectOrder(row.id)}>{action}<ChevronRight size={15} aria-hidden="true"/></button>}
     </article>};
   });
@@ -911,9 +914,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       {row.state==='withdrawn' && <p role="status" className="enrollment-journey-note">{t(['你已取消候补，之后不会收到本次候补的空位通知。','You cancelled this waitlist entry. You won’t receive availability updates for it.','Anda membatalkan daftar tunggu ini dan tidak akan menerima kabar ketersediaan untuknya.'])}</p>}
       <div className="enrollment-interest-actions">
         {waiting && <button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>remove('waitlist',row.id)}>{t(['取消候补','Cancel waitlist entry','Batalkan daftar tunggu'])}</button>}
-        {available ? <Link className="enrollment-primary" to={classFromRecord(row.classId,'waitlist',row.id)}>{applyText}</Link>
-          : row.state==='converted'&&row.orderId ? <Link className="enrollment-primary" to={'/enrollment/mine?'+related.toString()}>{t(['查看对应报名','View related application','Lihat pendaftaran terkait'])}</Link>
-          : <Link className="enrollment-primary" to={catalogPath}>{t(['查看其他班次','Browse other classes','Lihat kelas lain'])}</Link>}
+        {available ? <EnrollmentJourneyLink className="enrollment-primary" to={classFromRecord(row.classId,'waitlist',row.id)}>{applyText}</EnrollmentJourneyLink>
+          : row.state==='converted'&&row.orderId ? <EnrollmentJourneyLink className="enrollment-primary" to={'/enrollment/mine?'+related.toString()}>{t(['查看对应报名','View related application','Lihat pendaftaran terkait'])}</EnrollmentJourneyLink>
+          : <EnrollmentJourneyLink className="enrollment-primary" to={catalogPath}>{t(['查看其他班次','Browse other classes','Lihat kelas lain'])}</EnrollmentJourneyLink>}
       </div>
     </div>;
   }
@@ -933,17 +936,17 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
           <small>{t(['匹配班次','Matching class','Kelas yang cocok'])}</small>
           <h2>{classTitle(match.level,match.firstLesson,match.id)}</h2>
           {schedule && <p>{schedule}</p>}
-          {row.matches.length>1&&<Link className="enrollment-record-link" to={classFromRecord(match.id,'fromDemand',row.id)}>
+          {row.matches.length>1&&<EnrollmentJourneyLink className="enrollment-record-link" to={classFromRecord(match.id,'fromDemand',row.id)}>
             {t(['查看匹配班次','View matching class','Lihat kelas yang cocok'])}<ChevronRight size={15} aria-hidden="true"/>
-          </Link>}
+          </EnrollmentJourneyLink>}
           </article>;
         })}
         {!!row.matches.length&&<p className="enrollment-journey-note">{t(['申请时以实际空位为准。','Availability is checked when you apply.','Ketersediaan diperiksa saat Anda mendaftar.'])}</p>}
         {active&&<div className="enrollment-interest-actions">
           <button type="button" className={row.matches.length===1?'enrollment-quiet':'enrollment-primary enrollment-demand-edit'} disabled={busy||editDemand?.id===row.id} onClick={()=>setEditDemand(row)}>{t(['修改需求','Edit preferences','Ubah preferensi'])}</button>
           <button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>remove('demands',row.id)}>{t(['撤回需求','Withdraw request','Tarik permintaan'])}</button>
-          {row.matches.length===1&&<Link className="enrollment-primary" to={classFromRecord(row.matches[0].id,'fromDemand',row.id)}>
-            {t(['查看匹配班次','View matching class','Lihat kelas yang cocok'])}</Link>}
+          {row.matches.length===1&&<EnrollmentJourneyLink className="enrollment-primary" to={classFromRecord(row.matches[0].id,'fromDemand',row.id)}>
+            {t(['查看匹配班次','View matching class','Lihat kelas yang cocok'])}</EnrollmentJourneyLink>}
         </div>}
         {editDemand?.id===row.id&&<div className="enrollment-record">
           <EnrollmentDemandForm key={row.id+':'+row.revision} language={language} initial={row} busy={busy} onSave={savePreferences}/>
@@ -951,7 +954,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         </div>}
       </> : <>
         <p>{t(['这条需求停止匹配，之后不会收到它的新班通知。','This request is no longer matched and won’t send updates about new classes.','Permintaan ini tidak lagi dicocokkan dan tidak akan mengirim kabar kelas baru.'])}</p>
-        <div className="enrollment-interest-actions"><Link className="enrollment-primary" to={listPath}>{t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya'])}</Link></div>
+        <div className="enrollment-interest-actions"><EnrollmentJourneyLink className="enrollment-primary" to={listPath}>{t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya'])}</EnrollmentJourneyLink></div>
       </>}
     </div>;
   }
@@ -962,9 +965,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       <h2>{classTitle(row.level,row.firstLesson,row.classId)}</h2>
       {row.state==='waiting' && <p>{row.available?t(['有空位可申请','Seats available','Kursi tersedia']):t(['暂无空位','No seats available','Belum ada kursi'])}</p>}
       {row.learnerName&&<p>{row.learnerName}</p>}
-      <Link className="enrollment-record-link" to={recordPath('waitlist',row.id)}>
+      <EnrollmentJourneyLink className="enrollment-record-link" to={recordPath('waitlist',row.id)}>
         {t(['查看候补','View waitlist entry','Lihat daftar tunggu'])}<ChevronRight size={15} aria-hidden="true"/>
-      </Link>
+      </EnrollmentJourneyLink>
     </article>,
   }));
   const demandCards = (interests?.demands ?? []).filter(()=>tab==='all'||tab==='demands').map(row => ({
@@ -974,9 +977,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
           ? t(['已撤回','Withdrawn','Ditarik']) : row.matches.length
             ? t(['有匹配班次','Matching classes available','Ada kelas yang cocok']) : t(['等待匹配','Waiting for a match','Menunggu kecocokan'])}</span></header>
       <h2>{[row.criteria.level,row.criteria.period,row.criteria.format].map(value=>interestOption(language,value)).join(' · ')}</h2>
-      <Link className="enrollment-record-link" to={recordPath('demands',row.id)}>
+      <EnrollmentJourneyLink className="enrollment-record-link" to={recordPath('demands',row.id)}>
         {t(['查看需求','View preferences','Lihat preferensi'])}<ChevronRight size={15} aria-hidden="true"/>
-      </Link>
+      </EnrollmentJourneyLink>
     </article>,
   }));
   const assistedCards=(tab==='all'||tab==='orders'?assistedApplications:[]).map(row=>({
@@ -991,9 +994,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       {row.active&&<>
         <p>{t(['确认截止','Confirm by','Konfirmasi sebelum'])} · <time dateTime={row.expiresAt}>{new Intl.DateTimeFormat(language,
           {dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(row.expiresAt))} WIB</time></p>
-        <Link className="enrollment-record-link" to={enrollmentAssistancePath(row.id,language)}>
+        <EnrollmentJourneyLink className="enrollment-record-link" to={enrollmentAssistancePath(row.id,language)}>
           {t(['确认报名','Confirm enrollment','Konfirmasi pendaftaran'])}<ChevronRight size={15} aria-hidden="true"/>
-        </Link>
+        </EnrollmentJourneyLink>
       </>}
     </article>,
   }));
@@ -1073,9 +1076,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         onRefresh={()=>void run(()=>getOrder(order.id))}/> : paymentClasses ? <div className={existingTransferOnly ? 'enrollment-order-result enrollment-order-result-shell' : 'contents'}>
         {existingTransferOnly && <>
           <div>
-            <Link className="enrollment-back" to={'/enrollment/mine?'+originalOrderParams.toString()}><ArrowLeft size={15} aria-hidden="true"/>
+            <EnrollmentJourneyLink className="enrollment-back" to={'/enrollment/mine?'+originalOrderParams.toString()}><ArrowLeft size={15} aria-hidden="true"/>
               {t(['返回原订单详情','Back to original order','Kembali ke detail pesanan asal'])}
-            </Link>
+            </EnrollmentJourneyLink>
             <h1>{t(['提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan'])}</h1>
           </div>
         </>}
@@ -1093,13 +1096,13 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       <p>{t(['应付','Amount due','Tagihan'])} {formatCurrency(order.price,language)} · {t(['实际到账','Verified receipts','Dana terverifikasi'])} {formatCurrency(order.received,language)}</p>
       {order.status==='awaiting_payment' && <p>{t(['付款截止','Payment deadline','Batas pembayaran'])} {new Intl.DateTimeFormat(language==='zh'?'zh-CN':language,{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Jakarta'}).format(new Date(order.deadline))} WIB</p>}
       {cancelable&&<button type="button" className="enrollment-quiet" onClick={openCancellation}>{t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}</button>}
-      {canUpload && <Link className="enrollment-action" to={paymentPath(order.id)}>
+      {canUpload && <EnrollmentJourneyLink className="enrollment-action" to={paymentPath(order.id)}>
         {t(['转账与凭证','Transfer & proof','Transfer dan bukti'])}
-      </Link>}
+      </EnrollmentJourneyLink>}
       </>}
-      {!showAftercare && !showOrderResult && canConsultRefund && <Link className="enrollment-quiet" to={'/enrollment/mine?'+refundParams.toString()}>
+      {!showAftercare && !showOrderResult && canConsultRefund && <EnrollmentJourneyLink className="enrollment-quiet" to={'/enrollment/mine?'+refundParams.toString()}>
         {t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}
-      </Link>}
+      </EnrollmentJourneyLink>}
       {!showAftercare && !showOrderResult && (!paymentClasses || !order.bank) && <button type="button" onClick={()=>void run(()=>getOrder(order.id))}>{t(['刷新状态','Refresh status','Muat ulang status'])}</button>}
     </> : !verified && (mineClasses||paymentClasses) ? <form className="enrollment-journey-form enrollment-lookup"
       onSubmit={event=>{event.preventDefault();if (!awaitingCode) void verify();}}>
@@ -1114,7 +1117,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       ])}</p>
       {emailField}{codeField}
       <div className="enrollment-journey-actions">
-        <Link className="enrollment-quiet" to={enrollmentSupportPath('account',language)}>{t(['无法使用原邮箱？联系销售或客服','Can’t use your original email? Contact support','Tidak bisa memakai email awal? Hubungi layanan pelanggan'])}</Link>
+        <EnrollmentJourneyLink className="enrollment-quiet" to={enrollmentSupportPath('account',language)}>{t(['无法使用原邮箱？联系销售或客服','Can’t use your original email? Contact support','Tidak bisa memakai email awal? Hubungi layanan pelanggan'])}</EnrollmentJourneyLink>
         <button type="submit" className="enrollment-primary" disabled={busy||awaitingCode}>
           {t(emailConfirmed?['查看报名','View enrollments','Lihat pendaftaran']:['验证并查看','Verify and view','Verifikasi dan lihat'])}</button>
       </div>
@@ -1155,7 +1158,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       {!!orders&&!!interests&&!records.length &&
         <p className="enrollment-record">{t(['该类别暂无记录。','No records in this category.','Belum ada catatan dalam kategori ini.'])}</p>}
     </div> : joined ? <><p role="status">{t(['候补已登记。','You joined the waitlist.','Anda masuk daftar tunggu.'])}</p>
-      <Link to={mineLink+'&tab=waitlist'}>{t(['查看我的候补','View my waitlist','Lihat daftar tunggu saya'])}</Link></>
+      <EnrollmentJourneyLink to={mineLink+'&tab=waitlist'}>{t(['查看我的候补','View my waitlist','Lihat daftar tunggu saya'])}</EnrollmentJourneyLink></>
     : hasNoSeat ? <form onSubmit={event=>{event.preventDefault();void join();}}>
       <h2>{joinText}</h2>
       <label>{t(['学员姓名','Learner name','Nama siswa'])}<input required maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>
