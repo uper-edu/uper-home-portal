@@ -671,6 +671,15 @@ test('a browse intent that asks to apply verifies intake before giving applicati
     }},tuitionIntent,false,false);
     assert.equal(quote?.kind,'class');
     assert.equal(quoteReads.length,1);
+    for(const extra of [{needsReview:true},{level:'unknown'}]){
+      let reads=0;
+      const unresolved=await chatEnrollmentAction({query:async()=>{
+        reads++;
+        return {rows:[]};
+      }},{...tuitionIntent,...extra},false,false);
+      assert.equal(unresolved?.kind,'unavailable');
+      assert.equal(reads,0);
+    }
     assert.equal((await run(tuitionIntent,[])).kind,'demand');
     const closedQuote=await chatEnrollmentAction({query:async(sql)=>{
       assert.match(sql,/enrollment_classes|enrollment_bank|enrollment_mail_configuration/);

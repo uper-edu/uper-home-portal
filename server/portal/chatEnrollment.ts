@@ -174,6 +174,7 @@ export async function chatEnrollmentAction(
     if(kind==='quote'||kind==='appointment'){
       const formats=intent.quoteFormats.length?intent.quoteFormats:intent.format?[intent.format]:[];
       if(question==='matching_tuition'&&!formats.includes('one-on-one')&&!intent.referenceIds.length){
+        if(intent.needsReview||intent.invalidLevel)return {kind:'unavailable',level,period,format,question};
         const classes=await readPublicEnrollmentClasses(c);
         const action=matchingEnrollmentTuition(intent,classes,true);
         if(action.kind==='demand'&&!(await enrollmentReadiness(c)).accepting)
