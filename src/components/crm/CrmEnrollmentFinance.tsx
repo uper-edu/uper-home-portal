@@ -4,7 +4,7 @@ import {paymentWorkspaceLabel} from '../../utils/crmPaymentPresentation';
 import {AdminRecordBack} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone } from './CrmList';
-import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
@@ -32,23 +32,40 @@ type RecordRow = Omit<WorkOrder,'hasProof'> & { opened: boolean; proofs?:Finance
 const endpoint = '/api/crm/enrollment/finance';
 const PdfPreview = lazy(() => import('../PdfPreview'));
 
-function EnrollmentProof({proof:{id,mime,submittedAt,transfer},lang}:{proof:FinanceProof;lang:CrmLanguage}) {
-  const [failed,setFailed]=useState(false);
-  const [preview,setPreview]=useState(false);
-  const previewId=useId();
+function EnrollmentProofPreview({url,mime,lang}:{url:string;mime?:string;lang:CrmLanguage}) {
+  const [imageFailed,setImageFailed]=useState(false);
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
+  if(mime==='application/pdf'){
+    const loading=t('正在加载凭证…','Loading proof…','Memuat bukti…');
+    return <Suspense fallback={<p className="crm-work-muted" role="status">{loading}</p>}>
+      <PdfPreview url={url} label={t('学员提交的转账凭证 PDF','Transfer proof PDF from the learner','PDF bukti transfer dari siswa')}
+        loadingText={loading} errorText={t('PDF 无法预览，可下载查看。','PDF preview is unavailable. Download to view it.','PDF tidak dapat dipratinjau. Unduh untuk melihatnya.')}/>
+    </Suspense>;
+  }
+  if((mime==='image/png'||mime==='image/jpeg')&&!imageFailed)
+    return <img className="crm-enrollment-finance-proof-image" src={url+'?preview=image'}
+      alt={t('学员提交的转账凭证','Transfer proof submitted by the learner','Bukti transfer yang dikirim siswa')}
+      onError={()=>setImageFailed(true)}/>;
+  return <p className="crm-work-muted">{t('凭证无法预览，可下载查看。','Preview is unavailable. Download the proof to view it.','Pratinjau tidak tersedia. Unduh bukti untuk melihatnya.')}</p>;
+}
+
+function EnrollmentProofs({proofs,lang,isLight}:{proofs:FinanceProof[];lang:CrmLanguage;isLight:boolean}) {
+  const [selectedId,setSelectedId]=useState<string>();
+  const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
+  // The detail endpoint returns the newest submission first.
+  const {id,mime,submittedAt,transfer}=proofs.find(proof=>proof.id===selectedId)??proofs[0];
   const url=endpoint+'/proofs/'+encodeURIComponent(id);
-  const image=mime==='image/png'||mime==='image/jpeg';
-  const pdf=mime==='application/pdf';
-  const loading=t('正在加载凭证…','Loading proof…','Memuat bukti…');
+  const title=t('转账凭证','Transfer proof','Bukti transfer');
   return <section className="crm-enrollment-finance-proof">
     <div className="crm-enrollment-finance-proof-heading">
-      <h3>{t('转账凭证','Transfer proof','Bukti transfer')}</h3>
+      <h3>{title}</h3>
       <div className="crm-enrollment-finance-proof-actions">
-        {pdf&&<button className="crm-work-link" type="button" aria-expanded={preview} aria-controls={previewId}
-          onClick={()=>setPreview(open=>!open)}>{preview
-            ?t('收起预览','Hide preview','Tutup pratinjau')
-            :t('预览 PDF','Preview PDF','Pratinjau PDF')}</button>}
+        {proofs.length>1&&<CrmSingleSelect lang={lang} isLight={isLight} label={title} value={id}
+          onChange={setSelectedId} options={proofs.map((proof,index)=>({
+            value:proof.id,
+            label:[t(`凭证 ${index+1}`,`Proof ${index+1}`,`Bukti ${index+1}`),
+              proof.submittedAt&&formatCrmEventTime(proof.submittedAt)].filter(Boolean).join(' · '),
+          }))}/>}
         <a className="crm-work-link" href={url}>{t('下载凭证','Download proof','Unduh bukti')}</a>
       </div>
     </div>
@@ -59,17 +76,7 @@ function EnrollmentProof({proof:{id,mime,submittedAt,transfer},lang}:{proof:Fina
       <div><dt>{t('学员填报银行流水号','Bank reference from learner','Referensi bank dari siswa')}</dt>
         <dd className="break-all">{transfer?.reference||t('未填写','Not provided','Tidak diisi')}</dd></div>
     </dl>}
-    {image&&(failed
-      ?<p className="crm-work-muted">{t('图片无法预览，可下载查看。','Image preview is unavailable. Download to view it.','Pratinjau tidak tersedia. Unduh untuk melihat gambar.')}</p>
-      :<img className="crm-enrollment-finance-proof-image" src={url+'?preview=image'} loading="lazy"
-        alt={t('学员提交的转账凭证','Transfer proof submitted by the learner','Bukti transfer yang dikirim siswa')}
-        onError={()=>setFailed(true)}/>)}
-    {pdf&&<div id={previewId} hidden={!preview}>
-      {preview&&<Suspense fallback={<p className="crm-work-muted" role="status">{loading}</p>}>
-        <PdfPreview url={url} label={t('学员提交的转账凭证 PDF','Transfer proof PDF from the learner','PDF bukti transfer dari siswa')}
-          loadingText={loading} errorText={t('PDF 无法预览，可下载查看。','PDF preview is unavailable. Download to view it.','PDF tidak dapat dipratinjau. Unduh untuk melihatnya.')}/>
-      </Suspense>}
-    </div>}
+    <EnrollmentProofPreview key={id} url={url} mime={mime} lang={lang}/>
   </section>;
 }
 
@@ -263,7 +270,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
       {row.opened&&<p className="crm-work-muted">{t('已确认开班','Class confirmed','Kelas dikonfirmasi')}</p>}
       {row.firstReviewDueAt&&<CrmEnrollmentReviewDeadline dueAt={row.firstReviewDueAt} lang={lang}/>}
       {row.proofId&&<div ref={reviewHeading} tabIndex={-1} className="crm-list-review-target">
-        {(row.proofs?.length?row.proofs:[{id:row.proofId,mime:row.proofMime}]).map(proof=><EnrollmentProof key={proof.id} proof={proof} lang={lang}/>)}
+        <EnrollmentProofs key={row.id} proofs={row.proofs?.length?row.proofs:[{id:row.proofId,mime:row.proofMime}]} lang={lang} isLight={isLight}/>
       </div>}
       {!!row.receipts?.length&&<section className="crm-enrollment-finance-receipts">
         <h3>{t('已核实收款流水','Verified receipt history','Riwayat penerimaan terverifikasi')}</h3>
