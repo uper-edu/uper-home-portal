@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {selectVisitorScope} from '../src/services/visitorScope.ts';
 import {readEnrollmentOperation} from '../src/services/enrollmentSession.ts';
-import {readEnrollmentDraft,readVisitorContact,rememberVisitorContact,writeEnrollmentDraft} from '../src/services/visitorContact.ts';
+import {readEnrollmentDraft,readVisitorContact,writeEnrollmentDraft} from '../src/services/visitorContact.ts';
+import {rememberVisitorContact} from '../src/services/rememberVisitorContact.ts';
 import {enrollmentVisitorDigest,readEnrollmentSessionDigest,readEnrollmentEmailSession,revokeEnrollmentEmailSession} from '../server/portal/enrollmentVisitorSession.ts';
 
 test('a pending enrollment result uses a read and distinguishes a missing receipt from a saved order',async t=>{

@@ -1,5 +1,3 @@
-import {validContactEmail} from '../utils/contactEmail';
-import {validContactPhone} from '../utils/contactPhone';
 import {visitorScope} from './visitorScope';
 
 export type VisitorContact = Partial<{fullName:string;email:string;whatsapp:string}>;
@@ -31,15 +29,7 @@ export function readVisitorContact(owner:string):VisitorContact|undefined {
   return read('localStorage',contactKey,owner);
 }
 
-export function rememberVisitorContact(owner:string,fields:VisitorContact) {
-  const email=fields.email?.trim().toLowerCase();
-  const fullName=fields.fullName?.trim();
-  const whatsapp=fields.whatsapp?.trim();
-  if (!email || !validContactEmail(email)) return;
-  const current=readVisitorContact(owner);
-  const contact:VisitorContact=current?.email===email?{...current,email}:{email};
-  if (fullName && fullName.length<=120) contact.fullName=fullName;
-  if (whatsapp && validContactPhone(whatsapp)) contact.whatsapp=whatsapp;
+export function writeVisitorContact(owner:string,contact:VisitorContact) {
   write('localStorage',contactKey,owner,contact);
   if(owner&&owner===visitorScope())window.dispatchEvent(new Event(changed));
 }

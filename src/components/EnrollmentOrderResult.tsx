@@ -5,7 +5,7 @@ import {enrollmentScheduleLabel, enrollmentTeacherLabel, enrollmentClassTitle, t
 import { useEnrollmentOpeningClock } from '../utils/useEnrollmentOpeningClock';
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import { EnrollmentJoiningNote, enrollmentSupportPath } from './EnrollmentSupport';
-import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
+import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 
 type Copy = readonly [string, string, string];
 

@@ -18,7 +18,8 @@ import {isPlainLinkClick,readChatRecommendation,readEnrollmentPosition,rememberE
 import {trackEvent} from '../utils/analytics';
 import './enrollment.css';
 
-const EnrollmentApplication = lazy(() => import('../components/EnrollmentApplication').then(module => ({default:module.EnrollmentApplication})));
+const EnrollmentApplication = lazy(() => import('../components/EnrollmentIntake').then(module => ({default:module.EnrollmentIntake})));
+const EnrollmentPayment = lazy(() => import('../components/EnrollmentApplication').then(module => ({default:module.EnrollmentApplication})));
 const EnrollmentAssistance = lazy(() => import('../components/EnrollmentAssistance').then(module => ({default:module.EnrollmentAssistance})));
 
 const copy = {
@@ -325,7 +326,7 @@ export default function Enrollment() {
     <Link className="enrollment-back" to={minePath} state={chatReturnState}><ArrowLeft size={15} aria-hidden="true"/>{t('backMine')}</Link>
     <h1>{t('payment')}</h1>
     {servicing === undefined ? <p role="status">{t('loading')}</p> : servicing && params.has('order')
-      ? <EnrollmentApplication key={params.get('order')} language={language} paymentClasses={classes ?? []}/>
+      ? <EnrollmentPayment key={params.get('order')} language={language} paymentClasses={classes ?? []}/>
       : <p>{t('unavailable')}</p>}
   </section>;
   if (mine) return <section className="enrollment-screen enrollment-mine">

@@ -1,7 +1,7 @@
 import type {ReactNode} from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
+import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
 import { enrollmentInstant,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 

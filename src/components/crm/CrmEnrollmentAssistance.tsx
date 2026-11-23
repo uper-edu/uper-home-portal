@@ -1,4 +1,5 @@
 import {useEnrollmentPhoneField} from '../useEnrollmentPhoneField';
+import * as phoneValidation from '../../utils/contactPhone';
 import {AdminCopyAction} from '../admin/AdminRecordActions';
 import {useEffect,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
@@ -29,7 +30,7 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
   const [classes,setClasses]=useState<PublicEnrollmentClass[]>();
   const [classId,setClassId]=useState('');
   const [phone,setPhone]=useState(contacts.phone);
-  const phoneField=useEnrollmentPhoneField(lang,phone);
+  const phoneField=useEnrollmentPhoneField(lang,phone,phoneValidation);
   const [result,setResult]=useState(initial);
   const [requestId]=useState(()=>crypto.randomUUID());
   const [busy,setBusy]=useState(false);

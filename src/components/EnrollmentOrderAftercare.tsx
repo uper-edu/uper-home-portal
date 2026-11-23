@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Check, CircleCheck, Clock3, Copy as CopyIcon } f
 import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import { formatCurrency } from '../utils/currency';
 import {enrollmentTeacherLabel,enrollmentClassTitle,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
-import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
+import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import { enrollmentSupportPath } from './EnrollmentSupport';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';

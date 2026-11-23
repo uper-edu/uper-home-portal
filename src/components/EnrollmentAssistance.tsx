@@ -3,7 +3,7 @@ import {enrollmentCopy,enrollmentClassTitle,type EnrollmentClassIdentity} from '
 import {useEffect,useState} from 'react';
 import {Link,useLocation,useNavigate} from 'react-router-dom';
 import {enrollmentPost,watchEnrollmentEmailSession} from '../services/enrollmentSession';
-import {interestOption,type InterestLanguage} from './EnrollmentInterests';
+import {interestOption,type InterestLanguage} from '../utils/enrollmentInterestCopy';
 import {formatCurrency} from '../utils/currency';
 import VisitorBoundary from './VisitorBoundary';
 import {readVisitorContact} from '../services/visitorContact';

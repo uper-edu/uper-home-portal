@@ -1,8 +1,8 @@
 import VisitorBoundary from './VisitorBoundary';
-import {ContactPhoneInput} from './ContactPhoneInput';
+import type {EnrollmentIntakeTools} from './EnrollmentIntake';
 import {visitorScope} from '../services/visitorScope';
 import {enrollmentPost,readEnrollmentOperation,watchEnrollmentEmailSession} from '../services/enrollmentSession';
-import {readVisitorContact,rememberVisitorContact,readEnrollmentDraft,writeEnrollmentDraft,subscribeVisitorContact} from '../services/visitorContact';
+import {readVisitorContact,readEnrollmentDraft,writeEnrollmentDraft,subscribeVisitorContact} from '../services/visitorContact';
 import {getStudentContext} from '../services/studentProfileStorage';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
@@ -20,11 +20,11 @@ import { EnrollmentOrderAftercare, type EnrollmentAftercare } from './Enrollment
 import { enrollmentSupportPath } from './EnrollmentSupport';
 import { EnrollmentOrderResult } from './EnrollmentOrderResult';
 import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
-import { EnrollmentDemandForm, interestOption, waitlistStates, type DemandItem, type Interests } from './EnrollmentInterests';
+import {interestOption,waitlistStates} from '../utils/enrollmentInterestCopy';
+import type {DemandItem, Interests} from './EnrollmentInterests';
 import { sortEnrollmentRecords } from '../utils/enrollmentRecordOrder';
 import { enrollmentAssistancePath } from '../utils/enrollmentAssistance';
 import { validContactEmail } from '../utils/contactEmail';
-import { validContactPhone } from '../utils/contactPhone';
 
 type Language = 'zh' | 'en' | 'id';
 type Copy = readonly [string, string, string];
@@ -59,10 +59,11 @@ function maskedEmail(email:string) {
   return local.slice(0,1)+'•••@'+domain;
 }
 
-function EnrollmentForm({ classId, language, full = false, demandOnly = false, paymentClasses, applicationClass, waitlistClass, mineClasses, record, returnAction }: {
+function EnrollmentForm({ classId, language, full = false, demandOnly = false, paymentClasses, applicationClass, waitlistClass, mineClasses, record, returnAction, intakeTools }: {
   classId?: string; language: Language; full?: boolean; demandOnly?: boolean; paymentClasses?: PublicEnrollmentClass[];
   applicationClass?: ApplicationClass; waitlistClass?: PublicEnrollmentClass; mineClasses?: PublicEnrollmentClass[]; record?: InterestRecord;
   returnAction?: ReactNode;
+  intakeTools?: EnrollmentIntakeTools;
 }) {
   const t = (text: Copy) => enrollmentCopy(language,text);
   const [params,setParams] = useSearchParams();
@@ -115,7 +116,8 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   const setEmail=(value:string)=>{updateEmail(value);saveDraft({email:value});};
   const setName=(value:string)=>{updateName(value);saveDraft({name:value});};
   const setPhone=(value:string)=>{updatePhone(value);saveDraft({phone:value});};
-  const phoneField = useEnrollmentPhoneField(language,phone);
+  const {ContactPhoneInput,EnrollmentDemandForm,rememberVisitorContact}=intakeTools??{};
+  const phoneField = useEnrollmentPhoneField(language,phone,intakeTools?.phoneValidation);
   const phoneError = phoneField.error && <small className="enrollment-form-error" role="alert" id={phoneField.errorId}>{phoneField.error}</small>;
   const [priority,updatePriority] = useState(savedDraft.priority??true);
   const setPriority=(value:boolean)=>{updatePriority(value);saveDraft({priority:value});};
@@ -139,7 +141,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   const currentEmail = email.trim().toLowerCase();
   const learnerIntake=!!(applicationClass||waitlistClass||demandOnly);
   const emailConfirmed = (learnerIntake?sessionAddress:verifiedEmail) === currentEmail && !!currentEmail;
-  const canSummarize = !forAnother && emailConfirmed && !!name.trim() && validContactPhone(phone);
+  const canSummarize = !forAnother && emailConfirmed && !!name.trim() && phoneField.valid;
   const [verified,setVerified] = useState(false);
   const [busy,setBusy] = useState(false);
   const [pendingApplication,setPendingApplication]=useState(Boolean(savedDraft.applicationRequestId));
@@ -360,7 +362,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   function verify() {
     return run(async () => {
       await verifyEnteredEmail();
-      if(!paymentClasses)rememberVisitorContact(owner,{email});
+      if(!paymentClasses)rememberVisitorContact?.(owner,{email});
       clearDraft();
       recordsEmail.current=currentEmail;
       if (orderId) await getOrder(orderId);
@@ -375,7 +377,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   }
   function openApplicationResult(result:Pick<Order,'id'>) {
     if(typeof result?.id!=='string'||!result.id)throw Error('enrollment_operation_unconfirmed');
-    if(!forAnother&&(emailConfirmed||applicationClass))rememberVisitorContact(owner,{fullName:name,email,whatsapp:phone});
+    if(!forAnother&&(emailConfirmed||applicationClass))rememberVisitorContact?.(owner,{fullName:name,email,whatsapp:phone});
     clearDraft();
     const next=new URLSearchParams(params);
     next.set('order',result.id);
@@ -522,16 +524,16 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   const join = () => phoneField.check() && run(async () => {
     if (waitlistClass) await verifyEnteredEmail();
     await enrollmentPost(base+'/waitlist',{classId,phone,name,source:sourceQuery()},currentEmail||recordsEmail.current);
-    if(waitlistClass&&!forAnother)rememberVisitorContact(owner,{fullName:name,email,whatsapp:phone});
+    if(waitlistClass&&!forAnother)rememberVisitorContact?.(owner,{fullName:name,email,whatsapp:phone});
     clearDraft();
     setJoined(true);
   });
-  function savePreferences(data: Parameters<React.ComponentProps<typeof EnrollmentDemandForm>['onSave']>[0]) {
+  function savePreferences(data: Parameters<React.ComponentProps<EnrollmentIntakeTools['EnrollmentDemandForm']>['onSave']>[0]) {
     void run(async () => {
       if (demandOnly) await verifyEnteredEmail();
       await enrollmentPost(base+'/demands',{...data,source:sourceQuery()},demandOnly?currentEmail:recordsEmail.current);
       if (demandOnly) {
-        if(!forAnother)rememberVisitorContact(owner,{fullName:data.name,email,whatsapp:data.criteria.phone});
+        if(!forAnother)rememberVisitorContact?.(owner,{fullName:data.name,email,whatsapp:data.criteria.phone});
         clearDraft();
         writeEnrollmentDraft(owner,formKey+':criteria');
         setSavedDemand(true);
@@ -683,8 +685,8 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       {emailField}
       <div className="enrollment-field">
         <label htmlFor={phoneField.errorId+'-input'}>{phoneLabel}</label>
-        <ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required
-          readOnly={applicationDraftLocked} value={phone} onValueChange={setPhone}/>{phoneError}
+        {ContactPhoneInput&&<ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required
+          readOnly={applicationDraftLocked} value={phone} onValueChange={setPhone}/>}{phoneError}
       </div>
       {(!applicationClass||emailConfirmed)&&codeField}
     </>}
@@ -820,7 +822,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
             {t(['返回课程报名','Back to classes','Kembali ke daftar kelas'])}
           </EnrollmentJourneyLink>}
         </div>
-      </form> : <EnrollmentDemandForm language={language} prefill={enrollmentDemandPrefill(params,language)} busy={busy} onSave={savePreferences}
+      </form> : EnrollmentDemandForm&&<EnrollmentDemandForm language={language} prefill={enrollmentDemandPrefill(params,language)} busy={busy} onSave={savePreferences}
         awaitingCode={awaitingCode} emailVerified={emailConfirmed}
         contact={{name,phone,fields:learnerFields,checkPhone:phoneField.check}} draft={{owner,key:formKey+':criteria'}}/>}
     </>;
@@ -948,7 +950,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
           {row.matches.length===1&&<EnrollmentJourneyLink className="enrollment-primary" to={classFromRecord(row.matches[0].id,'fromDemand',row.id)}>
             {t(['查看匹配班次','View matching class','Lihat kelas yang cocok'])}</EnrollmentJourneyLink>}
         </div>}
-        {editDemand?.id===row.id&&<div className="enrollment-record">
+        {EnrollmentDemandForm&&editDemand?.id===row.id&&<div className="enrollment-record">
           <EnrollmentDemandForm key={row.id+':'+row.revision} language={language} initial={row} busy={busy} onSave={savePreferences}/>
           <button type="button" className="enrollment-record-link" disabled={busy} onClick={()=>setEditDemand(undefined)}>{t(['取消修改','Cancel editing','Batalkan perubahan'])}</button>
         </div>}
@@ -1163,14 +1165,14 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       <h2>{joinText}</h2>
       <label>{t(['学员姓名','Learner name','Nama siswa'])}<input required maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>
       <div className="enrollment-field"><label htmlFor={phoneField.errorId+'-input'}>{phoneLabel}</label>
-        <ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required value={phone} onValueChange={setPhone}/>{phoneError}</div>
+        {ContactPhoneInput&&<ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required value={phone} onValueChange={setPhone}/>}{phoneError}</div>
       <p>{t(['有空位时可以自行申请。','Apply when a seat becomes available.','Daftar saat kursi tersedia.'])}</p>
       <button className="enrollment-action" type="submit" disabled={busy}>{t(['确认加入候补','Confirm waitlist entry','Konfirmasi daftar tunggu'])}</button>
     </form> : <form onSubmit={event=>{event.preventDefault();void apply();}}>
       <h2>{applyText}</h2>
       <label>{t(['学员姓名','Learner name','Nama siswa'])}<input required maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>
       <div className="enrollment-field"><label htmlFor={phoneField.errorId+'-input'}>{phoneLabel}</label>
-        <ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required value={phone} onValueChange={setPhone}/>{phoneError}</div>
+        {ContactPhoneInput&&<ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required value={phone} onValueChange={setPhone}/>}{phoneError}</div>
       <label><input type="checkbox" checked={priority} onChange={event=>setPriority(event.target.checked)}/> {t(['优先安排顺延或转班方案','Prioritize rescheduling or transfer options','Utamakan opsi penjadwalan ulang atau pindah kelas'])}</label>
       <p>{t(['财务核实足额到账后，报名才算成功。','Enrollment is confirmed after Finance verifies full payment.','Pendaftaran berhasil setelah pembayaran penuh diverifikasi.'])}</p>
       <button className="enrollment-action" type="submit" disabled={busy}>{t(['提交申请','Submit application','Kirim pendaftaran'])}</button>
