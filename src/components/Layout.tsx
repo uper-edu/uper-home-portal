@@ -190,7 +190,7 @@ const Navbar = ({ onOpenAppearance, onOpenCourseAdvice, learnerPreview, navbarRe
     },
   ];
 
-  const consultClass = `shrink-0 px-5 py-2.5 rounded-full font-medium transition-all flex items-center gap-2 ${isApple ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-none' : 'bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg hover:shadow-primary-500/30'}`;
+  const consultClass = `shrink-0 px-5 py-2.5 rounded-full font-medium transition-all items-center gap-2 ${isApple ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-none' : 'bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg hover:shadow-primary-500/30'}`;
 
   return (
     <nav ref={navbarRef} inert={learnerPreview} className={`fixed top-0 w-full z-50 transition-all duration-300 ${enrollmentSection?'public-page-header':isScrolled?'glass-card py-3 shadow-xs':'bg-transparent py-5'}`}>
@@ -284,12 +284,10 @@ const Navbar = ({ onOpenAppearance, onOpenCourseAdvice, learnerPreview, navbarRe
             </a>
           )}
 
-          {home ? <button type="button" className={consultClass+' cursor-pointer'} aria-haspopup="dialog" aria-controls="uper-ai-chat-window"
+          <button type="button" className={consultClass+' flex cursor-pointer'} aria-haspopup="dialog" aria-controls="uper-ai-chat-window"
             onClick={event=>onOpenCourseAdvice(event.currentTarget)}>
             {t('nav.startJourney')} <ArrowRight className="w-4 h-4" aria-hidden="true"/>
-          </button> : <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className={consultClass}>
-            {t('nav.startJourney')} <ArrowRight className="w-4 h-4" />
-          </a>}
+          </button>
         </div>
 
         <div className={`xl:hidden flex shrink-0 items-center ${sharedMobileTools?'public-header-tools':'gap-2'}`}>
@@ -420,13 +418,13 @@ const Navbar = ({ onOpenAppearance, onOpenCourseAdvice, learnerPreview, navbarRe
                 <span>{t('footer.appearanceSettings', 'Display & Theme Settings')}</span>
               </button>
 
-              {home && <button type="button" className={consultClass+' hidden cursor-pointer justify-center md:flex'}
+              <button type="button" className={consultClass+' hidden cursor-pointer justify-center md:flex'}
                 aria-haspopup="dialog" aria-controls="uper-ai-chat-window" onClick={event=>{
                   setMobileMenuOpen(false);
                   onOpenCourseAdvice(mobileMenuTrigger.current ?? event.currentTarget);
                 }}>
                 {t('nav.startJourney')} <ArrowRight className="w-4 h-4" aria-hidden="true"/>
-              </button>}
+              </button>
               <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className="w-full bg-[#25D366] text-white p-3 rounded-xl font-medium flex items-center justify-center gap-2">
                 <MessageCircle className="w-5 h-5" /> {t('fab.chat')}
               </a>
@@ -873,6 +871,7 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
   const location = useLocation();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [chatLaunchRequest,setChatLaunchRequest]=useState<HTMLButtonElement|null>(null);
+  const [enrollmentChatEntry,setEnrollmentChatEntry]=useState<string>();
   const navbarRef = useRef<HTMLElement>(null);
   // Scroll to top on route change, but restore scroll on back navigation
   const { pathname } = location;
@@ -935,7 +934,10 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
   return (
     <div data-enrollment-screen={enrollmentScreen || undefined} className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
 
-      <Navbar navbarRef={navbarRef} learnerPreview={learnerPreview} onOpenAppearance={() => setAppearanceOpen(true)} onOpenCourseAdvice={setChatLaunchRequest}/>
+      <Navbar navbarRef={navbarRef} learnerPreview={learnerPreview} onOpenAppearance={() => setAppearanceOpen(true)} onOpenCourseAdvice={trigger=>{
+        if (enrollmentScreen) setEnrollmentChatEntry(location.key);
+        setChatLaunchRequest(trigger);
+      }}/>
       <main className="flex-grow">
         <motion.div
           key={location.pathname}
@@ -952,10 +954,11 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
           </Suspense>
         </motion.div>
       </main>
+      {!learnerPreview && (!enrollmentScreen || chatBackground || enrollmentChatEntry===location.key) &&
+        <VisitorBoundary><AIChatbot navbarRef={navbarRef} expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}
+          launchRequest={chatLaunchRequest} onLaunchHandled={setChatLaunchRequest}/></VisitorBoundary>}
       {!enrollmentScreen && <>
         <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
-        <VisitorBoundary><AIChatbot navbarRef={navbarRef} expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}
-          launchRequest={chatLaunchRequest} onLaunchHandled={setChatLaunchRequest} hideLauncher={pathname==='/'}/></VisitorBoundary>
         <BackToTop />
         <MobileBottomBar />
       </>}

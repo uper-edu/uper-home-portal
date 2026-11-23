@@ -1,6 +1,5 @@
 import {lazy, Suspense, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
-import {MessageCircleMore, X} from 'lucide-react';
 import {useTranslation} from 'react-i18next';
 import {chooseText, type HskLanguage} from '../data/hskAssessment';
 import {chatPromotionParams, type ChatOrigin} from '../services/portalChat';
@@ -19,10 +18,9 @@ function subscribeViewport(notify: () => void) {
   return () => viewport.removeEventListener('change', notify);
 }
 
-export default function AIChatbot({expanded,returnScroll,navbarRef,launchRequest,onLaunchHandled,hideLauncher=false}: {
+export default function AIChatbot({expanded,returnScroll,navbarRef,launchRequest,onLaunchHandled}: {
   expanded: boolean; returnScroll?: number; navbarRef: RefObject<HTMLElement|null>;
   launchRequest?: HTMLButtonElement | null; onLaunchHandled: (request:null)=>void;
-  hideLauncher?: boolean;
 }) {
   const {i18n} = useTranslation();
   const lang = normalizeSiteLanguage(i18n.language);
@@ -33,7 +31,6 @@ export default function AIChatbot({expanded,returnScroll,navbarRef,launchRequest
     return expanded||anchor?.widget===true&&anchor.owner===visitorScope();
   });
   const [started,setStarted] = useState(open);
-  const launcher = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const restoreScroll = useRef(expanded ? returnScroll : undefined);
@@ -41,14 +38,11 @@ export default function AIChatbot({expanded,returnScroll,navbarRef,launchRequest
   const visible = open || expanded;
   const modal = mobile || expanded;
   const label = chooseText(lang,'UPER 学习咨询','UPER Learning Advisory','Konsultasi Belajar UPER');
-  const launcherLabel = visible
-    ? chooseText(lang,'关闭咨询','Close chat','Tutup konsultasi')
-    : chooseText(lang,'课程咨询','Course advice','Konsultasi kursus');
-
   useLayoutEffect(() => {
     if (!launchRequest) return;
-    returnFocus.current = launchRequest;
     onLaunchHandled(null);
+    if (!launchRequest.isConnected) return;
+    returnFocus.current = launchRequest;
     if (visible) {
       dialog.current?.querySelector<HTMLElement>('[data-chat-host-dismiss]')?.focus({preventScroll:true});
       return;
@@ -107,18 +101,9 @@ export default function AIChatbot({expanded,returnScroll,navbarRef,launchRequest
     trackChatbotInteraction('close');
     const trigger=returnFocus.current;
     returnFocus.current=null;
-    requestAnimationFrame(() => (trigger?.isConnected && trigger.getClientRects().length ? trigger : launcher.current)?.focus({preventScroll:true}));
-  }
-
-  function toggle() {
-    if (visible) {
-      dismiss();
-      return;
-    }
-    returnFocus.current=launcher.current;
-    setStarted(true);
-    setOpen(true);
-    trackChatbotInteraction('open');
+    requestAnimationFrame(() => {
+      if (trigger?.isConnected && trigger.getClientRects().length) trigger.focus({preventScroll:true});
+    });
   }
 
   function expand(origin: ChatOrigin, language: HskLanguage) {
@@ -133,14 +118,7 @@ export default function AIChatbot({expanded,returnScroll,navbarRef,launchRequest
     navigate(url.pathname+url.search,{state:{siteChatBackground:{location:current,scrollY}}});
   }
 
-  return <>
-    {!hideLauncher && <button type="button" ref={launcher} id="uper-ai-fab" className="site-chat-launcher" onClick={toggle}
-      aria-expanded={visible} aria-controls="uper-ai-chat-window">
-      {visible ? <X size={19} aria-hidden="true"/> : <MessageCircleMore size={19} aria-hidden="true"/>}
-      <span>{launcherLabel}</span>
-    </button>}
-    <dialog ref={dialog} className="site-chat-host" id="uper-ai-chat-window" aria-label={label}
-      data-without-launcher={hideLauncher || undefined}
+  return <dialog ref={dialog} className="site-chat-host" id="uper-ai-chat-window" aria-label={label}
       data-fullscreen={modal || undefined}
       onCancel={event=>{event.preventDefault();dismiss();}}
       onKeyDown={event=>{
@@ -153,6 +131,5 @@ export default function AIChatbot({expanded,returnScroll,navbarRef,launchRequest
         <ChatWorkspace presentation={expanded?'expanded':mobile?'mobile':'panel'} initialLanguage={lang}
           active={visible} onDismiss={dismiss} onExpand={expand}/>
       </Suspense>}
-    </dialog>
-  </>;
+  </dialog>;
 }
