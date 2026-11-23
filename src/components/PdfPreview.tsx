@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, RenderTask } from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-/** Render the original PDF locally: no third-party document viewer or iframe plugin. */
-export default function LinkHandbookPreview({
+import "./pdf-preview.css";
+
+/** Render the original PDF as canvases in the browser. */
+export default function PdfPreview({
   url,
+  label,
   loadingText,
   errorText,
 }: {
   url: string;
+  label: string;
   loadingText: string;
   errorText: string;
 }) {
@@ -147,7 +151,7 @@ export default function LinkHandbookPreview({
       removeScroll = () => root.removeEventListener("scroll", remember);
       for (let n = 1; n <= pdf.numPages; n++) {
         const frame = document.createElement("div");
-        frame.className = "linkhub-pdf-page";
+        frame.className = "pdf-preview-page";
         const canvas = document.createElement("canvas");
         canvas.dataset.page = String(n);
         // The CSS aspect ratio preserves the page position with no bitmap.
@@ -156,12 +160,12 @@ export default function LinkHandbookPreview({
         canvas.setAttribute("role", "img");
         canvas.setAttribute(
           "aria-label",
-          `Handbook 2026 · ${n} / ${pdf.numPages}`,
+          `${label} · ${n} / ${pdf.numPages}`,
         );
         canvas.style.aspectRatio = `${viewport.width} / ${viewport.height}`;
-        const label = document.createElement("span");
-        label.textContent = `${n} / ${pdf.numPages}`;
-        frame.append(canvas, label);
+        const pageNumber = document.createElement("span");
+        pageNumber.textContent = `${n} / ${pdf.numPages}`;
+        frame.append(canvas, pageNumber);
         root.append(frame);
         frames.push(frame);
         observer.observe(frame);
@@ -179,16 +183,16 @@ export default function LinkHandbookPreview({
       void loading?.destroy().catch(() => {});
       root.replaceChildren();
     };
-  }, [url]);
+  }, [url, label]);
   return (
     <>
-      <div className="linkhub-pdf-frame">
-        <div ref={ref} className="linkhub-pdf-preview" aria-label="Handbook 2026 PDF"
+      <div className="pdf-preview-frame">
+        <div ref={ref} className="pdf-preview-pages" aria-label={label}
           aria-busy={status === 'loading'} tabIndex={0}/>
-        {status === 'loading' && <p role="status" className="linkhub-pdf-loading">{loadingText}</p>}
+        {status === 'loading' && <p role="status" className="pdf-preview-loading">{loadingText}</p>}
       </div>
       {status === 'failed' && (
-        <p role="status" className="linkhub-document-summary">
+        <p role="status" className="pdf-preview-error">
           {errorText}
         </p>
       )}

@@ -4,7 +4,7 @@ import {paymentWorkspaceLabel} from '../../utils/crmPaymentPresentation';
 import {AdminRecordBack} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone } from './CrmList';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
@@ -30,16 +30,27 @@ type Worklist = { orders:WorkOrder[]; total:number; page:number; pageSize:number
 type FinanceProof = {id:string;mime?:string;submittedAt?:string;transfer?:{amount?:number;reference?:string}|null};
 type RecordRow = Omit<WorkOrder,'hasProof'> & { opened: boolean; proofs?:FinanceProof[]; proofId?: string; proofMime?: string; firstReviewDueAt?:string; receipts:Receipt[]; credits:PaymentCredit[] };
 const endpoint = '/api/crm/enrollment/finance';
+const PdfPreview = lazy(() => import('../PdfPreview'));
 
 function EnrollmentProof({proof:{id,mime,submittedAt,transfer},lang}:{proof:FinanceProof;lang:CrmLanguage}) {
   const [failed,setFailed]=useState(false);
+  const [preview,setPreview]=useState(false);
+  const previewId=useId();
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(lang,[zh,en,id]);
   const url=endpoint+'/proofs/'+encodeURIComponent(id);
   const image=mime==='image/png'||mime==='image/jpeg';
+  const pdf=mime==='application/pdf';
+  const loading=t('正在加载凭证…','Loading proof…','Memuat bukti…');
   return <section className="crm-enrollment-finance-proof">
     <div className="crm-enrollment-finance-proof-heading">
       <h3>{t('转账凭证','Transfer proof','Bukti transfer')}</h3>
-      <a className="crm-work-link" href={url}>{t('下载凭证','Download proof','Unduh bukti')}</a>
+      <div className="crm-enrollment-finance-proof-actions">
+        {pdf&&<button className="crm-work-link" type="button" aria-expanded={preview} aria-controls={previewId}
+          onClick={()=>setPreview(open=>!open)}>{preview
+            ?t('收起预览','Hide preview','Tutup pratinjau')
+            :t('预览 PDF','Preview PDF','Pratinjau PDF')}</button>}
+        <a className="crm-work-link" href={url}>{t('下载凭证','Download proof','Unduh bukti')}</a>
+      </div>
     </div>
     {submittedAt&&<p className="crm-work-muted">{t('提交时间','Submitted','Waktu pengiriman')} · <time dateTime={submittedAt}>{formatCrmEventTime(submittedAt)}</time></p>}
     {transfer!==undefined&&<dl className="crm-opportunity-summary crm-enrollment-finance-summary">
@@ -53,6 +64,12 @@ function EnrollmentProof({proof:{id,mime,submittedAt,transfer},lang}:{proof:Fina
       :<img className="crm-enrollment-finance-proof-image" src={url+'?preview=image'} loading="lazy"
         alt={t('学员提交的转账凭证','Transfer proof submitted by the learner','Bukti transfer yang dikirim siswa')}
         onError={()=>setFailed(true)}/>)}
+    {pdf&&<div id={previewId} hidden={!preview}>
+      {preview&&<Suspense fallback={<p className="crm-work-muted" role="status">{loading}</p>}>
+        <PdfPreview url={url} label={t('学员提交的转账凭证 PDF','Transfer proof PDF from the learner','PDF bukti transfer dari siswa')}
+          loadingText={loading} errorText={t('PDF 无法预览，可下载查看。','PDF preview is unavailable. Download to view it.','PDF tidak dapat dipratinjau. Unduh untuk melihatnya.')}/>
+      </Suspense>}
+    </div>}
   </section>;
 }
 

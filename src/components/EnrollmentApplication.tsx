@@ -906,7 +906,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       changeRecordsEmail();
     });
   }
-  function upload(transfer:{reportedAmount?:number;bankReference?:string}) {
+  function upload(transfer:{reportedAmount:number;bankReference?:string}) {
     if (!order || !file || checkingProofReceipt) return;
     return run(async () => {
       const controller=new AbortController();
@@ -915,7 +915,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       finally { if(proofUpload.current===controller)proofUpload.current=undefined; }
     });
   }
-  async function submitProof(transfer:{reportedAmount?:number;bankReference?:string},order:Order,file:File,signal:AbortSignal) {
+  async function submitProof(transfer:{reportedAmount:number;bankReference?:string},order:Order,file:File,signal:AbortSignal) {
     setConfirmedProofOrderId(undefined);
     setProofReadFailure(undefined);
     const path=base+'/orders/'+encodeURIComponent(order.id)+'/proofs';
@@ -971,7 +971,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         storePendingProof(undefined);
         throw cause;
       }
-      if(message==='enrollment_verification_required')throw cause;
+      if(message==='enrollment_verification_required'||message==='enrollment_invalid_proof_amount')throw cause;
       // The upload can finish on the server even when its response is lost.
       await checkProofResult(order.id,uploadId,expected);
       return;
@@ -1137,6 +1137,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     enrollment_transfer_unavailable:['该班次目前无法转入，请返回可转班次刷新查看。','This class is no longer available for transfer. Go back and check the list again.','Kelas ini tidak lagi tersedia. Kembali dan periksa daftar kelas.'],
     enrollment_priority_unavailable:['当前报名无法开启优先安排，请刷新核对状态。','Priority arrangements are unavailable for this enrollment. Refresh to check its status.','Pengaturan prioritas tidak tersedia untuk pendaftaran ini. Muat ulang untuk memeriksa status.'],
     enrollment_invalid_proof:['凭证上传失败。请检查文件后重试。','Upload failed. Check the file and retry.','Unggahan gagal. Periksa file dan coba lagi.'],
+    enrollment_invalid_proof_amount:['请填写有效的实际转账金额（Rp 整数）。','Enter the actual amount transferred as a whole number in Rp.','Masukkan nominal transfer aktual dalam rupiah tanpa desimal.'],
     enrollment_operation_unconfirmed:['结果尚未确认。请查询上次提交。','The result is unconfirmed. Check your last submission.','Hasil belum terkonfirmasi. Periksa pengiriman terakhir Anda.'],
   };
   const message=enrollmentReadinessMessage(error.replace(/^enrollment_intake_/,''),language)??t(errors[error] || ['操作未完成，请核对后重试。','The action could not be completed. Please review and retry.','Tindakan belum selesai. Periksa dan coba lagi.']);

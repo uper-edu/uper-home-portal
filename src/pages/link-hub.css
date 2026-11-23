@@ -225,7 +225,8 @@
 .linkhub-document header {
   margin-bottom: 8px;
 }
-.linkhub-document-summary {
+.linkhub-document-summary,
+.linkhub-document .pdf-preview-error {
   font-size: 14px;
   line-height: 1.5;
   margin: 0 0 16px;
@@ -250,64 +251,25 @@
   }
 }
 
-.linkhub-pdf-preview {
-  height: 60svh;
-  min-height: 180px;
-  overflow: auto;
-  overscroll-behavior: contain;
-  background: #edf0f1;
-  border-radius: 8px;
-  padding: 12px;
-  box-sizing: border-box;
-}
-.linkhub-pdf-page {
-  margin: 0 0 16px;
-  text-align: center;
-}
-.linkhub-pdf-page canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: white;
-  box-shadow: 0 1px 5px #0002;
-}
-.linkhub-pdf-page > span {
-  display: block;
-  font-size: 12px;
-  color: #526364;
-  margin-top: 6px;
-}
-
 /* Keep controls reachable in short landscape viewports; only the PDF scrolls. */
 .linkhub-document {
   overflow: hidden;
 }
 .linkhub-document header,
 .linkhub-document-summary,
+.linkhub-document .pdf-preview-error,
 .linkhub-document footer {
   flex-shrink: 0;
 }
-.linkhub-pdf-frame {
-  position: relative;
+.linkhub-document .pdf-preview-frame {
   flex: 1 1 60svh;
   min-height: 0;
 }
-.linkhub-pdf-frame .linkhub-pdf-preview {
+.linkhub-document .pdf-preview-pages {
   height: 100%;
   min-height: 0;
 }
-.linkhub-pdf-loading {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 12px;
-  margin: 0;
-  text-align: center;
-  font-size: 14px;
-  color: var(--linkhub-muted);
-  pointer-events: none;
-}
+.linkhub-document .pdf-preview-loading { color: var(--linkhub-muted); }
 .linkhub-document footer :is(a, button) {
   min-height: 44px;
   box-sizing: border-box;
@@ -319,7 +281,8 @@
   .linkhub-document header {
     margin-bottom: 4px;
   }
-  .linkhub-document-summary {
+  .linkhub-document-summary,
+  .linkhub-document .pdf-preview-error {
     margin-bottom: 8px;
   }
   .linkhub-document footer {

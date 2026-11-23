@@ -41,7 +41,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   setFile: (file?: File) => void;
   proofTransfer: {amount:string;reference:string};
   onProofTransferChange: (draft:{amount:string;reference:string}) => void;
-  upload: (transfer:{reportedAmount?:number;bankReference?:string}) => void;
+  upload: (transfer:{reportedAmount:number;bankReference?:string}) => void;
   existingTransferOnly?: boolean;
   onCancel?: ()=>void;
   proofUploadFailed?: boolean;
@@ -178,9 +178,8 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
     )}</p>}
     {canUpload && <form className="enrollment-payment-form" onSubmit={event => {
       event.preventDefault();
-      const amount=proofTransfer.amount.trim();
       const bankReference=proofTransfer.reference.trim()||undefined;
-      upload({reportedAmount:amount?Number(amount):undefined,bankReference});
+      upload({reportedAmount:Number(proofTransfer.amount),bankReference});
     }}>
       <section className="enrollment-upload-section">
         <h2>{t('转账凭证', 'Transfer proof', 'Bukti transfer')}</h2>
@@ -204,8 +203,8 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
             : t('请选择有效的 PNG、JPEG 或 PDF 文件。','Choose a valid PNG, JPEG or PDF file.','Pilih file PNG, JPEG, atau PDF yang valid.')}
         </p>}
         <div className="enrollment-proof-transfer">
-          <label>{t('转账金额（Rp，选填）','Transfer amount (Rp, optional)','Nominal transfer (Rp, opsional)')}
-            <input name="reportedAmount" type="number" inputMode="numeric" min="1" max="1000000000" step="1" disabled={busy}
+          <label>{t('实际转账金额（Rp）','Amount transferred (Rp)','Nominal yang ditransfer (Rp)')} *
+            <input name="reportedAmount" type="number" inputMode="numeric" min="1" max="1000000000" step="1" required disabled={busy}
               value={proofTransfer.amount} onChange={event=>onProofTransferChange({...proofTransfer,amount:event.target.value})}/>
           </label>
           <label>{t('银行流水号（选填）','Bank reference (optional)','Referensi bank (opsional)')}

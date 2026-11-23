@@ -24,7 +24,7 @@ import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollme
 import { assistedEnrollmentOpportunity, mountEnrollmentCrm, recordEnrollmentCustomer, validateAssistedContacts } from './enrollmentCrm.ts';
 import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
-import { proofTransferDetails } from './enrollmentProofTotals.ts';
+import { isEnrollmentProofAmount,proofTransferDetails } from './enrollmentProofTotals.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { latestAssistanceMail, orderNotice, proofNotices, sendAssistanceMail, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
 
@@ -677,6 +677,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       if (order.upload_id !== uploadId || !Number(order.upload_active) || !allowsEnrollmentProof(order.state,order.data?.closureReason)) {
         invalid('enrollment_upload_expired', 409);
       }
+      if (!isEnrollmentProofAmount(reportedAmount)) invalid('enrollment_invalid_proof_amount');
       let proof, transferDetails;
       try {
         proof = await measureEnrollmentPhase(r,'proof_validation',()=>proofContent(content,mime));

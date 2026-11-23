@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Readable} from 'node:stream';
 import type {Request, Response} from 'express';
+import {isEnrollmentProofAmount,proofTransferDetails} from '../server/portal/enrollmentProofTotals';
 import {
   enrollmentProofAccept,
   enrollmentProofFileIssue,
@@ -11,6 +12,17 @@ import {
   maxEnrollmentProofBytes,
   prepareEnrollmentProofFile,
 } from '../src/utils/enrollmentProofFile';
+
+test('new proofs require a valid whole-rupiah amount and accept an absent reference', () => {
+  for(const amount of [undefined,null,0,-1,1.5,'160000',NaN,Infinity,1_000_000_001]){
+    assert.equal(isEnrollmentProofAmount(amount),false);
+  }
+  for(const amount of [1,160000,1_000_000_000]){
+    assert.equal(isEnrollmentProofAmount(amount),true);
+  }
+  assert.deepEqual(proofTransferDetails(160000,undefined),{amount:160000,reference:undefined});
+  assert.equal(proofTransferDetails(undefined,undefined),null);
+});
 
 test('proof upload keeps the normal deadline for small files and budgets for slow uploads at the size limit', () => {
   assert.equal(enrollmentProofUploadTimeout(64 * 1024, 'binary-v1'), 90_000);
@@ -135,6 +147,11 @@ test('proof retry checks the old receipt under the order lock before replacing a
       assert.deepEqual(args,[oldId,orderId]);
       return {rows:receipt?[{id:oldId}]:[]};
     }
+    if(sql.startsWith('SELECT order_id FROM enrollment_proofs')){
+      operations.push('check saved proof');
+      assert.deepEqual(args,[oldId]);
+      return {rows:receipt?[{order_id:orderId}]:[]};
+    }
     if(sql.startsWith('UPDATE enrollment_orders SET upload_id')){
       operations.push('reserve');
       assert.equal(args[1],orderId);
@@ -156,10 +173,10 @@ test('proof retry checks the old receipt under the order lock before replacing a
   const add=(method:string)=>(path:string,handler:Handler)=>routes.set(method+' '+path,handler);
   const unexpected=async()=>assert.fail('Proof recovery uses only the verified enrollment session');
   const path='/api/enrollment/orders/:id/proofs';
-  const invoke=async(route:string)=>{
+  const invoke=async(route:string,body:unknown={previousUploadId:oldId})=>{
     let result:unknown;
     await routes.get(route)!({headers:{cookie:'uper_enrollment_session='+'a'.repeat(64),origin},
-      params:{id:orderId,uploadId:oldId},body:{previousUploadId:oldId},protocol:'https',
+      params:{id:orderId,uploadId:oldId},body,protocol:'https',
       is:()=>true,get:(name:string)=>name==='host'?'enrollment.example.invalid':name==='X-Enrollment-Email'?verified:undefined,
     } as unknown as Request,{
       set(){return this;},json(body:unknown){result=body;},
@@ -189,6 +206,17 @@ test('proof retry checks the old receipt under the order lock before replacing a
     beforeDue=false;
     assert.deepEqual(await invoke(restart),{uploadId:oldId,transport:'binary-v1'});
     assert.deepEqual(operations.splice(0),['lock order','check receipt']);
+
+    const finish='POST '+path+'/finish';
+    const proof={uploadId:oldId,mime:'application/pdf',encoded:'unused'};
+    for(const reportedAmount of [undefined,0,1.5,'160000']){
+      await assert.rejects(invoke(finish,{...proof,reportedAmount}),{message:'enrollment_invalid_proof_amount'});
+      assert.deepEqual(operations.splice(0),['lock order','check saved proof']);
+    }
+    assert.deepEqual(await invoke(check),{state:'unconfirmed',proofTransport:'binary-v1',uploadActive:true});
+    receipt=true;
+    assert.equal((await invoke(finish,proof) as {id:string}).id,orderId);
+    assert.deepEqual(operations.splice(0),['lock order','check saved proof']);
 
     verified=other;
     await assert.rejects(invoke(restart),{status:404,message:'enrollment_order_not_found'});

@@ -17,7 +17,7 @@ import { PageMetadata } from "../components/PageMetadata";
 import { PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenu } from "../components/PublicHeaderMenu";
 import "./link-hub.css";
 import { Link, useSearchParams } from "react-router-dom";
-import LinkHandbookPreview from "../components/LinkHandbookPreview";
+import PdfPreview from "../components/PdfPreview";
 import { SocialProfileIcon, socialProfileOrder, socialProfiles } from "../components/SocialProfileIcon";
 
 const whatsapp = "https://wa.me/6281116612062";
@@ -245,7 +245,7 @@ export default function LinkHub() {
           className="linkhub-document"
         >
           <p className="linkhub-document-summary">{t.description}</p>
-          <LinkHandbookPreview url={handbook} loadingText={t.pdfLoading} errorText={t.pdfError} />
+          <PdfPreview url={handbook} label="Handbook 2026 PDF" loadingText={t.pdfLoading} errorText={t.pdfError} />
           <footer>
             <a href={handbook} target="_blank" rel="noopener noreferrer" onClick={() => trackHandbook("view")}>
               <ExternalLink size={17} />
