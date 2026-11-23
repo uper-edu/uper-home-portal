@@ -28,11 +28,11 @@ import {portalWorkerEnabled} from './environment.mjs';
 import {platform} from './portal/identity.ts';
 import {visitor} from './portal/runtime.ts';
 import {leadTier,taskDeadline} from './portal/followup.ts';
-import {campaignsContext} from '../cloud/mysql/campaign-context.mjs';
+import {campaignContextMiddleware} from '../cloud/mysql/campaign-context.mjs';
 import {loadCampaigns,getCurrentCampaigns,saveCampaign,deleteCampaign,trackCampaignImpression,synthesizeCampaignAiAssets,getCampaignByIdOrCode} from './campaignStorage.ts';
 import {log} from './logger.ts';
 import {mountRequestTracing,requestErrorContext} from './requestTracing.ts';
-export async function startMysqlApplication(){
+export async function startMysqlApplication(runtimeVersion=createRuntimeVersion()){
 const company=companyConfiguration();
 const production=productionConfiguration();
 const deployment=company || production;
@@ -61,7 +61,6 @@ if(process.env.TRIAL_MODEL_STUB==='true'||process.env.TRIAL_PRIMARY_FAILURE==='t
     process.env.DEEPSEEK_API_BASE_URL='http://127.0.0.1:4413/deepseek';
   }
 }
-const runtimeVersion=createRuntimeVersion();
 const app=express();
 // First middleware: trace id adoption plus the per-request access-log line.
 mountRequestTracing(app);
@@ -99,7 +98,7 @@ app.get('/api/promotion-links/:p',wrap(async(q:any,r:any)=>{
  if(!resolved)return r.status(404).json({status:'unverified'});
  r.json({status:'verified',promotion:publicPromotion(resolved)});
 }));
-app.use('/api',async (_q,_r,next)=>{try{const rows=(await pool.query("SELECT config FROM trial_campaigns ORDER BY created_at DESC")).rows;campaignsContext.run(rows.map(r=>r.config),next);}catch(e){next(e);}});
+app.use('/api',campaignContextMiddleware(pool));
 await mountPortal(app);await ensureOrganicCampaign();mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));

@@ -26,7 +26,9 @@ export default function LinkHandbookPreview({
       const pdfjs = await import("pdfjs-dist");
       if (disposed) return;
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-      loading = pdfjs.getDocument({ url });
+      // Preview only the pages being read. PDF.js uses the full response if
+      // the server does not support byte ranges.
+      loading = pdfjs.getDocument({ url, disableStream: true, disableAutoFetch: true });
       const pdf = await loading.promise;
       if (disposed) return;
       const first = await pdf.getPage(1),

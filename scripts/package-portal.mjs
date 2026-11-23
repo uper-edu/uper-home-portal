@@ -12,6 +12,9 @@ const out=path.resolve(root,directory||path.join('build',target));
 if(![path.join(root,'.local-backups')+path.sep,path.join(root,'build')+path.sep].some(p=>out.startsWith(p)))throw Error('Build output must be in an ignored build or local-backups directory');
 await fs.mkdir(out,{recursive:true});
 const identity=buildIdentity(target,root,frontendEnvironment(target));
+const releaseMarker=path.join(out,'.uper-release.json');
+// Rebuilding in place supersedes the old release as soon as output can change.
+await fs.rm(releaseMarker,{force:true});
 execFileSync(process.execPath,['node_modules/vite/bin/vite.js','build','--mode',target,'--outDir',path.join(out,'web')],{stdio:'inherit',env:{...process.env,UPER_BUILD_IDENTITY:JSON.stringify(identity)}});
 // Preserve ESM module boundaries: a single bundle changes import.meta.url and async cycle semantics.
 const graph=await build({entryPoints:['server.ts','cloud/mysql/access-recovery.mjs','cloud/company-trial/maintenance.mjs','cloud/mysql/retire-test-policy.mjs'],outdir:path.join(out,'graph-only'),bundle:true,platform:'node',target:'node24',format:'esm',packages:'external',write:false,metafile:true});
@@ -50,8 +53,14 @@ await walk(out);if(forbidden.length)throw Error('Forbidden deployment payload en
 const after=sourceIdentity(root);if(after.sourceDigest!==identity.sourceDigest||after.gitCommit!==identity.gitCommit||after.dirty!==identity.dirty)throw Error('Source changed during build; rebuild before release');
 await fs.writeFile(path.join(runtime,'portal-build.json'),JSON.stringify(identity,null,2));
 await fs.writeFile(path.join(out,'web/portal-build.json'),JSON.stringify(identity,null,2));
-const metadata={...identity,gitCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),dirty:!!execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim(),environment:target,envFile:'.env.'+target,deployed:false,compiledModules:inputs.length};
-await fs.writeFile(path.join(out,'.uper-release.json'),JSON.stringify(metadata,null,2));
+const metadata={...identity,envFile:'.env.'+target,deployed:false,compiledModules:inputs.length};
+const pendingMarker=releaseMarker+'.tmp';
+try {
+ await fs.writeFile(pendingMarker,JSON.stringify(metadata,null,2));
+ await fs.rename(pendingMarker,releaseMarker);
+} finally {
+ await fs.rm(pendingMarker,{force:true});
+}
 console.log(JSON.stringify({packageReady:true,...metadata,directory:out}));
 return {directory:out,...metadata};
 }
