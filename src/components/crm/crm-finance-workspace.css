@@ -25,3 +25,5 @@
 .crm-enrollment-finance-proof-image{display:block;max-width:100%;max-height:420px;object-fit:contain;object-position:left center;border:1px solid var(--admin-border);border-radius:10px}
 .crm-enrollment-finance-actions{display:flex;justify-content:flex-end;padding-block:12px}
 .crm-enrollment-finance-actions .crm-work-button{min-height:40px}
+[data-admin-form].crm-enrollment-receipt-form{--af-border:var(--admin-muted)}
+.crm-enrollment-receipt-form .admin-calendar-trigger:not([aria-invalid=true]){border-color:var(--admin-muted)}

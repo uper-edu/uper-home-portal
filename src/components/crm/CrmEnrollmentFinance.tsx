@@ -303,7 +303,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
       selected !== row.id ? <div className="crm-enrollment-finance-actions"><button type="button" ref={receiptTrigger} className="crm-work-button" data-primary disabled={savedDetailRead===orderId} onClick={() => {
         setSelected(row.id);setRequestId(crypto.randomUUID());setDetailError('');setSavedDetailRead(null);
       }}>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')}</button></div>
-      : <AdminForm lang={lang} className="crm-form-layout" onSubmit={async (event:React.FormEvent<HTMLFormElement>) => {
+      : <AdminForm lang={lang} className="crm-form-layout crm-enrollment-receipt-form" onSubmit={async (event:React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (busy||receiptOperation.pending) return;
         const form = new FormData(event.currentTarget);
@@ -322,13 +322,13 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
         <h3 data-admin-form-title>{t('登记实际到账','Record verified receipt','Catat dana terverifikasi')} <AdminRequiredNote lang={lang} inline/></h3>
         <CrmOrderOperationFeedback lang={lang} command={receiptOperation}
           onCheck={()=>void receiptOutcome(receiptOperation.check())} onRetry={()=>void receiptOutcome(receiptOperation.retry())}/>
-        <fieldset className="crm-form-layout" style={{border:0,padding:0,margin:0,minWidth:0}} disabled={busy||!!receiptOperation.pending}>
-        <AdminField>{t('银行流水号','Bank reference','Nomor referensi bank')}<input name="reference" maxLength={120} required/></AdminField>
+        <fieldset data-admin-stack disabled={busy||!!receiptOperation.pending}>
+        <AdminField>{t('银行流水号','Bank reference','Nomor referensi bank')}<input className="admin-text-input" name="reference" maxLength={120} required/></AdminField>
         <AdminField>{t('实际收款账户','Actual receiving account','Rekening penerima aktual')}
-          <input name="receivingAccount" maxLength={160} required autoComplete="off"/>
+          <input className="admin-text-input" name="receivingAccount" maxLength={160} required autoComplete="off"/>
           <p>{t('按收款系统中的实际入账账户填写。','Enter the account credited in the payment system.','Isi rekening yang menerima dana di sistem pembayaran.')}</p>
         </AdminField>
-        <AdminField>{t('实收金额（Rp）','Verified amount (Rp)','Nominal terverifikasi (Rp)')}<input name="amount" type="number" min="1" step="1" required/></AdminField>
+        <AdminField>{t('实收金额（Rp）','Verified amount (Rp)','Nominal terverifikasi (Rp)')}<input className="admin-text-input" name="amount" type="number" min="1" step="1" required/></AdminField>
         <AdminDateField name="time" lang={lang} withTime required onChange={()=>setDirty(true)}
           label={t('实际到账时间','Actual receipt time','Waktu dana diterima')}/>
         </fieldset>

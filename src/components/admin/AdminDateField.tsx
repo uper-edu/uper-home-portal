@@ -34,7 +34,7 @@ export function AdminDateField({label,value:controlled,defaultValue="",name,onCh
         placeholder={ui.select} value={date?[date]:[]} lang={lang} disabled={disabled}
         invalid={!!error} describedBy={error?errorId:undefined}
         onChange={([next])=>change(withTime?`${next}T${time}`:next)}/>
-      {withTime&&<input type="text" aria-label={`${label} · ${ui.time}`} placeholder="HH:mm"
+      {withTime&&<input className="admin-text-input" type="text" aria-label={`${label} · ${ui.time}`} placeholder="HH:mm"
         aria-invalid={!!error||undefined} aria-describedby={error?errorId:undefined}
         required={required} maxLength={5} value={time} disabled={disabled}
         onChange={event=>change(`${date}T${event.target.value}`)}/>}
