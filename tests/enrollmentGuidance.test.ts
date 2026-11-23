@@ -691,3 +691,43 @@ test('explicit Chat inspection scopes the availability lookup and keeps referenc
   assert.equal(result?.kind,'class');
   assert.deepEqual(result?.rows?.map(row=>[row.id,row.availability]),[[ids[0],'full'],[ids[1],'available']]);
 });
+
+test('public appointments preserve quoted prices and exclude incomplete or inactive entries',async()=>{
+  const {readPublicEnrollmentAppointments}=await import('../server/portal/enrollmentCatalog');
+  const template={id:'valid',teacherType:'local',saleUnitPrice:125000,standardUnitPrice:150000};
+  const course={name:'Mandarin',sessions:12,active:true,teaching:{level:'HSK 1',minutes:45}};
+  const result=await readPublicEnrollmentAppointments({query:async(sql:string)=>{
+    assert.match(sql,/JOIN crm_courses/);
+    assert.match(sql,/ORDER BY t.id/);
+    return {rows:[
+      {template:{...template,id:'inactive'},course:{...course,active:false}},
+      {template:{...template,id:'missing-price',saleUnitPrice:null},course},
+      {template:{...template,id:'missing-teaching'},course:{...course,teaching:null}},
+      {template,course},
+    ]};
+  }});
+  assert.deepEqual(result,[{id:'valid',level:'HSK 1',course:'Mandarin',teacherType:'local',
+    lessons:12,minutes:45,price:125000,standardPrice:150000}]);
+});
+
+test('mixed tuition quotes skip availability reads and retain group totals and private unit prices',async()=>{
+  const {chatEnrollmentAction}=await import('../server/portal/chatEnrollment');
+  const group=sample();
+  const lookups:string[]=[];
+  const result=await chatEnrollmentAction({query:async(sql,args)=>{
+    if(sql.includes('FROM enrollment_classes e')){
+      lookups.push('classes');
+      assert.deepEqual(args,[null,[],0]);
+      return {rows:[{id:group.id,data:group,opened:0,seats:null}]};
+    }
+    lookups.push('appointments');
+    assert.match(sql,/JOIN crm_courses/);
+    return {rows:[{
+      template:{id:'private',teacherType:'local',saleUnitPrice:125000,standardUnitPrice:150000},
+      course:{name:'Mandarin',sessions:12,active:true,teaching:{level:group.level,minutes:45}},
+    }]};
+  }},{kind:'quote',formats:[group.format,'one-on-one']},false,false);
+  assert.deepEqual(lookups,['classes','appointments']);
+  assert.deepEqual(result?.quotes?.map(row=>[row.id,row.actual,row.unitPriced]),
+    [[group.id,group.price,false],['private',125000,true]]);
+});

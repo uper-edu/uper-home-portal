@@ -1,6 +1,6 @@
 import {measureEnrollmentPhase} from '../requestTracing.ts';
 import {enrollmentSessionCookie,enrollmentVisitorDigest,readEnrollmentEmailSession,revokeEnrollmentEmailSession} from './enrollmentVisitorSession.ts';
-import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox,enrollmentSmtpReady} from './enrollmentMail.ts';
+import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailDelivery,enrollmentMailbox,enrollmentMailReadiness} from './enrollmentMail.ts';
 import type { Express, Request, Response } from 'express';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { tx } from './store.ts';
@@ -101,11 +101,12 @@ function proofContent(raw: unknown, mime: unknown) {
 
 export async function enrollmentReadiness(c:Client,policy?:ReturnType<typeof enrollmentServicePolicy>) {
   if(!(policy??enrollmentServicePolicy()).servicing)return {accepting:false,servicing:false,reasons:['service_disabled']};
-  policy??=enrollmentServicePolicy(process.env,(await enrollmentMailDelivery(c)).mode);
+  const mail=policy?undefined:await enrollmentMailReadiness(c);
+  policy??=enrollmentServicePolicy(process.env,mail?.mode);
   const reasons:string[]=[];
   if(!policy.simulation){
     if(!hasConfiguredEnrollmentBank(await readEnrollmentBank(c)))reasons.push('bank_required');
-    if(!await enrollmentSmtpReady(c))reasons.push('mail_required');
+    if(!await (mail??await enrollmentMailReadiness(c)).smtpReady())reasons.push('mail_required');
   }
   return {accepting:reasons.length===0,servicing:true,reasons};
 }

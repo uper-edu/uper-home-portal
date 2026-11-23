@@ -17,9 +17,10 @@ export function enrollmentTeaching(value:any):EnrollmentTeaching {
 }
 
 const prefix='enrollment_template:';
+export const enrollmentTemplateIdPattern=prefix.replace('_','\\_')+'%';
 const isId=(value:unknown):value is string=>typeof value==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(value);
 export async function listEnrollmentTemplates(c:any):Promise<EnrollmentTemplate[]>{
-  const {rows}=await c.query('SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id',[prefix.replace('_','\\_')+'%']);
+  const {rows}=await c.query('SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id',[enrollmentTemplateIdPattern]);
   return rows.map((row:any)=>row.value);
 }
 export async function readEnrollmentTemplate(c:any,id:string):Promise<EnrollmentTemplate|undefined>{

@@ -82,3 +82,32 @@ test('live intake requires bank and OTP readiness while serving existing orders'
   assert.deepEqual(await enrollmentReadiness(client(false),{...servicing,servicing:false}),
     {accepting:false,servicing:false,reasons:['service_disabled']});
 });
+
+test('readiness uses a single saved mail configuration per call',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {enrollmentReadiness}=await import('../server/portal/enrollmentApplication.ts');
+  const runtime={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',PORTAL_ENROLLMENT_SERVICE_ENABLED:'true'};
+  const previous=Object.fromEntries(Object.keys(runtime).map(key=>[key,process.env[key]]));
+  Object.assign(process.env,runtime);
+  try {
+    let mailReads=0;
+    const client={query:async(sql:string)=>{
+      if(sql.includes('enrollment_mail_configuration')){
+        mailReads++;
+        return {rows:[{revision:0,config:{delivery:{mode:'smtp',generation:'fixture'}}}]};
+      }
+      assert.match(sql,/enrollment_bank/);
+      return {rows:[]};
+    }};
+    assert.deepEqual(await enrollmentReadiness(client),
+      {accepting:false,servicing:true,reasons:['bank_required','mail_required']});
+    assert.equal(mailReads,1);
+    assert.equal((await enrollmentReadiness(client)).accepting,false);
+    assert.equal(mailReads,2);
+  } finally {
+    for(const [key,value] of Object.entries(previous)){
+      if(value===undefined)delete process.env[key];
+      else process.env[key]=value;
+    }
+  }
+});

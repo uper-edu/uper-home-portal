@@ -3753,6 +3753,12 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
+  "SELECT t.value AS template, c.value AS course\n    FROM portal_settings t JOIN crm_courses c ON c.id=t.value->>'$.courseId'\n      AND CAST(c.id AS BINARY)=CAST(t.value->>'$.courseId' AS BINARY)\n    WHERE t.id LIKE :p1 AND JSON_TYPE(t.value->'$.courseId')='STRING'\n      AND CAST(t.value->>'$.format' AS BINARY)='one-on-one'\n    ORDER BY t.id": {
+    "sql": "SELECT t.value AS template, c.value AS course\n    FROM portal_settings t JOIN crm_courses c ON c.id=t.value->>'$.courseId'\n      AND CAST(c.id AS BINARY)=CAST(t.value->>'$.courseId' AS BINARY)\n    WHERE t.id LIKE :p1 AND JSON_TYPE(t.value->'$.courseId')='STRING'\n      AND CAST(t.value->>'$.format' AS BINARY)='one-on-one'\n    ORDER BY t.id",
+    "sources": [
+      "server/portal/enrollmentCatalog.ts"
+    ]
+  },
   "SELECT target_class_id FROM enrollment_transfer_invitations WHERE order_id=:p1 AND state='offered' AND id<>:p2": {
     "sql": "SELECT target_class_id FROM enrollment_transfer_invitations WHERE order_id=:p1 AND state='offered' AND id<>:p2",
     "sources": [

@@ -104,9 +104,12 @@ async function deliveryReadiness(c:Client,{config,delivery,revision}:Awaited<Ret
   }
   return reasons;
 }
-export async function enrollmentSmtpReady(c:Client){
+export async function enrollmentMailReadiness(c:Client){
   const saved=await configuration(c);
-  return saved.delivery.mode==='smtp'&&!(await deliveryReadiness(c,saved)).length;
+  return {
+    mode:saved.delivery.mode,
+    smtpReady:async()=>saved.delivery.mode==='smtp'&&!(await deliveryReadiness(c,saved)).length,
+  };
 }
 async function counters(c:Client,now:number,recipient=''){
   const {day,month}=timeKeys(now);

@@ -1,7 +1,7 @@
 import {portalPublicOrigin} from './enrollmentEmail.ts';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
-import {listEnrollmentTemplates,mountEnrollmentTemplates,readEnrollmentTemplate} from './enrollmentTemplates.ts';
+import {enrollmentTemplateIdPattern,listEnrollmentTemplates,mountEnrollmentTemplates,readEnrollmentTemplate} from './enrollmentTemplates.ts';
 import {enrollmentTemplateClassFields} from '../../src/utils/enrollmentTemplates.ts';
 import type { Express, Request, Response } from 'express';
 import { tx } from './store.ts';
@@ -73,11 +73,16 @@ export async function readPublicEnrollmentClassReference(c: Parameters<Parameter
 }
 
 export async function readPublicEnrollmentAppointments(c: Parameters<Parameters<typeof tx>[0]>[0]) {
-  const templates=await listEnrollmentTemplates(c);
-  const courses=(await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows;
-  return templates.flatMap(template=>{
-    const course=courses.find(row=>row.id===template.courseId)?.value;
-    if(template.format!=='one-on-one'||!template.saleUnitPrice||!template.standardUnitPrice||!course?.active||!course.teaching)return [];
+  const {rows}=await c.query(`
+    SELECT t.value AS template, c.value AS course
+    FROM portal_settings t JOIN crm_courses c ON c.id=t.value->>'$.courseId'
+      AND CAST(c.id AS BINARY)=CAST(t.value->>'$.courseId' AS BINARY)
+    WHERE t.id LIKE :p1 AND JSON_TYPE(t.value->'$.courseId')='STRING'
+      AND CAST(t.value->>'$.format' AS BINARY)='one-on-one'
+    ORDER BY t.id
+  `,[enrollmentTemplateIdPattern]);
+  return rows.flatMap(({template,course})=>{
+    if(!template.saleUnitPrice||!template.standardUnitPrice||!course?.active||!course.teaching)return [];
     return [{id:template.id,level:course.teaching.level,course:course.name,teacherType:template.teacherType,
       lessons:course.sessions,minutes:course.teaching.minutes,price:template.saleUnitPrice,standardPrice:template.standardUnitPrice}];
   });
@@ -228,8 +233,10 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     r.set('Cache-Control', 'no-store').json(result);
   }));
   app.get('/api/enrollment/classes', wrap(async (_q, r) => {
-    const classes = await tx(readPublicEnrollmentClasses);
-    const appointments=await tx(readPublicEnrollmentAppointments);
+    const {classes,appointments}=await tx(async c=>({
+      classes:await readPublicEnrollmentClasses(c),
+      appointments:await readPublicEnrollmentAppointments(c),
+    }));
     r.set('Cache-Control', 'no-store').json({ classes,appointments,publicOrigin:portalPublicOrigin() });
   }));
 }
