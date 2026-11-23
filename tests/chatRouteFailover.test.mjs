@@ -66,13 +66,17 @@ function sse(content, done = true) {
 }
 
 function mountFixture(t, bothFail = false) {
-  const messages=[],attempts=[],events=[],logs=[],calls=[],sqlTrace=[];
+  const priorHistory=[],messages=[],attempts=[],events=[],logs=[],calls=[],sqlTrace=[];
   const fixture = {
     events,logs,released:0,sequence:0,
     async query(sql,args = []) {
       if (sql.startsWith('SELECT GET_LOCK')) return {rows:[{acquired:1}]};
       if (sql.startsWith('SELECT * FROM messages')) return {rows:messages.filter(row=>row.requestId===args[1])};
-      if (sql.startsWith('SELECT role,content,metadata')) return {rows:messages.map(row=>({...row,request_id:row.requestId}))};
+      if (sql.startsWith('SELECT role,content,metadata')) {
+        assert.match(sql, /status IN \('saved','completed'\) ORDER BY sequence DESC LIMIT 40$/);
+        const eligible = [...priorHistory,...messages].filter(row=>['saved','completed'].includes(row.status));
+        return {rows:eligible.slice(-40).reverse().map(row=>({...row,request_id:row.requestId}))};
+      }
       if (sql.startsWith('SELECT result FROM hsk_attempts') || sql.startsWith('SELECT value FROM crm_courses')) return {rows:[]};
       if (sql.startsWith('SELECT revision,config FROM enrollment_mail_configuration')) {
         return {rows:[{revision:0,config:{delivery:{mode:'simulation',generation:'fixture'}}}]};
@@ -124,6 +128,7 @@ function mountFixture(t, bothFail = false) {
     const purpose = instruction.startsWith('Identify only the response language.') ? 'language'
       : instruction.startsWith('Extract only the relevant time basis') ? 'schedule' : 'answer';
     calls.push([target,purpose,body.stream]);
+    if (purpose === 'answer') fixture.modelHistory=body.messages.slice(1);
     if (purpose === 'language') return response({current:'en',requested:null},body.model);
     if (purpose === 'schedule') return response({basis:'wib',basisEvidence:null},body.model);
     if (target === 'primary.invalid') return sse('incomplete primary answer',false);
@@ -146,7 +151,7 @@ function mountFixture(t, bothFail = false) {
     await handle({body:{content,stream,messageId:'learner-turn',entrySurface:'standalone_chat',lang:'en'}},res);
     return {packets,reply,headers,ended};
   }
-  return {fixture,send,messages,attempts,events,logs,calls,sqlTrace};
+  return {fixture,send,messages,attempts,events,logs,calls,sqlTrace,priorHistory};
 }
 
 test('Chat publishes only the validated backup reply and preserves class guidance and replay', async t => {
@@ -206,4 +211,15 @@ test('Chat retains the learner turn and a queryable failure when both providers 
   assert.deepEqual(attempts.map(row=>row.error),['Missing provider stream end marker','Provider HTTP 503']);
   assert.deepEqual(events.map(event=>event.type),['ai.failed']);
   assert.equal(fixture.released,1);
+});
+
+
+test('Chat sends the latest eligible history in its original order', async t => {
+  const {fixture,send,priorHistory} = mountFixture(t);
+  for(let n=0;n<65;n++)priorHistory.push({
+    role:n%2?'assistant':'user',content:'history-'+n,status:n%7===0?'interrupted':n%2?'completed':'saved',
+  });
+  await send();
+  const expected=priorHistory.filter(row=>row.status!=='interrupted').slice(-39).map(({role,content})=>({role,content}));
+  assert.deepEqual(fixture.modelHistory.filter(message=>message.content.startsWith('history-')),expected);
 });

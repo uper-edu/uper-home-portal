@@ -200,10 +200,10 @@ export function mountChat(app: Express) {
         }
         const recentMessages = (
           await db.query(
-            "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence",
+            "SELECT role,content,metadata,request_id,created_at FROM messages WHERE conversation_id=:p1 AND status IN ('saved','completed') ORDER BY sequence DESC LIMIT 40",
             [conv.id],
           )
-        ).rows.slice(-40);
+        ).rows.reverse();
         const history=recentMessages.map(({role,content})=>({role,content}));
         const newestMessages=[...recentMessages].reverse();
         const learnerTexts=history.filter(message=>message.role==='user').map(message=>message.content);
