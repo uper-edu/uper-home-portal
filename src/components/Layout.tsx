@@ -116,6 +116,15 @@ const Navbar = ({ onOpenAppearance, learnerPreview, navbarRef }: {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const desktop = window.matchMedia('(min-width: 80rem)');
+    const closeAtDesktop = () => { if (desktop.matches) setMobileMenuOpen(false); };
+    desktop.addEventListener('change', closeAtDesktop);
+    closeAtDesktop();
+    return () => desktop.removeEventListener('change', closeAtDesktop);
+  }, [mobileMenuOpen]);
+
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
     const html = document.documentElement;
@@ -182,8 +191,8 @@ const Navbar = ({ onOpenAppearance, learnerPreview, navbarRef }: {
 
   return (
     <nav ref={navbarRef} inert={learnerPreview} className={`fixed top-0 w-full z-50 transition-all duration-300 ${enrollmentSection?'public-page-header':isScrolled?'glass-card py-3 shadow-xs':'bg-transparent py-5'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-        <Link to={journeyLink("/")} className="flex items-center gap-1.5 md:gap-2 group">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 xl:px-5 flex justify-between items-center gap-3">
+        <Link to={journeyLink("/")} className="flex shrink-0 items-center gap-1.5 md:gap-2 group">
           {enrollmentSection ? <PublicHeaderBrand eager/> : <><img
             src="/uper-logo-mark.svg" 
             alt="UPER Logo" 
@@ -200,7 +209,7 @@ const Navbar = ({ onOpenAppearance, learnerPreview, navbarRef }: {
           </span></>}
         </Link>
         
-        <div className="hidden md:flex items-center gap-7 font-medium text-slate-600">
+        <div className="hidden xl:flex shrink-0 items-center gap-3 whitespace-nowrap font-medium text-slate-600">
           {navLinks.map(link => (
             link.dropdown ? (
               <div 
@@ -247,22 +256,22 @@ const Navbar = ({ onOpenAppearance, learnerPreview, navbarRef }: {
           ))}
         </div>
 
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden xl:flex min-w-0 items-center gap-2 whitespace-nowrap">
           {languageSwitcher}
 
           {studentName ? (
-            <span className={`border px-4 py-2 rounded-full font-medium flex items-center gap-2 ${
+            <span className={`min-w-0 border px-4 py-2 rounded-full font-medium flex items-center gap-2 ${
               isApple
                 ? 'border-slate-800 text-slate-800'
                 : 'border-primary-600 text-primary-600'
             }`}>
-              <GraduationCap className="w-4 h-4" /> {t('nav.studentGreeting', { name: studentName })}
+              <GraduationCap className="w-4 h-4 shrink-0" /> <span className="truncate">{t('nav.studentGreeting', { name: studentName })}</span>
             </span>
           ) : (
             <a
               href={STUDENT_PORTAL_URL}
               target="_self"
-              className={`border px-4 py-2 rounded-full font-medium transition-all flex items-center gap-2 ${
+              className={`shrink-0 border px-4 py-2 rounded-full font-medium transition-all flex items-center gap-2 ${
                 isApple
                   ? 'border-slate-800 text-slate-800 hover:bg-slate-100'
                   : 'border-primary-600 text-primary-600 hover:bg-primary-50'
@@ -272,12 +281,12 @@ const Navbar = ({ onOpenAppearance, learnerPreview, navbarRef }: {
             </a>
           )}
 
-          <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className={`px-5 py-2.5 rounded-full font-medium transition-all flex items-center gap-2 ${isApple ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-none' : 'bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg hover:shadow-primary-500/30'}`}>
+          <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className={`shrink-0 px-5 py-2.5 rounded-full font-medium transition-all flex items-center gap-2 ${isApple ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-none' : 'bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg hover:shadow-primary-500/30'}`}>
             {t('nav.startJourney')} <ArrowRight className="w-4 h-4" />
           </a>
         </div>
 
-        <div className={`md:hidden flex shrink-0 items-center ${sharedMobileTools?'public-header-tools':'gap-2'}`}>
+        <div className={`xl:hidden flex shrink-0 items-center ${sharedMobileTools?'public-header-tools':'gap-2'}`}>
           {languageSwitcher}
           {publicLinkPath && !learnerPreview &&
             <PublicPageLinkActions path={publicLinkPath} language={language} params={promotionQuery}
@@ -304,7 +313,7 @@ const Navbar = ({ onOpenAppearance, learnerPreview, navbarRef }: {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className={`md:hidden absolute top-full left-0 w-full p-5 flex flex-col gap-3.5 shadow-2xl border-b max-h-[85vh] overflow-y-auto ${isApple ? 'bg-white/95 backdrop-blur-2xl border-slate-200/80' : 'bg-white border-slate-200'}`}
+            className={`xl:hidden absolute top-full left-0 w-full p-5 flex flex-col gap-3.5 shadow-2xl border-b max-h-[85vh] overflow-y-auto ${isApple ? 'bg-white/95 backdrop-blur-2xl border-slate-200/80' : 'bg-white border-slate-200'}`}
           >
             {/* 1. High-Visibility Mobile Language Card */}
             <div className={`p-3.5 rounded-2xl border ${isApple ? 'bg-slate-100/80 border-slate-200/70' : 'bg-primary-50/60 border-primary-100'}`}>
