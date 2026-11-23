@@ -192,6 +192,19 @@ const split = (text: string) =>
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
+export function pollNotificationReads(load: () => Promise<void>) {
+  let polling = false;
+  const refresh = async () => {
+    if (polling) return;
+    polling = true;
+    try { await load(); }
+    finally { polling = false; }
+  };
+  void refresh();
+  const timer = setInterval(() => void refresh(), 10000);
+  return () => clearInterval(timer);
+}
+
 export default function NotificationCenter({
   isLight,
   lang,
@@ -322,7 +335,7 @@ export default function NotificationCenter({
   const targetJob=jobsLocation.job;
   const [jobs,setJobs]=useState<{target:string|null;rows?:Row[];error?:string;denied?:boolean}>();
   const jobsTable=useRef<HTMLDivElement>(null);
-  const jobsRequest=useRef(0);
+  const readRequest=useRef(0);
   const jobsResult=jobs?.target===targetJob?jobs:undefined;
   const matchingJobs=jobsResult?.rows?.filter(row=>targetJob?row.id===targetJob:jobsLocation.state==='all'||row.state===jobsLocation.state);
   const jobPages=Math.max(1,Math.ceil((matchingJobs?.length??0)/jobsPageSize));
@@ -368,26 +381,33 @@ export default function NotificationCenter({
     setSimulation([]);
   };
   const load = useCallback(async () => {
+    const request=++readRequest.current;
     setLoading(true);
     if(tab==='notification-jobs'){
-      const request=++jobsRequest.current;
       try{
         const data=await api(tab+(targetJob?'?job='+encodeURIComponent(targetJob):''));
         if(!Array.isArray(data))throw Error('Invalid delivery records response');
-        if(request===jobsRequest.current){setJobs({target:targetJob,rows:data});setError('');}
+        if(request===readRequest.current){setJobs({target:targetJob,rows:data});setError('');}
       }catch(e){
-        if(request===jobsRequest.current){
+        if(request===readRequest.current){
           const status=(e as {status?:number}).status;
           const denied=status===401||status===403;
           setJobs(previous=>({target:targetJob,...(!denied&&previous?.target===targetJob?{rows:previous.rows}:{}),
             error:(e as Error).message,denied}));
         }
-      }finally{if(request===jobsRequest.current)setLoading(false);}
+      }finally{if(request===readRequest.current)setLoading(false);}
       return;
     }
     if(tab==='notification-audit')setAuditRead(previous=>previous==='ready'?'ready':'loading');
     try {
       const data = await api(tab);
+      const ruleData = tab === "notification-rules" ? await Promise.all([
+        api("notification-channels"),
+        api("notification-calendar"),
+        api("notification-options"),
+        api("notification-routing"),
+      ]) : undefined;
+      if(request!==readRequest.current)return;
       if(tab==='notification-audit'){
         if(!Array.isArray(data))throw Error('Invalid notification history response');
         setAuditRead('ready');
@@ -406,13 +426,8 @@ export default function NotificationCenter({
               ? [...(data.channels || []), { id: PERSONAL_CHANNEL_ROW, config: data.personalChannel, systemManaged: true, testDelivery: data.personalChannel.testDelivery }]
               : data.channels || [],
       );
-      if (tab === "notification-rules") {
-        const [d, calendar, options, routingConfig] = await Promise.all([
-          api("notification-channels"),
-          api("notification-calendar"),
-          api("notification-options"),
-          api("notification-routing"),
-        ]);
+      if (ruleData) {
+        const [d, calendar, options, routingConfig] = ruleData;
         setChannels(d.channels || []);
         setGlobalCalendar(calendar);
         setFilterOptions(options);
@@ -422,19 +437,19 @@ export default function NotificationCenter({
       setAwaitingSavedRead(topic=>topic===tab?undefined:topic);
       setDenied(false);
     } catch (e) {
+      if(request!==readRequest.current)return;
       const status=(e as {status?:number}).status;
       if(tab==='notification-audit')setAuditRead(status===401||status===403?'denied':'error');
       else setError((e as Error).message);
       setDenied(status===401||status===403);
     } finally {
-      setLoading(false);
+      if(request===readRequest.current)setLoading(false);
     }
   }, [tab,targetJob]);
   useEffect(() => {
     if (!open || !active) return;
-    void load();
-    const timer = setInterval(() => void load(), 10000);
-    return ()=>{clearInterval(timer);if(tab==='notification-jobs')jobsRequest.current++;};
+    const stop = pollNotificationReads(load);
+    return ()=>{stop();readRequest.current++;};
   }, [open,load,active,tab]);
   useEffect(()=>{if(notice){noticeRef.current?.focus({preventScroll:true});noticeRef.current?.scrollIntoView({block:'nearest',behavior:'instant'});}},[notice]);
   const focusedNotificationJob=useRef<string|null>(null);
