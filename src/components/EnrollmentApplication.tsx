@@ -51,6 +51,7 @@ export function EnrollmentApplication(props:Parameters<typeof EnrollmentForm>[0]
 
 type LearnerDraft={email?:string;name?:string;phone?:string};
 type ContactDraft=LearnerDraft & {forAnother?:boolean;priority?:boolean;personal?:LearnerDraft;delegate?:LearnerDraft;applicationRequestId?:string};
+type ApplicationEmailDraft = {email:string; verifying:boolean; challengeId?:string};
 
 function maskedEmail(email:string) {
   const [local,domain]=email.split('@');
@@ -88,6 +89,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   const [hasNoSeat,setHasNoSeat] = useState(full);
   const [owner]=useState(visitorScope);
   const formKey=paymentClasses?'payment:'+orderId:classId?(waitlistClass||full?'waitlist:':'apply:')+classId:demandOnly?'demand':'mine';
+  const emailDraftKey=formKey+':email-verification';
   const [savedDraft]=useState(()=>readEnrollmentDraft<ContactDraft>(owner,formKey)??{});
   const draftRef=useRef(savedDraft);
   const submittedApplication=useRef<ContactDraft|undefined>(savedDraft.applicationRequestId?savedDraft:undefined);
@@ -101,6 +103,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     submittedApplication.current=undefined;
     draftRef.current={};
     writeEnrollmentDraft(owner,formKey);
+    if(applicationClass)writeEnrollmentDraft(owner,emailDraftKey);
   }
   const [forAnother,setForAnother]=useState(!!savedDraft.forAnother);
   const [editingContact,setEditingContact]=useState(false);
@@ -114,9 +117,14 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   const phoneError = phoneField.error && <small className="enrollment-form-error" role="alert" id={phoneField.errorId}>{phoneField.error}</small>;
   const [priority,updatePriority] = useState(savedDraft.priority??true);
   const setPriority=(value:boolean)=>{updatePriority(value);saveDraft({priority:value});};
-  const [challenge,setChallenge] = useState<string>();
+  const [savedEmailDraft]=useState(()=>{
+    const draft=applicationClass&&readEnrollmentDraft<ApplicationEmailDraft>(owner,emailDraftKey);
+    if(draft&&draft.email===email.trim().toLowerCase())return draft;
+  });
+  const [challenge,setChallenge] = useState(savedEmailDraft?.challengeId);
   const [code,setCode] = useState('');
-  const [verificationStep,setVerificationStep] = useState(false);
+  const [verificationStep,setVerificationStep] = useState(savedEmailDraft?.verifying??false);
+  const [sendingCode,setSendingCode] = useState(false);
   const [verifiedEmail,setVerifiedEmail] = useState('');
   const [sessionAddress,setSessionAddress]=useState('');
   const emailCheck = useRef(0);
@@ -174,6 +182,9 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   const [file,setFile] = useState<File>();
   const cancelDialog=useRef<HTMLDialogElement>(null);
   const base = '/api/enrollment';
+  function persistEmailStep(verifying:boolean, challengeId?:string) {
+    writeEnrollmentDraft<ApplicationEmailDraft>(owner,emailDraftKey,{email:currentEmail,verifying,challengeId});
+  }
   function invalidateEmailConfirmation() {
     emailCheck.current++;
     setVerifiedEmail('');
@@ -238,7 +249,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     setCode('');
     setSessionAddress('');
     clearPrivateRecords();
-    if(applicationClass)setVerificationStep(true);
+    if(applicationClass){setVerificationStep(true);persistEmailStep(true);}
   }
   async function getOrders() {
     const revision=++recordRead.current;
@@ -324,11 +335,24 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     }
     finally { running.current=false;setBusy(false); }
   }
-  function sendCode() {
-    return run(async () => {
+  async function requestCode() {
+    setSendingCode(true);
+    try {
       const data=await enrollmentPost(base+'/email/request',{email,language,purpose:!classId&&!demandOnly?'mine':'apply'},
         undefined,AbortSignal.timeout(60000));
       setChallenge(data.challengeId);setCode('');
+      if(applicationClass)persistEmailStep(true,data.challengeId);
+    } finally {
+      setSendingCode(false);
+    }
+  }
+  function sendCode() { return run(requestCode); }
+  function beginApplicationVerification() {
+    return run(async()=>{
+      saveDraft({email,name,phone,priority});
+      setVerificationStep(true);
+      persistEmailStep(true,challenge);
+      if(!challenge)await requestCode();
     });
   }
   function verify() {
@@ -411,6 +435,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     if(!learnerIntake&&value.trim().toLowerCase()!==currentEmail) invalidateEmailConfirmation();
     setEmail(value);
     setChallenge(undefined);
+    if(applicationClass)writeEnrollmentDraft(owner,emailDraftKey);
     setCode('');
     setError('');
   }
@@ -595,7 +620,8 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   });
   const status = order && t(order.restored ? ['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan'] : enrollmentStatuses[order.status]);
   const emailLabel=t(['电子邮箱','Email address','Alamat email']);
-  const sendLabel=t(challenge?['重发验证码','Resend code','Kirim ulang kode']:['发送验证码','Send code','Kirim kode']);
+  const sendLabel=t(sendingCode?['正在发送…','Sending…','Mengirim…']:
+    challenge?['重发验证码','Resend code','Kirim ulang kode']:['发送验证码','Send code','Kirim kode']);
   const verifiedHint=t(['验证码已发出，请查收邮件。','Code sent. Check your inbox.','Kode dikirim. Periksa kotak masuk Anda.']);
   const learnerLabel=t(['学员姓名','Learner name','Nama siswa']);
   const phoneLabel=t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP']);
@@ -611,7 +637,14 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
           if (!enteredEmailField.current || enteredEmailField.current.reportValidity()) void sendCode();
         }}>{sendLabel}</button>
       </div>
-      {challenge && <p className="enrollment-code-feedback" role="status">{verifiedHint}</p>}
+      {sendingCode && <p className="enrollment-code-feedback" role="status">{t(['正在发送验证码…','Sending your verification code…','Mengirim kode verifikasi…'])}</p>}
+      {!sendingCode && challenge && <p className="enrollment-code-feedback" role="status">{verifiedHint}</p>}
+      {applicationClass && verificationStep && !sendingCode && !challenge && !error &&
+        <p className="enrollment-code-feedback" role="status">{t([
+          '尚未确认验证码已发出。可点击「发送验证码」继续。',
+          'Sending has not been confirmed. Select Send code to continue.',
+          'Pengiriman belum terkonfirmasi. Pilih Kirim kode untuk melanjutkan.',
+        ])}</p>}
     </div>;
   const emailField = <label className="enrollment-field">{emailLabel}
     <input ref={enteredEmailField} type="email" required autoComplete="email" disabled={busy} readOnly={pendingApplication} value={email} onChange={event=>editEmail(event.target.value)}
@@ -678,7 +711,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   if (applicationClass && !hasNoSeat) return <div>
     {returnAction}
     {verificationStep
-      ? <button type="button" className="enrollment-back" onClick={()=>{setVerificationStep(false);setError('');}} disabled={busy}>
+      ? <button type="button" className="enrollment-back" onClick={()=>{setVerificationStep(false);persistEmailStep(false,challenge);setError('');}} disabled={busy}>
         <ArrowLeft size={15} aria-hidden="true"/>{t(['返回申请表','Back to application','Kembali ke formulir'])}
       </button>
       : <Link className="enrollment-back" to={applicationClass.detailsPath} state={applicationClass.navigationState}>
@@ -698,6 +731,13 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         'Gunakan email ini untuk melihat pendaftaran. Kami juga akan mengirimkan pemberitahuan penting melalui email, seperti undangan pindah kelas dan pembatalan kelas.',
       ])}</p>
       <label className="enrollment-field">{emailLabel}<input type="email" value={email} readOnly autoComplete="email"/></label>
+      {!pendingApplication&&<button type="button" className="enrollment-record-link justify-self-start" disabled={busy} onClick={()=>{
+        setVerificationStep(false);
+        persistEmailStep(false,challenge);
+        setError('');
+        setEditingContact(true);
+        requestAnimationFrame(()=>enteredEmailField.current?.focus({preventScroll:true}));
+      }}>{t(['更换邮箱','Change email','Ganti email'])}</button>}
       {codeField}
       <div className="enrollment-journey-actions">
         <p>{t(['取得席位后进入「转账与凭证」。','Once a seat is reserved, you’ll go to Transfer & proof.','Setelah mendapat kursi, Anda akan masuk ke Transfer dan bukti.'])}</p>
@@ -709,7 +749,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       event.preventDefault();
       if(busy||!phoneField.check())return;
       if(emailConfirmed){void verifyApplication();return;}
-      setError('');setVerificationStep(true);
+      void beginApplicationVerification();
     }}>
       <div className="enrollment-payment-summary">
         <h2>{applicationClass.title}</h2>
