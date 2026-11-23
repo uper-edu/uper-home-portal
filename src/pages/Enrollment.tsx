@@ -1,5 +1,5 @@
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
-import { enrollmentClassTitle,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
+import { enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
 import { useEffect, useLayoutEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, MessageCircle, Minus, Plus } from 'lucide-react';
@@ -16,7 +16,7 @@ import { EnrollmentAssistance } from '../components/EnrollmentAssistance';
 import {learnerPreviewToken} from '../utils/enrollmentLearnerPreview';
 import {linkHubReturnUrl,promotionJourneyUrl} from '../utils/promotionNavigation';
 import {normalizeEnrollmentChatSelection} from '../utils/enrollmentChatJourney';
-import {isPlainLinkClick,readChatRecommendation,readEnrollmentPosition,rememberEnrollment,returnAlongJourney,type ChatJourneyState} from '../utils/chatJourneyNavigation';
+import {isPlainLinkClick,readChatRecommendation,readEnrollmentPosition,rememberEnrollment,returnAlongJourney,type ChatJourneyState,type EnrollmentPosition} from '../utils/chatJourneyNavigation';
 import {trackEvent} from '../utils/analytics';
 import './enrollment.css';
 
@@ -27,7 +27,7 @@ const copy = {
   error: ['Classes could not be loaded.', 'Kelas belum dapat dimuat.', '班次暂时无法加载。'],
   retry: ['Try again', 'Coba lagi', '重试'],
   empty: ['No classes match these filters.', 'Belum ada kelas yang cocok.', '暂无符合筛选条件的班次。'],
-  reset: ['Clear filters', 'Hapus filter', '清除筛选'],
+  reset: ['View all classes', 'Lihat semua kelas', '查看全部班次'],
   period: ['Time slot', 'Waktu', '时段'],
   format: ['Class type', 'Jenis kelas', '班型'],
   level: ['Level', 'Level', '级别'],
@@ -52,7 +52,7 @@ const copy = {
   rulesTitle: ['Class opening and refund policy', 'Ketentuan pembukaan kelas dan pengembalian dana', '开班与退款说明'],
   backDetail: ['Back to class details', 'Kembali ke detail kelas', '返回班次详情'],
   backMatch: ['Back to matching results', 'Kembali ke hasil pencocokan', '返回匹配结果'],
-  noMatchBody: ['Try changing the time or class type, or tell us what you want to study.', 'Coba ubah waktu atau jenis kelas, atau beri tahu kami kelas yang Anda inginkan.', '可以调整时段或班型，也可以告诉我们你的上课偏好。'],
+  noMatchBody: ['Try another level, time, or class type.', 'Coba level, waktu, atau jenis kelas lain.', '试试其他级别、时段或班型。'],
   payment: ['Transfer & proof', 'Transfer dan bukti', '转账与凭证'],
   backMine: ['Back to my enrollments', 'Kembali ke pendaftaran saya', '返回我的报名'],
   noMatch: ['Need a different class?', 'Butuh kelas lain?', '没找到合适的班？'],
@@ -126,7 +126,7 @@ export default function Enrollment() {
     performance.mark('uper:enrollment:intake-checked');
   },[previewToken,accepting,availability]);
   const requestedLevel = params.get('level');
-  const level = requestedLevel && catalogLevels.includes(requestedLevel) ? requestedLevel : '1';
+  const level = requestedLevel && catalogLevels.includes(requestedLevel) ? requestedLevel : 'all';
   const period = params.get('period') || '';
   const format = params.get('format') || '';
 
@@ -262,7 +262,7 @@ export default function Enrollment() {
     }}><ArrowLeft size={15} aria-hidden="true"/>{t('backChat')}</Link>;
   const hubPath = !previewToken && !fromChat && linkHubReturnUrl(params,language);
   const chatPath = promotionJourneyUrl('/chat?lang='+language,params);
-  function startConsultation(event:ReactMouseEvent<HTMLAnchorElement>, row?:PublicEnrollmentClass) {
+  function startConsultation(event:ReactMouseEvent<HTMLAnchorElement>, row?:PublicEnrollmentClass, focus:EnrollmentPosition['focus']=row?'class':'catalog') {
     trackEvent('link_click',{target:row?'enrollment_class_consultation':'enrollment_catalog_consultation'});
     if (!isPlainLinkClick(event)) return;
     const selection=normalizeEnrollmentChatSelection(row?{kind:'class',classId:row.id}:{kind:'catalog',level,period,format});
@@ -271,7 +271,7 @@ export default function Enrollment() {
     const expanded = [...document.querySelectorAll<HTMLDetailsElement>('.enrollment-course details[open][data-enrollment-section]')]
       .map(detail=>detail.dataset.enrollmentSection!);
     const enrollmentConsultation = rememberEnrollment({
-      scrollY:window.scrollY,focus:row?'class':'catalog',expanded,
+      scrollY:window.scrollY,focus,expanded,
     },selection,row&&enrollmentClassTitle(row,language));
     navigate(chatPath,{state:{enrollmentConsultation}});
   }
@@ -358,7 +358,7 @@ export default function Enrollment() {
     return <section className="enrollment-screen enrollment-apply-screen">
       <EnrollmentApplication key={selected.id} classId={selected.id} language={language} returnAction={backChat} applicationClass={{
         title: enrollmentClassTitle(selected,language),
-        schedule: selected.schedule,
+        schedule: enrollmentScheduleLabel(selected,language),
         price: selected.price,
         detailsPath: waitlistPath ?? detailsPath(selected.id),
         fromWaitlist: waitlistId ?? undefined,
@@ -462,11 +462,19 @@ export default function Enrollment() {
         </div>
       </article>)}
     </div>
-      : classes&&!failed&&<div className="enrollment-class-card enrollment-empty"><CalendarDays size={20} aria-hidden="true"/><div><p><strong>{t('empty')}</strong></p><p>{t('noMatchBody')}</p></div><button className="enrollment-quiet" type="button" onClick={() => {
-        const next = new URLSearchParams(params);
-        next.delete('period'); next.delete('format');
-        setParams(next, { replace: true, preventScrollReset: true, state:chatReturnState });
-      }}>{t('reset')}</button></div>}
+      : classes&&!failed&&<div className="enrollment-class-card enrollment-empty">
+        <CalendarDays size={20} aria-hidden="true"/><div><p><strong>{t('empty')}</strong></p><p>{t('noMatchBody')}</p></div>
+        <div className="enrollment-empty-actions">
+          {(level !== 'all' || period || format) && <button className="enrollment-primary" type="button" onClick={() => {
+            const next = new URLSearchParams(params);
+            for (const key of ['level','period','format']) next.delete(key);
+            setParams(next, {replace:true,preventScrollReset:true,state:chatReturnState});
+          }}>{t('reset')}</button>}
+          {!previewToken && !fromChat && <Link data-enrollment-consult="catalog-empty"
+            className="enrollment-outline" to={chatPath} onClick={event=>startConsultation(event,undefined,'catalog-empty')}>
+            <MessageCircle size={16} aria-hidden="true"/>{t('consultCatalog')}</Link>}
+        </div>
+      </div>}
     {accepting && <div className="enrollment-interest-link"><p>{t('noMatch')}</p><Link className="enrollment-quiet" to={interestPath} state={chatReturnState}>{t('interest')}<ArrowUpRight size={15} aria-hidden="true"/></Link></div>}
   </section>;
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Clock3, Copy as CopyIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
-import {enrollmentTeacherLabel,enrollmentClassTitle, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {enrollmentTeacherLabel,enrollmentClassTitle,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import { interestOption, interestText, type InterestLanguage } from './EnrollmentInterests';
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import { enrollmentSupportPath } from './EnrollmentSupport';
@@ -100,7 +100,7 @@ export function EnrollmentOrderAftercare({
     {label&&<small>{label}</small>}
     <h2>{courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}</h2>
     {value&&<p>{[enrollmentTeacherLabel(value.teacherType??course?.teacherType,language),value.firstLesson.replace('T',' ')+' WIB'].filter(Boolean).join(' · ')}</p>}
-    {value?.schedule&&<p>{value.schedule}</p>}
+    {value&&<p>{enrollmentScheduleLabel(value,language)}</p>}
     {isOriginal&&closed&&<p>{originalClosed}</p>}
   </article>;
   const foot = (primary: React.ReactNode, secondary?: React.ReactNode) => <div className="enrollment-journey-actions">
@@ -230,7 +230,7 @@ export function EnrollmentOrderAftercare({
         return <article key={row.id} className="enrollment-record enrollment-transfer-card">
           <h2>{courseTitle(row,course,option?.opened===false)}</h2>
           {option&&<p>{t([option.sessions+' 次课 · 每次 '+option.minutes+' 分钟',option.sessions+' sessions · '+option.minutes+' min each',option.sessions+' sesi · '+option.minutes+' menit per sesi'])}</p>}
-          <p>{row.schedule}</p>
+          <p>{enrollmentScheduleLabel(row,language)}</p>
           <p><span className="enrollment-status" data-state="confirmed">{t(['可转班','Available for transfer','Tersedia untuk pindah kelas'])}</span></p>
           <div className="enrollment-transfer-card-actions">
             <div><strong>{t(['原款转入','Existing payment carries over','Pembayaran awal dialihkan'])}</strong>

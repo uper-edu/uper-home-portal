@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentScheduleDefaults, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
+import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentScheduleDefaults, enrollmentScheduleLabel, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
 
 const sample = {
@@ -187,4 +187,15 @@ test('mixed schedules keep the actual weekday times and validate the first sessi
   assert.equal(enrollmentWeeklyScheduleText(plan,45,'zh'),'每周五 19:00–20:30；周六 15:00–16:30 WIB');
   assert.equal(enrollmentWeeklyScheduleText(plan,45,'en'),'Fri 19:00–20:30 / Sat 15:00–16:30 WIB');
   assert.equal(enrollmentWeeklyScheduleText(plan,45,'id'),'Jum 19:00–20:30 / Sab 15:00–16:30 WIB');
+});
+
+
+test('learner schedule uses the current language while preserving legacy text-only records',()=>{
+  const schedule='每周一、三 19:00–19:45 WIB';
+  const row={schedule,minutes:45,weeklySchedule:{days:[1,3],start:'19:00',lessons:1}};
+  assert.equal(enrollmentScheduleLabel(row,'en'),'Mon, Wed 19:00–19:45 WIB');
+  assert.equal(enrollmentScheduleLabel(row,'id'),'Sen, Rab 19:00–19:45 WIB');
+  assert.equal(enrollmentScheduleLabel(row,'zh'),schedule);
+  assert.equal(enrollmentScheduleLabel({schedule},'id'),schedule);
+  assert.equal(enrollmentScheduleLabel({...row,weeklySchedule:{...row.weeklySchedule,days:[]}},'en'),schedule);
 });

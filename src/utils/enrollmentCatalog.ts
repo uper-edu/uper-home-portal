@@ -223,6 +223,12 @@ export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undef
   return groups.length?groups.map(({days,time})=>days+' '+time).join(lang==='zh'?'；':' / ')+' WIB':'';
 }
 
+export function enrollmentScheduleLabel(row:Partial<Pick<PublicEnrollmentClass,'weeklySchedule'|'minutes'|'schedule'>>|undefined,language:'zh'|'en'|'id') {
+  if (!row) return '';
+  const localized = row.minutes === undefined ? '' : enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,language);
+  return localized || row.schedule || '';
+}
+
 /** One title contract for the catalog, CRM, applications and order details. */
 export type EnrollmentClassIdentity = {level?:string;format?:string;period?:string;batchNumber?:number};
 export function enrollmentClassTitle(row:EnrollmentClassIdentity,language:'zh'|'en'|'id') {

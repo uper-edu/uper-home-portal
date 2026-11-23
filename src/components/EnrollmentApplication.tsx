@@ -6,7 +6,7 @@ import {getStudentContext} from '../services/studentProfileStorage';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
-import { enrollmentClassTitle } from '../utils/enrollmentCatalog';
+import { enrollmentClassTitle, enrollmentScheduleLabel } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
@@ -761,6 +761,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       </div> : waitlistClass ? <form className="enrollment-journey-form" onSubmit={event=>{event.preventDefault();void join();}}>
         <article className="enrollment-record">
           <h2>{classTitle(waitlistClass.level,waitlistClass.firstLesson,waitlistClass.id)}</h2>
+          <p>{enrollmentScheduleLabel(waitlistClass,language)}</p>
           <p><span className="enrollment-status" data-state="full">{t(waitlistClass.opened
             ? ['已确认开班 · 满班','Class confirmed · Full','Kelas dikonfirmasi · Penuh']
             : ['满班','Full','Penuh'])}</span></p>
@@ -798,6 +799,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
   }
   const orderCards = (orders ?? []).filter(()=>tab==='all'||tab==='orders').map(row => {
     const course = mineClasses?.find(item=>item.id===row.classId);
+    const schedule = enrollmentScheduleLabel(course,language);
     const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(row.closureReason==='learner_cancelled'?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:enrollmentStatuses[row.status]);
     const active = orderIsActive(row);
     const payable = row.status==='awaiting_payment'&&!row.classCancelled;
@@ -812,7 +814,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
       {payable && <p>{paymentDeadline(row.deadline)}</p>}
       {row.classCancelled&&row.status==='awaiting_payment'&&<p>{t(['原班已停止收款','Payment for the original class is closed','Pembayaran untuk kelas asal ditutup'])}</p>}
       {row.status==='expired'&&!row.restored && <p>{t(['付款凭证未按时提交','Proof was not submitted by the deadline','Bukti tidak dikirim sebelum batas waktu'])}</p>}
-      {row.status==='paid' && course?.schedule && <p>{[course.opened&&t(['已确认开班','Class confirmed','Kelas dikonfirmasi']),course.schedule].filter(Boolean).join(' · ')}</p>}
+      {row.status==='paid' && schedule && <p>{[course?.opened&&t(['已确认开班','Class confirmed','Kelas dikonfirmasi']),schedule].filter(Boolean).join(' · ')}</p>}
       {row.learnerName&&<p>{row.learnerName}</p>}
       {row.invitation ? <Link className="enrollment-record-link" to={transferInvitationPath(row.id,row.invitation.id)}>
         {t(['查看转班邀请','View transfer invitation','Lihat undangan pindah kelas'])}<ChevronRight size={15} aria-hidden="true"/></Link>
@@ -849,6 +851,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
     : t(['已登记 · 等待匹配','Saved · Waiting for a match','Tersimpan · Menunggu kecocokan']);
   function renderWaitlistDetail(row: NonNullable<typeof waitlistDetail>) {
     const course = mineClasses?.find(item=>item.id===row.classId);
+    const schedule = enrollmentScheduleLabel(course,language);
     const waiting = row.state==='waiting';
     const available = waiting && row.available;
     const related = new URLSearchParams(mineParams);
@@ -859,7 +862,7 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
         <p><span className="enrollment-status" data-state={available?'confirmed':waiting?'pending':'full'}>
           {t(waitlistStates[row.state])}{waiting&&!available && ' · '+t(['暂无空位','No seats available','Belum ada kursi'])}
         </span></p>
-        {course?.schedule && <p>{course.schedule}</p>}
+        {schedule && <p>{schedule}</p>}
         {row.learnerName&&<p>{row.learnerName}</p>}
       </article>
       {waiting && <p className="enrollment-journey-note">{t(available
@@ -884,14 +887,17 @@ function EnrollmentForm({ classId, language, full = false, demandOnly = false, p
           <h2>{demandTitle(row)}</h2>
           {row.criteria.notes&&<p>{row.criteria.notes}</p>}
         </article>
-        {row.matches.map(match=><article className="enrollment-record" key={match.id}>
+        {row.matches.map(match=>{
+          const schedule = enrollmentScheduleLabel(mineClasses?.find(item=>item.id===match.id),language);
+          return <article className="enrollment-record" key={match.id}>
           <small>{t(['匹配班次','Matching class','Kelas yang cocok'])}</small>
           <h2>{classTitle(match.level,match.firstLesson,match.id)}</h2>
-          {mineClasses?.find(item=>item.id===match.id)?.schedule && <p>{mineClasses.find(item=>item.id===match.id)?.schedule}</p>}
+          {schedule && <p>{schedule}</p>}
           {row.matches.length>1&&<Link className="enrollment-record-link" to={classFromRecord(match.id,'fromDemand',row.id)}>
             {t(['查看匹配班次','View matching class','Lihat kelas yang cocok'])}<ChevronRight size={15} aria-hidden="true"/>
           </Link>}
-        </article>)}
+          </article>;
+        })}
         {!!row.matches.length&&<p className="enrollment-journey-note">{t(['申请时以实际空位为准。','Availability is checked when you apply.','Ketersediaan diperiksa saat Anda mendaftar.'])}</p>}
         {active&&<div className="enrollment-interest-actions">
           <button type="button" className={row.matches.length===1?'enrollment-quiet':'enrollment-primary enrollment-demand-edit'} disabled={busy||editDemand?.id===row.id} onClick={()=>setEditDemand(row)}>{t(['修改需求','Edit preferences','Ubah preferensi'])}</button>

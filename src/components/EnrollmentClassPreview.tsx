@@ -2,7 +2,7 @@ import {Link} from 'react-router-dom';
 import type {MouseEventHandler} from 'react';
 import {BookOpen,CalendarDays,ChevronRight,Clock3} from 'lucide-react';
 import {formatCurrency} from '../utils/currency';
-import {enrollmentClassSizeText,enrollmentClassTitle,enrollmentTeacherLabel,enrollmentWeeklyScheduleGroups,enrollmentWeeklyScheduleText,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {enrollmentClassSizeText,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel,enrollmentWeeklyScheduleGroups,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import {enrollmentCopy} from './EnrollmentApplication';
 import '../pages/enrollment.css';
 
@@ -54,7 +54,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
      t('每节 '+row.minutes+' 分钟',row.minutes+' min each',row.minutes+' menit per jam pelajaran'),
    ].filter(Boolean).join(' · ')}</p>
    {!chatPresentation&&<>
-     <p className="enrollment-schedule">{enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,language)||row.schedule}</p>
+     <p className="enrollment-schedule">{enrollmentScheduleLabel(row,language)}</p>
      <div className="enrollment-class-status"><span className="enrollment-status" data-state={state}>{statusText}</span></div>
    </>}
    <div className="enrollment-class-bottom">

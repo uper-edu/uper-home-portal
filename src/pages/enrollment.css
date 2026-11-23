@@ -213,6 +213,8 @@
 .enrollment-prices strong { color: var(--enrollment-ink); line-height: 1.25; font-size: 17px; font-weight: 750; letter-spacing: -.015em; }
 .enrollment-prices small { font-size: 11px; }
 .enrollment-empty { align-items: start; gap: 9px; padding: 18px; }
+.enrollment-empty-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.enrollment-empty-actions .enrollment-primary { width: auto; max-width: 100%; }
 .enrollment-interest-link { border-top: 1px solid var(--enrollment-border); margin-top: 16px; padding-top: 12px; }
 .enrollment-interest-link p { color: var(--enrollment-muted); }
 .enrollment-detail-layout, .enrollment-apply-layout { display: grid; gap: 18px; }

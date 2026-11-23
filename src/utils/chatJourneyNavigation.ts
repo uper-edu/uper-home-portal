@@ -3,7 +3,7 @@ import {normalizeEnrollmentChatSelection, type EnrollmentChatSelection} from './
 import type {MouseEvent} from 'react';
 
 export type ChatMessageAnchor = {conversationId:string; messageId:string; owner:string; widget:boolean};
-export type EnrollmentPosition = {scrollY:number; focus:'catalog'|'class'; expanded:string[]};
+export type EnrollmentPosition = {scrollY:number; focus:'catalog'|'catalog-empty'|'class'; expanded:string[]};
 type ReturnEntry = {url:string; index:number};
 export type EnrollmentConsultation = ReturnEntry & {selection:EnrollmentChatSelection; title?:string; position:EnrollmentPosition};
 type ChatRecommendation = ReturnEntry & {anchor:ChatMessageAnchor};
@@ -46,7 +46,7 @@ function validReturn(entry: ReturnEntry | undefined, enrollment:boolean) {
 
 function validPosition(position:EnrollmentPosition|undefined) {
   return position && Number.isFinite(position.scrollY) && position.scrollY>=0 &&
-    (position.focus==='catalog'||position.focus==='class') && Array.isArray(position.expanded);
+    (position.focus==='catalog'||position.focus==='catalog-empty'||position.focus==='class') && Array.isArray(position.expanded);
 }
 
 export function readEnrollmentPosition(state:ChatJourneyState|undefined) {

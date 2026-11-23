@@ -66,7 +66,7 @@ function ChatWelcomeOffer({icon:Icon,title,description,label,onClick}:{
   return <div className="chat-test-offer">
     <span aria-hidden="true"><Icon size={20}/></span>
     <div><h2>{title}</h2><p>{description}</p></div>
-    <button type="button" className="chat-primary" onClick={onClick}>
+    <button type="button" className="chat-welcome-secondary" onClick={onClick}>
       {label}<ArrowRight size={16} aria-hidden="true"/>
     </button>
   </div>;
@@ -85,6 +85,9 @@ export function ChatWelcome({lang,hasDraft,hasResult,onAssessment,onPrompt,hasPr
   return <section className="chat-welcome">
     <h1>{t('你好，想怎么开始学中文？','How would you like to start learning Chinese?','Bagaimana kamu ingin mulai belajar Mandarin?')}</h1>
     <p>{t('我是 UPER AI 学习顾问。可以问我课程、学费和报名。','I’m UPER’s AI learning advisor. Ask me about courses, tuition, or enrollment.','Saya konsultan belajar AI UPER. Tanyakan tentang kelas, biaya, atau pendaftaran.')}</p>
+    <div className="chat-starter-prompts">
+      {prompts.map(prompt=><button type="button" key={prompt} onClick={()=>onPrompt(prompt)}>{prompt}<ChevronRight size={15} aria-hidden="true"/></button>)}
+    </div>
     {onLearningProfile&&<ChatWelcomeOffer icon={ClipboardList}
       title={t('学习登记问卷','Learning questionnaire','Kuesioner belajar')}
       description={t('告诉我们你的学习目标和偏好，方便推荐课程。','Tell us your goals and preferences so we can suggest a class.','Ceritakan tujuan dan preferensimu agar kami bisa menyarankan kelas.')}
@@ -97,9 +100,6 @@ export function ChatWelcome({lang,hasDraft,hasResult,onAssessment,onPrompt,hasPr
       label={hasDraft?t('继续测评','Resume assessment','Lanjutkan tes'):hasResult?t('查看测评结果','View assessment results','Lihat hasil tes'):
         t('开始免费测评','Start free assessment','Mulai tes gratis')}
       onClick={onAssessment}/>
-    <div className="chat-starter-prompts">
-      {prompts.map(prompt=><button type="button" key={prompt} onClick={()=>onPrompt(prompt)}>{prompt}<ChevronRight size={15} aria-hidden="true"/></button>)}
-    </div>
   </section>;
 }
 

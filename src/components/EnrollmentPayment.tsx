@@ -1,7 +1,7 @@
 import type { EnrollmentClosureReason } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
-import { enrollmentTeacherLabel, enrollmentClassTitle, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import { enrollmentTeacherLabel, enrollmentClassTitle, enrollmentScheduleLabel, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { formatCurrency } from '../utils/currency';
 import { EnrollmentJoiningNote } from './EnrollmentSupport';
 import type { EnrollmentBank } from '../utils/enrollmentBank';
@@ -70,6 +70,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
     'Sisa ' + (hours ? hours + ' jam ' : '') + shortMinutes + ' mnt',
   );
   const cohort=classInfo??course;
+  const schedule=enrollmentScheduleLabel(cohort,language);
   const start = cohort && dayFormat.format(new Date(cohort.firstLesson + ':00+07:00'));
   const title = cohort && enrollmentClassTitle({...course,...classInfo},language);
   const bank = order.bank;
@@ -104,7 +105,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
     <div className="enrollment-payment-summary">
       <h2>{title || status}</h2>
       {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('首课 '+start,'First session '+start,'Pertemuan pertama '+start))].filter(Boolean).join(' · ')}</p>}
-      {cohort?.schedule&&<p>{cohort.schedule}</p>}
+      {schedule&&<p>{schedule}</p>}
       {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={now} language={language}/>}
       {course && order.status !== 'awaiting_payment' && <p className="enrollment-payment-status">{status}</p>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}

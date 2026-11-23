@@ -1,7 +1,7 @@
 import { ArrowLeft, CircleCheck, Clock3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../utils/currency';
-import { enrollmentTeacherLabel, enrollmentClassTitle, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
+import {enrollmentScheduleLabel, enrollmentTeacherLabel, enrollmentClassTitle, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { useEnrollmentOpeningClock } from '../utils/useEnrollmentOpeningClock';
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import { EnrollmentJoiningNote, enrollmentSupportPath } from './EnrollmentSupport';
@@ -37,7 +37,7 @@ export function EnrollmentOrderResult({ order, course, classInfo, classState, la
   const courseDay = day(course?.firstLesson ?? classInfo?.firstLesson);
   const openingClock=useEnrollmentOpeningClock();
   const classFormat=classInfo?.format??course?.format;
-  const schedule = classInfo?.schedule || course?.schedule;
+  const schedule = enrollmentScheduleLabel(classInfo,language) || enrollmentScheduleLabel(course,language);
   const openingDate = courseDay && (opened
     ? t([courseDay+'开课','Starts '+courseDay,'Mulai '+courseDay])
     : opened===false && !cancelled
