@@ -1,8 +1,7 @@
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
-import {enrollmentClassTitle,type EnrollmentClassIdentity} from '../utils/enrollmentCatalog';
+import {enrollmentCopy,enrollmentClassTitle,type EnrollmentClassIdentity} from '../utils/enrollmentCatalog';
 import {useEffect,useState} from 'react';
 import {Link,useLocation,useNavigate} from 'react-router-dom';
-import {enrollmentCopy} from './EnrollmentApplication';
 import {enrollmentPost,watchEnrollmentEmailSession} from '../services/enrollmentSession';
 import {interestOption,type InterestLanguage} from './EnrollmentInterests';
 import {formatCurrency} from '../utils/currency';

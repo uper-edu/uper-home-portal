@@ -1,3 +1,4 @@
+import { readAdminLanguage } from "./adminLanguagePreference";
 import {targetUnavailable} from './crmNotificationTarget';
 import {isSalesProgressStage,progressLabel} from './crmSalesProgress';
 import {outreachText} from './crmOutreach';
@@ -9,10 +10,6 @@ import { safeStorage } from "./safeStorage";
 export type CrmLanguage = "en" | "zh" | "id";
 export const crmLocale = (lang: CrmLanguage) =>
   lang === "id" ? "id-ID" : lang === "zh" ? "zh-CN" : "en-GB";
-export function readAdminLanguage(): CrmLanguage {
-  const stored = safeStorage.getItem("uper_admin_lang") || safeStorage.getItem("uper_crm_lang") || safeStorage.getItem("uper_cms_lang");
-  return stored === "zh" || stored === "id" ? stored : "en";
-}
 export function useCrmLanguage() {
   const [lang, setState] = useState<CrmLanguage>(readAdminLanguage);
   const setLang = (value: CrmLanguage) => {

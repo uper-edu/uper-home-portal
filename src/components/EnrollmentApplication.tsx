@@ -6,7 +6,7 @@ import {getStudentContext} from '../services/studentProfileStorage';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
-import { enrollmentClassTitle, enrollmentScheduleLabel } from '../utils/enrollmentCatalog';
+import { enrollmentCopy, enrollmentClassTitle, enrollmentScheduleLabel } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
@@ -36,9 +36,7 @@ export const enrollmentStatuses: Record<string, Copy> = {
   refunding: ['退款处理中','Refund in progress','Pengembalian diproses'],
   refunded: ['退款已完成','Refund complete','Pengembalian selesai'],
 };
-export function enrollmentCopy(language: Language, text: Copy) {
-  return text[language === 'zh' ? 0 : language === 'id' ? 2 : 1];
-}
+export {enrollmentCopy} from '../utils/enrollmentCatalog';
 type OrderSummary = Order & {level:string;firstLesson:string;classCancelled?:boolean;updatedAt?:string;needsPayment?:boolean;invitation?:{id:string;deadline:string}};
 type AssistedApplication={id:string;name:string;quote:{level:string;format:string;firstLesson:string;schedule:string;price:number};
   createdAt:string;expiresAt:string;active:boolean};

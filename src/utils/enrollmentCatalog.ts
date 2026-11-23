@@ -291,3 +291,7 @@ export function enrollmentScheduleErrors(config:Partial<Omit<EnrollmentClassConf
   }
   return errors;
 }
+
+export function enrollmentCopy(language: 'zh' | 'en' | 'id', text: readonly [string, string, string]) {
+  return text[language === 'zh' ? 0 : language === 'id' ? 2 : 1];
+}

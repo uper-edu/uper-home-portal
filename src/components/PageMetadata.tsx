@@ -17,7 +17,7 @@ import {
   type SiteLanguage,
   type Metadata,
 } from "../utils/siteMetadata";
-import { readAdminLanguage } from "../utils/crmLanguage";
+import { readAdminLanguage } from "../utils/adminLanguagePreference";
 type Entry = { path: string; priority: number; meta: Metadata };
 const Registry = createContext<
   ((id: string, entry: Entry) => () => void) | null

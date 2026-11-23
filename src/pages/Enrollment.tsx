@@ -1,7 +1,7 @@
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
-import { enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
+import { enrollmentCopy,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
-import { useEffect, useLayoutEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { lazy, useEffect, useLayoutEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, MessageCircle, Minus, Plus } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -11,14 +11,15 @@ import { type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { PublicSingleSelect } from '../components/PublicSingleSelect';
 import { EnrollmentSupport } from '../components/EnrollmentSupport';
 
-import { EnrollmentApplication, enrollmentCopy } from '../components/EnrollmentApplication';
-import { EnrollmentAssistance } from '../components/EnrollmentAssistance';
 import {learnerPreviewToken} from '../utils/enrollmentLearnerPreview';
 import {linkHubReturnUrl,promotionJourneyUrl} from '../utils/promotionNavigation';
 import {normalizeEnrollmentChatSelection} from '../utils/enrollmentChatJourney';
 import {isPlainLinkClick,readChatRecommendation,readEnrollmentPosition,rememberEnrollment,returnAlongJourney,type ChatJourneyState,type EnrollmentPosition} from '../utils/chatJourneyNavigation';
 import {trackEvent} from '../utils/analytics';
 import './enrollment.css';
+
+const EnrollmentApplication = lazy(() => import('../components/EnrollmentApplication').then(module => ({default:module.EnrollmentApplication})));
+const EnrollmentAssistance = lazy(() => import('../components/EnrollmentAssistance').then(module => ({default:module.EnrollmentAssistance})));
 
 const copy = {
   title: ['Course enrollment', 'Pendaftaran kelas', '课程报名'],

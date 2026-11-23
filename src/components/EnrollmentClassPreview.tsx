@@ -2,8 +2,7 @@ import {Link} from 'react-router-dom';
 import type {MouseEventHandler} from 'react';
 import {BookOpen,CalendarDays,ChevronRight,Clock3} from 'lucide-react';
 import {formatCurrency} from '../utils/currency';
-import {enrollmentClassSizeText,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel,enrollmentWeeklyScheduleGroups,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
-import {enrollmentCopy} from './EnrollmentApplication';
+import {enrollmentCopy,enrollmentClassSizeText,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel,enrollmentWeeklyScheduleGroups,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import '../pages/enrollment.css';
 
 type Language='zh'|'en'|'id';

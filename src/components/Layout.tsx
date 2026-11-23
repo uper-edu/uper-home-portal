@@ -1,11 +1,10 @@
 import {promotionEntryPoint, promotionJourneyUrl, promotionLandingPaths, websitePromotionUrl} from '../utils/promotionNavigation';
 import VisitorBoundary from './VisitorBoundary';
-import React, { useState, useEffect, useId, useRef, Suspense } from 'react';
+import React, { lazy, useState, useEffect, useId, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, Outlet, useLocation, useMatch, useNavigationType, useNavigate } from 'react-router-dom';
 import { Globe2, ArrowRight, X, MapPin, User, Phone, MessageCircle, CalendarCheck, ChevronDown, GraduationCap, Palette, Settings2, Sliders, Check, RotateCcw, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import AIChatbot from './AIChatbot';
 import {useSiteChatBackground} from './SiteChatRoutes';
 import {readEnrollmentPosition} from '../utils/chatJourneyNavigation';
 import {normalizeSiteLanguage} from '../utils/siteMetadata';
@@ -864,6 +863,8 @@ const MobileBottomBar = () => {
   );
 };
 
+const AIChatbot = lazy(() => import('./AIChatbot'));
+
 export default function Layout({learnerPreview=false}:{learnerPreview?:boolean}) {
   const chatBackground = useSiteChatBackground();
   const { t, i18n } = useTranslation();
@@ -955,8 +956,8 @@ export default function Layout({learnerPreview=false}:{learnerPreview?:boolean})
         </motion.div>
       </main>
       {!learnerPreview && (!enrollmentScreen || chatBackground || enrollmentChatEntry===location.key) &&
-        <VisitorBoundary><AIChatbot navbarRef={navbarRef} expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}
-          launchRequest={chatLaunchRequest} onLaunchHandled={setChatLaunchRequest}/></VisitorBoundary>}
+        <Suspense fallback={null}><VisitorBoundary><AIChatbot navbarRef={navbarRef} expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}
+          launchRequest={chatLaunchRequest} onLaunchHandled={setChatLaunchRequest}/></VisitorBoundary></Suspense>}
       {!enrollmentScreen && <>
         <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
         <BackToTop />
