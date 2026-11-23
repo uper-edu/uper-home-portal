@@ -1,3 +1,5 @@
+import {sameHskSubmission} from '../utils/hskSubmissionIdentity';
+import type {HskAttempt,HskLanguage,HskResult} from '../data/hskAssessment';
 import {rememberVisitorContact} from './visitorContact';
 import {trackEvent,trackReceipt,trackConfirmedReceipt} from '../utils/analytics';
 import {registrationAnalyticsReceipt,assessmentAnalyticsReceipt,advisorAnalyticsReceipt,registrationAdvisorAnalyticsReceipts} from '../utils/analyticsReceipts';
@@ -329,8 +331,8 @@ export async function restoreCurrentChat(source: ChatSource, options: {previous?
 }
 
 export async function saveHskAttempt(
-  attempt: import("../data/hskAssessment").HskAttempt,
-  lang: import("../data/hskAssessment").HskLanguage,
+  attempt: HskAttempt,
+  lang: HskLanguage,
   expectedScope = visitorScope(),
 ) {
   await session();
@@ -344,12 +346,43 @@ export async function saveHskAttempt(
     }),
   );
   const data = await scopedJson(res);
-  assertVisitorScope(expectedScope);
-  trackConfirmedReceipt(assessmentAnalyticsReceipt(data.result,attempt.attemptId));
-  const result = data.result as import("../data/hskAssessment").HskResult;
-  writeHskResult(result);
+  const result = data.result as HskResult;
+  if(result?.attempt?.attemptId!==attempt.attemptId||result.saveStatus!=='saved')throw Error('Invalid assessment receipt');
+  acceptHskReceipt(result,expectedScope);
   return result;
 }
+/** Recover an owned result before explicitly retrying a submission with no confirmed receipt. */
+async function readHskReceipt(attemptId:string, expectedScope=visitorScope()): Promise<HskResult|null> {
+  await session();
+  assertVisitorScope(expectedScope);
+  const response=await scopedFetch('/api/portal/assessments/'+encodeURIComponent(attemptId),{signal:AbortSignal.timeout(15000)});
+  if(response.status===404 && (await scopedJson(response.clone())).error==='Attempt not found')return null;
+  const {result}=await scopedJson(await checked(response));
+  if(result?.attempt?.attemptId!==attemptId||result.saveStatus!=='saved')throw Error('Invalid assessment receipt');
+  return result;
+}
+
+export async function recoverHskAttempt(attemptId:string, expectedScope=visitorScope()) {
+  const saved=await readHskReceipt(attemptId,expectedScope);
+  if(!saved)throw Error('Attempt not found');
+  acceptHskReceipt(saved,expectedScope);
+  return saved;
+}
+
+export async function retryHskAttempt(attempt:HskAttempt, lang:HskLanguage, expectedScope=visitorScope()) {
+  const saved=await readHskReceipt(attempt.attemptId,expectedScope);
+  if(!saved)return saveHskAttempt(attempt,lang,expectedScope);
+  if(!sameHskSubmission(saved.attempt,attempt))throw Error('Attempt already submitted with different answers');
+  acceptHskReceipt(saved,expectedScope);
+  return saved;
+}
+
+function acceptHskReceipt(result:HskResult,expectedScope:string) {
+  assertVisitorScope(expectedScope);
+  trackConfirmedReceipt(assessmentAnalyticsReceipt(result,result.attempt.attemptId));
+  writeHskResult(result);
+}
+
 export async function restoreHskHistory(lang: import("../data/hskAssessment").HskLanguage = "en") {
   await session();
   const expected = visitorScope();
@@ -432,12 +465,4 @@ export async function startAnotherVisitor(continuationExit?: string) {
   invalidateVisitorScope();
   if (continuationExit) location.replace(continuationExit);
   else await session();
-}
-
-/** Recovery reads one attempt owned by the active visitor; never returns another visitor's result. */
-export async function restoreHskAttempt(attemptId:string, expectedScope=visitorScope()){
- await session();assertVisitorScope(expectedScope);
- const res=await checked(await scopedFetch('/api/portal/assessments/'+encodeURIComponent(attemptId),{signal:AbortSignal.timeout(15000)}));
- const data=await scopedJson(res);assertVisitorScope(expectedScope);
- return data.result as import('../data/hskAssessment').HskResult;
 }

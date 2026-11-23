@@ -25,8 +25,8 @@ import '../pages/standalone-chat.css';
 import GFormOnboardingModal from './GFormOnboardingModal';
 import HskAssessmentReport from './HskAssessmentReport';
 import {type HskResult, chooseText} from '../data/hskAssessment';
-import {saveHskAttempt, restoreHskAttempts, assessmentConsultation, profileConsultation} from '../services/portalChat';
-import {writeHskResult,readHskHistory,readHskDraft} from '../services/hskAttemptStorage';
+import {retryHskAttempt, restoreHskAttempts, assessmentConsultation, profileConsultation} from '../services/portalChat';
+import {writeHskResult,readHskHistory,readHskDraft,clearHskDraft} from '../services/hskAttemptStorage';
 import HSKPlacementAssessment from './HSKPlacementAssessment';
 import {hskWhatsAppDraft} from '../services/hskWhatsApp';
 import {chatAssessmentReturn,rememberChatAssessment,chatAssessmentSummaryId,chatAssessmentReplyId} from '../services/chatAssessmentReturn';
@@ -308,9 +308,24 @@ export default function ChatWorkspace({
     finally{announceChatChange(owner);consultationRunning.current.delete(botId);setIsTyping(false);}
   };
   const [savingReport,setSavingReport]=useState(false);
+  const [reportError,setReportError]=useState<HskResult|null>(null);
+  const reportRetryRunning=useRef(false);
   const retryReport=async(result:HskResult)=>{
-    if(savingReport)return;setSavingReport(true);
-    try {const saved=await saveHskAttempt(result.attempt,lang);setReport(current=>current?saved:null);handleAssessmentComplete(saved);} catch {} finally {setSavingReport(false);}
+    if(reportRetryRunning.current)return;
+    reportRetryRunning.current=true;
+    setSavingReport(true);
+    setReportError(null);
+    try {
+      const saved=await retryHskAttempt(result.attempt,lang,owner);
+      clearHskDraft(saved.attempt.attemptId);
+      setReport(current=>current===result?saved:current);
+      if(previousThread.current===thread?.conversationId)handleAssessmentComplete(saved);
+    } catch {
+      if(visitorScope()===owner)setReportError(result);
+    } finally {
+      reportRetryRunning.current=false;
+      setSavingReport(false);
+    }
   };
 
   const handleSendMessage = async (textToSend?: string, retry?: ChatMessage, action?: ChatMessage['action']) => {
@@ -491,8 +506,11 @@ export default function ChatWorkspace({
         </div>
       </StandaloneChatDialog>}
       {report&&<StandaloneChatDialog title={t('测评详情','Assessment details','Detail hasil tes')} closeLabel={closeLabel} onClose={()=>setReport(null)} variant="assessment-report">
+        {reportError===report&&<p role="alert" className="hsk-report-notice">
+          {t('仍无法同步测评。结果已保留，可以再次重试。','Results still could not sync. Your result is kept. You can try again.','Hasil masih belum tersinkron. Hasil Anda tersimpan di perangkat dan bisa dicoba lagi.')}
+        </p>}
         <HskAssessmentReport result={report} lang={lang} saving={savingReport} onRetry={()=>void retryReport(report)}/>
-        <div className="chat-dialog-actions"><button className="chat-enrollment-next" type="button" onClick={()=>{setReport(null);setConfirm('retake');}}>
+        <div className="chat-dialog-actions"><button className="chat-enrollment-next" type="button" disabled={savingReport} onClick={()=>{setReport(null);setConfirm('retake');}}>
           {t('重新测评','Retake assessment','Ulangi tes')}
         </button></div>
       </StandaloneChatDialog>}

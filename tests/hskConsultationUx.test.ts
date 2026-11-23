@@ -107,3 +107,44 @@ test('class recommendations wait for an owned later assessment or an explicit ch
   assert.deepEqual(resolveRecommendationTiming(resume,pending,'我还在做测评',300,undefined,undefined).waiting,pending);
   assert.equal(resolveRecommendationTiming(defer,undefined,'我想看班次',200,undefined,1).acknowledge,false);
 });
+
+test('assessment retry reads the owned receipt before deciding whether to save', async t => {
+  const {retryHskAttempt}=await import('../src/services/portalChat');
+  const {selectVisitorScope}=await import('../src/services/visitorScope');
+  const scope='a'.repeat(64);
+  selectVisitorScope(scope);
+  t.after(()=>selectVisitorScope(''));
+  const attempt=sample();
+  const result={...gradeHskAttempt(attempt,'en'),saveStatus:'saved'};
+  const requests:string[]=[];
+  let receipt:Response;
+  let switchDuringRead=false;
+  t.mock.method(globalThis,'fetch',async (url:string,init?:RequestInit)=>{
+    if(url==='/api/portal/session')return Response.json({registered:false,cacheScope:scope});
+    assert.equal(new Headers(init?.headers).get('X-Visitor-Scope'),scope);
+    const method=init?.method??'GET';
+    requests.push(method);
+    if(method==='POST'){
+      assert.deepEqual(JSON.parse(String(init?.body)),{attempt,lang:'en'});
+      return Response.json({result});
+    }
+    if(switchDuringRead)selectVisitorScope('b'.repeat(64));
+    return receipt;
+  });
+  receipt=Response.json({result});
+  assert.deepEqual(await retryHskAttempt(attempt,'en',scope),result);
+  assert.deepEqual(requests.splice(0),['GET']);
+  receipt=Response.json({error:'Attempt not found'},{status:404});
+  assert.deepEqual(await retryHskAttempt(attempt,'en',scope),result);
+  assert.deepEqual(requests.splice(0),['GET','POST']);
+  receipt=Response.json({error:'unavailable'},{status:503});
+  await assert.rejects(retryHskAttempt(attempt,'en',scope),/unavailable/);
+  assert.deepEqual(requests.splice(0),['GET']);
+  receipt=Response.json({result:{...result,attempt:{...attempt,answers:{...attempt.answers,[Object.keys(attempt.answers)[0]]:null}}}});
+  await assert.rejects(retryHskAttempt(attempt,'en',scope),/different answers/);
+  assert.deepEqual(requests.splice(0),['GET']);
+  receipt=Response.json({result});
+  switchDuringRead=true;
+  await assert.rejects(retryHskAttempt(attempt,'en',scope),/Visitor changed/);
+  assert.deepEqual(requests,['GET']);
+});

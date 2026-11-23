@@ -1,5 +1,4 @@
-import {trackEvent,trackConfirmedReceipt} from '../utils/analytics';
-import {assessmentAnalyticsReceipt} from '../utils/analyticsReceipts';
+import {trackEvent} from '../utils/analytics';
 import {visitorScope, assertVisitorScope} from '../services/visitorScope';
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -26,7 +25,7 @@ import {
   writeHskResult,
   readHskHistoryState,
 } from "../services/hskAttemptStorage";
-import { saveHskAttempt, restoreHskHistory, restoreHskAttempt } from "../services/portalChat";
+import { saveHskAttempt, restoreHskHistory, recoverHskAttempt, retryHskAttempt } from "../services/portalChat";
 import { HskPlayback, type PlaybackStatus } from "../services/hskPlayback";
 import { HskExamImage } from "./HskExamVisuals";
 import { HskPinyinText } from "./HskPinyinText";
@@ -307,7 +306,7 @@ export default function HSKPlacementAssessment({
   const recoverSaved = async()=>{
     if(!attempt||savingRef.current)return;
     savingRef.current=true;setSaving(true);setSaveError(false);
-    try{const saved=await restoreHskAttempt(attempt.attemptId,ownerScope);trackConfirmedReceipt(assessmentAnalyticsReceipt(saved,attempt.attemptId));writeHskResult(saved);clearHskDraft(attempt.attemptId);if(mounted.current)onComplete(saved);}
+    try{const saved=await recoverHskAttempt(attempt.attemptId,ownerScope);clearHskDraft(attempt.attemptId);if(mounted.current)onComplete(saved);}
     catch{if(mounted.current)setSaveError(true);}
     finally{savingRef.current=false;if(mounted.current)setSaving(false);}
   };
@@ -328,7 +327,7 @@ export default function HSKPlacementAssessment({
     setPending(local);
     writeHskResult(local);
     try {
-      const saved = await saveHskAttempt(local.attempt, lang, ownerScope);
+      const saved = await (saveError ? retryHskAttempt : saveHskAttempt)(local.attempt, lang, ownerScope);
       clearHskDraft(local.attempt.attemptId);
       if (mounted.current) onComplete(saved);
     } catch (e) {
