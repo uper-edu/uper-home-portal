@@ -5,9 +5,12 @@ import {resolveGroupWebhook, validWebhook} from './larkGroupWebhook.ts';
 import {cmsMediaConfiguration} from '../../cloud/mysql/cms-media-storage.mjs';
 import {larkSettings,larkSettingsTarget,type LarkSettings} from './larkSettings.ts';
 
-export const aiCredentialUrl = (provider: string, env = process.env) => provider === 'deepseek'
-  ? env.DEEPSEEK_API_BASE_URL || 'https://api.deepseek.com/chat/completions'
-  : env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1/chat/completions';
+const normalizeChatCompletionUrl = (url: string) => url.replace(/\/v1\/?$/, '/v1/chat/completions');
+export const aiCredentialUrl = (provider: string, env = process.env) => normalizeChatCompletionUrl(
+  provider === 'deepseek'
+    ? env.DEEPSEEK_API_BASE_URL || 'https://api.deepseek.com/chat/completions'
+    : env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1/chat/completions',
+);
 export const aiCredentialTarget = (provider: string) => credentialTarget([provider, aiCredentialUrl(provider)]);
 export const legacyAiCredential = (provider: string, env = process.env) => {
   const key = provider === 'deepseek' ? env.DEEPSEEK_API_KEY : env.OPENAI_API_KEY;

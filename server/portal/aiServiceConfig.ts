@@ -27,7 +27,7 @@ export function providerFor(model:string,reasoningEffort?:ReasoningEffort){
   model,
   provider:deep?'deepseek':'openai',
   key:minimax?(process.env.MINIMAX_API_KEY||process.env.OPENAI_API_KEY):(deep?process.env.DEEPSEEK_API_KEY:process.env.OPENAI_API_KEY),
-  url:minimax?(process.env.MINIMAX_API_BASE_URL||process.env.OPENAI_API_BASE_URL||'https://api.minimaxi.com/v1/chat/completions'):aiCredentialUrl(deep?'deepseek':'openai'),
+  url:minimax?(process.env.MINIMAX_API_BASE_URL||process.env.OPENAI_API_BASE_URL||'https://api.minimaxi.com/v1/chat/completions').replace(/\/v1\/?$/,'/v1/chat/completions'):aiCredentialUrl(deep?'deepseek':'openai'),
   ...(supportsReasoningEffort(model)&&reasoningEffort?{reasoningEffort}:{}),
  };
 }
@@ -68,7 +68,7 @@ export async function probeModel(model:string,reasoningEffort?:ReasoningEffort,c
  const p=providerFor(model,reasoningEffort);p.key=candidateKey??(model==='MiniMax-M3.1-Flash'&&process.env.MINIMAX_API_KEY?process.env.MINIMAX_API_KEY:await configuredAiKey(p.provider));if(!p.key)return {model,ok:false,error:'key_missing'};
  let calls=0;const start=Date.now();
  try{
-  const ask=async(stream=false)=>{calls++;const r=await fetch(p.url,{method:'POST',redirect:'error',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model,messages:[{role:'user',content:'TEST connection check. Return JSON only: {"ok":true}'}],...(stream?{stream:true}:{response_format:{type:'json_object'}}),...modelParameters(model,600,0,p.reasoningEffort)}),signal:AbortSignal.timeout(45000)});if(!r.ok)throw Error('provider_http_'+r.status);return r;};
+  const ask=async(stream=false)=>{calls++;const r=await fetch(p.url,{method:'POST',redirect:'error',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model,messages:[{role:'user',content:'TEST connection check. Return JSON only: {"ok":true}'}],...(stream?{stream:true}:{response_format:{type:'json_object'}}),...modelParameters(model,600,0,p.reasoningEffort)}),signal:AbortSignal.timeout(90000)});if(!r.ok)throw Error('provider_http_'+r.status);return r;};
   const b=await(await ask()).json();if(!acceptedModel(model,String(b.model||'')))throw Error('model_mismatch');if(JSON.parse(b.choices?.[0]?.message?.content||'').ok!==true)throw Error('invalid_json');
   const r=await ask(true);if(!r.headers.get('content-type')?.includes('text/event-stream'))throw Error('stream_missing');let wire='';for await(const chunk of r.body as any)wire+=new TextDecoder().decode(chunk);let text='',actual='';for(const l of wire.split('\n'))if(l.startsWith('data:')&&l.slice(5).trim()!=='[DONE]'){const v=JSON.parse(l.slice(5));if(v.error)throw Error('stream_error');actual=v.model||actual;text+=v.choices?.[0]?.delta?.content||'';}if(!wire.includes('[DONE]')||!text||!acceptedModel(model,actual))throw Error('stream_incomplete');
   const {extractWithAI}=await import('./aiExtraction.ts');const traced:typeof fetch=async(input,init)=>{calls++;return fetch(input,{...init,redirect:'error'});};const extracted=await extractWithAI('我的课程预算是150万印尼盾。',{},traced,[p]);if(!acceptedModel(model,extracted.model)||!extracted.observations.some((v:any)=>v.field==='budgetAmount'&&v.value===1500000))throw Error('extraction_failed');

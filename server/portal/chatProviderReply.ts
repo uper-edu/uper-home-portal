@@ -78,7 +78,15 @@ export async function readChatProviderReply(
       onCall?.({stream,retry,status,model,usage,elapsedMs:Date.now()-start});
     }
   };
-  const first = await readCall(true,false);
+  let first: { streamed: boolean; content: string };
+  try {
+    first = await readCall(true,false);
+  } catch (error) {
+    if ((error as Error)?.message !== "Provider response error") throw error;
+    const recovered = await readCall(false,true);
+    if (!recovered.content.trim()) throw Error("Provider response error");
+    return;
+  }
   if (first.content.trim()) return;
   if (!retryBlankStream || !first.streamed) throw Error("Blank provider reply");
   await onBlankStreamRetry();
@@ -121,7 +129,7 @@ export async function runChatProviderAttempts(
       content: '',
       actualModel: provider.model,
       async request(purpose, messages, tokens = 1200) {
-        const signal = AbortSignal.timeout(45000);
+        const signal = AbortSignal.timeout(90000);
         const send = (stream: boolean) => fetchReply(provider.url, {
           method: 'POST',
           headers: {

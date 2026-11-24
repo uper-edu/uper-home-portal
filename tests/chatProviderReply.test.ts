@@ -50,6 +50,17 @@ test('nonblank streams reach the existing JSON and catalogue validation without 
   assert.equal(result.content,'{"catalogue":{"detail":"invalid"}}');
 });
 
+test('in-band SSE provider response error retries once without streaming', async () => {
+  const streamError = new Response(
+    `data: ${JSON.stringify({error:{message:'transient upstream stream error'}})}\n\n`,
+    {headers:{'Content-Type':'text/event-stream'}},
+  );
+  const result = run(streamError, json('{"reply":"recovered","catalogue":null}'), false);
+  await result.outcome;
+  assert.deepEqual(result.calls,[true,false]);
+  assert.equal(result.content,'{"reply":"recovered","catalogue":null}');
+});
+
 test('metering reads usage-only streaming chunks and meters retries separately',async()=>{
   const calls:Parameters<NonNullable<Parameters<typeof readChatProviderReply>[4]>>[0][]=[];
   const first=new Response([
