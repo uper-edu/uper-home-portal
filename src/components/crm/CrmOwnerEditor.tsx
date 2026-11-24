@@ -2,7 +2,7 @@ import {trackEvent,trackReceipt} from '../../utils/analytics';
 import {CrmFormSection,CrmFormSummary} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import {useRef,useState} from 'react';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {AdminField,AdminRequiredNote} from '../AdminForm';
 import {useCrmUiText} from './CrmUiLanguage';
 import {CrmSaveFeedback} from './CrmDetailWorkspace';
@@ -60,7 +60,7 @@ export function CrmOwnerEditor({lead,directory,lang,isLight,onDirty,onBusy,onSav
  return <div data-admin-form="" className="crm-editor-compose"><div className="crm-editor-scroll crm-owner-editor" data-admin-stack=""><AdminRequiredNote lang={lang}/>
  <CrmFormSummary><p>{t('当前负责人','Current owner','Penanggung jawab saat ini')}：{name(lead.owner)}</p></CrmFormSummary>
  <CrmFormSection name="owner" lang={lang}>
- <AdminField required>{t('接收销售','Receiving salesperson','Penerima')}<CrmSingleSelect required displayValue={owner?undefined:t('请选择接收销售','Choose a receiving salesperson','Pilih penerima')} label={t('接收销售','Receiving salesperson','Penerima')} value={owner} onChange={(v:string)=>input(v,reason)} options={directory.filter((e:any)=>e.id!==lead.owner).map((e:any)=>({value:e.id,label:name(e.id)}))} searchable lang={lang} isLight={isLight} disabled={busy||unknown||state==='not_found'}/></AdminField>
+ <AdminField required>{t('接收销售','Receiving salesperson','Penerima')}<AdminSingleSelect required displayValue={owner?undefined:t('请选择接收销售','Choose a receiving salesperson','Pilih penerima')} label={t('接收销售','Receiving salesperson','Penerima')} value={owner} onChange={(v:string)=>input(v,reason)} options={directory.filter((e:any)=>e.id!==lead.owner).map((e:any)=>({value:e.id,label:name(e.id)}))} searchable lang={lang} isLight={isLight} disabled={busy||unknown||state==='not_found'}/></AdminField>
  <AdminField required={Boolean(lead.owner)}>{t(lead.owner?'交接说明':'分配说明',lead.owner?'Handover note':'Assignment note',lead.owner?'Catatan serah terima':'Catatan penugasan')}<textarea aria-label={t(lead.owner?'交接说明':'分配说明',lead.owner?'Handover note':'Assignment note',lead.owner?'Catatan serah terima':'Catatan penugasan')} aria-required={Boolean(lead.owner)} maxLength={2000} value={reason} disabled={busy||unknown||state==='not_found'} onChange={e=>input(owner,e.target.value)}/></AdminField>
  {owner&&<p>{name(lead.owner)} → {name(owner)}</p>}
  </CrmFormSection>

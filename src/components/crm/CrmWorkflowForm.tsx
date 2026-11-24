@@ -6,10 +6,10 @@ import {CrmTaskOverlap} from './CrmTaskOverlap';
 import {formatCrmOperatingTime} from '../../utils/crmOperatingTime';
 import { trustError } from "../../utils/crmTrustLanguage";
 import { completionForEntry } from "../../utils/crmSalesInput";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { useState, useEffect, useRef } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { calendarSample, nextWork } from "../../utils/workCalendar";
 import { crmError } from "../../utils/crmLanguage";
 import type { CrmLanguage } from "../../utils/crmLanguage";
@@ -220,7 +220,7 @@ function CrmArrangementForm({
   ) => (
     <label className="block">
       <span>{label}</span>
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={label}
         value={value}
         onChange={change}
@@ -350,10 +350,10 @@ function CrmArrangementForm({
       </header>
       {boundView&&<div className="crm-sales-task-summary"><strong>{boundView.action}</strong><div>{boundView.times.map((v:any,i:number)=><span key={i} data-tone={v.tone}>{v.label} · {boundView.formatTime(v.value)}</span>)}</div></div>}
       <div className="crm-sales-editor-layout crm-sales-editor-compact">
-        {(sourceMessage||lead.followUpLogs?.length>0)&&<CrmDisclosure className="crm-sales-background" heading={t("View background","Lihat latar belakang","查看背景")}>
+        {(sourceMessage||lead.followUpLogs?.length>0)&&<AdminDisclosure className="crm-sales-background" heading={t("View background","Lihat latar belakang","查看背景")}>
           {sourceMessage&&<section><h4>{t("Linked customer message","Pesan pelanggan terkait","已关联客户消息")}</h4><p className="crm-sales-original">{sourceMessage.content}</p></section>}
           {lead.followUpLogs?.length>0&&<section><h4>{t("Latest saved note","Catatan tersimpan terakhir","最近记录")}</h4><p className="crm-sales-original">{[...lead.followUpLogs].sort((a:any,b:any)=>Date.parse(b.timestamp)-Date.parse(a.timestamp))[0]?.summary}</p></section>}
-        </CrmDisclosure>}
+        </AdminDisclosure>}
         <fieldset disabled={busy || unknown} className="crm-sales-fields">
           <section className="crm-sales-step">
             <h4>{t("This result", "Hasil kali ini", "本次结果")}</h4>
@@ -384,9 +384,9 @@ function CrmArrangementForm({
                 ))}
               </div>
             )}
-            {recordKind === "closure" && <CrmDisclosure heading={t("Record an external customer reply","Catat balasan pelanggan di luar sistem","补记客户主动回复")} open={customerReplied}>
+            {recordKind === "closure" && <AdminDisclosure heading={t("Record an external customer reply","Catat balasan pelanggan di luar sistem","补记客户主动回复")} open={customerReplied}>
               <label><input type="checkbox" checked={customerReplied} onChange={e=>setCustomerReplied(e.target.checked)}/>{t("Customer replied outside CRM; record the channel and evidence","Pelanggan membalas di luar CRM; catat kanal dan buktinya","客户已在CRM之外回复，须记录渠道与依据")}</label>
-            </CrmDisclosure>}
+            </AdminDisclosure>}
             {(recordKind === "contact" || customerReplied) && (
               <div className="crm-workflow-grid">
                 {select(
@@ -449,7 +449,7 @@ function CrmArrangementForm({
                 rows={3}
               />
             </label>
-            <CrmDisclosure
+            <AdminDisclosure
               heading={
                 <>{t("Sales progress", "Perkembangan penjualan", "销售进展")}</>
               }
@@ -509,7 +509,7 @@ function CrmArrangementForm({
                   ],
                 ],
               )}
-            </CrmDisclosure>
+            </AdminDisclosure>
           </section>
           {selectedTask && (
             <section className="crm-sales-step">
@@ -554,7 +554,7 @@ function CrmArrangementForm({
                 ))}
               </div>
               {taskOutcome==='complete'&&(!requestData||requestLoadFailed)&&<p role="alert">{t('Request information unavailable. Reopen this form before completing the task.','Informasi permintaan tidak tersedia. Buka kembali formulir sebelum menyelesaikan tugas.','请求依据尚不可用，请重新打开表单后再完成任务。')}</p>}
-              {taskOutcome&&taskRequests.length>0&&<CrmDisclosure className="crm-request-completion" heading={taskOutcome==='complete'?t('Confirm requests handled','Konfirmasi permintaan yang ditangani','确认已处理的客户请求'):t('Requests handled this time (optional)','Permintaan yang ditangani kali ini (opsional)','本次已处理的请求（选填）')} open={taskOutcome==='complete'}>{taskRequests.map(r=><label key={r.id}><input type="checkbox" checked={handledRequests.includes(r.id)} onChange={e=>setHandledRequests(v=>e.target.checked?[...v,r.id]:v.filter(id=>id!==r.id))}/><span>{r.data.text||t('Customer request','Permintaan pelanggan','客户请求')} · {formatCrmOperatingTime(r.data.dueAt,timezone)}</span></label>)}</CrmDisclosure>}
+              {taskOutcome&&taskRequests.length>0&&<AdminDisclosure className="crm-request-completion" heading={taskOutcome==='complete'?t('Confirm requests handled','Konfirmasi permintaan yang ditangani','确认已处理的客户请求'):t('Requests handled this time (optional)','Permintaan yang ditangani kali ini (opsional)','本次已处理的请求（选填）')} open={taskOutcome==='complete'}>{taskRequests.map(r=><label key={r.id}><input type="checkbox" checked={handledRequests.includes(r.id)} onChange={e=>setHandledRequests(v=>e.target.checked?[...v,r.id]:v.filter(id=>id!==r.id))}/><span>{r.data.text||t('Customer request','Permintaan pelanggan','客户请求')} · {formatCrmOperatingTime(r.data.dueAt,timezone)}</span></label>)}</AdminDisclosure>}
 
             </section>
           )}
@@ -653,9 +653,9 @@ function CrmArrangementForm({
                 </>}
               </>
             )}
-            {(lead.contactReview||['waiting','nurture'].includes(lead.contactArrangement?.state))&&disposition&&disposition!=='record_only'&&!(disposition==='schedule'&&reviewTask)&&<CrmDisclosure heading={t('Change the previous review agreement (optional)','Ubah kesepakatan tinjauan sebelumnya (opsional)','调整原复查约定（选填）')} open={cancelReview}>
+            {(lead.contactReview||['waiting','nurture'].includes(lead.contactArrangement?.state))&&disposition&&disposition!=='record_only'&&!(disposition==='schedule'&&reviewTask)&&<AdminDisclosure heading={t('Change the previous review agreement (optional)','Ubah kesepakatan tinjauan sebelumnya (opsional)','调整原复查约定（选填）')} open={cancelReview}>
               <label><input type="checkbox" checked={cancelReview} onChange={e=>setCancelReview(e.target.checked)}/>{t('Explicitly end the previous review agreement','Akhiri kesepakatan tinjauan sebelumnya secara tegas','明确结束原复查约定')}</label>
-            </CrmDisclosure>}
+            </AdminDisclosure>}
             {sourceMessage&&recordKind!=='closure'&&contact==='Connected'&&<label><input type="checkbox" checked={messageAnswered} onChange={e=>setMessageAnswered(e.target.checked)}/>{t('This customer question was actually answered','Pertanyaan pelanggan ini benar-benar telah dijawab','本次已实际答复所关联的客户问题')}</label>}
             {disposition !== "none" && disposition !== "record_only" &&
               lead.contactArrangement &&

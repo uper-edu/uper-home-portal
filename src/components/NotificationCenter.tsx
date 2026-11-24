@@ -2,7 +2,7 @@ import {IntegrationCredentialControl} from './IntegrationCredentials';
 import {AdminDateField,completeAdminDateTime} from './admin/AdminDateField';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminTopicHeader} from './admin/AdminTopicHeader';
-import {CrmPageAction} from './crm/CrmPageAction';
+import {AdminPageAction} from './admin/AdminPageAction';
 import {AdminConfirmation} from './admin/AdminConfirmation';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminListPagination,AdminListState,AdminListTable} from './admin/AdminList';
@@ -16,7 +16,7 @@ import {dailyDigestPreview} from '../utils/larkDailyDigest';
 import {larkNotificationSample} from '../utils/larkNotificationSamples';
 import {standardLarkKinds,type LarkKind,larkNotificationPreview} from '../utils/larkNotificationPresentation';
 import {AdminFormFeedback,AdminSavedReadError,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
-import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
+import { AdminDiscardDialog } from './admin/AdminDiscardDialog';
 import { LarkChannelTestControls, type LarkChannelTest } from "./crm/LarkChannelTestControls";
 import {crmFormText} from '../utils/crmFormLanguage';
 import {isSalesProgressStage,progressLabel} from '../utils/crmSalesProgress';
@@ -25,7 +25,7 @@ import {notificationTopicIcons} from "./crm/notificationTopicIcons";
 import {createElement} from "react";
 import {AdminTopicFrame} from "./AdminTopicFrame";
 import {notificationTopics} from "./crm/operationsSections";
-import { CrmSingleSelect } from "./crm/CrmSingleSelect";
+import { AdminSingleSelect } from "./admin/AdminSingleSelect";
 import { crmId } from "../utils/crmIndonesian";
 import { notificationPlanningSummary } from '../utils/notificationPlanning';
 import {
@@ -625,7 +625,7 @@ export default function NotificationCenter({
   ) =>
     field(
       title,
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={title}
         value={value}
         options={options.map(([value, label]) => ({ value, label }))}
@@ -902,9 +902,9 @@ export default function NotificationCenter({
           </span>
         </button>
       </div>
-      {discardEditor&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardEditor(null)} onDiscard={()=>{const run=discardEditor.run;setDiscardEditor(null);run();}}/>}
+      {discardEditor&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardEditor(null)} onDiscard={()=>{const run=discardEditor.run;setDiscardEditor(null);run();}}/>}
       {channelToDelete && (
-        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
+        <AdminDiscardDialog lang={lang} isLight={isLight} tone="danger"
           title={t("删除通知渠道？", "Delete notification channel?")}
           description={t("将删除 {name} 的连接设置。历史发送记录仍可查看。", "Connection settings for {name} will be deleted. Past delivery records remain available.").replace("{name}", () => channelToDelete.name)}
           keepLabel={t("取消", "Cancel")}
@@ -915,7 +915,7 @@ export default function NotificationCenter({
       )}
       {channelDeleteError && <p role="alert" className="notification-channel-delete-error" data-unknown={channelDeleteError.startsWith("Deletion outcome")}>{crmError(channelDeleteError, lang)}</p>}
       {ruleToDelete && (
-        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
+        <AdminDiscardDialog lang={lang} isLight={isLight} tone="danger"
           title={t("删除通知策略？", "Delete notification policy?")}
           description={t(
             "删除「{name}」后，后续事件将不再使用此策略。已排队的通知仍按原计划处理，发送记录和变更历史仍可查看。",
@@ -937,7 +937,7 @@ export default function NotificationCenter({
         cancelLabel={cancelText('取消','Cancel','Batal')} confirmLabel={cancelText('确认启用','Enable','Aktifkan')}
         onCancel={()=>setConfirmEnable(false)} onConfirm={()=>void save(true)}/>}
       {confirmWebhookClear && (
-        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
+        <AdminDiscardDialog lang={lang} isLight={isLight} tone="danger"
           title={t("清除群机器人地址？", "Clear the group bot address?")}
           description={t("保存后，此渠道将无法向 Lark 群发送通知。", "After saving, this channel will stop sending to the Lark group.")}
           keepLabel={t("取消", "Cancel")}
@@ -974,7 +974,7 @@ export default function NotificationCenter({
           <AdminTopicHeader isLight={isLight} title={notificationHeading.title[languageIndex]}
             subtitle={notificationHeading.purpose[languageIndex]} actions={!editor&&!denied&&<>
               <AdminRefreshAction label={t("刷新", "Refresh")} loading={loading} onClick={()=>void load()}/>
-              {(isRuleTopic||isChannelTopic)&&canEdit&&<CrmPageAction icon={Plus} variant="primary"
+              {(isRuleTopic||isChannelTopic)&&canEdit&&<AdminPageAction icon={Plus} variant="primary"
                 id={editorTriggerId(isRuleTopic?'rule':'channel','')}
                 label={isRuleTopic?t('新增策略','Add policy'):t('新增渠道','Add channel')} onClick={()=>edit()}/>}
             </>}/>
@@ -1657,7 +1657,7 @@ export default function NotificationCenter({
                         <AdminField as="div" className="notification-channel-row" required>
                           <AdminFieldLabel required>{t("发送模式", "Delivery mode")}</AdminFieldLabel>
                           <div className="notification-channel-mode">
-                            <CrmSingleSelect label={t("发送模式", "Delivery mode")} value={channel.mode}
+                            <AdminSingleSelect label={t("发送模式", "Delivery mode")} value={channel.mode}
                               options={[
                                 {value: "simulation", label: t("模拟发送", "Simulation")},
                                 {value: "live", label: t("真实发送", "Live delivery"),

@@ -5,9 +5,9 @@ import {AdminListState} from './admin/AdminList';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminField,AdminForm,AdminRequiredNote} from './AdminForm';
 import {AdminFormFeedback,AdminSavedReadError,AdminFormGrid,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
-import {CrmSingleSelect} from './crm/CrmSingleSelect';
-import {CrmDisclosure} from './crm/CrmDisclosure';
-import {CrmPageAction} from './crm/CrmPageAction';
+import {AdminSingleSelect} from './admin/AdminSingleSelect';
+import {AdminDisclosure} from './admin/AdminDisclosure';
+import {AdminPageAction} from './admin/AdminPageAction';
 import {aiModelSlots,defaultReasoningEffort,effortField,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection} from '../utils/aiModelSelection';
 import {aiServiceText} from '../utils/aiServiceLanguage';
 import {testAndSaveAi} from '../utils/aiServiceSubmit';
@@ -199,13 +199,13 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
       {renderHeading(failure!=='denied'&&<>
         <AdminRefreshAction label={t(unresolved||notice==='conflict'?'checkOperation':'refresh')}
           loading={querying} disabled={busy} onClick={onQuery}/>
-        {data&&!unresolved&&notice!=='conflict'&&<CrmPageAction icon={Save} type="submit" variant="primary"
+        {data&&!unresolved&&notice!=='conflict'&&<AdminPageAction icon={Save} type="submit" variant="primary"
           label={t(busy&&!diagnosing?'busy':'testSave')} keepFocusWhileLoading loading={busy&&!diagnosing}
           disabled={actionDisabled||(!busy&&blocked)||!!diagnosing} />}
       </>,!!data)}
       {awaitingSavedRead&&failure==='error'?<AdminSavedReadError lang={lang} busy={querying} onRetry={onQuery}/>:(!data||failure)&&<AdminListState lang={lang} state={failure??'loading'} onRetry={onQuery}/>}
       {!data&&!diagnosing&&feedback}
-      {data&&<AdminFormSection variant="card" title={t('models')} actions={<CrmPageAction icon={FlaskConical}
+      {data&&<AdminFormSection variant="card" title={t('models')} actions={<AdminPageAction icon={FlaskConical}
         label={t('testCurrent')} onClick={onDiagnose} disabled={blocked}/>}>
         <AdminFormGrid>
           {aiModelSlots.map(role=>{
@@ -213,13 +213,13 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
             const modelId='ai-'+role+'-model',effortId='ai-'+role+'-effort',key=effortField[role];
             return <div key={role} data-admin-stack>
               <AdminField as="div" required><label htmlFor={modelId}>{t(role)}</label>
-                <CrmSingleSelect controlId={modelId} label={t(role)} value={selection[role]}
+                <AdminSingleSelect controlId={modelId} label={t(role)} value={selection[role]}
                   options={data.models.map(model=>({value:model,label:model}))}
                   onChange={model=>onSelect({...selection,[role]:model,[key]:supportsReasoningEffort(model)?selection[key]:undefined})}
                   lang={lang} isLight={isLight} required disabled={blocked}/>
               </AdminField>
               {effort?<AdminField as="div"><label htmlFor={effortId}>{t(key)}</label>
-                <CrmSingleSelect controlId={effortId} label={t(key)} value={effort} options={reasoningEfforts.map(value=>({value,label:t(value)}))}
+                <AdminSingleSelect controlId={effortId} label={t(key)} value={effort} options={reasoningEfforts.map(value=>({value,label:t(value)}))}
                   onChange={value=>{
                     const effort=reasoningEfforts.find(item=>item===value);
                     if(effort)onSelect({...selection,[key]:effort===defaultReasoningEffort?undefined:effort});
@@ -235,25 +235,25 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
     {children}
     {data&&<AdminFormSection variant="card" title={t('support')}>
       <div className="ai-service-support">
-        <CrmDisclosure heading={t('actual')}>
+        <AdminDisclosure heading={t('actual')}>
           <p className="ai-service-muted">{t('callNote')}</p>
           <ul className="ai-service-records">{attempts.map((attempt,i)=><li key={i}>
             <strong>{attempt.model}</strong>{status(attempt.ok)}<time>{formatCrmEventTime(attempt.at)}</time>
             {attempt.fallbackModel&&<span>{t('fallbackUsed')} · {attempt.fallbackModel}</span>}
           </li>)}{!attempts.length&&<li>{t('empty')}</li>}</ul>
-        </CrmDisclosure>
-        <CrmDisclosure heading={t('extract')}>
+        </AdminDisclosure>
+        <AdminDisclosure heading={t('extract')}>
           <ul className="ai-service-records">{extractions.map((attempt,i)=><li key={i}>
             <strong>{attempt.model}</strong>{status(attempt.status==='completed')}<time>{formatCrmEventTime(attempt.completed_at)}</time>
           </li>)}{!extractions.length&&<li>{t('empty')}</li>}</ul>
-        </CrmDisclosure>
-        <CrmDisclosure heading={t('history')}>
+        </AdminDisclosure>
+        <AdminDisclosure heading={t('history')}>
           <ul className="ai-service-records">{history.map(record=><li key={record.requestId}>
             <strong>{describe(record.current,'primary')} → {describe(record.current,'fallback')}</strong>
             <span>{record.actor}</span><time>{formatCrmEventTime(record.at)}</time>
           </li>)}{!history.length&&<li>{t('empty')}</li>}</ul>
-        </CrmDisclosure>
-        <CrmDisclosure heading={t('help')}><p>{t('guide')}</p><p>{t('reasoningHint')}</p></CrmDisclosure>
+        </AdminDisclosure>
+        <AdminDisclosure heading={t('help')}><p>{t('guide')}</p><p>{t('reasoningHint')}</p></AdminDisclosure>
       </div>
     </AdminFormSection>}
     {data&&diagnosing&&<AdminEditor lang={lang} light={isLight} title={t('testCurrent')} busy={busy}

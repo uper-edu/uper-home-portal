@@ -19,7 +19,7 @@ import type {ChatOrigin,ChatSource} from '../services/portalChat';
 import type {ChatPresentation} from './StandaloneChatChrome';
 import {clearChatMessageAnchor,readChatMessageAnchor,readEnrollmentConsultation,returnAlongJourney} from '../utils/chatJourneyNavigation';
 import type {EnrollmentChatSelection} from '../utils/enrollmentChatJourney';
-import {lazy,memo,Suspense,useState,useCallback,useEffect,useEffectEvent,useMemo,useRef,type ComponentProps,type ComponentType} from 'react';
+import {lazy,memo,Suspense,useState,useCallback,useEffect,useMemo,useRef,type ComponentProps,type ComponentType} from 'react';
 import {reportClientFailure} from '../services/clientDiagnostics';
 import {useLocation,useNavigate} from 'react-router-dom';
 import {ChatAssessmentSummary,ChatWelcome,ChatWelcomeSocials,StandaloneChatDialog,StandaloneChatHeader} from './StandaloneChatChrome';
@@ -322,19 +322,10 @@ export default function ChatWorkspace({
     if (profile?.goal && !thread?.messages.length) void beginProfileConsultation();
   };
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const positionedThread = useRef<string | undefined>(undefined);
   const followLatest = useRef(true);
 
   const mainRef = useRef<HTMLElement>(null);
-  const flowRef = useRef<HTMLDivElement>(null);
-  const followExpandedReply = useEffectEvent(() => {
-    const region=mainRef.current;
-    if(!region||!followLatest.current)return;
-    if(returnAnchor && restoredAnchor.current===routeKey+':'+returnAnchor.messageId)return;
-    if(lastMessage?.isAssessmentResult||lastMessage?.id.startsWith('reply-hsk-intro-'))return;
-    region.scrollTop=region.scrollHeight;
-  });
   useEffect(() => {
     if (active && !isTakingAssessment) {
       const anchorKey = returnAnchor && routeKey+':'+returnAnchor.messageId;
@@ -359,9 +350,11 @@ export default function ChatWorkspace({
       if(!followLatest.current)return;
       const frame=requestAnimationFrame(()=>{
         if(!followLatest.current)return;
+        const region=mainRef.current;
+        if(!region)return;
         if(last?.isAssessmentResult || last?.id.startsWith('reply-hsk-intro-'))
-          mainRef.current?.querySelector('[data-hsk-result-anchor]')?.scrollIntoView({behavior:'instant',block:'start'});
-        else messagesEndRef.current?.scrollIntoView({behavior:'instant'});
+          region.querySelector('[data-hsk-result-anchor]')?.scrollIntoView({behavior:'instant',block:'start'});
+        else region.scrollTop=region.scrollHeight;
       });
       return ()=>cancelAnimationFrame(frame);
     }
@@ -636,20 +629,6 @@ export default function ChatWorkspace({
     };
   },[presentation,active,conversationId]);
 
-  useEffect(()=>{
-    const flow=flowRef.current;
-    if(!active||isTakingAssessment||!flow||typeof ResizeObserver!=='function')return;
-    let height=flow.offsetHeight;
-    // Lazy cards and formatting can grow a reply without a workspace render.
-    const observer=new ResizeObserver(()=>{
-      const nextHeight=flow.offsetHeight;
-      if(nextHeight===height)return;
-      height=nextHeight;
-      followExpandedReply();
-    });
-    observer.observe(flow);
-    return ()=>observer.disconnect();
-  },[active,isTakingAssessment,emptyChat,thread?.conversationId]);
   const hasAssessmentDraft=hasHskDraft();
   const retainedReport=conversationAssessment || assessment;
   const hasRetainedReport=Boolean(retainedReport);
@@ -815,7 +794,7 @@ export default function ChatWorkspace({
             }}/>
           <ChatWelcomeSocials lang={lang}/>
         </div>}
-        {!isTakingAssessment && !emptyChat && <div ref={flowRef} className="standalone-chat-flow">
+        {!isTakingAssessment && !emptyChat && <div className="standalone-chat-flow">
         {messages.map((msg) => {
           const canRetry=msg.role==='user'&&!!msg.delivery&&msg.delivery!=='saved'&&msg.delivery!=='pending';
           return (
@@ -851,7 +830,6 @@ export default function ChatWorkspace({
               {t('重试原问题','Retry original question','Coba ulang pertanyaan awal')}
             </button></>}
           </p>}
-          <div ref={messagesEndRef}/>
         </div>}
 
         {isTakingAssessment&&<div className="standalone-chat-assessment">

@@ -11,7 +11,7 @@ import {
 } from "../../utils/crmAssessmentHistory";
 import { type CrmLanguage } from "../../utils/crmLanguage";
 import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { CrmAssessmentEvidence } from "./CrmAssessmentEvidence";
 type Data = {
   leadId: string;
@@ -217,7 +217,7 @@ export function CrmAssessmentHistoryContent({
                 ? summary.detail.slice(source.length + 3)
                 : summary.detail;
               return (
-                <CrmDisclosure
+                <AdminDisclosure
                   id={"crm-assessment-"+row.id}
                   tabIndex={-1}
                   data-notification-focused={exact?.id===row.id||undefined}
@@ -260,7 +260,7 @@ export function CrmAssessmentHistoryContent({
                     lang={lang}
                     timezone={timezone}
                   />
-                </CrmDisclosure>
+                </AdminDisclosure>
               );
             })
           )}

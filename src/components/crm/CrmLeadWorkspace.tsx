@@ -16,7 +16,7 @@ import {useAdminRecordSidebarLayout} from '../admin/AdminRecordWorkspace';
 import {CrmRecordRow, CrmRecordSearch, CrmRecordSidebar} from './CrmRecordWorkspace';
 import {useCrmShellHeight,useRecordScrollMode} from "./CrmDetailWorkspace";
 import { worklistIntents, visibleIntentEvidence, buyingEvidenceLabel, evidenceHeading } from "../../utils/crmBuyingEvidence";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CrmLeadRecord } from "../../types/crmLead";
@@ -285,7 +285,7 @@ export function CrmLeadWorkspace({
             <span className="crm-work-muted">
               {t("Data table", "字段表")}
             </span>
-            <CrmSingleSelect
+            <AdminSingleSelect
               label={t("Visible fields", "显示字段")} value="" multiple values={fields}
               options={customerFields.map((field) => ({ value: field[0], label: lang === "id" ? crmId(field[1]) : field[lang === "zh" ? 2 : 1], disabled: field[0] === "name" || field[0] === "number" }))}
               onChange={() => {}} onValuesChange={(values) => updateFields(values as CustomerField[])}

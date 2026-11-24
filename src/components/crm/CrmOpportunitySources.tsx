@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react';
 import {opportunitySourceKind,type OpportunitySource,type OpportunitySourceRef} from '../../utils/crmOpportunitySources';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 import {CrmProgressSourceBody,progressSourceTiming} from './CrmSalesProgressHistory';
-import {CrmDisclosure} from './CrmDisclosure';
+import {AdminDisclosure} from '../admin/AdminDisclosure';
 
 const copy=(lang:CrmLanguage,zh:string,en:string,id:string)=>lang==='zh'?zh:lang==='id'?id:en;
 const labels={questionnaire:['官网问卷','Website questionnaire','Kuesioner situs web'],message:['客户消息','Customer message','Pesan pelanggan'],sales_record:['销售记录','Sales record','Catatan sales']} as const;
@@ -31,7 +31,7 @@ export function CrmOpportunitySourcePicker({leadId,lang,disabled,selected,onChan
       }).catch(()=>{if(!controller.signal.aborted)setError(true);});
     return ()=>controller.abort();
   },[leadId,requested,attempt]);
-  return <CrmDisclosure heading={copy(lang,'关联客户原文','Link original customer records','Tautkan catatan asli pelanggan')+(selected.length?` (${selected.length})`:'')}
+  return <AdminDisclosure heading={copy(lang,'关联客户原文','Link original customer records','Tautkan catatan asli pelanggan')+(selected.length?` (${selected.length})`:'')}
     onToggle={event=>{if(event.currentTarget.open)setRequested(true);}}>
     {error?<p role="alert">{copy(lang,'暂时无法读取客户原文。','Customer records could not be loaded.','Catatan pelanggan belum dapat dimuat.')} <button type="button" className="crm-work-link" onClick={()=>setAttempt(value=>value+1)}>{copy(lang,'重试','Retry','Coba lagi')}</button></p>:
       !sources?<p role="status">{copy(lang,'正在读取客户原文…','Loading customer records…','Memuat catatan pelanggan…')}</p>:
@@ -48,7 +48,7 @@ export function CrmOpportunitySourcePicker({leadId,lang,disabled,selected,onChan
           </div>;
         })}
       </>}
-  </CrmDisclosure>;
+  </AdminDisclosure>;
 }
 
 export function CrmOpportunitySourceLink({source,leadId,lang}:{source:OpportunitySource;leadId:string;lang:CrmLanguage}) {

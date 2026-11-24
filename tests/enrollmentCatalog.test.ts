@@ -192,7 +192,9 @@ test('automatic titles use class type, time slot and immutable batch in all thre
   assert.equal(enrollmentClassTitle(row,'id'),'HSK 1 · Kelas Standar · Akhir Pekan · Angkatan 3');
   assert.equal(enrollmentTeacherLabel('local','en'),'Indonesian Teacher');
   assert.equal(enrollmentTeacherLabel('local','id'),'Pengajar Lokal');
-  assert.equal(enrollmentTeacherLabel('foreign','zh'),'外教');
+  assert.equal(enrollmentTeacherLabel('foreign','zh'),'中国外教');
+  assert.equal(enrollmentTeacherLabel('foreign','en'),'Teacher from China');
+  assert.equal(enrollmentTeacherLabel('foreign','id'),'Pengajar dari Tiongkok');
   assert.equal(enrollmentClassTitle({...row,period:'weekday-evening'},'en'),'HSK 1 · Standard Class · Weekday Evening · Batch 3');
   assert.equal(enrollmentClassTitle({...row,batchNumber:undefined},'zh'),'HSK 1 · 标准班 · 周末班');
   const view=publicEnrollmentClass({...row,id:'demo',state:'published',revision:1});

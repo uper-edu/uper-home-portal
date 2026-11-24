@@ -5,8 +5,17 @@ import type {InterestLanguage} from '../utils/enrollmentInterestCopy';
 import type {EnrollmentOrder} from './EnrollmentPayment';
 import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
 import {formatCurrency} from '../utils/currency';
+import type {EnrollmentStatusTone} from '../utils/enrollmentOrderStatus';
 
-type StatusTone='pending'|'confirmed'|'full';
+export function EnrollmentPriceSaving({amount,standardPrice,language}:{
+  amount:number;standardPrice?:number;language:InterestLanguage;
+}) {
+  if(!(amount>0&&standardPrice!==undefined&&standardPrice>amount))return null;
+  const saving=formatCurrency(standardPrice-amount,language);
+  return <span className="enrollment-price-saving">{enrollmentCopy(language,[
+    '省 '+saving,'Save '+saving,'Hemat '+saving,
+  ])}</span>;
+}
 
 export function EnrollmentIntakeSummary({title,detail,amount,label,language}:{
   title:string;detail:string;amount:number;label:string;language:InterestLanguage;
@@ -44,6 +53,10 @@ export function EnrollmentPriceActions({label,hideLabel=false,amount,standardPri
         <dt className="sr-only">{enrollmentCopy(language,['标准价','Standard price','Harga standar'])}</dt>
         <dd><del>{formatCurrency(standardPrice,language)}</del></dd>
       </div>}
+      {amount>0&&standardPrice!==undefined&&standardPrice>amount&&<div>
+        <dt className="sr-only">{enrollmentCopy(language,['节省金额','Savings','Penghematan'])}</dt>
+        <dd><EnrollmentPriceSaving amount={amount} standardPrice={standardPrice} language={language}/></dd>
+      </div>}
     </dl>
     {children}
   </div>;
@@ -60,7 +73,7 @@ export function EnrollmentDetailFields({fields}:{
 }
 
 export function EnrollmentRecordSummary({title,status,tone='pending',schedule,teacherType,firstLesson,language,children}: {
-  title:string;status?:string;tone?:StatusTone;schedule?:string;teacherType?:'local'|'foreign';firstLesson?:string;
+  title:string;status?:string;tone?:EnrollmentStatusTone;schedule?:string;teacherType?:'local'|'foreign';firstLesson?:string;
   language:InterestLanguage;children?:ReactNode;
 }) {
   const t=(copy:readonly [string,string,string])=>enrollmentCopy(language,copy);
@@ -82,7 +95,7 @@ export function EnrollmentRecordSummary({title,status,tone='pending',schedule,te
 }
 
 export function EnrollmentListRecord({category,title,status,tone,children,primary}:{
-  category:string;title:ReactNode;status:string;tone:StatusTone;children?:ReactNode;primary?:ReactNode;
+  category:string;title:ReactNode;status:string;tone:EnrollmentStatusTone;children?:ReactNode;primary?:ReactNode;
 }) {
   return <article className="enrollment-record enrollment-list-card">
     <header>

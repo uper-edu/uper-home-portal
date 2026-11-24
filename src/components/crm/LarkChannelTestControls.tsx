@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { CrmDiscardDialog } from "./CrmDetailWorkspace";
+import { AdminDiscardDialog } from "../admin/AdminDiscardDialog";
 import { crmId } from "../../utils/crmIndonesian";
 import { crmError, type CrmLanguage } from "../../utils/crmLanguage";
 
@@ -152,6 +152,6 @@ export function LarkChannelTestControls({ id, name, test, lang, isLight, request
       {t("Send test message", "发送测试消息")}
     </button>
     {blockedText && <p className="notification-channel-help notification-channel-test-help">{blockedText}</p>}
-    {dialog && <CrmDiscardDialog {...dialog} lang={lang} isLight={isLight} announceDescription onKeep={close}/>}
+    {dialog && <AdminDiscardDialog {...dialog} lang={lang} isLight={isLight} announceDescription onKeep={close}/>}
   </>;
 }

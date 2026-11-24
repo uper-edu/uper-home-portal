@@ -1,10 +1,10 @@
 import {RefreshCw} from 'lucide-react';
-import {CrmPageAction} from '../crm/CrmPageAction';
+import {AdminPageAction} from './AdminPageAction';
 import type {ComponentProps} from 'react';
 
-type RefreshProps=Pick<ComponentProps<typeof CrmPageAction>,
+type RefreshProps=Pick<ComponentProps<typeof AdminPageAction>,
   'label'|'description'|'loading'|'disabled'|'onClick'>;
 
 export function AdminRefreshAction(props: RefreshProps) {
-  return <CrmPageAction {...props} icon={RefreshCw} keepFocusWhileLoading/>;
+  return <AdminPageAction {...props} icon={RefreshCw} keepFocusWhileLoading/>;
 }

@@ -1,6 +1,6 @@
 import {AdminSearchField} from '../admin/AdminSearchField';
 import { Printer } from "lucide-react";
-import { CrmPageAction } from "./CrmPageAction";
+import { AdminPageAction } from "../admin/AdminPageAction";
 import {AdminPageHeader} from '../admin/AdminPageHeader';
 import {documentSearchExcerpt,locateDocumentMatch} from '../../utils/crmDocumentSearch';
 import { CrmWhatsAppGuide, whatsAppChapter, whatsAppSections, isWhatsAppChapter } from "./CrmWhatsAppGuide";
@@ -460,7 +460,7 @@ export function CrmUserGuide({
                 "Akuisisi pelanggan, tindak lanjut penjualan, dan operasional: penjelasan sistem, panduan operasi, integrasi WhatsApp, pemasaran dan umpan balik CRM, serta aturan lingkungan GA.",
                 "聚焦客户获客、销售跟进与运营，分为系统说明、操作指南、WhatsApp接入方案、营销获客与CRM转化反馈体系，以及GA接入与三环境统计规范。",
               )}
-        actions={<CrmPageAction
+        actions={<AdminPageAction
                   icon={Printer}
                   label={t("Print / PDF", "Cetak / PDF", "打印/PDF")}
                   title={t("Print or export PDF handbook", "Cetak atau ekspor panduan PDF", "打印或导出 PDF 知识库")}

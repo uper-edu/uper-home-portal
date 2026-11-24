@@ -24,8 +24,8 @@ import {
   type ConversationRecord,
   type ConversationTask,
 } from "../../utils/crmConversations";
-import { CrmSingleSelect } from "./CrmSingleSelect";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 
 export function CrmConversationTimeline({
@@ -210,7 +210,7 @@ export function CrmConversationTimeline({
           </div>
         </div>
         {groups.length > 1 && (
-          <CrmSingleSelect
+          <AdminSingleSelect
             label={t("Conversation history", "历史对话")}
             displayValue={`${t("Conversation history", "历史对话")} (${groups.length})`}
             value={group.id}
@@ -323,7 +323,7 @@ export function CrmConversationTimeline({
       {group.messages.some(
         (message) => message.metadata?.followupAction && message.content,
       ) && (
-        <CrmDisclosure
+        <AdminDisclosure
           className="crm-conversation-receipt"
           heading={t("Original request confirmations", "请求确认原文")}
         >
@@ -348,10 +348,10 @@ export function CrmConversationTimeline({
                 </li>
               ))}
           </ol>
-        </CrmDisclosure>
+        </AdminDisclosure>
       )}
 
-      <CrmDisclosure
+      <AdminDisclosure
         className="crm-conversation-reference"
         heading={t("Conversation details", "会话详情")}
       >
@@ -362,7 +362,7 @@ export function CrmConversationTimeline({
           </dd>
 
         </dl>
-      </CrmDisclosure>
+      </AdminDisclosure>
     </div>
   );
 }

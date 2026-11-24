@@ -1,6 +1,6 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
 import {EnrollmentTeacherLabel} from './EnrollmentTeacherLabel';
-import {EnrollmentDetailFields} from './EnrollmentRecordLayout';
+import {EnrollmentDetailFields,EnrollmentPriceSaving} from './EnrollmentRecordLayout';
 import {Link} from 'react-router-dom';
 import type {MouseEventHandler} from 'react';
 import {BookOpen,CalendarDays,ChevronRight,Clock3} from 'lucide-react';
@@ -55,7 +55,9 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
  const statusText=chatPresentation&&row.price&&availableText?availableText:status+(availableText&&(!chatPresentation||row.price)?' · '+availableText:'');
  const teacher=enrollmentTeacherLabel(row.teacherType,language);
  const publicStatus=row.price&&availableText||status;
- const publicTone=row.price&&availableText&&row.availability==='available'?'confirmed':state;
+ const publicTone=row.price&&availableText
+   ? row.availability==='available'?'confirmed':row.availability==='limited'?'pending':'full'
+   : checkingIntake?'progress':!row.price||intakeStatus==='paused'?'full':state;
  const duration=t('每节 '+row.minutes+' 分钟',row.minutes+' min each',row.minutes+' menit per jam pelajaran');
  const lessonCount=periods?t(periods+' 节',periods+' periods',periods+' jam pelajaran'):undefined;
  const schedule=enrollmentScheduleLabel(row,language);
@@ -65,7 +67,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
    const teacherName=row.teacher?.trim();
    const teacherOrigin=row.teacherType&&{
      local:t('印尼教师','Indonesian teacher','Pengajar Indonesia'),
-     foreign:t('中国外教','Teacher from China','Pengajar dari Tiongkok'),
+     foreign:teacher,
    }[row.teacherType];
    const teacherDetails=row.teacherType==='foreign'&&teacherOrigin
      ? <span className="enrollment-teacher-detail">{teacherName&&<span>{teacherName}</span>}<EnrollmentTeacherLabel
@@ -126,6 +128,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
          <span className={chatPresentation?undefined:'sr-only'}>{t('标准价','Standard price','Harga standar')}{' '}</span>
          <del className={chatPresentation?'chat-value':'enrollment-reference-price'}>{formatCurrency(row.standardPrice,language)}</del>
        </small>}
+       {!chatPresentation&&<EnrollmentPriceSaving amount={row.price} standardPrice={row.standardPrice} language={language}/>}
        {chatPresentation&&periods&&<small><span className={chatPresentation?'chat-value':undefined}>{formatCurrency(Math.round(row.price/periods),language)}</span>{t('／节',' / period',' / jam pelajaran')}</small>}</>:<strong>{t('报价待确认','Quote pending','Harga belum dikonfirmasi')}</strong>}</div>
      {primaryLink&&<Link className={chatPresentation?`chat-enrollment-next${chatPrimaryAction&&actionLink?' chat-enrollment-next--primary':''}`:'enrollment-primary'} to={primaryLink} state={navigationState} onClick={onNavigate}>{primaryLabel}</Link>}
    </div>

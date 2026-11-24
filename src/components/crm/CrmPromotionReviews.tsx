@@ -8,10 +8,11 @@ import {
   campaignUiError,
 } from "../../utils/campaignI18n";
 import React, { useEffect, useRef, useState } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { ChevronDown, ClipboardCheck, History } from "lucide-react";
-import { CrmDetailTabs, CrmSaveFeedback } from "./CrmDetailWorkspace";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { CrmSaveFeedback } from "./CrmDetailWorkspace";
+import { AdminDetailTabs } from "../admin/AdminDetailTabs";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { CampaignSourceEvidence } from "./CampaignSourceEvidence";
 import { isPromotionReviewPending, promotionReviewActions } from "../../utils/promotionReviewActions";
 import { PROMOTION_MEDIUM_LABELS } from "../../utils/campaignPromotion";
@@ -122,7 +123,7 @@ export function CrmPromotionReviews({
   return (
     <section aria-label={u("Promotion exception list")} className="campaign-review-workspace">
       <div className="campaign-review-toolbar">
-        <CrmDetailTabs
+        <AdminDetailTabs
           id="promotion-exceptions"
           value={history ? "history" : "pending"}
           tabs={[
@@ -407,9 +408,9 @@ function PromotionReviewCard({
           <p>{row.resolution.reason}</p>
         </div>
       )}
-      {(!open||!canReview)&&<CrmDisclosure className="campaign-review-history" heading={u("Source evidence")}>
+      {(!open||!canReview)&&<AdminDisclosure className="campaign-review-history" heading={u("Source evidence")}>
         {sourceEvidence(true)}
-      </CrmDisclosure>}
+      </AdminDisclosure>}
       {open && canReview && (
         <AdminForm lang={lang}
           id={"promotion-review-" + row.leadId}
@@ -431,7 +432,7 @@ function PromotionReviewCard({
                 <fieldset disabled={busy || unknown || row.canReview === false}>
                   <AdminField as="div" required>
                     <label>{u("Review action")}</label>
-                    <CrmSingleSelect required label={u("Review action")} value={action}
+                    <AdminSingleSelect required label={u("Review action")} value={action}
                       options={[
                         { value: "", label: u("Choose an action"), disabled: true },
                         ...promotionReviewActions.map(({value, label}) => ({value, label: u(label)})),
@@ -442,7 +443,7 @@ function PromotionReviewCard({
                   {needsCampaign && (
                     <AdminField as="div" required>
                       <label>{u("Campaign")}</label>
-                      <CrmSingleSelect required searchable label={u("Campaign")} value={campaignId}
+                      <AdminSingleSelect required searchable label={u("Campaign")} value={campaignId}
                         options={[
                           { value: "", label: u("Choose a campaign"), disabled: true },
                           ...campaigns.map(item => ({value: item.id, label: item.name + " · " + item.code})),
@@ -454,7 +455,7 @@ function PromotionReviewCard({
                   {action === "link" && campaign && (
                     <AdminField as="div" required>
                       <label>{u("Existing promotion entry")}</label>
-                      <CrmSingleSelect required searchable label={u("Existing promotion entry")} value={target}
+                      <AdminSingleSelect required searchable label={u("Existing promotion entry")} value={target}
                         options={[
                           { value: "", label: u("Choose an entry from this campaign"), disabled: true },
                           ...links.map(link => ({value: link.id, label: link.name + " · " + link.id})),
@@ -494,7 +495,7 @@ function PromotionReviewCard({
         </AdminForm>
       )}
       {!!row.history.length && (
-        <CrmDisclosure className="campaign-review-history"
+        <AdminDisclosure className="campaign-review-history"
           heading={u("Decision history ({count})", { count: row.history.length })}>
           {row.history.map((h: any) => (
             <div key={h.requestId} className="campaign-review-history-item">
@@ -518,7 +519,7 @@ function PromotionReviewCard({
               )}
             </div>
           ))}
-        </CrmDisclosure>
+        </AdminDisclosure>
       )}
     </article>
   );

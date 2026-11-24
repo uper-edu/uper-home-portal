@@ -7,6 +7,7 @@ import type { EnrollmentOrder } from './EnrollmentPayment';
 import { EnrollmentJoiningNote, enrollmentSupportPath } from './EnrollmentSupport';
 import { interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import type {AftercareCourse} from '../utils/enrollmentAftercare';
+import {enrollmentOrderTone} from '../utils/enrollmentOrderStatus';
 
 type Copy = readonly [string, string, string];
 
@@ -37,7 +38,7 @@ export function EnrollmentOrderResult({ order, identity, course, classInfo, clas
   return <div className="enrollment-order-result">
     <div className="enrollment-result-body">
       <EnrollmentRecordSummary language={language} teacherType={classInfo?.teacherType??course?.teacherType} firstLesson={!cancelled?firstLesson:undefined} title={title||t(['班次报名','Class application','Pendaftaran kelas'])} schedule={schedule}
-        tone={paid?'confirmed':'pending'} status={t(paid
+        tone={enrollmentOrderTone(order.status,{restored:order.restored,needsAction:!!payableBalance})} status={t(paid
           ? ['报名成功','Enrollment confirmed','Pendaftaran berhasil']
           : partial ? ['部分到账','Partially paid','Pembayaran sebagian']
           : ['待核实到账','Awaiting verification','Menunggu verifikasi'])}>

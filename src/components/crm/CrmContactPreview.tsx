@@ -7,7 +7,7 @@ import {AdminField,AdminRequiredNote,AdminFieldLabel} from '../AdminForm';
 import {contactRestriction} from '../../utils/crmContact';
 import {outreachPolicy,outreachText,isCrmManager,canClaimForContact} from '../../utils/crmOutreach';
 import { useState, useEffect, useRef, useId } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { crmError } from "../../utils/crmLanguage";
 import { greeting } from "../../utils/crmContact";
 import {
@@ -166,13 +166,13 @@ export function CrmContactPreview({
         <p>
           {!inLayer&&<>{lead.fullName} · </>}{t('Phone','Nomor telepon','号码')}：{lead.whatsapp||t('Not recorded','Belum tercatat','未记录')}
         </p>
-        {(lead.identityReview?.pending||contactRestriction(lead))&&<CrmSingleSelect disabled={working} label={t('Contact scope','Cakupan kontak','联系范围')} value={purpose} onChange={(v)=>changePurpose(v as typeof purpose)} lang={lang} isLight={isLight} options={[
+        {(lead.identityReview?.pending||contactRestriction(lead))&&<AdminSingleSelect disabled={working} label={t('Contact scope','Cakupan kontak','联系范围')} value={purpose} onChange={(v)=>changePurpose(v as typeof purpose)} lang={lang} isLight={isLight} options={[
           {value:'sales_followup',label:t('Sales follow-up','Tindak lanjut penjualan','销售跟进')},
           ...(isCrmManager(employee)&&lead.identityReview?.pending?[{value:'identity_verification',label:t('Verify identity only','Verifikasi identitas saja','仅核实身份')}]:[]),
           ...(!lead.identityReview?.pending?[{value:'customer_reply',label:t('Reply to a new customer question','Jawab pertanyaan baru pelanggan','回复客户新问题')}]:[]),
         ]}/>}
         {purpose!=='sales_followup'&&!denied&&<>
-          <CrmSingleSelect disabled={working} label={purpose==='identity_verification'?t('Matching record','Catatan terkait','需核实的另一条记录'):t('Customer message','Pesan pelanggan','客户原文')} value={evidenceId} onChange={v=>{setEvidenceId(v);setEdited(true);}} lang={lang} isLight={isLight} options={[{value:'',label:t('Select evidence','Pilih bukti','请选择依据')},...(purpose==='identity_verification'?evidence.candidates:evidence.messages).map((v:any)=>({value:v.id,label:v.name||v.content}))]}/>
+          <AdminSingleSelect disabled={working} label={purpose==='identity_verification'?t('Matching record','Catatan terkait','需核实的另一条记录'):t('Customer message','Pesan pelanggan','客户原文')} value={evidenceId} onChange={v=>{setEvidenceId(v);setEdited(true);}} lang={lang} isLight={isLight} options={[{value:'',label:t('Select evidence','Pilih bukti','请选择依据')},...(purpose==='identity_verification'?evidence.candidates:evidence.messages).map((v:any)=>({value:v.id,label:v.name||v.content}))]}/>
           {purpose==='customer_reply'&&<AdminField><input type="checkbox" checked={unanswered} onChange={e=>{setUnanswered(e.target.checked);setEdited(true);}}/>{t('I checked that this question has not been answered. Opening a tool does not record a reply.','Saya telah memeriksa bahwa pertanyaan ini belum dijawab. Membuka alat tidak mencatat balasan.','我已核对该问题尚未答复；打开工具不会记为已回复。')}</AdminField>}
         </>}
         {denied&&<div role="status"><p>{outreachText(denied,lang)}</p>{denied==='CLAIM_BEFORE_CONTACT'&&canClaimForContact(employee,lead)&&<button type="button" className="crm-work-button" disabled={working} onClick={async()=>{setWorking(true);try{const r=await fetch(`/api/crm/leads/${lead.id}/claim`,{method:'POST',headers:{'Content-Type':'application/json'}});const d=await r.json();if(!r.ok)throw Error(d.error);onUpdated({...lead,...d.lead});setError('');}catch(e){setError(contactError(e));}finally{setWorking(false);}}}>{t('Assign to me, then contact','Ambil untuk saya, lalu hubungi','自己认领，再联系')}</button>}</div>}
@@ -190,8 +190,8 @@ export function CrmContactPreview({
         )}
         <CrmFormSection name="message" lang={lang}>
         <div className="crm-template-selectors">
-          {purpose==='sales_followup'&&<div><label htmlFor={intentId} className="crm-template-label">{t('Purpose of this contact','Tujuan komunikasi ini','本次沟通目的')}</label><CrmSingleSelect controlId={intentId} label={t('Purpose of this contact','Tujuan komunikasi ini','本次沟通目的')} value={template} disabled={working} onChange={v=>choose({language,template:v})} options={[...communicationTemplates.map(item=>({value:item.id,label:templateLabel(item,lang)})),{value:'custom',label:t('Write your own','Tulis sendiri','自由编写')}]} lang={lang} isLight={isLight}/></div>}
-          <div><label htmlFor={languageId} className="crm-template-label"><AdminFieldLabel required>{t('Customer communication language','Bahasa komunikasi pelanggan','客户沟通语言')}</AdminFieldLabel></label><CrmSingleSelect controlId={languageId} label={t('Customer communication language','Bahasa komunikasi pelanggan','客户沟通语言')} value={language} required disabled={working} onChange={v=>choose({language:v,template})} options={[{value:'',label:t('Choose language','Pilih bahasa','请选择语言')},{value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'}]} lang={lang} isLight={isLight}/></div>
+          {purpose==='sales_followup'&&<div><label htmlFor={intentId} className="crm-template-label">{t('Purpose of this contact','Tujuan komunikasi ini','本次沟通目的')}</label><AdminSingleSelect controlId={intentId} label={t('Purpose of this contact','Tujuan komunikasi ini','本次沟通目的')} value={template} disabled={working} onChange={v=>choose({language,template:v})} options={[...communicationTemplates.map(item=>({value:item.id,label:templateLabel(item,lang)})),{value:'custom',label:t('Write your own','Tulis sendiri','自由编写')}]} lang={lang} isLight={isLight}/></div>}
+          <div><label htmlFor={languageId} className="crm-template-label"><AdminFieldLabel required>{t('Customer communication language','Bahasa komunikasi pelanggan','客户沟通语言')}</AdminFieldLabel></label><AdminSingleSelect controlId={languageId} label={t('Customer communication language','Bahasa komunikasi pelanggan','客户沟通语言')} value={language} required disabled={working} onChange={v=>choose({language:v,template})} options={[{value:'',label:t('Choose language','Pilih bahasa','请选择语言')},{value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'}]} lang={lang} isLight={isLight}/></div>
         </div>
         {purpose==='sales_followup'&&(
         <p className="crm-work-muted">

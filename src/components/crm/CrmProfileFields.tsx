@@ -7,7 +7,7 @@ import {CrmFormSection} from './CrmFormLayout';
 import {AdminFormActions,AdminFormFeedback,AdminFormGrid,AdminSavedReadError} from '../AdminFormLayout';
 import { useCrmUiText, useCrmUiLanguage } from "./CrmUiLanguage";
 import { CrmOperationLayer } from "./CrmOperationLayer";
-import { CrmDiscardDialog } from "./CrmDetailWorkspace";
+import { AdminDiscardDialog } from "../admin/AdminDiscardDialog";
 import { AdminField, AdminRequiredNote } from "../AdminForm";
 import { CrmProfileSaveResult } from "./CrmProfileSaveResult";
 import {
@@ -36,7 +36,7 @@ import {
 import { CrmAiIndicator } from "./CrmAiIndicator";
 import {useCrmGoalReview} from './useCrmGoalReview';
 import {goalRelation} from '../../utils/crmGoalReview';
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { crmValue } from "../../utils/crmLanguage";
 import {
   formatCrmOperatingTime,
@@ -190,7 +190,7 @@ export function CrmProfileFields({
                 </button>
               </div>
               {["mode", "communicationLanguage"].includes(key) ? (
-                <CrmSingleSelect
+                <AdminSingleSelect
                   label={ui(manualProfileFields[key])}
                   required={value !== null}
                   lang={lang}
@@ -825,7 +825,7 @@ export function CrmProfileEditor({
             </AdminFormActions>
           </div>
           {confirm && (
-            <CrmDiscardDialog
+            <AdminDiscardDialog
               isLight={isLight}
               title={ui("放弃未保存的资料修改？")}
               description={ui("已保存资料保持不变。")}

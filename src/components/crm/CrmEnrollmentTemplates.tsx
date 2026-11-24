@@ -1,7 +1,7 @@
 import {AdminSavedReadError} from '../AdminFormLayout';
 import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {Plus} from 'lucide-react';
-import {CrmPageAction} from './CrmPageAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
 import {useEffect,useRef,useState} from 'react';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
@@ -13,8 +13,9 @@ import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
 import {AdminField} from '../AdminForm';
 import {AdminStaticField,AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
-import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
-import {CrmSingleSelect, type CrmChoice} from './CrmSingleSelect';
+import { CrmSaveFeedback } from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
+import {AdminSingleSelect, type AdminSelectChoice} from '../admin/AdminSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
 import {defaultEnrollmentCourseName,enrollmentTemplateFormats,enrollmentTeacherTypes,enrollmentTemplateQuote,templateSize,type EnrollmentTemplate,type EnrollmentTeachingCourse} from '../../utils/enrollmentTemplates';
 import {formatCurrency} from '../../utils/currency';
@@ -202,9 +203,9 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      setDeleteError(t('Deletion is unconfirmed. Check the original result.','Penghapusan belum terkonfirmasi. Periksa hasil awal.','删除结果尚未确认，请查询原操作结果。'));
    }finally{inFlight.current=false;setBusy(false);}
  };
- const field=(label:string,value:string,options:CrmChoice[],change:(v:string)=>void,locked=false)=>locked
+ const field=(label:string,value:string,options:AdminSelectChoice[],change:(v:string)=>void,locked=false)=>locked
    ? <AdminStaticField label={label} value={options.find(option=>option.value===value)?.label}/>
-   : <AdminField required>{label}<CrmSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change}/></AdminField>;
+   : <AdminField required>{label}<AdminSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change}/></AdminField>;
  const termsLocked=!!draft&&referencedTemplates.has(draft.id);
  const searchLabel=t('Search templates','Cari templat','搜索模板');
  const filterControls=<div className="crm-class-config-filters">
@@ -226,7 +227,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      {!quoteEdit&&<><AdminTopicHeader title={title} isLight={isLight}
        subtitle={t('Set class size, teacher type and tuition for each course’s class templates.','Atur ukuran kelas, jenis pengajar, dan biaya pada templat setiap kursus.','按课程维护建班模板，设置人数、教师类型和报价。')}
        actions={<>{titleActions}
-       <CrmPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></>}/>
+       <AdminPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></>}/>
      {ready&&filterControls}
      {ready&&<EnrollmentSettingsListSummary lang={lang} count={visible.length} total={catalog.templates.length}
        filtered={!!(filters.search||filters.level||filters.format||filters.teacher||filters.quote)} onClear={clear}>
@@ -332,6 +333,6 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
        <small className="crm-work-muted">{t('Published classes and existing orders keep their saved prices.','Kelas terbit dan pesanan lama mempertahankan harga tersimpan.','已发布班次和已有订单沿用原价。')}</small></AdminFormSection>
      </fieldset>
    </AdminEditor>}
-   {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{setDiscard(false);if(quoteEdit)quoteEdit.onReturn();else{setDraft(undefined);setDirty(false);}}}/>}
+   {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{setDiscard(false);if(quoteEdit)quoteEdit.onReturn();else{setDraft(undefined);setDirty(false);}}}/>}
  </div>;
 }

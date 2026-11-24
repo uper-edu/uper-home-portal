@@ -2,7 +2,7 @@ import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminPageHeader} from './admin/AdminPageHeader';
 import { useEffect, useState } from "react";
 import { Copy } from "lucide-react";
-import {CrmPageAction} from './crm/CrmPageAction';
+import {AdminPageAction} from './admin/AdminPageAction';
 import { adminText } from "./AdminHeader";
 import type { CrmLanguage } from "../utils/crmLanguage";
 import {testDirectoryText,type TestDirectory} from "../utils/testDirectory";
@@ -53,7 +53,7 @@ export function TestEnvironmentPanel({ lang }: { lang: CrmLanguage }) {
             )}
           actions={<>
           <AdminRefreshAction label={t("Refresh", "Muat ulang", "刷新")} loading={loading} onClick={()=>void load()}/>
-          <CrmPageAction icon={Copy} variant="primary" label={t("Copy all", "Salin semua", "复制全部")}
+          <AdminPageAction icon={Copy} variant="primary" label={t("Copy all", "Salin semua", "复制全部")}
             disabled={!data || loading}
             onClick={async () => {
               try {

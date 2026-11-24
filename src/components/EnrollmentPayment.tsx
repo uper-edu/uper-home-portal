@@ -1,5 +1,5 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
-import type { EnrollmentClosureReason } from '../utils/enrollmentOrderStatus';
+import {enrollmentOrderTone,type EnrollmentClosureReason} from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
 import { enrollmentInstant, enrollmentTeacherLabel, enrollmentClassTitle, enrollmentScheduleLabel, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
@@ -144,7 +144,10 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('首课 '+start,'First session '+start,'Pertemuan pertama '+start))].filter(Boolean).join(' · ')}</p>}
       {schedule&&<p>{schedule}</p>}
       {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={serverNow} language={language}/>}
-      {cohort && order.status !== 'awaiting_payment' && <p className="enrollment-payment-status">{status}</p>}
+      {title&&status&&<p className="enrollment-payment-status"><span className="enrollment-status"
+        data-state={enrollmentOrderTone(order.status,{restored:order.restored,classCancelled:existingTransferOnly,needsAction:order.status==='partial'&&hasBalance})}>
+        {status}
+      </span></p>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}
       {!!order.creditIn&&<p>{t('旧订单已冲抵','Credit applied from an earlier order','Dana pesanan sebelumnya yang digunakan')} · {formatCurrency(order.creditIn,language)}</p>}
     </div>
@@ -196,7 +199,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
           <span>{file?.name || t('银行回执或截图', 'Bank receipt or screenshot', 'Bukti bank atau tangkapan layar')}</span>
           <strong><Upload size={15} aria-hidden="true"/>{chooseProof}</strong>
         </label>
-        {fileIssue&&<p id="enrollment-proof-file-issue" className="enrollment-result-state" role="alert">
+        {fileIssue&&<p id="enrollment-proof-file-issue" className="enrollment-result-state" data-state="error" role="alert">
           {fileIssue==='too_large'
             ? t('凭证不能超过 2 MB，请选小一点的文件。','Choose a proof file no larger than 2 MB.','Pilih file bukti berukuran maksimal 2 MB.')
             : t('请选择有效的 PNG、JPEG 或 PDF 文件。','Choose a valid PNG, JPEG or PDF file.','Pilih file PNG, JPEG, atau PDF yang valid.')}

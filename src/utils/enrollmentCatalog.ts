@@ -248,7 +248,7 @@ export function enrollmentClassTitle(row:EnrollmentClassIdentity,language:'zh'|'
 }
 export function enrollmentTeacherLabel(type:'local'|'foreign'|undefined,language:'zh'|'en'|'id') {
   if(!type)return '';
-  return {zh:{local:'本土教师',foreign:'外教'},en:{local:'Indonesian Teacher',foreign:'Foreign Teacher'},id:{local:'Pengajar Lokal',foreign:'Pengajar Asing'}}[language][type];
+  return {zh:{local:'本土教师',foreign:'中国外教'},en:{local:'Indonesian Teacher',foreign:'Teacher from China'},id:{local:'Pengajar Lokal',foreign:'Pengajar dari Tiongkok'}}[language][type];
 }
 
 export function enrollmentPrivateLessonTitle(level:string,language:'zh'|'en'|'id') {

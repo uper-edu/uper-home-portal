@@ -1,11 +1,11 @@
 import {campaignEditBase} from '../../utils/campaignEditConflict';
 import {CrmFormSection} from './CrmFormLayout';
-import {CrmDisclosure} from './CrmDisclosure';
+import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {AdminField,AdminFieldLabel} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
-import { CrmDiscardDialog } from "./CrmDetailWorkspace";
+import { AdminDiscardDialog } from "../admin/AdminDiscardDialog";
 import React, { useEffect, useRef, useState } from "react";
 import type { CrmCampaignRecord } from "../../types/crmCampaign";
 import {
@@ -387,7 +387,7 @@ export function CampaignEditor({
                 "name",
                 t("Campaign name *", "Nama kampanye *", "活动名称 *"),
               )}
-              <CrmDisclosure className="crm-form-details" heading={<>{u("Internal campaign details · optional")}</>}>
+              <AdminDisclosure className="crm-form-details" heading={<>{u("Internal campaign details · optional")}</>}>
 
                 <div className="campaign-fields-grid" data-admin-grid="">
                   {select(
@@ -431,14 +431,14 @@ export function CampaignEditor({
                     </>,
                   )}
                 </div>
-              </CrmDisclosure>
-              {!campaign&&<CrmDisclosure className="crm-form-details" heading={t('Schedule','Jadwal','排期')}>
+              </AdminDisclosure>
+              {!campaign&&<AdminDisclosure className="crm-form-details" heading={t('Schedule','Jadwal','排期')}>
                 <div className="campaign-fields-grid" data-admin-grid="">{scheduleFields}</div>
-              </CrmDisclosure>}
+              </AdminDisclosure>}
               </CrmFormSection>
               {campaign && (
                 <>
-                  <CrmDisclosure className="crm-form-details" heading={<>
+                  <AdminDisclosure className="crm-form-details" heading={<>
                       {t(
                         "Contact, status and budget",
                         "Kontak, status, dan anggaran",
@@ -483,8 +483,8 @@ export function CampaignEditor({
                         "活动联系人不决定客户Owner。名称按输入原文保存。",
                       )}
                     </p>
-                  </CrmDisclosure>
-                  <CrmDisclosure className="crm-form-details" heading={<>
+                  </AdminDisclosure>
+                  <AdminDisclosure className="crm-form-details" heading={<>
                       {t(
                         "Schedule and location",
                         "Jadwal dan lokasi",
@@ -519,8 +519,8 @@ export function CampaignEditor({
                         "参会链接与活动获客链接相互独立。",
                       )}
                     </p>
-                  </CrmDisclosure>
-                  <CrmDisclosure className="crm-form-details" heading={<>
+                  </AdminDisclosure>
+                  <AdminDisclosure className="crm-form-details" heading={<>
                       {t(
                         "Audience and message",
                         "Audiens dan pesan",
@@ -550,9 +550,9 @@ export function CampaignEditor({
                         />
                       </AdminField>
                     ))}
-                  </CrmDisclosure>
+                  </AdminDisclosure>
                   {campaign.promotionModel !== "multiple" && (
-                    <CrmDisclosure className="crm-form-details" heading={<>
+                    <AdminDisclosure className="crm-form-details" heading={<>
                         {t(
                           "Legacy campaign link defaults",
                           "Pengaturan tautan kampanye lama",
@@ -592,14 +592,14 @@ export function CampaignEditor({
                           "这些默认设置仅适用于原有只含c的链接；新增推广链接使用各自的独立配置。",
                         )}
                       </p>
-                    </CrmDisclosure>
+                    </AdminDisclosure>
                   )}
                 </>
               )}
             </fieldset>
       </AdminEditor>
       {confirmClose && (
-        <CrmDiscardDialog
+        <AdminDiscardDialog
           lang={lang}
           isLight={isLight}
           title={unknown ? u("Save outcome unknown") : u("Unsaved changes")}

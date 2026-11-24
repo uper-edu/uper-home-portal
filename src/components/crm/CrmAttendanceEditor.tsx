@@ -1,8 +1,8 @@
 import {CrmFormSummary} from './CrmFormLayout';
 import {AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { useEffect, useRef, useState } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { AdminFieldLabel } from "../AdminForm";
 import { crmError, type CrmLanguage } from "../../utils/crmLanguage";
 import { draftsFor } from "../../utils/crmDrafts";
@@ -47,7 +47,7 @@ export function CrmAttendanceFields({
         : t('Confirmation withdrawn', 'Konfirmasi ditarik', '已撤销确认')}{record.confirmed && <> · {record.mode === 'onsite' ? t('Onsite', 'Di lokasi', '现场') : t('Online', 'Daring', '线上')}</>}</p>}
       <div className="crm-attendance-mode">
       <AdminFieldLabel required>{t("Participation mode", "Mode partisipasi", "参与方式")}</AdminFieldLabel>
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={t("Participation mode", "Mode partisipasi", "参与方式")}
         required
         value={mode}
@@ -226,7 +226,7 @@ export function CrmAttendanceEditor({
   };
   return (
     <>
-      <CrmDisclosure
+      <AdminDisclosure
         heading={t(
           "Record event participation (optional)",
           "Catat partisipasi acara (opsional)",
@@ -263,7 +263,7 @@ export function CrmAttendanceEditor({
             }}
           />
         )}
-      </CrmDisclosure>
+      </AdminDisclosure>
       {status&&(pending||failed)&&<AdminFormFeedback ref={errorFocus} tabIndex={-1} lang={lang}
         state={pending?'unknown':'error'}>{failed?crmError(status,lang):status}</AdminFormFeedback>}
       {pending&&<button className="crm-work-button" type="button" disabled={busy} onClick={()=>void check()}>

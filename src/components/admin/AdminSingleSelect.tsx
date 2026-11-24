@@ -1,10 +1,10 @@
-import {AdminSearchField} from '../admin/AdminSearchField';
+import {AdminSearchField} from './AdminSearchField';
 import {adminFieldName,useAdminField} from '../AdminForm';
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { crmId } from "../../utils/crmIndonesian";
 import type { CrmLanguage } from "../../utils/crmLanguage";
-export interface CrmChoice {
+export interface AdminSelectChoice {
   value: string;
   label: string;
   description?: string;
@@ -12,7 +12,7 @@ export interface CrmChoice {
   group?: string;
 }
 /** Reuses the CRM filter trigger, popover, option and focus styles for editing. */
-export function CrmSingleSelect({
+export function AdminSingleSelect({
   label,
   value,
   options,
@@ -31,12 +31,16 @@ export function CrmSingleSelect({
   footer,
   required: ownRequired,
   controlId,
+  invalid,
+  describedBy,
 }: {
   required?: boolean;
   controlId?: string;
+  invalid?: boolean;
+  describedBy?: string;
   label: string;
   value: string;
-  options: CrmChoice[];
+  options: AdminSelectChoice[];
   onChange: (value: string) => void;
   lang: CrmLanguage;
   isLight: boolean;
@@ -191,6 +195,8 @@ export function CrmSingleSelect({
         id={controlId||field?.id}
         role={!multiple||required?'combobox':undefined}
         aria-required={required||undefined}
+        aria-invalid={invalid||undefined}
+        aria-describedby={describedBy}
         data-admin-has-value={multiple?values.length>0:!!value}
         aria-label={label}
         aria-description={displayValue||(selected?[selected.label,selected.description].filter(Boolean).join('; '):!multiple?emptyLabel:undefined)}

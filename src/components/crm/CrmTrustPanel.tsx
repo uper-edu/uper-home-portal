@@ -21,14 +21,14 @@ import {CrmSaveFeedback} from "./CrmDetailWorkspace";
 import { CrmSalesDialog } from "./CrmSalesDialog";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { MessageSquarePlus, NotebookPen, Plus } from "lucide-react";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { CrmFollowupHistory } from "./CrmFollowupHistory";
 import { CrmTaskCard } from "./CrmTaskCard";
 import { projectPendingTasks } from "../../utils/crmTaskPresentation";
 import { emptyFollowUpLabel } from "../../utils/crmFollowUp";
 import { describeFollowUpTask } from "../../utils/crmFollowUp";
 import { useEffect, useId, useRef, useState } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { calendarSample } from "../../utils/workCalendar";
 import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
 import { crmValue, type CrmLanguage } from "../../utils/crmLanguage";
@@ -167,7 +167,7 @@ export function CrmStageEditor({
       {!isSalesProgressStage(currentStage)&&<p className="crm-stage-help">{ui("旧阶段保留为“")}{crmValue(currentStage,lang)}{ui("”，未自动映射。请选择符合实际的新阶段并明确保存。")}</p>}
       <AdminFormSection className="crm-form-section" title={<AdminFieldLabel required={inDrawer}>{t('New sales stage','Tahap penjualan baru','选择新阶段')}</AdminFieldLabel>}>
       {inDrawer?<fieldset className="crm-stage-options"><legend className="sr-only">{ui("选择新阶段 *")}</legend>{selectableStages.map(([value,zh,en,id])=><label className="admin-field admin-field--choice" key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{stageShortDescription(value,lang)}</small></span></label>)}</fieldset>:(
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={t("Update sales stage", "Ubah tahap penjualan", "修改销售阶段")}
         value={stage}
         onChange={(value) => { setStage(value); setError(""); setReasonInvalid(false); setSavedStage(null); if (value === currentStage) setReason(""); }}
@@ -612,7 +612,7 @@ function LegacyCrmTrustPanel({
             )}
           </button>
         ) : ["open", "overdue"].includes(task.status) ? (
-          <CrmSingleSelect
+          <AdminSingleSelect
             label={t("Task actions", "Tindakan tugas", "任务操作")}
             displayValue="⋯"
             value=""
@@ -1061,7 +1061,7 @@ function LegacyCrmTrustPanel({
                         onChange={(e) => setPurpose(e.target.value)}
                       />
                     </label>}
-                    {!["create_request","edit"].includes(editor.kind)&&<CrmSingleSelect
+                    {!["create_request","edit"].includes(editor.kind)&&<AdminSingleSelect
                       label={t("Time meaning", "Makna waktu", "时间含义")}
                       value={timing}
                       onChange={setTiming}
@@ -1098,7 +1098,7 @@ function LegacyCrmTrustPanel({
                   </label>
                 )}
                 {["link","link_request"].includes(editor.kind) && (
-                  <CrmSingleSelect
+                  <AdminSingleSelect
                     label={t("Task", "Tugas", "任务")}
                     value={choice}
                     onChange={setChoice}
@@ -1122,7 +1122,7 @@ function LegacyCrmTrustPanel({
                 )}
                 {editor.kind === "identity" && <p>{lead.fullName} ↔ {editor.task.name} · {editor.task.email||editor.task.whatsapp} · {t('Compare the original records and confirm with evidence. Same contact details do not prove the same person.','Bandingkan catatan asli dan konfirmasi dengan bukti. Kontak sama tidak membuktikan orang yang sama.','请对照原记录并填写核实依据；相同联系方式不证明属于同一人。')}</p>}
                 {editor.kind === "identity" && (
-                  <CrmSingleSelect
+                  <AdminSingleSelect
                     label={t("Decision", "Keputusan", "判断")}
                     value={choice}
                     onChange={setChoice}
@@ -1184,7 +1184,7 @@ function LegacyCrmTrustPanel({
       </div>
       {mode === "identity" &&
         data?.candidates.some((c: any) => c.decision === "pending") && (
-          <CrmDisclosure open
+          <AdminDisclosure open
             heading={
               <>{t("Identity candidates", "Kandidat identitas", "身份候选")}</>
             }
@@ -1208,7 +1208,7 @@ function LegacyCrmTrustPanel({
                   {c.name} · {c.email||c.whatsapp} · {kindLabel("identity")}
                 </button>
               ))}
-          </CrmDisclosure>
+          </AdminDisclosure>
         )}
       {mode !== "identity" && data && !workflowOpen && (
         <CrmFollowupHistory
@@ -1231,7 +1231,7 @@ function LegacyCrmTrustPanel({
                   (v.status === "migration_hold" &&
                     ["Enrolled", "Lost"].includes(lead.currentStage)),
               ) && (
-                <CrmDisclosure
+                <AdminDisclosure
                   heading={t("Past tasks", "Riwayat tugas", "历史任务")}
                   open={historyOpen}
                   onToggle={(e) => setHistoryOpen(e.currentTarget.open)}
@@ -1244,7 +1244,7 @@ function LegacyCrmTrustPanel({
                           ["Enrolled", "Lost"].includes(lead.currentStage)),
                     )
                     .map(renderTask)}
-                </CrmDisclosure>
+                </AdminDisclosure>
               )}
             </>
           }

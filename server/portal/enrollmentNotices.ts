@@ -1,10 +1,11 @@
+import {createHash} from 'node:crypto';
 import {enrollmentMailDeliveryState,enrollmentMailbox} from './enrollmentMail.ts';
 import {smtpRecipientPolicy} from './enrollmentMailRecipientPolicy.ts';
 import { enrollmentOrderEmailPath, renderEnrollmentEmail, type EnrollmentEmailKind } from './enrollmentEmail.ts';
 import { cardMoney, enrollmentCard } from './enrollmentCards.ts';
 import { enrollmentWeekOf, enrollmentWeekTotals, latestDueEnrollmentWeek } from './enrollmentWeekly.ts';
 import { pendingEnrollmentProofTotals } from './enrollmentProofTotals.ts';
-import { enrollmentAssistancePath } from '../../src/utils/enrollmentAssistance.ts';
+import { canRetryEnrollmentAssistanceMail, enrollmentAssistancePath, type EnrollmentAssistanceMail } from '../../src/utils/enrollmentAssistance.ts';
 
 type Client = { query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}> };
 type Notice = Exclude<EnrollmentEmailKind,'otp_apply'|'otp_mine'|'assistance_confirmation'>;
@@ -21,7 +22,7 @@ async function record(c:Client,key:string,channel:'email'|'lark',kind:string,sub
     VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE event_key=event_key`,
     [key,channel,kind,subjectId,queued?{...payload,environment:process.env.PORTAL_ENV,delivery:marker}:payload,queued?'queued':'simulated']);
 }
-export async function latestAssistanceMail(c:Client,id:string){
+export async function latestAssistanceMail(c:Client,id:string):Promise<EnrollmentAssistanceMail|undefined>{
   return (await c.query(`SELECT event_key AS id,state,DATE_FORMAT(recorded_at,'%Y-%m-%dT%H:%i:%sZ') AS recordedAt
     FROM enrollment_notification_receipts WHERE subject_id=:p1 AND channel='email' AND kind='assistance_confirmation'
     ORDER BY recorded_at DESC,event_key DESC LIMIT 1`,[id])).rows[0];
@@ -35,7 +36,7 @@ export async function sendAssistanceMail(c:Client,offer:any,attempt:string){
   const content={salutation:data.name,language:data.lang,class:data.quote.level,format:data.quote.format,period:data.quote.period,firstLesson:data.quote.firstLesson,
     schedule:data.quote.schedule,weeklySchedule:data.quote.weeklySchedule,minutes:data.quote.minutes,
     price:data.quote.price,deadline:expiresAt,url:enrollmentAssistancePath(id,data.lang)};
-  const message=renderEnrollmentEmail('assistance_confirmation',content);
+  const message=renderEnrollmentEmail('assistance_confirmation',{...content,assistanceId:id});
   if((mode==='smtp'||local)&&mailState.configured){
     await record(c,'email:assistance_confirmation:'+id+':'+attempt,'email','assistance_confirmation',id,{
       ...message,recipient:email,environment:process.env.PORTAL_ENV,deliveryId:'assistance-'+attempt,
@@ -49,6 +50,14 @@ export async function sendAssistanceMail(c:Client,offer:any,attempt:string){
     VALUES(:p1,'email','assistance_confirmation',:p2,:p3,:p4,UTC_TIMESTAMP(6))`,
     ['email:assistance_confirmation:'+id+':'+attempt,id,{recipient:email,...content,subject:message.subject},state]);
   return latestAssistanceMail(c,id);
+}
+
+// Called with the application already locked by the retry transaction.
+export async function retryAssistanceMail(c:Client,offer:Parameters<typeof sendAssistanceMail>[1],previousAttempt:unknown){
+  const latest=await latestAssistanceMail(c,offer.id);
+  if(!latest||!canRetryEnrollmentAssistanceMail(latest)||latest.id!==previousAttempt)return latest;
+  const attempt=createHash('sha256').update(latest.id).digest('hex');
+  return sendAssistanceMail(c,offer,attempt);
 }
 export async function orderNotice(c:Client,kind:Notice,orderId:string,discriminator='',facts:object={}) {
   const row=(await c.query(`SELECT o.email,o.data,o.state,b.data AS class_data,a.attribution,

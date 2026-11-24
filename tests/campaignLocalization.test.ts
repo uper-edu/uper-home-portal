@@ -13,10 +13,8 @@ import { CampaignSourceEvidence } from "../src/components/crm/CampaignSourceEvid
 import { CampaignWorkspaceHeading } from "../src/components/crm/CampaignWorkspaceHeading.tsx";
 import { CampaignOverview } from "../src/components/crm/CampaignOverview.tsx";
 import { CrmPromotionReviews } from "../src/components/crm/CrmPromotionReviews.tsx";
-import {
-  CrmSaveFeedback,
-  CrmDiscardDialog,
-} from "../src/components/crm/CrmDetailWorkspace.tsx";
+import { CrmSaveFeedback } from "../src/components/crm/CrmDetailWorkspace.tsx";
+import { AdminDiscardDialog } from "../src/components/admin/AdminDiscardDialog.tsx";
 import {
   CAMPAIGN_TYPE_OPTIONS,
   CAMPAIGN_STATUS_OPTIONS,
@@ -256,7 +254,7 @@ test("home page actions/subtitle, overview, review and save/discard feedback fol
         u("Save outcome unknown. Check the result before submitting again."),
       ),
     );
-    const discard = render(CrmDiscardDialog, {
+    const discard = render(AdminDiscardDialog, {
       lang,
       isLight: true,
       onKeep: () => {},

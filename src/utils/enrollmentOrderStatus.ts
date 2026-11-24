@@ -33,3 +33,15 @@ export const enrollmentStatuses: Record<string, readonly [string, string, string
   refunding: ['退款处理中','Refund in progress','Pengembalian diproses'],
   refunded: ['退款已完成','Refund complete','Pengembalian selesai'],
 };
+
+export type EnrollmentStatusTone = 'pending'|'progress'|'confirmed'|'full'|'error';
+
+export function enrollmentOrderTone(status:string,{restored=false,classCancelled=false,needsAction=false}:{
+  restored?:boolean;classCancelled?:boolean;needsAction?:boolean;
+}={}):EnrollmentStatusTone {
+  if(restored)return 'confirmed';
+  if(['expired','ended','refunded'].includes(status))return 'full';
+  if(needsAction||status==='awaiting_payment'&&!classCancelled)return 'pending';
+  if(status==='paid')return 'confirmed';
+  return 'progress';
+}

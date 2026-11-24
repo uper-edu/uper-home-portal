@@ -3,11 +3,11 @@ import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {formatCurrency} from '../../utils/currency';
 import {useEffect,useRef,useState} from 'react';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {CrmPayments} from './CrmPayments';
 import {CrmPaymentStatus} from './CrmPaymentStatus';
 import {paymentRemainingTone,paymentWorkspaceLabel} from '../../utils/crmPaymentPresentation';
-import {CrmDiscardDialog} from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {canVerifyPayments,paymentListFilters,paymentListNextAction,type PaymentListFilters,type PaymentListRow} from '../../utils/crmPaymentWorklist';
 type Selection={leadId:string;projectId?:string;entryId?:string;customer:string;action:string};
@@ -48,7 +48,7 @@ export function CrmFinanceWorkspace({employee,lang,isLight,refreshVersion,onRefr
  return <section ref={workspace} tabIndex={-1} className="crm-finance-workspace" aria-label={t('收款核验','Payment verification','Verifikasi pembayaran')}>
 
  {!permitted||denied?<AdminListState lang={lang} state="denied" message={t('你没有收款核验权限。','You do not have payment verification access.','Anda tidak memiliki akses verifikasi pembayaran.')}/>:<>
- <div className="crm-finance-filters"><AdminSearchField className="crm-finance-search" label={t('搜索客户、课程或负责人','Search customer, course or owner','Cari pelanggan, kursus atau penanggung jawab')} placeholder={t('客户、课程或负责人','Customer, course or owner','Pelanggan, kursus atau penanggung jawab')} value={filters.search} onChange={search=>change({search})}/><CrmSingleSelect label={t('收款状态','Payment status','Status pembayaran')} lang={lang} isLight={isLight} value={filters.state} options={states} onChange={state=>change({state:state as PaymentListFilters['state']})}/><CrmSingleSelect label={t('款项记录','Payment records','Catatan pembayaran')} lang={lang} isLight={isLight} value={filters.kind} options={[{value:'all',label:t('全部款项','All payments','Semua pembayaran')},{value:'receipt',label:t('付款','Receipts','Penerimaan')},{value:'refund',label:t('退款','Refunds','Pengembalian')}]} onChange={kind=>change({kind:kind as PaymentListFilters['kind']})}/></div>
+ <div className="crm-finance-filters"><AdminSearchField className="crm-finance-search" label={t('搜索客户、课程或负责人','Search customer, course or owner','Cari pelanggan, kursus atau penanggung jawab')} placeholder={t('客户、课程或负责人','Customer, course or owner','Pelanggan, kursus atau penanggung jawab')} value={filters.search} onChange={search=>change({search})}/><AdminSingleSelect label={t('收款状态','Payment status','Status pembayaran')} lang={lang} isLight={isLight} value={filters.state} options={states} onChange={state=>change({state:state as PaymentListFilters['state']})}/><AdminSingleSelect label={t('款项记录','Payment records','Catatan pembayaran')} lang={lang} isLight={isLight} value={filters.kind} options={[{value:'all',label:t('全部款项','All payments','Semua pembayaran')},{value:'receipt',label:t('付款','Receipts','Penerimaan')},{value:'refund',label:t('退款','Refunds','Pengembalian')}]} onChange={kind=>change({kind:kind as PaymentListFilters['kind']})}/></div>
  {error&&<AdminListState lang={lang} state="error" message={data?.rows.length?error+' '+t('显示上次成功读取的结果。','Showing the last successful result.','Menampilkan hasil terakhir yang berhasil.'):error} compact={Boolean(data?.rows.length)} onRetry={()=>setRefresh(v=>v+1)}/>}
  {!error&&!data&&<AdminListState lang={lang} state="loading"/>}
  {data&&<p className="crm-list-meta" role="status">{t(`匹配 ${data.total} 条款项记录`,`${data.total} matching payment records`,`${data.total} catatan pembayaran cocok`)}</p>}
@@ -69,6 +69,6 @@ export function CrmFinanceWorkspace({employee,lang,isLight,refreshVersion,onRefr
    busy={updating} onPageChange={page=>change({page})}/>}
  {selection&&selectionScope.current===scopeKey&&<CrmPayments key={selection.leadId+':'+(selection.entryId||selection.projectId)+':'+selection.action} lead={{id:selection.leadId,fullName:selection.customer}} actorId={employee.id} lang={lang} isLight={isLight} focusEntryId={selection.entryId} focusProjectId={selection.projectId} initialAction={selection.action} verificationOnly onDetailShown={()=>{if(selection.action!=='view')write(current.current.filters,{...selection,action:'view'});}} onOpenRelated={(entryId:string,projectId?:string)=>{const next={...selection,entryId,projectId,action:'view'};write(filters,next,true);setSelection(next);setDirty(false);}} onClose={close} onDirty={setDirty} onBusy={setBusy} onSaved={()=>{setRefresh(v=>v+1);onQueueChanged();}}/>}
  </>}
- {pending&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setPending(null)} onDiscard={()=>{const action=pending;setPending(null);setDirty(false);action();}}/>}
+ {pending&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setPending(null)} onDiscard={()=>{const action=pending;setPending(null);setDirty(false);action();}}/>}
  </section>;
 }

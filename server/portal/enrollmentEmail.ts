@@ -1,7 +1,7 @@
 import {enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule} from '../../src/utils/enrollmentCatalog.ts';
 import { enrollmentRuleDefaults } from '../../src/utils/enrollmentRules.ts';
 import { formatCurrency } from '../../src/utils/currency.ts';
-import { enrollmentPreviewOrigin } from '../../src/utils/enrollmentAssistance.ts';
+import { enrollmentAssistancePath, enrollmentPreviewOrigin } from '../../src/utils/enrollmentAssistance.ts';
 export { enrollmentPreviewOrigin };
 
 export function portalPublicOrigin(env=process.env){
@@ -14,6 +14,16 @@ export function portalPublicOrigin(env=process.env){
   } catch {
     return undefined;
   }
+}
+
+function enrollmentEmailOrigin(env:NodeJS.ProcessEnv){
+  return portalPublicOrigin(env)??(env.PORTAL_ENV==='test'||env.PORTAL_ENV==='prod'?undefined:enrollmentPreviewOrigin);
+}
+
+export function enrollmentAssistanceLink(id:string,lang:unknown,env=process.env){
+  const origin=enrollmentEmailOrigin(env);
+  const language=lang==='zh'||lang==='id'?lang:'en';
+  return origin?origin+enrollmentAssistancePath(id,language):undefined;
 }
 type Copy = readonly [string,string,string];
 export const enrollmentEmailSubjects = {
@@ -41,7 +51,7 @@ export function enrollmentOrderEmailPath(kind:EnrollmentEmailKind,language:strin
   return (kind==='seat_reserved'?'/enrollment/payment':'/enrollment/mine')+'?'+query;
 }
 type Facts = {language:unknown; salutation?:string; class?:string; firstLesson?:string; schedule?:string; code?:string; codeMinutes?:number;
-  deadline?:string; url?:string; orderId?:string; price?:number; received?:number; expected?:number; refunded?:number;
+  deadline?:string; url?:string; assistanceId?:string; orderId?:string; price?:number; received?:number; expected?:number; refunded?:number;
   format?:string; period?:string; installment?:number; targetClass?:string; targetFirstLesson?:string;
   weeklySchedule?:EnrollmentWeeklySchedule; minutes?:number;
   targetWeeklySchedule?:EnrollmentWeeklySchedule; targetMinutes?:number;
@@ -225,7 +235,7 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts,env=p
       detail(['报名编号','Enrollment reference','Kode pendaftaran'],facts.orderId),
     ]:[]),
   ].filter(Boolean).join('\n');
-  const origin=portalPublicOrigin(env)??(env.PORTAL_ENV==='test'||env.PORTAL_ENV==='prod'?undefined:enrollmentPreviewOrigin);
+  const origin=enrollmentEmailOrigin(env);
   const foot=origin?[
     [tr(['官网','Website','Situs web']),origin+'/?lang='+language],
     [tr(['课程报名','Course enrollment','Pendaftaran kelas']),origin+'/enrollment?lang='+language],
@@ -233,7 +243,9 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts,env=p
     [tr(['WhatsApp 联系我们','Contact us on WhatsApp','Hubungi kami via WhatsApp']),
       origin+enrollmentEmailWhatsAppPath+'?'+new URLSearchParams({text:supportMessage})],
   ]:[];
-  const url=origin&&!otp&&facts.url?.startsWith('/')&&!facts.url.startsWith('//')?origin+facts.url:undefined;
+  const url=kind==='assistance_confirmation'&&facts.assistanceId
+    ?enrollmentAssistanceLink(facts.assistanceId,language,env)
+    :origin&&!otp&&facts.url?.startsWith('/')&&!facts.url.startsWith('//')?origin+facts.url:undefined;
   const codeMinutes=facts.codeMinutes??enrollmentRuleDefaults.emailCodeMinutes;
   const paragraphs=[
     ...(otp?[tr([`验证码 ${codeMinutes} 分钟内有效，请勿转发。若非本人操作，可忽略。`,`The code expires in ${codeMinutes} ${codeMinutes===1?'minute':'minutes'}. Keep it private. If you did not request it, ignore this email.`,`Kode berlaku ${codeMinutes} menit. Jangan bagikan kode ini kepada siapa pun. Abaikan email ini jika Anda tidak memintanya.`])]:[]),

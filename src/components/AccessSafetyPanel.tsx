@@ -1,7 +1,7 @@
 import {AdminFormActions,AdminFormFeedback} from './AdminFormLayout';
 import {AdminRecordHeader} from './admin/AdminRecordHeader';
 import {AdminRecordTitle} from './admin/AdminRecordWorkspace';
-import {CrmPageAction} from './crm/CrmPageAction';
+import {AdminPageAction} from './admin/AdminPageAction';
 import {ShieldAlert} from 'lucide-react';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminDisclosure} from './admin/AdminDisclosure';
@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { adminText } from "./AdminHeader";
 import type { CrmEmployee } from "./CrmAccess";
 import type { CrmLanguage } from "../utils/crmLanguage";
-import { CrmSingleSelect } from "./crm/CrmSingleSelect";
+import { AdminSingleSelect } from "./admin/AdminSingleSelect";
 import { managementRequest } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "./AccessOperationStatus";
 import { accessError } from "../utils/accessLanguage";
@@ -164,7 +164,7 @@ export function AccessHandoverPanel({
                       </AdminField>
                     ))}
                     {h.customerCount + h.taskCount > 0 && (
-                      <><AdminFieldLabel required>{t("Receiving owner","Penerima tanggung jawab","接收负责人")}</AdminFieldLabel><CrmSingleSelect
+                      <><AdminFieldLabel required>{t("Receiving owner","Penerima tanggung jawab","接收负责人")}</AdminFieldLabel><AdminSingleSelect
                         label={t(
                           "Receiving owner",
                           "Penerima tanggung jawab",
@@ -400,7 +400,7 @@ export function AccessSafetyPanel({
         <AdminFormFeedback state="unknown" lang={lang} role="status">
           {t('Business access is locked pending security review.','Akses bisnis dikunci hingga tinjauan keamanan selesai.','恢复后安全复核待完成，业务访问已锁定。')}
         </AdminFormFeedback>
-        <CrmPageAction icon={ShieldAlert} label={t('Open security review','Buka tinjauan keamanan','进入安全复核')} onClick={onReview}/>
+        <AdminPageAction icon={ShieldAlert} label={t('Open security review','Buka tinjauan keamanan','进入安全复核')} onClick={onReview}/>
       </section>}
       {view&&<AdminRecordHeader back={{label:t('Back to users & access','Kembali ke pengguna & akses','返回用户与权限'),onClick:onReturn}}
         title={<AdminRecordTitle titleRef={titleRef} title={t('Restore security review','Tinjauan keamanan pemulihan','恢复后安全复核')}/>}/>}

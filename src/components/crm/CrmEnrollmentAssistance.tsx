@@ -7,19 +7,25 @@ import {AdminFormActions,AdminFormFeedback,AdminFormGrid,type AdminFeedbackState
 import {enrollmentCopy,type PublicEnrollmentClass} from '../../utils/enrollmentCatalog';
 import {enrollmentPost} from '../../services/enrollmentSession';
 import {CrmOperationLayer} from './CrmOperationLayer';
-import {CrmDiscardDialog} from './CrmDetailWorkspace';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {interestOption} from '../../utils/enrollmentInterestCopy';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {formatCurrency} from '../../utils/currency';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-import {enrollmentAssistancePath,enrollmentPreviewOrigin,type EnrollmentAssistanceMail} from '../../utils/enrollmentAssistance';
+import {canRetryEnrollmentAssistanceMail,type EnrollmentAssistanceMail} from '../../utils/enrollmentAssistance';
 
-export type AssistanceResult={id:string;expiresAt:string;lang:string;mail?:EnrollmentAssistanceMail};
+export type AssistanceResult={id:string;expiresAt:string;lang:string;confirmationUrl?:string;mail?:EnrollmentAssistanceMail};
+const mailLabels={
+  simulated:['确认邮件已模拟发送','Confirmation email simulated','Email konfirmasi disimulasikan'],
+  accepted:['SMTP 已接收确认邮件，无需重发。','SMTP accepted the confirmation email. No resend needed.','Email konfirmasi telah diterima SMTP. Tidak perlu dikirim ulang.'],
+  queued:['确认邮件正在排队投递。','Confirmation email is queued for delivery.','Email konfirmasi dalam antrean pengiriman.'],
+  unknown:['确认邮件投递结果待确认。','Confirmation email delivery is unconfirmed.','Hasil pengiriman email konfirmasi belum pasti.'],
+  failed:['确认邮件发送失败。','Confirmation email failed to send.','Pengiriman email konfirmasi gagal.'],
+  cancelled:['确认邮件投递已取消。','Confirmation email delivery was cancelled.','Pengiriman email konfirmasi dibatalkan.'],
+} as const satisfies Record<EnrollmentAssistanceMail['state'],readonly [string,string,string]>;
 export const assistanceMailLabel=(lang:CrmLanguage,mail?:EnrollmentAssistanceMail)=>enrollmentCopy(lang,
-  mail?.state==='simulated'?['确认邮件已模拟发送','Confirmation email simulated','Email konfirmasi disimulasikan']:
-    mail?.state==='failed'?['确认邮件发送失败','Confirmation email failed','Email konfirmasi gagal']:
-      ['确认邮件未发送','Confirmation email not sent','Email konfirmasi belum dikirim']);
+  (mail&&mailLabels[mail.state])??['暂无确认邮件投递记录。','No confirmation email delivery record yet.','Belum ada catatan pengiriman email konfirmasi.']);
 
 export function CrmEnrollmentAssistance({opportunityId,level,customerName,contacts,lang,isLight,onDone,onClose,initial}:{
   opportunityId:string;level:string;customerName:string;contacts:{email:string;phone:string};
@@ -51,7 +57,9 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
   },[level,initial]);
   const close=()=>{if(!busy){if(dirty)setDiscard(true);else onClose();}};
   const chosen=classes?.find(row=>row.id===classId);
-  const link=result?enrollmentPreviewOrigin+enrollmentAssistancePath(result.id,result.lang):'';
+  const link=result?.confirmationUrl;
+  const canRetryMail=mailRetryAllowed&&!needsMailCheck&&canRetryEnrollmentAssistanceMail(result?.mail);
+  const canCheckMail=needsMailCheck||!result?.mail||result.mail.state==='queued'||result.mail.state==='unknown';
   const messageLanguage=result?.lang==='zh'||result?.lang==='id'?result.lang:'en';
   const message=enrollmentCopy(messageLanguage,[
     `你好，UPER 已协助提交你的 ${level} 报名申请。请打开链接，核对班次和学费后确认报名：`,
@@ -59,26 +67,31 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
     `Halo, UPER telah membantu mengajukan pendaftaran ${level}. Buka tautan ini untuk memeriksa kelas dan biaya, lalu konfirmasi:`,
   ])+'\n'+link;
   async function retry(){
-    if(!result||busy||needsMailCheck||!mailRetryAllowed)return;
-    setBusy(true);setFeedback(undefined);
+    if(!result||busy||!canRetryMail)return;
+    setBusy(true);
+    setFeedback({state:'saving',message:t('正在重发确认邮件…','Retrying confirmation email…','Mengirim ulang email konfirmasi…')});
     try{
       const {mail}=await enrollmentPost(endpoint+'/'+result.id+'/retry',{previousAttempt:result.mail?.id??null});
-      setResult({...result,mail});onDone();
+      setResult({...result,mail});
+      setFeedback(mail?.state==='failed'?{state:'error',message:t('最新投递记录仍显示发送失败，可以重试。',
+        'The latest delivery record still shows a failure. You can retry.','Catatan pengiriman terbaru masih menunjukkan kegagalan. Anda dapat mencoba lagi.')}:undefined);
+      onDone();
     }catch{
       setNeedsMailCheck(true);
       setFeedback({state:'unknown',message:t('发送结果待确认，请先查询原申请。','Check the original application before attempting another send.','Periksa pengajuan awal sebelum mengirim ulang.')});
     }finally{setBusy(false);}
   }
   async function checkMail(){
-    if(!result||busy||!needsMailCheck)return;
+    if(!result||busy||!canCheckMail)return;
     setBusy(true);
+    setFeedback({state:'saving',message:t('正在查询邮件投递结果…','Checking email delivery…','Memeriksa hasil pengiriman email…')});
     try{
       const response=await fetch('/api/crm/opportunities/'+encodeURIComponent(opportunityId),{cache:'no-store'});
       if(!response.ok)throw Error();
       const detail=await response.json();
       const application=detail.assistanceHistory;
       if(application?.id!==result.id)throw Error();
-      setResult({...result,mail:application.mail});
+      setResult({...result,mail:application.mail,confirmationUrl:application.confirmationUrl});
       const eligible=Boolean(Number(application.active)&&!application.orderId&&detail.assistance?.allowed);
       setMailRetryAllowed(eligible);
       setNeedsMailCheck(false);setFeedback(undefined);onDone();
@@ -93,28 +106,32 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
       context={customerName+' · '+level} lang={lang} isLight={isLight} onClose={close} busy={busy}>
       {result?<div className="crm-editor-compose crm-course-editor">
         <div className="crm-editor-scroll">
-          <p>{t('待学员确认','Awaiting learner confirmation','Menunggu konfirmasi siswa')} · <span role="status">{assistanceMailLabel(lang,result.mail)}</span></p>
+          <p>{t('待学员确认','Awaiting learner confirmation','Menunggu konfirmasi siswa')}
+            {!needsMailCheck&&<> · <span role="status">{assistanceMailLabel(lang,result.mail)}</span></>}
+          </p>
           {feedback&&<AdminFormFeedback state={feedback.state} lang={lang}>{feedback.message}</AdminFormFeedback>}
-          <div className="admin-copy-field">
-            <AdminField>{t('报名确认链接','Enrollment confirmation link','Tautan konfirmasi pendaftaran')}
-              <input readOnly value={link} onFocus={event=>event.currentTarget.select()}/>
-            </AdminField>
-            <AdminCopyAction label={t('复制链接','Copy link','Salin tautan')} value={link} lang={lang}/>
-          </div>
+          {link&&<div className="admin-copy-field">
+              <AdminField>{t('报名确认链接','Enrollment confirmation link','Tautan konfirmasi pendaftaran')}
+                <input readOnly value={link} onFocus={event=>event.currentTarget.select()}/>
+              </AdminField>
+              <AdminCopyAction label={t('复制链接','Copy link','Salin tautan')} value={link} lang={lang}/>
+          </div>}
           <p>{t('链接有效至','Link expires','Tautan berlaku hingga')} · {formatCrmEventTime(result.expiresAt).slice(0,16)}</p>
-          <div className="admin-copy-field">
+          {link?<div className="admin-copy-field">
             <AdminField>{t('WhatsApp 文案','WhatsApp message','Pesan WhatsApp')}
               <textarea readOnly rows={4} aria-label={t('WhatsApp 文案','WhatsApp message','Pesan WhatsApp')}
                 value={message} onFocus={event=>event.currentTarget.select()}/>
             </AdminField>
             <AdminCopyAction label={t('复制 WhatsApp 文案','Copy WhatsApp message','Salin pesan WhatsApp')} value={message} lang={lang}/>
-          </div>
+          </div>:<p role="status">{t('公开报名地址尚未就绪，暂时无法复制确认链接。',
+            'The public enrollment address is unavailable. The confirmation link cannot be copied yet.',
+            'Alamat pendaftaran publik belum tersedia. Tautan konfirmasi belum dapat disalin.')}</p>}
         </div>
         <AdminFormActions className="crm-editor-actions">
           <button type="button" className="crm-work-button" disabled={busy} onClick={onClose}>{t('关闭','Close','Tutup')}</button>
-          {needsMailCheck&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void checkMail()}>
+          {canCheckMail&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void checkMail()}>
             {t('查询发送结果','Check delivery result','Periksa hasil pengiriman')}</button>}
-          {!needsMailCheck&&mailRetryAllowed&&result.mail?.state!=='simulated'&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void retry()}>
+          {canRetryMail&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void retry()}>
             {t('重发确认邮件','Retry confirmation email','Kirim ulang email konfirmasi')}</button>}
         </AdminFormActions>
       </div>:<AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onChange={()=>setDirty(true)} onSubmit={async event=>{
@@ -139,7 +156,7 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
           {feedback&&<AdminFormFeedback state={feedback.state} lang={lang}>{feedback.message}</AdminFormFeedback>}
           {classes?.length===0&&<p>{t('该级别暂无可报名班次。','No classes are available for this level.','Belum ada kelas untuk level ini.')}</p>}
           <AdminField required>{t('班次','Class','Kelas')}
-            <CrmSingleSelect required lang={lang} isLight={isLight} label={t('班次','Class','Kelas')} value={classId}
+            <AdminSingleSelect required lang={lang} isLight={isLight} label={t('班次','Class','Kelas')} value={classId}
               onChange={value=>{setClassId(value);setDirty(true);}} options={(classes??[]).map(row=>({value:row.id,
                 label:[row.level,interestOption(lang,row.period),interestOption(lang,row.format),row.firstLesson.replace('T',' ')+' WIB'].join(' · ')}))}/>
           </AdminField>
@@ -160,6 +177,6 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
         </AdminFormActions>
       </AdminForm>}
     </CrmOperationLayer>
-    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={onClose}/>}
+    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={onClose}/>}
   </>;
 }

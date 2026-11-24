@@ -14,7 +14,7 @@ import {AdminEditor} from './admin/AdminEditor';
 import {AdminListState,AdminListTable} from './admin/AdminList';
 import {AdminRecordEntry,AdminRowAction} from './admin/AdminListControl';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
-import {CrmPageAction} from './crm/CrmPageAction';
+import {AdminPageAction} from './admin/AdminPageAction';
 import {AdminStatus} from './AdminStatus';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import {mailSmtpProvider} from '../utils/enrollmentMailConfig';
@@ -452,7 +452,7 @@ function LarkIntegration({lang,isLight,onDraftChange,onBusyChange}:IntegrationDi
           {pending&&<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void check()}>
             {t('Check operation result','Periksa hasil operasi','核对操作结果')}</button>}
           <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={loading} disabled={busy} onClick={()=>void load()}/>
-          {data&&!pending&&<CrmPageAction type="submit" icon={Save} label={label} variant="primary"
+          {data&&!pending&&<AdminPageAction type="submit" icon={Save} label={label} variant="primary"
             disabled={blocked||!dirty||conflict||error==='credential_conflict'}/>}
         </>}/>
       {awaitingSavedRead&&failure==='error'?<AdminSavedReadError lang={lang} busy={loading} onRetry={()=>void load()}/>:(!data||failure)&&<AdminListState lang={lang} state={failure??'loading'} onRetry={load}/>}

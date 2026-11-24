@@ -13,10 +13,11 @@ import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
 import {CrmOrderOperationFeedback,useCrmOrderOperation} from './CrmOrderOperation';
 import { AdminFormActions,AdminFormFeedback,AdminSavedReadError } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
-import { CrmDiscardDialog, useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
-import { CrmPageAction } from './CrmPageAction';
+import { useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
+import { AdminPageAction } from '../admin/AdminPageAction';
 import { CrmDetailActions, CrmRecordFilters, CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordTitle } from './CrmRecordWorkspace';
-import { CrmSingleSelect } from './CrmSingleSelect';
+import { AdminSingleSelect } from '../admin/AdminSingleSelect';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone, CrmListViews } from './CrmList';
 import { interestOption } from '../../utils/enrollmentInterestCopy';
 import { enrollmentClassManagementPath,type EnrollmentClassSummary } from '../../utils/crmEnrollmentManagement';
@@ -277,14 +278,14 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
   };
   const currency=(value:number)=>formatCurrency(value,lang);
   const orderFilters=(sidebar:boolean)=><>
-        <CrmSingleSelect lang={lang} isLight={isLight} label={t('班次','Class','Kelas')} value={classFilter}
+        <AdminSingleSelect lang={lang} isLight={isLight} label={t('班次','Class','Kelas')} value={classFilter}
           onChange={value=>{setClassFilter(value);setOffset(0);}}
           options={[{value:'',label:t('全部班次','All classes','Semua kelas')},...classOptions.map(row=>({
             value:row.id,label:[row.level,interestOption(lang,row.period),interestOption(lang,row.format),formatCrmEventTime(row.firstLessonAt).slice(0,16)].filter(Boolean).join(' · '),
           }))]}/>
-        <CrmSingleSelect lang={lang} isLight={isLight} label={t('报名状态','Enrollment status','Status pendaftaran')} value={progressFilter}
+        <AdminSingleSelect lang={lang} isLight={isLight} label={t('报名状态','Enrollment status','Status pendaftaran')} value={progressFilter}
           onChange={value=>{setProgressFilter(value);setOffset(0);}} options={recordStatusOptions}/>
-        {sidebar&&<CrmSingleSelect lang={lang} isLight={isLight} label={progressLabel} value={quickFilter}
+        {sidebar&&<AdminSingleSelect lang={lang} isLight={isLight} label={progressLabel} value={quickFilter}
           options={quickOptions} onChange={value=>{setQuickFilter(value as SupportFilter);setOffset(0);}}/>}
         {(query||classFilter||progressFilter||quickFilter)&&<button type="button" className="crm-work-link" onClick={()=>{setQuery('');setSearch('');setClassFilter('');setProgressFilter('');setQuickFilter('');setOffset(0);}}>
           {t('清除筛选','Clear filters','Hapus filter')}</button>}
@@ -369,12 +370,12 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
             status={selected&&status(selected)} meta={selected&&orderNumberLabel+' '+selected.id}/>} actions={<CrmDetailActions label={t('售后订单操作','After-sales actions','Tindakan purnajual')}
             secondary={<>
               {recordLayout.browseAction}
-              {selected&&selectedDetails?.canRefund&&<CrmPageAction icon={Wallet} label={refundTitle}
+              {selected&&selectedDetails?.canRefund&&<AdminPageAction icon={Wallet} label={refundTitle}
                 disabled={isSearching} onClick={()=>start(selected,'refund')}/>}
               <AdminRefreshAction label={t('刷新','Refresh','Segarkan')} loading={isSearching}
                 onClick={()=>setListRevision(version=>version+1)}/>
             </>}
-            primary={selected&&selectedDetails&&inviteReady(selected)&&<CrmPageAction icon={Send} variant="primary"
+            primary={selected&&selectedDetails&&inviteReady(selected)&&<AdminPageAction icon={Send} variant="primary"
               label={inviteTitle} disabled={isSearching} onClick={()=>start(selected,'invite')}/>}/>}/>
         {selected&&<div className="crm-panel-next">
           <dl className="crm-opportunity-summary crm-aftercare-summary">
@@ -469,7 +470,7 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
           onCheck={()=>void aftercareOutcome(aftercareOperation.check())} onRetry={()=>void aftercareOutcome(aftercareOperation.retry())}/>
         <fieldset data-admin-stack="" style={{border:0,padding:0,margin:0,minWidth:0}} disabled={busy||!!aftercareOperation.pending}>
         {editor.mode==='invite'?<><AdminField required>{t('目标班次','Target class','Kelas tujuan')}
-          <CrmSingleSelect lang={lang} isLight={isLight} required label={t('目标班次','Target class','Kelas tujuan')} value={targetId}
+          <AdminSingleSelect lang={lang} isLight={isLight} required label={t('目标班次','Target class','Kelas tujuan')} value={targetId}
             options={classes.filter(row=>row.id!==editor.order.classId&&row.level===editor.order.level&&row.format===editor.order.format&&row.availability!=='full')
               .map(row=>({value:row.id,label:row.level+' · '+row.firstLesson.replace('T',' ')+' WIB'}))}
             onChange={value=>{setTargetId(value);setDirty(true);}}/></AdminField>
@@ -493,7 +494,7 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
         <button type="submit" className="crm-work-button" data-primary disabled={busy||!!aftercareOperation.pending||(editor.mode==='invite'&&!targetId)}>{t('确认保存','Confirm and save','Konfirmasi dan simpan')}</button>
       </AdminFormActions></AdminForm>
     </CrmOperationLayer>}
-    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{aftercareOperation.clear();setEditor(undefined);setDiscard(false);setDirty(false);}}/>}
+    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{aftercareOperation.clear();setEditor(undefined);setDiscard(false);setDirty(false);}}/>}
   </section>;
 }
 
@@ -607,7 +608,7 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange,onDra
     }}>
       <fieldset className="crm-form-layout" style={{border:0,padding:0,margin:0,minWidth:0}} disabled={busy||!!refundOperation.pending}>
       <AdminField required>{t('原收款流水','Original receipt','Referensi penerimaan asal')}
-        <CrmSingleSelect label={t('原收款流水','Original receipt','Referensi penerimaan asal')} value={source}
+        <AdminSingleSelect label={t('原收款流水','Original receipt','Referensi penerimaan asal')} value={source}
           lang={lang} isLight={isLight} required options={details.receipts.filter(row=>row.remaining>0)
             .map(row=>({value:row.reference,label:row.reference+' · '+formatCurrency(row.remaining,lang)}))}
           onChange={value=>{if(value!==source){setSource(value);onDraftChange?.();}}}/>

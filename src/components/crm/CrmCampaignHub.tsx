@@ -3,7 +3,7 @@ import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminRecordBack,AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {useAdminRecordSidebarLayout} from '../admin/AdminRecordWorkspace';
 import {CrmDetailActions,CrmRecordFilters,CrmRecordSearch,CrmRecordSidebar,CrmRecordTitle} from './CrmRecordWorkspace';
-import {CrmPageAction} from './CrmPageAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
 import {formatCurrency} from '../../utils/currency';
 import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
 import {CrmSalesStage} from "./CrmSalesStage";
@@ -17,12 +17,9 @@ import {
   sourceReviewState,
 } from "../../utils/campaignSourceNavigation";
 import { campaignCollectionLabel } from "../../utils/campaignPresentation";
-import {
-  CrmDetailTabs,
-  CrmDiscardDialog,
-  useCrmShellHeight,
-  useRecordScrollMode,
-} from "./CrmDetailWorkspace";
+import { useCrmShellHeight, useRecordScrollMode } from "./CrmDetailWorkspace";
+import { AdminDetailTabs } from "../admin/AdminDetailTabs";
+import { AdminDiscardDialog } from "../admin/AdminDiscardDialog";
 import { CampaignOverview } from "./CampaignOverview";
 import {
   CampaignCards,
@@ -808,19 +805,19 @@ export function CrmCampaignHub({
                     secondary={<>
                       {recordLayout.browseAction}
                       {canManageCampaigns&&!organicDetail&&!presetDetail&&<>
-                        <CrmPageAction icon={Edit3} label={u("Edit information")} onClick={()=>handleOpenEditWizard(activeDetailCampaign)}/>
-                        <CrmPageAction icon={Trash2} label={u("Delete campaign")} onClick={()=>{
+                        <AdminPageAction icon={Edit3} label={u("Edit information")} onClick={()=>handleOpenEditWizard(activeDetailCampaign)}/>
+                        <AdminPageAction icon={Trash2} label={u("Delete campaign")} onClick={()=>{
                           setCampaignDeleteError("");
                           setCampaignDeleteTarget(activeDetailCampaign);
                         }}/>
                       </>}
                     </>}
-                    primary={detailTab==="overview"&&canManageCampaigns&&<CrmPageAction icon={Plus} variant="primary"
+                    primary={detailTab==="overview"&&canManageCampaigns&&<AdminPageAction icon={Plus} variant="primary"
                       label={u(activeDetailCampaign.promotionLinks?.length?"Add another promotion link":"Add promotion link")}
                       onClick={()=>setPromotionFormCampaignId(activeDetailCampaign.id)}/>}/>}/>
                 {canManageCampaigns && !organicDetail && !presetDetail &&
                   campaignDeleteTarget?.id === activeDetailCampaign.id && (
-                    <CrmDiscardDialog
+                    <AdminDiscardDialog
                       lang={lang}
                       isLight={isLight}
                       tone="danger"
@@ -837,7 +834,7 @@ export function CrmCampaignHub({
                     />
                   )}
                 {awaitingSavedRead&&campaignError&&<AdminSavedReadError lang={lang} busy={isLoading} onRetry={()=>void fetchCampaigns(false)}/>}
-                <CrmDetailTabs
+                <AdminDetailTabs
                   id="crm-campaign"
                   contentId="crm-campaign-content"
                   label={u("Campaign sections")}
@@ -1142,7 +1139,7 @@ export function CrmCampaignHub({
         </div>
       )}
       {pendingLeave && (
-        <CrmDiscardDialog
+        <AdminDiscardDialog
           lang={lang}
           isLight={isLight}
           onKeep={() => setPendingLeave(null)}

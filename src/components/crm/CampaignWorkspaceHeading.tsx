@@ -3,7 +3,7 @@ import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {CrmDetailActions,CrmRecordTitle} from './CrmRecordWorkspace';
 import { campaignUi } from "../../utils/campaignI18n";
 import React from "react";
-import { CrmPageAction } from "./CrmPageAction";
+import { AdminPageAction } from "../admin/AdminPageAction";
 import { AdminPageHeader } from '../admin/AdminPageHeader';
 import { ClipboardCheck, Plus } from "lucide-react";
 export function CampaignWorkspaceHeading({
@@ -46,7 +46,7 @@ export function CampaignWorkspaceHeading({
         subtitle={u("Create campaigns and promotion links, verify acquisition sources, and review customer and enrollment results.")}
       actions={<>
         {canManage && onOpen && (
-            <CrmPageAction
+            <AdminPageAction
               id="campaign-source-review-trigger"
               label={u("Promotion source exceptions")}
               icon={ClipboardCheck}
@@ -55,11 +55,11 @@ export function CampaignWorkspaceHeading({
               title={u("Items need review")}
             >
               <span className="sr-only"> {u("— Items need review")}</span>
-            </CrmPageAction>
+            </AdminPageAction>
         )}
         {refresh}
         {onCreate && canManage && (
-          <CrmPageAction label={u("Create campaign")} icon={Plus}
+          <AdminPageAction label={u("Create campaign")} icon={Plus}
             variant="primary" onClick={onCreate}/>
         )}
       </>}/>

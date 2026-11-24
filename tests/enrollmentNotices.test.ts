@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { enrollmentWeekOf, latestDueEnrollmentWeek } from '../server/portal/enrollmentWeekly';
-import { enrollmentEmailWhatsAppDestination,enrollmentEmailWhatsAppPath,enrollmentOrderEmailPath,enrollmentEmailSubjects,renderEnrollmentEmail,type EnrollmentEmailKind } from '../server/portal/enrollmentEmail';
+import { enrollmentAssistanceLink,enrollmentEmailWhatsAppDestination,enrollmentEmailWhatsAppPath,enrollmentOrderEmailPath,enrollmentEmailSubjects,renderEnrollmentEmail,type EnrollmentEmailKind } from '../server/portal/enrollmentEmail';
 import { enrollmentCard } from '../server/portal/enrollmentCards';
 import { proofTransferDetails,summarizeEnrollmentProofs } from '../server/portal/enrollmentProofTotals';
 import { workingDayDeadline } from '../src/utils/workCalendar';
@@ -222,6 +222,61 @@ test('order emails link to the existing payment, invitation, and refund views',(
     assert.equal(destination.searchParams.get('target'),target);
     assert.ok(renderEnrollmentEmail(kind,{language:'id',url}).html.includes(url.replaceAll('&','&amp;')));
   }
+});
+
+test('assisted enrollment confirmation emails use the same link supplied by the CRM server',()=>{
+  const id='87654321-aaaa-4bbb-8ccc-123456789abc';
+  for(const [environment,publicOrigin] of [['dev','http://localhost:3000'],['test','https://home.example.invalid'],['prod','https://www.example.invalid']]){
+    const env={PORTAL_ENV:environment,PORTAL_PUBLIC_ORIGIN:publicOrigin};
+    for(const language of ['zh','en','id']){
+      const link=enrollmentAssistanceLink(id,language,env);
+      assert.equal(link,publicOrigin+'/enrollment/assist?lang='+language+'#a='+id);
+      const email=renderEnrollmentEmail('assistance_confirmation',{language,assistanceId:id},env);
+      assert.ok(email.html.includes('href="'+link+'"'));
+      assert.ok(email.text.includes(link!));
+    }
+  }
+  const invalidTest={PORTAL_ENV:'test',PORTAL_PUBLIC_ORIGIN:'http://localhost:3000'};
+  assert.equal(enrollmentAssistanceLink(id,'en',invalidTest),undefined);
+  const email=renderEnrollmentEmail('assistance_confirmation',{language:'en',assistanceId:id},invalidTest);
+  assert.doesNotMatch(email.html,/localhost|#a=/);
+});
+
+test('assistance mail retries only the latest failed attempt and creates one simulated queue record',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {retryAssistanceMail}=await import('../server/portal/enrollmentNotices');
+  const offer={id:'fixture-assistance',email:'learner@example.invalid',expiresAt:'2027-01-03T00:00:00Z',
+    data:{name:'Fixture',lang:'en',quote:{level:'HSK 1'}}};
+  const initial={id:'attempt-a',state:'failed'};
+  let latest:{id:string;state:string}|undefined;
+  let queued=0;
+  const client={query:async(sql:string,args:unknown[] = [])=>{
+    if(sql.includes('FROM enrollment_notification_receipts'))return {rows:latest?[latest]:[]};
+    if(sql.includes('enrollment_mail_configuration'))return {rows:[{revision:1,config:{
+      accounts:[],delivery:{mode:'smtp',generation:'fixture-generation'},
+    }}]};
+    if(sql.includes('INSERT INTO enrollment_notification_receipts')){
+      assert.equal(args[5],'queued');
+      queued++;
+      latest={id:String(args[0]),state:'queued'};
+      return {rows:[]};
+    }
+    assert.fail('Unexpected query: '+sql);
+  }};
+  for(const state of ['accepted','queued','unknown','simulated','cancelled']){
+    latest={...initial,state};
+    assert.equal(await retryAssistanceMail(client,offer,initial.id),latest);
+  }
+  latest=undefined;
+  assert.equal(await retryAssistanceMail(client,offer,null),undefined);
+  latest=initial;
+  assert.equal(await retryAssistanceMail(client,offer,'old-attempt'),initial);
+  assert.equal(queued,0);
+  const retry=await retryAssistanceMail(client,offer,initial.id);
+  assert.equal(retry?.state,'queued');
+  assert.notEqual(retry?.id,initial.id);
+  assert.deepEqual(await retryAssistanceMail(client,offer,initial.id),retry);
+  assert.equal(queued,1);
 });
 
 test('email times and schedules use WIB and 24-hour times in each language',()=>{

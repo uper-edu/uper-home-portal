@@ -1,5 +1,13 @@
 export const enrollmentBankFields = {name:120,accountName:160,accountNumber:64} as const;
 export type EnrollmentBank = Record<keyof typeof enrollmentBankFields,string>;
+export type EnrollmentReceivingAccount = {
+  source:'current'|'order';
+  bankName:string;
+  accountName:string;
+  accountSuffix:string;
+  receiptAccount:string;
+};
+export const enrollmentReceivingAccountMaxLength=160;
 export const enrollmentBankPlaceholder:EnrollmentBank={name:'TEST BANK',accountName:'UPER TEST ONLY',accountNumber:'TEST-0000000000'};
 const fields=Object.keys(enrollmentBankFields) as (keyof EnrollmentBank)[];
 

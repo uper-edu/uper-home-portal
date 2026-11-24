@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canSelectTransfer, enrollmentRefundEstimate } from '../src/utils/enrollmentAftercare';
-import { allowsEnrollmentProof, enrollmentClosureReason, enrollmentLearnerNameKey, enrollmentOrderStatus } from '../src/utils/enrollmentOrderStatus';
+import { allowsEnrollmentProof, enrollmentClosureReason, enrollmentLearnerNameKey, enrollmentOrderStatus, enrollmentOrderTone } from '../src/utils/enrollmentOrderStatus';
 
 test('a transfer requires a cancelled source class and verified full payment',()=>{
   assert.equal(canSelectTransfer({state:'paid',received:575000,price:575000},{state:'cancelled'}),true);
@@ -23,6 +23,19 @@ test('paid in a cancelled class retains payment without confirming admission',()
   assert.equal(enrollmentOrderStatus('partial','cancelled'),'partial');
   assert.equal(enrollmentOrderStatus('refunded','cancelled'),'refunded');
   assert.equal(enrollmentOrderStatus('paid','published'),'paid');
+});
+
+test('enrollment status colors distinguish next actions, progress and completed records',()=>{
+  assert.equal(enrollmentOrderTone('awaiting_payment'),'pending');
+  assert.equal(enrollmentOrderTone('awaiting_payment',{classCancelled:true}),'progress');
+  assert.equal(enrollmentOrderTone('proof_review'),'progress');
+  assert.equal(enrollmentOrderTone('partial',{needsAction:true}),'pending');
+  assert.equal(enrollmentOrderTone('partial'),'progress');
+  assert.equal(enrollmentOrderTone('paid'),'confirmed');
+  assert.equal(enrollmentOrderTone('paid_cancelled',{needsAction:true}),'pending');
+  assert.equal(enrollmentOrderTone('refunding'),'progress');
+  for(const state of ['expired','ended','refunded'])assert.equal(enrollmentOrderTone(state),'full');
+  assert.equal(enrollmentOrderTone('ended',{restored:true}),'confirmed');
 });
 
 test('learner name identity normalizes spelling presentation without collapsing siblings',()=>{

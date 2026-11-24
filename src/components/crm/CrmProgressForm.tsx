@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { taskCompletionGuidance } from "../../utils/crmTaskGuidance";
 import { buyingSignalOptions } from "../../utils/crmBuyingSignals";
@@ -175,7 +175,7 @@ export function CrmProgressForm({
   ) => (
     <label>
       <span>{label}</span>
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={label}
         value={value}
         onChange={change}
@@ -373,7 +373,7 @@ export function CrmProgressForm({
           </label>
         )}
         {!closing && !contacted && (
-          <CrmDisclosure
+          <AdminDisclosure
             heading={t(
               "Record a customer reply outside CRM",
               "Catat balasan pelanggan di luar CRM",
@@ -392,7 +392,7 @@ export function CrmProgressForm({
                 "客户已回复，记录渠道及依据",
               )}
             </label>
-          </CrmDisclosure>
+          </AdminDisclosure>
         )}
         {(contacted || customerReplied) && (
           <div className="crm-workflow-grid">
@@ -460,7 +460,7 @@ export function CrmProgressForm({
           />
         </label>
         {!closing && (
-          <CrmDisclosure
+          <AdminDisclosure
             heading={t(
               "Sales progress (optional)",
               "Perkembangan penjualan (opsional)",
@@ -526,7 +526,7 @@ export function CrmProgressForm({
                 ["Lost", t("Closed / lost", "Ditutup / hilang", "已关闭")],
               ],
             )}
-          </CrmDisclosure>
+          </AdminDisclosure>
         )}
       </fieldset>
       <footer className="crm-sales-editor-footer">

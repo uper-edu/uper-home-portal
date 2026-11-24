@@ -4,12 +4,13 @@ import {EnrollmentMailWorkspace} from '../components/EnrollmentMailWorkspace';
 import {SystemAccessGuide} from '../components/SystemAccessGuide';
 import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
 import {AdminPageHeader} from '../components/admin/AdminPageHeader';
-import {CrmPageAction} from '../components/crm/CrmPageAction';
+import {AdminPageAction} from '../components/admin/AdminPageAction';
 import {AdminConfirmation} from '../components/admin/AdminConfirmation';
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
 import {AdminEditor} from '../components/admin/AdminEditor';
 import {AdminSearchField} from '../components/admin/AdminSearchField';
-import {CrmContentNav,CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
+import { AdminContentNav } from '../components/admin/AdminContentNav';
+import { AdminDiscardDialog } from '../components/admin/AdminDiscardDialog';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
 import {AdminFormSection,AdminFormFeedback,AdminFormGrid,AdminSavedReadError} from '../components/AdminFormLayout';
 import {isAiAdministrator} from '../utils/aiServicePolicy';
@@ -35,7 +36,7 @@ import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail, KeyRound } from "luci
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
-import { CrmSingleSelect } from "../components/crm/CrmSingleSelect";
+import { AdminSingleSelect } from "../components/admin/AdminSingleSelect";
 import { useAdminTheme } from "../utils/adminPreferences";
 import { type CrmLanguage } from "../utils/crmLanguage";
 import {
@@ -677,9 +678,9 @@ export function AccessWorkspace({
       href:recordHref(tab,'',userTab?roleFilter:undefined),onClick:event=>openRecord(event,tab,'')}});
   const searchControl=<AdminSearchField inputRef={listSearch} label={searchLabel} value={query} onChange={setQuery}/>;
   const filterControls=<>
-    <CrmSingleSelect lang={lang} isLight={isLight} label={statusLabel} value={statusFilter} onChange={setStatusFilter}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={statusLabel} value={statusFilter} onChange={setStatusFilter}
       options={[{value:'',label:t('All statuses','Semua status','全部状态')},{value:'active',label:activeLabel},{value:'inactive',label:inactiveLabel}]}/>
-    {userTab&&<CrmSingleSelect lang={lang} isLight={isLight} label={rolesLabel} value={roleFilter} onChange={changeRoleFilter}
+    {userTab&&<AdminSingleSelect lang={lang} isLight={isLight} label={rolesLabel} value={roleFilter} onChange={changeRoleFilter}
       options={[{value:'',label:t('All roles','Semua peran','全部角色')},...(data?.roles??[]).map(r=>({value:r.id,label:roleName(r.id)}))]}/>}
   </>;
   const permissions=(r:User|Role)=>{
@@ -765,7 +766,7 @@ export function AccessWorkspace({
             proceedNavigation(recordHref('users'));
           })}
           onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>
-        {discarding&&!user&&!role&&<CrmDiscardDialog lang={lang} isLight={isLight}
+        {discarding&&!user&&!role&&<AdminDiscardDialog lang={lang} isLight={isLight}
           onKeep={()=>{pendingNavigation.current=undefined;setDiscarding(false);}}
           onDiscard={()=>{
             const action=pendingNavigation.current;
@@ -789,7 +790,7 @@ export function AccessWorkspace({
                 onClick={() => void refreshAccess()}/>
               </>}
               primary={recordTab&&can(userTab?'access.users':'access.roles')&&
-                <CrmPageAction icon={Plus} variant="primary"
+                <AdminPageAction icon={Plus} variant="primary"
                   label={userTab?t('Add user','Tambah pengguna','新增用户'):t('Add role','Tambah peran','新增角色')}
                   onClick={()=>userTab?openUser(null):openRole(null)}/>}/>
           )}/>}
@@ -812,7 +813,7 @@ export function AccessWorkspace({
             {notice && !user && !role && (
               <AdminFormFeedback state="saved" lang={lang} placement="floating">{notice}</AdminFormFeedback>
             )}
-            {isAccessTab(tab)&&<CrmContentNav label={accessTitle}
+            {isAccessTab(tab)&&<AdminContentNav label={accessTitle}
               items={accessNav.map(([id,label])=>({href:recordHref(id),label,current:tab===id}))}
               onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}/>}
             {!recoveryView && !recordTab && !data && !err && (
@@ -874,10 +875,10 @@ export function AccessWorkspace({
                         <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={isRefreshing} disabled={busy||editorHasDraft} onClick={()=>void refreshAccess()}/>
                       </>}
                       primary={selectedRecord&&('loginId' in selectedRecord
-                        ?(can('access.users')||can('access.sessions'))&&<CrmPageAction icon={Pencil} variant="primary"
+                        ?(can('access.users')||can('access.sessions'))&&<AdminPageAction icon={Pencil} variant="primary"
                           label={can('access.users')?t('Edit user','Edit pengguna','编辑用户'):t('Manage sessions and password','Kelola sesi dan sandi','管理会话与密码')}
                           onClick={()=>openUser(selectedRecord)}/>
-                        :can('access.roles')&&<CrmPageAction icon={Pencil} variant="primary" label={t('Edit role','Edit peran','编辑角色')}
+                        :can('access.roles')&&<AdminPageAction icon={Pencil} variant="primary" label={t('Edit role','Edit peran','编辑角色')}
                           onClick={()=>openRole(selectedRecord)}/>)}/>}/>
                   <div className="crm-detail-body access-record-body" data-admin-scroll="detail" tabIndex={0} onKeyDown={containPaneKeys}>
                     {signInNoticeUserId&&signInNoticeUserId===selectedRecord?.id&&<div className="access-user-signin">
@@ -972,7 +973,7 @@ export function AccessWorkspace({
               </button>
           </>}
         >
-            {discarding && <CrmDiscardDialog lang={lang} isLight={isLight}
+            {discarding && <AdminDiscardDialog lang={lang} isLight={isLight}
               title={t("Unsaved changes", "Perubahan belum disimpan", "修改尚未保存")}
               description={t("Keep editing, or discard your unsaved changes and close. Saved records stay unchanged.", "Lanjutkan mengedit atau buang perubahan yang belum disimpan dan tutup. Data tersimpan tidak berubah.", "可以继续编辑，或放弃未保存的修改并关闭；已保存记录保持不变。")}
               keepLabel={t("Keep editing", "Lanjutkan mengedit", "继续编辑")}
@@ -1149,7 +1150,7 @@ export function AccessWorkspace({
                     )}
                   </small>
                 </AdminField>
-                <CrmSingleSelect
+                <AdminSingleSelect
                   label={t("Roles", "Peran", "角色")}
                   footer={() => (
                     <button
@@ -1389,7 +1390,7 @@ export function AccessWorkspace({
                         {p.names[col]}
                       </AdminField>
                       {p.scoped && role.config.grants[p.key] && (
-                        <CrmSingleSelect
+                        <AdminSingleSelect
                           label={t("Data scope", "Cakupan data", "数据范围")}
                           value={role.config.grants[p.key]}
                           options={

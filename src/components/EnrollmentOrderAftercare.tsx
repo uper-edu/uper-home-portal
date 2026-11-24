@@ -260,7 +260,7 @@ export function EnrollmentOrderAftercare({
   } else if (expired) {
     body = <>
       {classCard(course,undefined,true,t(['付款超时','Payment deadline passed','Tenggat pembayaran terlewati']))}
-      {lateProofSubmitted&&<p className="enrollment-result-state" role="status">
+      {lateProofSubmitted&&<p className="enrollment-result-state" data-state="progress" role="status">
         {t(['已收凭证，等待核实到账。','Proof received. Awaiting payment verification.','Bukti diterima dan menunggu verifikasi pembayaran.'])}
       </p>}
       <article className="enrollment-detail-section">
