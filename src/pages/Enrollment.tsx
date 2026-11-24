@@ -84,7 +84,7 @@ const copy = {
   join: ['Join waitlist', 'Masuk daftar tunggu', '加入候补'],
   standardPrice: ['Standard price', 'Harga standar', '标准价'],
   courseIntro: ['About this course', 'Tentang kursus ini', '课程介绍'],
-  rules: ['Class opening and refund policy', 'Ketentuan pembukaan kelas dan pengembalian dana', '查看开班与退款说明'],
+  rules: ['Class opening and refund policy', 'Ketentuan pembukaan kelas dan pengembalian dana', '开班与退款规则'],
   rulesTitle: ['Class opening and refund policy', 'Ketentuan pembukaan kelas dan pengembalian dana', '开班与退款说明'],
   backDetail: ['Back to class details', 'Kembali ke detail kelas', '返回班次详情'],
   backWaitlist: ['Back to waitlist entry', 'Kembali ke detail daftar tunggu', '返回候补详情'],
@@ -573,6 +573,11 @@ export default function Enrollment() {
     return <VisitorBoundary>{explicitWaitlist?waitlistForm:<ClassIntakeMode classId={selected.id} application={applicationForm} waitlist={waitlistForm}/>}</VisitorBoundary>;
   }
 
+  const classHasIntakeAction=!!selected&&!!canApplyToClass&&selected.price>0;
+  const classConsultation=selected&&!previewToken&&!fromChat&&<Link data-enrollment-consult="class"
+    className="enrollment-quiet enrollment-consult-action" to={chatPath}
+    onClick={event=>startConsultation(event,selected)}><MessageCircle size={16} aria-hidden="true"/>{t('consultClass')}</Link>;
+
   if (classId) return <section className="enrollment-screen enrollment-detail">
     {backChat}
     <Link className="enrollment-back" to={application ? detailsPath(classId) : matchPath ?? listPath} state={matchPath?journeyState:chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t(application ? 'backDetail' : matchPath ? 'backMatch' : 'back')}</Link>
@@ -589,18 +594,16 @@ export default function Enrollment() {
         {accepting===false&&servicing&&<Link className="enrollment-quiet" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('mine')}</Link>}
       </div> : <div className="enrollment-detail-layout">
         <aside className="enrollment-detail-aside">
-          {classCard(selected, false, !!canApplyToClass&&selected.price>0)}
+          {classCard(selected, false, classHasIntakeAction)}
           {intakeNotice}
-          <div className="enrollment-detail-actions">
-            <Link className="enrollment-quiet" to={detailsPath(selected.id)+'&view=rules'} state={chatReturnState}>{t('rules')}</Link>
-            {!previewToken && !fromChat && <Link data-enrollment-consult="class" className="enrollment-outline enrollment-consult-action"
-              to={chatPath} onClick={event=>startConsultation(event,selected)}><MessageCircle size={16} aria-hidden="true"/>{t('consultClass')}</Link>}
-          </div>
-          {canApplyToClass && selected.price>0 && <EnrollmentPriceActions hideLabel
+          {classHasIntakeAction && <EnrollmentPriceActions hideLabel
             label={enrollmentCopy(language,['课程总价','Total tuition','Total biaya'])}
             amount={selected.price} standardPrice={selected.standardPrice} language={language}>
-            <Link className="enrollment-primary" to={detailsPath(selected.id, true)}
-              state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>
+            <div className="enrollment-class-main-actions">
+              {classConsultation}
+              <Link className="enrollment-primary" to={detailsPath(selected.id, true)}
+                state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>
+            </div>
           </EnrollmentPriceActions>}
         </aside>
         <section className="enrollment-course">
@@ -618,6 +621,10 @@ export default function Enrollment() {
               <p>{description}</p>
             </details>;
           })}
+          <Link className="enrollment-course-policy" to={detailsPath(selected.id)+'&view=rules'} state={chatReturnState}>
+            {t('rules')}<ChevronRight size={16} aria-hidden="true"/>
+          </Link>
+          {!classHasIntakeAction&&classConsultation}
         </section>
 
       </div>}

@@ -203,8 +203,27 @@
 .enrollment-course details:not([open]) summary svg:last-child,
 .enrollment-course details[open] summary svg:first-of-type { display: none; }
 .enrollment-course details p { margin: -2px 0 12px; color: var(--enrollment-muted); white-space: pre-wrap; }
-.enrollment-detail-actions { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-block: 8px; }
-.enrollment-detail-actions .enrollment-quiet { min-height: 44px; }
+.enrollment-course-policy {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding-block: 8px;
+  border-bottom: 1px solid var(--enrollment-border);
+  color: var(--enrollment-accent);
+  font-weight: 650;
+}
+.enrollment-course-policy svg { flex: none; }
+.enrollment-class-main-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+.enrollment-class-main-actions > a { min-height: 44px; min-width: 0; text-align: center; }
+.enrollment-class-main-actions .enrollment-consult-action { justify-content: center; padding-inline: 0; }
 .enrollment-detail-cancel { align-self: flex-start; min-height: 44px; }
 .enrollment-price-actions {
   display: grid;
@@ -320,6 +339,10 @@
     padding: 8px 16px calc(10px + env(safe-area-inset-bottom, 0px));
     background: #fff;
   }
+  .enrollment-detail:has(.enrollment-class-main-actions) {
+    padding-block-end: calc(144px + env(safe-area-inset-bottom, 0px));
+  }
+  .enrollment-class-main-actions { flex-direction: column; align-items: stretch; gap: 0; }
   .enrollment-payment { padding-bottom: calc(36px + env(safe-area-inset-bottom, 0px)); }
   .enrollment-payment:has(.enrollment-payment-actions) { padding-bottom: calc(115px + env(safe-area-inset-bottom, 0px)); }
 }
@@ -379,7 +402,6 @@
   .enrollment-detail-aside { border: 1px solid var(--enrollment-border); border-radius: 11px; overflow: clip; }
   .enrollment-detail-aside .enrollment-class-detail { padding: 16px 19px 12px; }
   .enrollment-detail-aside .enrollment-price-actions { padding: 12px 19px; }
-  .enrollment-detail-actions { padding: 0 19px 14px; margin-top: 0; }
   .enrollment-course summary { font-size: 16px; }
   .enrollment-payment-content, .enrollment-payment-form { gap: 12px; }
   .enrollment-payment-deadline { padding: 10px 13px; }
