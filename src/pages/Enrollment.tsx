@@ -107,7 +107,6 @@ const copy = {
   outcomes: ['What you will learn', 'Yang akan Anda pelajari', '学完能做什么'],
   material: ['Course and materials', 'Kursus dan materi', '课程内容与教材'],
   resources: ['Practice and resources', 'Latihan dan sumber daya', '课后练习与资源'],
-  teacher: ['Teacher', 'Pengajar', '授课教师'],
   consultCatalog: ['Help me choose', 'Tanya kelas', '咨询选班'],
   consultClass: ['Ask about this class', 'Tanya tentang kelas ini', '咨询这个班'],
   backChat: ['Back to chat', 'Kembali ke chat', '返回咨询'],
@@ -608,9 +607,7 @@ export default function Enrollment() {
           <h2>{t('courseIntro')}</h2>
           {selected.introduction?.[language] || selected.introduction?.en
             ? <EnrollmentCourseOverview introduction={selected.introduction} language={language}/>
-            : null}
-          {((selected.introduction?.[language] || selected.introduction?.en)
-            ? ['teacher'] as const : ['outcomes', 'material', 'resources', 'teacher'] as const).map(key => {
+            : (['outcomes', 'material', 'resources'] as const).map(key => {
             const description = key === 'outcomes' ? selected.learningOutcomes : selected[key];
             if (!description) return null;
             return <details key={key} data-enrollment-section={key} open={key === 'outcomes'}>

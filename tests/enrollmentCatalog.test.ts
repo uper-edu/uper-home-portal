@@ -33,7 +33,9 @@ test('the HSK 1 sample provides all introduction fields in each supported langua
   assert.deepEqual(Object.keys(sample),['en','id','zh']);
   for(const language of ['en','id','zh']){
     assert.deepEqual(Object.keys(sample[language]),['audience','outcomes','topics','practice']);
-    assert.equal(sample[language].outcomes.split('\n').length,3);
+    assert.equal(sample[language].outcomes.split('\n').length,10);
+    const textbookSummary=sample[language].topics.split('\n')[1];
+    for(const count of ['400','300','40','20'])assert.match(textbookSummary,new RegExp(`\\b${count}\\b`));
   }
 });
 

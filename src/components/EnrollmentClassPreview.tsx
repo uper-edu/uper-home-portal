@@ -54,35 +54,45 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
  const duration=t('每节 '+row.minutes+' 分钟',row.minutes+' min each',row.minutes+' menit per jam pelajaran');
  const lessonCount=periods?t(periods+' 节',periods+' periods',periods+' jam pelajaran'):undefined;
  const schedule=enrollmentScheduleLabel(row,language);
- if(detail)return <div className="enrollment-class-detail">
-   <header className="enrollment-detail-heading">
-     <h2 className="enrollment-class-heading">{titleContent}</h2>
-     <span className="enrollment-status" data-state={publicTone}>{publicStatus}</span>
-   </header>
-   <section className="enrollment-detail-section">
-     <h3 className="enrollment-record-section-title">{t('班次信息','Class information','Informasi kelas')}</h3>
-     <EnrollmentDetailFields fields={[
-       [t('授课教师','Teacher','Pengajar'),teacher],
-       [t('每周课表','Weekly schedule','Jadwal mingguan'),schedule],
-       [t('首课时间','First class','Pertemuan pertama'),date
-         ? <time dateTime={dateValue.toISOString()}>{enrollmentDateFormatter(language,'dateTime').format(dateValue)} WIB</time>
-         : t('待确认','To be confirmed','Belum dikonfirmasi')],
-       [t('开班状态','Class opening','Status pembukaan kelas'),row.opened?t('已确认开班','Confirmed','Dikonfirmasi'):undefined],
-       [t('班级规模','Class size','Ukuran kelas'),size],
-       [t('课时安排','Lesson duration','Durasi pelajaran'),[lessonCount,duration].filter(Boolean).join(' · ')],
-       [t('每节价格','Approx. per period','Perkiraan per jam pelajaran'),row.price>0&&!!periods&&formatCurrency(Math.round(row.price/periods),language)],
-     ]}/>
-   </section>
-   {!priceInActions&&<section className="enrollment-detail-section">
-     <h3 className="enrollment-record-section-title">{t('课程费用','Tuition','Biaya kursus')}</h3>
-     <EnrollmentDetailFields fields={[
-       [t('课程总价','Total tuition','Total biaya'),row.price>0
-         ? <span className="enrollment-main-amount">{formatCurrency(row.price,language)}</span>
-         : t('报价待确认','Quote pending','Harga belum dikonfirmasi')],
-       [t('标准价','Standard price','Harga standar'),!!row.standardPrice&&row.standardPrice>row.price&&<del>{formatCurrency(row.standardPrice,language)}</del>],
-     ]}/>
-   </section>}
- </div>;
+ if(detail){
+   const teacherName=row.teacher?.trim();
+   const teacherOrigin=row.teacherType&&{
+     local:t('印尼教师','Indonesian teacher','Pengajar Indonesia'),
+     foreign:t('中国外教','Teacher from China','Pengajar dari Tiongkok'),
+   }[row.teacherType];
+   const teacherDetails=teacherName&&teacherOrigin
+     ? t(`${teacherName}（${teacherOrigin}）`,`${teacherName} (${teacherOrigin})`,`${teacherName} (${teacherOrigin})`)
+     : teacherName||teacherOrigin;
+   return <div className="enrollment-class-detail">
+     <header className="enrollment-detail-heading">
+       <h2 className="enrollment-class-heading">{titleContent}</h2>
+       <span className="enrollment-status" data-state={publicTone}>{publicStatus}</span>
+     </header>
+     <section className="enrollment-detail-section">
+       <h3 className="enrollment-record-section-title">{t('班次信息','Class information','Informasi kelas')}</h3>
+       <EnrollmentDetailFields fields={[
+         [t('授课教师','Teacher','Pengajar'),teacherDetails],
+         [t('每周课表','Weekly schedule','Jadwal mingguan'),schedule],
+         [t('首课时间','First class','Pertemuan pertama'),date
+           ? <time dateTime={dateValue.toISOString()}>{enrollmentDateFormatter(language,'dateTime').format(dateValue)} WIB</time>
+           : t('待确认','To be confirmed','Belum dikonfirmasi')],
+         [t('开班状态','Class opening','Status pembukaan kelas'),row.opened?t('已确认开班','Confirmed','Dikonfirmasi'):undefined],
+         [t('班级规模','Class size','Ukuran kelas'),size],
+         [t('课时安排','Lesson duration','Durasi pelajaran'),[lessonCount,duration].filter(Boolean).join(' · ')],
+         [t('每节价格','Approx. per period','Perkiraan per jam pelajaran'),row.price>0&&!!periods&&formatCurrency(Math.round(row.price/periods),language)],
+       ]}/>
+     </section>
+     {!priceInActions&&<section className="enrollment-detail-section">
+       <h3 className="enrollment-record-section-title">{t('课程费用','Tuition','Biaya kursus')}</h3>
+       <EnrollmentDetailFields fields={[
+         [t('课程总价','Total tuition','Total biaya'),row.price>0
+           ? <span className="enrollment-main-amount">{formatCurrency(row.price,language)}</span>
+           : t('报价待确认','Quote pending','Harga belum dikonfirmasi')],
+         [t('标准价','Standard price','Harga standar'),!!row.standardPrice&&row.standardPrice>row.price&&<del>{formatCurrency(row.standardPrice,language)}</del>],
+       ]}/>
+     </section>}
+   </div>;
+ }
  return <article className={`enrollment-class-card${chatPresentation?' enrollment-class-card--chat':''}`}>
    {chatPresentation?<div className="chat-class-heading">{heading}<span className="enrollment-status" data-state={state}>{statusText}</span></div>:heading}
    {chatPresentation&&<p><CalendarDays size={15} aria-hidden="true"/>{[dateLabel,enrollmentTeacherLabel(row.teacherType,language)].filter(Boolean).join(' · ')}</p>}
