@@ -24,18 +24,22 @@ export function ContactPhoneCountrySelect({countries, country, code, language, d
   const list = useRef<HTMLSpanElement>(null);
   const focusSearch = useRef(false);
   const [open, setOpen] = useState(false);
+  const [openedOnce, setOpenedOnce] = useState(false);
   const [query, setQuery] = useState('');
+  const names = useMemo(() => typeof Intl.DisplayNames === 'function'
+    ? new Intl.DisplayNames([language], {type: 'region'}) : undefined, [language]);
   const options = useMemo(() => {
-    const names = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames([language], {type: 'region'}) : undefined;
+    if (!openedOnce) return [];
     const english = names && language !== 'en' ? new Intl.DisplayNames(['en'], {type: 'region'}) : names;
+    const compare = new Intl.Collator(language).compare;
     return countries.map(option => {
       const name = names?.of(option.country) ?? option.country;
       return {...option, name, terms: `${name} ${english?.of(option.country) ?? ''} ${option.country} +${option.code}`.toLocaleLowerCase(language)};
-    }).sort((a, b) => a.name.localeCompare(b.name, language));
-  }, [countries, language]);
+    }).sort((a, b) => compare(a.name, b.name));
+  }, [countries, language, names, openedOnce]);
   const term = query.trim().toLocaleLowerCase(language);
-  const visible = options.filter(option => option.terms.includes(term));
   const expanded = open && !disabled;
+  const visible = expanded && term ? options.filter(option => option.terms.includes(term)) : options;
 
   useLayoutEffect(() => {
     const panel = popup.current;
@@ -95,6 +99,7 @@ export function ContactPhoneCountrySelect({countries, country, code, language, d
   function show(focus: boolean) {
     focusSearch.current = focus;
     setQuery('');
+    setOpenedOnce(true);
     setOpen(true);
   }
 
@@ -126,13 +131,13 @@ export function ContactPhoneCountrySelect({countries, country, code, language, d
     rows[index].focus();
   }
 
-  const selected = options.find(option => option.country === country);
+  const selectedName = country && (names?.of(country) ?? country);
   return <span className="contact-phone-country"
     onBlur={event => {
       if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
     }}>
     <button ref={trigger} type="button" className="contact-phone-country-trigger" disabled={disabled}
-      aria-label={`${text.label}: +${code}${selected ? ' · ' + selected.name : ''}`}
+      aria-label={`${text.label}: +${code}${selectedName ? ' · ' + selectedName : ''}`}
       aria-haspopup="dialog" aria-expanded={expanded} aria-controls={expanded ? id : undefined}
       onClick={event => expanded ? close() : show(event.detail === 0 || !window.matchMedia('(pointer: coarse)').matches)}
       onKeyDown={event => {
