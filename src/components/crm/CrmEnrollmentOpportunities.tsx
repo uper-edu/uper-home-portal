@@ -19,7 +19,8 @@ import { assistanceMailLabel, CrmEnrollmentAssistance, type AssistanceResult } f
 import type { PurchaseIntentResult } from './CrmOpenEnrollmentOpportunity';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import type { CrmLanguage } from '../../utils/crmLanguage';
-import { crmInstant, formatCrmEventTime, formatCrmSummaryTime, viewerTimeZone } from '../../utils/crmOperatingTime';
+import { crmInstant, formatCrmEventTime, formatCrmSummaryTime, validateLocalInstant, viewerTimeZone } from '../../utils/crmOperatingTime';
+import type {PrivateLessonRegistration} from '../../utils/enrollmentInterestRecords';
 import { formatCurrency } from '../../utils/currency';
 import { progressLabel, salesProgressStages } from '../../utils/crmSalesProgress';
 import { interestOption } from '../../utils/enrollmentInterestCopy';
@@ -47,6 +48,7 @@ type CourseRecord = {
   latestNotice?:string;
   enrollmentEmail?:string;
   canLinkOpportunity?:boolean;
+  appointment?:{confirmation:NonNullable<PrivateLessonRegistration['confirmation']>|null};
 };
 type EnrollmentEmail = {id:string;orderId:string;kind:string;state:string;subject:string|null;language:string|null;recordedAt:string};
 type OpportunityFollowup = {kind:'agreement'|'task';id:string;type?:string;action?:string;at?:string;date?:string};
@@ -328,11 +330,12 @@ function CourseRecordAttribution({ attribution, lang }: {
     {guidance && <p>{t(lang,['报名引导','Enrollment guidance','Panduan pendaftaran'])} · {guidance}</p>}
   </>;
 }
-function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref, onChangeEmail, onLinkOpportunity }: {
+function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref, onChangeEmail, onLinkOpportunity,onConfirmLesson }: {
   records:CourseRecord[];link:boolean;lang:CrmLanguage;emails?:EnrollmentEmail[];assistanceDueAt?:string;canAssist?:boolean;targetRecord?:string|null;
   paymentHref?:(row:CourseRecord)=>string;
   onChangeEmail?:(row:CourseRecord)=>void;
   onLinkOpportunity?:(row:CourseRecord)=>void;
+  onConfirmLesson?:(row:CourseRecord)=>void;
 }) {
   if(!records.length) return <p className="crm-work-muted">{t(lang,['暂无课程记录。','No course records.','Belum ada catatan kursus.'])}</p>;
   return <ol className="crm-course-records">
@@ -341,7 +344,9 @@ function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref,
       const recordedAt=crmInstant(raw)?.toISOString();
       return <li key={row.kind+row.id} id={link?undefined:'enrollment-record-'+row.id}>
       <div className="crm-opportunity-record-heading">
-        <div><strong>{t(lang,kinds[row.kind])}{row.class&&<> · {row.class.id?<a className="crm-work-link" href={enrollmentClassManagementPath(row.class.id)}>{row.class.level}</a>:row.class.level}</>}</strong> <span>{states[row.state]?t(lang,states[row.state]):row.state}</span></div>
+        <div><strong>{t(lang,row.appointment?['一对一约课','One-to-one request','Permintaan kelas privat']:kinds[row.kind])}{row.class&&<> · {row.class.id?<a className="crm-work-link" href={enrollmentClassManagementPath(row.class.id)}>{row.class.level}</a>:row.class.level}</>}</strong> <span>{row.appointment&&row.state==='active'
+          ?t(lang,row.appointment.confirmation?['约课已确认','Lessons confirmed','Jadwal dikonfirmasi']:['待约课','Schedule pending','Menunggu jadwal'])
+          :states[row.state]?t(lang,states[row.state]):row.state}</span></div>
         {paymentHref&&row.kind==='order'&&requiresPaymentReview(row)&&<AdminRowAction href={paymentHref(row)}>
           {t(lang,['核对到账','Verify payment','Verifikasi pembayaran'])}</AdminRowAction>}
       </div>
@@ -351,6 +356,9 @@ function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref,
           t(lang,['未记录时间','Time not recorded','Waktu belum tercatat'])} · {row.id}</div>
       {row.class&&<p>{row.class.firstLesson.replace('T',' ')} WIB · {row.class.schedule}{row.class.opened?' · '+t(lang,['已确认开班','Class confirmed','Kelas dikonfirmasi']):''}</p>}
       {row.criteria&&<p>{[row.criteria.level,row.criteria.period,row.criteria.format].map(value=>interestOption(lang,value)).join(' · ')}{row.criteria.notes?' — '+row.criteria.notes:''}</p>}
+      {row.appointment?.confirmation&&<p>{row.appointment.confirmation.teacher} · {formatCrmEventTime(row.appointment.confirmation.firstLessonAt).slice(0,16)}{row.appointment.confirmation.schedule?' · '+row.appointment.confirmation.schedule:''}</p>}
+      {onConfirmLesson&&row.appointment&&!row.appointment.confirmation&&row.state==='active'&&
+        <button type="button" className="crm-work-link" onClick={()=>onConfirmLesson(row)}>{t(lang,['确认约课','Confirm schedule','Konfirmasi jadwal'])}</button>}
       {row.price!==null&&row.received!==null&&<p>{t(lang,['核实实收／应收','Verified receipts / amount due','Dana terverifikasi / tagihan'])} {formatCurrency(row.received,lang)} / {formatCurrency(row.price,lang)}</p>}
       {row.firstReviewDueAt&&<CrmEnrollmentReviewDeadline dueAt={row.firstReviewDueAt} lang={lang}/>}
       {row.attribution&&<CourseRecordAttribution attribution={row.attribution} lang={lang}/>}
@@ -364,6 +372,61 @@ function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref,
     </li>;
     })}
   </ol>;
+}
+
+function PrivateLessonConfirmation({opportunityId,row,lang,isLight,onClose,onSaved}:{
+  opportunityId:string;row:CourseRecord;lang:CrmLanguage;isLight:boolean;onClose:()=>void;onSaved:()=>void;
+}) {
+  const [busy,setBusy]=useState(false);
+  const [unknown,setUnknown]=useState(false);
+  const [message,setMessage]=useState('');
+  const title=t(lang,['确认约课','Confirm schedule','Konfirmasi jadwal']);
+  const failed=t(lang,['暂未保存，请核对记录和权限。','Could not save. Check the record and your access.','Belum tersimpan. Periksa catatan dan akses.']);
+  const base='/api/crm/opportunities/'+encodeURIComponent(opportunityId);
+  async function save(data:FormData){
+    if(busy||unknown)return;
+    const local=String(data.get('firstLessonAt')??'');
+    let firstLessonAt:string;
+    try{firstLessonAt=validateLocalInstant(local,new Date(local),viewerTimeZone()).toISOString();}
+    catch{setMessage(t(lang,['请核对首课日期和时间。','Check the first lesson date and time.','Periksa tanggal dan waktu sesi pertama.']));return;}
+    setBusy(true);setMessage('');
+    try{
+      const response=await fetch(base+'/private-lessons/'+encodeURIComponent(row.id),{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({firstLessonAt,teacher:data.get('teacher'),schedule:data.get('schedule')})});
+      if(response.ok){onSaved();return;}
+      if(response.status>=500)setUnknown(true);else setMessage(failed);
+    }catch{setUnknown(true);}finally{setBusy(false);}
+  }
+  async function check(){
+    setBusy(true);setMessage('');
+    try{
+      const result=await read<Opportunity>(base,AbortSignal.timeout(12000));
+      if(result.records.some(item=>item.id===row.id&&item.appointment?.confirmation))onSaved();
+      else{setUnknown(false);setMessage(failed);}
+    }catch{setMessage(t(lang,['暂时无法查询结果。','The result could not be checked.','Hasil belum dapat diperiksa.']));}
+    finally{setBusy(false);}
+  }
+  return <CrmOperationLayer compose title={<>{title}<AdminRequiredNote inline lang={lang}/></>} context={row.learnerName||row.criteria?.level}
+    lang={lang} isLight={isLight} customerContext={false} busy={busy||unknown} onClose={onClose}>
+    <AdminForm lang={lang} className="crm-editor-compose crm-course-editor" onSubmit={(event:React.FormEvent<HTMLFormElement>)=>{
+      event.preventDefault();void save(new FormData(event.currentTarget));
+    }}>
+      <div className="crm-editor-scroll">
+        <p>{t(lang,['与学员确认上课安排后再保存。','Save after agreeing on the schedule with the learner.','Simpan setelah jadwal disepakati dengan siswa.'])}</p>
+        <AdminField required>{t(lang,['首课时间','First lesson','Sesi pertama'])}<input name="firstLessonAt" type="datetime-local" required disabled={busy||unknown}/></AdminField>
+        <AdminField required>{t(lang,['授课教师','Teacher','Pengajar'])}<input name="teacher" required maxLength={120} disabled={busy||unknown}/></AdminField>
+        <AdminField>{t(lang,['上课安排','Lesson schedule','Jadwal kelas'])}<textarea name="schedule" maxLength={600} disabled={busy||unknown}/></AdminField>
+        {unknown&&<CrmSaveFeedback state="unknown" lang={lang}/>}
+        {message&&<p role="alert">{message}</p>}
+      </div>
+      <AdminFormActions className="crm-editor-actions">
+        {unknown?<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void check()}>{t(lang,['查询保存结果','Check save result','Periksa hasil simpan'])}</button>:<>
+          <button type="button" className="crm-work-button" disabled={busy} onClick={onClose}>{t(lang,['取消','Cancel','Batal'])}</button>
+          <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t(lang,['保存','Save','Simpan'])}</button>
+        </>}
+      </AdminFormActions>
+    </AdminForm>
+  </CrmOperationLayer>;
 }
 
 function EnrollmentEmailChange({path,row,lang,isLight,onClose,onSaved}:{
@@ -571,6 +634,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const [listLoading,setListLoading]=useState(true);
   const [listRevision,setListRevision]=useState(0);
   const [detailRevision,setDetailRevision]=useState(0);
+  const [lessonToConfirm,setLessonToConfirm]=useState<CourseRecord>();
   const shellHeight=useCrmShellHeight();
   const desktopRail=useRecordScrollMode(shellHeight)==='independent';
   const [showList,setShowList]=useState(false);
@@ -965,7 +1029,11 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
         <section>
           <h2>{t(lang,['课程报名记录','Course enrollment records','Catatan pendaftaran kursus'])}</h2>
           <CourseRecords records={detail.records} link={false} lang={lang} emails={detail.emails} targetRecord={targetRecord}
+            onConfirmLesson={detail.canProgress?setLessonToConfirm:undefined}
             paymentHref={canFinance&&detail.state==='applying'&&!ended(detail)&&!detail.identityPending?paymentLink:undefined}/>
+          {lessonToConfirm&&detail.records.some(row=>row.id===lessonToConfirm.id)&&<PrivateLessonConfirmation
+            opportunityId={detail.id} row={lessonToConfirm} lang={lang} isLight={isLight} onClose={()=>setLessonToConfirm(undefined)}
+            onSaved={()=>{setLessonToConfirm(undefined);setDetailRevision(value=>value+1);}}/>}
         </section>
         </div>:<p role="status">{t(lang,['正在读取商机…','Loading opportunity…','Memuat peluang…'])}</p>}
         </div>

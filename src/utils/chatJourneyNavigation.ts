@@ -3,7 +3,7 @@ import {normalizeEnrollmentChatSelection, type EnrollmentChatSelection} from './
 import type {MouseEvent} from 'react';
 
 export type ChatMessageAnchor = {conversationId:string; messageId:string; owner:string; widget:boolean};
-export type EnrollmentPosition = {scrollY:number; focus:'catalog'|'catalog-empty'|'class'; expanded:string[]};
+export type EnrollmentPosition = {scrollY:number; focus:'catalog'|'catalog-empty'|'class'|`appointment:${string}`; expanded:string[]; focusOffset?:number};
 type ReturnEntry = {url:string; index:number};
 export type EnrollmentConsultation = ReturnEntry & {selection:EnrollmentChatSelection; title?:string; position:EnrollmentPosition};
 type ChatRecommendation = ReturnEntry & {anchor:ChatMessageAnchor};
@@ -32,6 +32,10 @@ export function rememberEnrollment(position: EnrollmentPosition, selection:Enrol
   return {...remember({enrollmentPosition:position}),position,selection,title};
 }
 
+export function rememberEnrollmentPosition(position: EnrollmentPosition) {
+  remember({enrollmentPosition:position});
+}
+
 export function rememberChat(anchor: ChatMessageAnchor): ChatRecommendation {
   return {...remember({chatMessageAnchor:anchor}),anchor};
 }
@@ -46,7 +50,8 @@ function validReturn(entry: ReturnEntry | undefined, enrollment:boolean) {
 
 function validPosition(position:EnrollmentPosition|undefined) {
   return position && Number.isFinite(position.scrollY) && position.scrollY>=0 &&
-    (position.focus==='catalog'||position.focus==='catalog-empty'||position.focus==='class') && Array.isArray(position.expanded);
+    typeof position.focus==='string' &&
+    (position.focus==='catalog'||position.focus==='catalog-empty'||position.focus==='class'||/^appointment:[a-zA-Z0-9-]{1,64}$/.test(position.focus)) && Array.isArray(position.expanded);
 }
 
 export function readEnrollmentPosition(state:ChatJourneyState|undefined) {

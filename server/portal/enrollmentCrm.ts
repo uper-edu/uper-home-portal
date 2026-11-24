@@ -108,7 +108,7 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
     CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
       AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'
       ELSE COALESCE(o.state,w.state,d.state) END AS state,
-    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,
+    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name,d.criteria->>'$.appointment.learnerName') AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,
     CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (
       SELECT 1 FROM enrollment_receipts v WHERE v.order_id=o.id
         AND v.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')
@@ -133,6 +133,7 @@ function displayRecord(row: any) {
     class:row.class_data ? {id:row.class_id,level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,
+    ...(row.criteria?.appointment&&{appointment:{confirmation:row.criteria.appointment.confirmation??null}}),
     attribution:row.attribution?{entry:row.attribution.entry,via:row.attribution.via,source:row.attribution.source,campaign:row.attribution.campaign,
       campaignId:row.attribution.campaignId,promotionId:row.attribution.promotionId,
       promotionName:row.attribution.promotionName,verified:row.attribution.verified}:null,
@@ -486,6 +487,42 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
 
   // CRM can read existing opportunities independently of Enrollment servicing.
   if (!servicing) return;
+
+  app.post('/api/crm/opportunities/:id/private-lessons/:recordId',wrap(async(q,r)=>{
+    if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
+    const actor=await staff(q,'crm.followup');
+    const opportunityId=String(q.params.id);
+    const recordId=String(q.params.recordId);
+    const {firstLessonAt,teacher,schedule}=q.body??{};
+    if(typeof firstLessonAt!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(firstLessonAt)||
+      !Number.isFinite(Date.parse(firstLessonAt))||new Date(firstLessonAt).toISOString()!==firstLessonAt||
+      typeof teacher!=='string'||!teacher.trim()||teacher.length>120||typeof schedule!=='string'||schedule.length>600)invalid('enrollment_invalid_appointment');
+    const confirmation={firstLessonAt,teacher:teacher.trim(),schedule:schedule.trim()};
+    const result=await transact(async c=>{
+      const [row]=(await c.query('SELECT state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE',[recordId])).rows;
+      const appointment=row?.criteria?.appointment;
+      if(!appointment)invalid('enrollment_interest_not_found',404);
+      await lockIdentityRegistry(c);
+      const opportunity=(await c.query('SELECT * FROM enrollment_opportunities WHERE id=:p1',[opportunityId])).rows[0];
+      const customer=opportunity&&await canonicalIdentity(c,opportunity.lead_id);
+      if(!customer||!readProfile(actor,customer.profile))invalid('enrollment_opportunity_not_found',404);
+      const records=await recordsForOpportunity(c,opportunityId);
+      if(!canProgress(actor,customer.profile)||!isOpenOpportunity(projectOpportunity(opportunity,records,customer.profile)))
+        invalid('enrollment_opportunity_progress_forbidden',403);
+      if(!records.some(record=>record.kind==='demand'&&record.id===recordId))invalid('enrollment_interest_not_found',404);
+      if(row.state!=='active')invalid('enrollment_demand_conflict',409);
+      if(appointment.confirmation){
+        if(appointment.confirmation.firstLessonAt===confirmation.firstLessonAt&&appointment.confirmation.teacher===confirmation.teacher&&
+          appointment.confirmation.schedule===confirmation.schedule)return {confirmation:appointment.confirmation};
+        invalid('enrollment_demand_conflict',409);
+      }
+      await c.query('UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2',
+        [{...row.criteria,appointment:{...appointment,confirmation}},recordId]);
+      await fact(c,customer.id,'enrollment.private_lesson.confirmed',actor.id,{recordId,opportunityId,...confirmation});
+      return {confirmation};
+    });
+    r.set('Cache-Control','no-store').json(result);
+  }));
 
   app.post('/api/crm/opportunities/:id/progress',wrap(async(q,r)=>{
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);

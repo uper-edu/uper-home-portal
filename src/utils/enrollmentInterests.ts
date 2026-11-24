@@ -25,7 +25,7 @@ export function parseDemand(input: Record<string,unknown>): DemandCriteria | nul
 }
 
 export function demandMatches(demand: DemandCriteria, cohort: {level:string;period:string;format:string}): boolean {
-  if (demand.level === 'unsure' || [demand.level,demand.period,demand.format].includes('other')) return false;
+  if (demand.level === 'unsure' || demand.format==='one-on-one' || [demand.level,demand.period,demand.format].includes('other')) return false;
   return (demand.level === cohort.level || (demand.level === 'HSK 4' && ['HSK 4A','HSK 4B'].includes(cohort.level))) &&
     (demand.period === 'any' || demand.period === cohort.period) &&
     (demand.format === 'any' || demand.format === cohort.format);

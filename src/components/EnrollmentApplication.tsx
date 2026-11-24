@@ -1,7 +1,7 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
 import {createBrowserUuid} from '../utils/browserUuid';
 import {visitorScope} from '../services/visitorScope';
-import {preloadEnrollmentNavigation,readEnrollmentClassDetails} from '../services/enrollmentClassDetails';
+import {preloadEnrollmentNavigation,readEnrollmentClassDetails,type PublicEnrollmentAppointment} from '../services/enrollmentClassDetails';
 import {watchReadReconnect} from '../services/readReconnect';
 import {readPendingDemand,sameDemandDraft,submitPendingDemand,type PendingDemand} from '../services/enrollmentDemandSubmission';
 import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
@@ -12,15 +12,15 @@ import {enrollmentCodeRequestErrors,enrollmentReadinessMessage} from '../utils/e
 import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import type {EnrollmentIntakeTools} from './EnrollmentIntake';
-import { enrollmentCopy, enrollmentClassTitle, enrollmentScheduleLabel, enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
+import { enrollmentCopy, enrollmentClassTitle,enrollmentFixedLessonDuration,enrollmentPrivateLessonTitle, enrollmentScheduleLabel, enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof, enrollmentStatuses } from '../utils/enrollmentOrderStatus';
 import {enrollmentProofUploadTimeout,prepareEnrollmentProofFile} from '../utils/enrollmentProofFile';
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, CircleCheck } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {EnrollmentEmailIdentity,maskEnrollmentEmail} from './EnrollmentEmailIdentity';
 import {enrollmentOrderReturnParam,EnrollmentJourneyLink,useEnrollmentJourneyState,useEnrollmentRecordReturn} from './EnrollmentJourneyLink';
-import {EnrollmentDetailFields,EnrollmentListRecord,EnrollmentOrderInformation,EnrollmentPriceActions,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
+import {EnrollmentDetailFields,EnrollmentIntakeSummary,EnrollmentListRecord,EnrollmentOrderInformation,EnrollmentPriceActions,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
 import {promotionJourneyUrl} from '../utils/promotionNavigation';
 import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
 import { formatCurrency } from '../utils/currency';
@@ -30,11 +30,12 @@ import { enrollmentSupportPath } from './EnrollmentSupport';
 import { EnrollmentModuleBoundary, lazyEnrollmentModule } from './EnrollmentModuleBoundary';
 import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
 import { interestOption, waitlistStates } from '../utils/enrollmentInterestCopy';
-import { parseEnrollmentInterests, type DemandItem, type Interests } from '../utils/enrollmentInterestRecords';
+import { parseEnrollmentInterests, type DemandCriteria, type DemandItem, type Interests } from '../utils/enrollmentInterestRecords';
 import { enrollmentRecordClassLookup, sortEnrollmentRecords } from '../utils/enrollmentRecordOrder';
 import { enrollmentAssistancePath } from '../utils/enrollmentAssistance';
 import { validContactEmail } from '../utils/contactEmail';
 import { parseEnrollmentBank } from '../utils/enrollmentBank';
+import {SocialProfileIcon,socialProfiles} from './SocialProfileIcon';
 
 type Language = 'zh' | 'en' | 'id';
 type Copy = readonly [string, string, string];
@@ -62,11 +63,27 @@ const paymentClassFallbackDelayMs = 300;
 type EnrollmentFormProps = {
   classId?: string; language: Language; full?: boolean; demandOnly?: boolean;
   applicationClass?: ApplicationClass; waitlistClass?: PublicEnrollmentClass; mine?: boolean; record?: InterestRecord;
+  privateLesson?:PublicEnrollmentAppointment;
+  privateLessonNavigation?:{registrationHeading:ReactNode;completionBack:ReactNode};
   returnAction?: ReactNode;
 } & ({payment: true; intakeTools?: never} | {payment?: false; intakeTools: EnrollmentIntakeTools});
 
-export function EnrollmentForm({ classId, language, full = false, demandOnly = false, payment = false, applicationClass, waitlistClass, mine = false, record, returnAction, intakeTools }: EnrollmentFormProps) {
+function focusPrivateConfirmation(node:HTMLHeadingElement|null) {
+  node?.focus();
+}
+
+export function EnrollmentForm({ classId, language, full = false, demandOnly = false, payment = false, applicationClass, waitlistClass, mine = false, record, returnAction, intakeTools,privateLesson,privateLessonNavigation }: EnrollmentFormProps) {
   const t = (text: Copy) => enrollmentCopy(language,text);
+  function privateLessonWhatsApp(level:string,period='any') {
+    const url=new URL(socialProfiles.whatsapp.url);
+    const time=interestOption(language,period);
+    url.searchParams.set('text',t([
+      `你好，我已登记 ${level} 一对一，想确认上课时间。${period==='any'?'':'我偏好的时段是'+time+'。'}`,
+      `Hello, I’ve requested ${level} one-to-one lessons and would like to confirm the schedule.${period==='any'?'':' Preferred time: '+time+'.'}`,
+      `Halo, saya sudah mengajukan kelas privat ${level} dan ingin mengonfirmasi jadwal.${period==='any'?'':' Waktu pilihan: '+time+'.'}`,
+    ]));
+    return url.toString();
+  }
   const [params,setParams] = useSearchParams();
   const navigate = useNavigate();
   const chatReturnState = useEnrollmentJourneyState();
@@ -168,7 +185,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const [editDemand,setEditDemand] = useState<DemandItem>();
   const [joined,setJoined] = useState(false);
   const [lastSeatWaitlist,setLastSeatWaitlist] = useState<{id:string;classId:string;email:string;waiting:boolean}>();
-  const [savedDemand,setSavedDemand] = useState(false);
+  const [savedDemand,setSavedDemand] = useState<string>();
   const [hasNoSeat,setHasNoSeat] = useState(full);
   const [owner]=useState(visitorScope);
   const mounted=useRef(false);
@@ -177,7 +194,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     return ()=>{mounted.current=false;};
   },[]);
   const formActive=()=>mounted.current&&visitorScope()===owner;
-  const formKey=payment?'payment:'+orderId:classId?(waitlistClass||full?'waitlist:':'apply:')+classId:demandOnly?'demand':'mine';
+  const formKey=payment?'payment:'+orderId:classId?(waitlistClass||full?'waitlist:':'apply:')+classId:privateLesson?'private-lesson:'+privateLesson.id:demandOnly?'demand':'mine';
   const emailDraftKey=formKey+':email-verification';
   const [savedDraft]=useState(()=>readEnrollmentDraft<ContactDraft>(owner,formKey)??{});
   const draftRef=useRef(savedDraft);
@@ -1126,24 +1143,25 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     setJoined(true);
   });
   async function submitDemand(request:PendingDemand,recovering:boolean,preserveDraft=false) {
-    await submitPendingDemand(owner,currentEmail,request,recovering);
+    const saved=await submitPendingDemand(owner,currentEmail,request,recovering);
     if(!formActive())return;
     if(!request.forAnother)rememberVisitorContact?.(owner,{fullName:request.name,email:currentEmail,whatsapp:request.criteria.phone});
     if(!preserveDraft){
       clearDraft();
       writeEnrollmentDraft(owner,formKey+':criteria');
     }
-    setSavedDemand(true);
+    setSavedDemand(saved);
   }
   function savePreferences(data: Parameters<React.ComponentProps<EnrollmentIntakeTools['EnrollmentDemandForm']>['onSave']>[0]) {
+    const draft=privateLesson?{...data,appointmentId:privateLesson.id}:data;
     void run(async () => {
       if (demandOnly) {
         await verifyEnteredEmail();
         const pending=readPendingDemand(owner,currentEmail);
-        if(pending && typeof pending!=='string' && !sameDemandDraft(pending,data,forAnother)) {
+        if(pending && typeof pending!=='string' && !sameDemandDraft(pending,draft,forAnother)) {
           throw Error('enrollment_demand_previous_unconfirmed');
         }
-        const request=typeof pending==='object'?pending:{...data,id:pending??data.id,source:sourceQuery(),forAnother};
+        const request=typeof pending==='object'?pending:{...draft,id:pending??draft.id,source:sourceQuery(),forAnother};
         await submitDemand(request,!!pending);
       }
       else {
@@ -1169,6 +1187,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     enrollment_class_full:['最后一个席位已被占用。','The last seat has been taken.','Kursi terakhir sudah diambil.'],
     enrollment_seat_available:['现在有空位，可以申请这个班。','A seat is available. You can apply now.','Ada kursi tersedia. Anda dapat mendaftar.'],
     enrollment_demand_conflict:['这条需求已更新或撤回，请刷新后查看。','This request has changed or been withdrawn. Refresh to review.','Permintaan berubah atau ditarik. Muat ulang.'],
+    enrollment_appointment_unavailable:['该一对一课程暂不可登记。','This one-to-one course is unavailable.','Kelas privat ini tidak tersedia.'],
     enrollment_demand_previous_unconfirmed:['上次提交还未确认。请先重试上次提交，你刚修改的内容会保留为草稿。','Your previous submission is unconfirmed. Retry it first. Your edits will stay in your draft.','Pengiriman sebelumnya belum dikonfirmasi. Coba kirim ulang terlebih dahulu. Perubahan tetap tersimpan sebagai draf.'],
     enrollment_interest_unconfirmed:['暂时无法确认提交结果。可在「我的报名」查看，或用相同信息重试。','We could not confirm the submission. Check My enrollments or retry with the same details.','Pengiriman belum dapat dikonfirmasi. Periksa Pendaftaran saya atau coba lagi dengan data yang sama.'],
     ...enrollmentCodeRequestErrors,
@@ -1297,7 +1316,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         {ContactPhoneInput&&<ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required
           readOnly={applicationDraftLocked} value={phone} onValueChange={setPhone}/>}{phoneError}
       </div>
-      {(!applicationClass||emailConfirmed)&&codeField}
+      {!privateLesson&&(!applicationClass||emailConfirmed)&&codeField}
     </>}
   </div>;
   if (applicationClass && error==='enrollment_class_full') {
@@ -1373,11 +1392,8 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       if(emailConfirmed){void verifyApplication();return;}
       void beginApplicationVerification();
     }}>
-      <div className="enrollment-payment-summary">
-        <h2 className="enrollment-class-heading"><EnrollmentClassName title={applicationClass.title}/></h2>
-        <p>{applicationClass.schedule}</p>
-      </div>
-      <p className="enrollment-tuition">{t(['本班学费','Class tuition','Biaya kelas'])} <strong>{formatCurrency(applicationClass.price,language)}</strong></p>
+      <EnrollmentIntakeSummary title={applicationClass.title} detail={applicationClass.schedule} amount={applicationClass.price}
+        label={t(['本班学费','Class tuition','Biaya kelas'])} language={language}/>
       {learnerFields}
       <label className="enrollment-priority">
         <input type="checkbox" checked={priority} disabled={applicationDraftLocked} onChange={event=>setPriority(event.target.checked)}/>
@@ -1411,9 +1427,42 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const completed = joined || savedDemand;
     const waitlist = !!waitlistClass;
     const pendingDemand=demandOnly?readPendingDemand(owner,currentEmail):undefined;
+    const prefill=enrollmentDemandPrefill(params,language);
+    const privateLevel=privateLesson?.level;
+    const registrationPrefill:DemandCriteria=privateLesson?{...prefill,level:privateLevel==='HSK 2'||privateLevel==='HSK 3'||privateLevel==='HSK 4'?privateLevel:'HSK 1',format:'one-on-one'}:prefill;
+    if(privateLesson&&savedDemand){
+      const savedPath=promotionJourneyUrl('/enrollment/mine/demands/'+encodeURIComponent(savedDemand)+publicQuery+'&tab=demands',params);
+      return <div className="enrollment-private-confirmation">
+        <header>
+          {privateLessonNavigation?.completionBack}
+          <h1 ref={focusPrivateConfirmation} tabIndex={-1}><CircleCheck size={24} aria-hidden="true"/>
+            {t(['约课记录已保存','Lesson request saved','Permintaan kelas tersimpan'])}</h1>
+        </header>
+        <section className="enrollment-detail-section">
+          <h2 className="enrollment-class-heading"><EnrollmentClassName title={enrollmentPrivateLessonTitle(privateLesson.level,language)}/></h2>
+          <EnrollmentDetailFields fields={[
+            [t(['课时安排','Lesson duration','Durasi pelajaran']),enrollmentFixedLessonDuration(privateLesson.lessons,privateLesson.minutes,language)],
+            [t(['课程学费','Course tuition','Biaya kursus']),formatCurrency(privateLesson.price*privateLesson.lessons,language)],
+          ]}/>
+        </section>
+        <a className="enrollment-quiet enrollment-private-confirmation-contact" href={privateLessonWhatsApp(privateLesson.level)}
+          target="_blank" rel="noopener noreferrer"><SocialProfileIcon platform="whatsapp" className="size-4"/>
+          {t(['通过 WhatsApp 联系顾问','Contact an advisor on WhatsApp','Hubungi konsultan via WhatsApp'])}</a>
+        <div className="enrollment-journey-actions">
+          <EnrollmentJourneyLink className="enrollment-primary" to={savedPath}>
+            {t(['查看约课记录','View lesson request','Lihat permintaan kelas'])}
+          </EnrollmentJourneyLink>
+        </div>
+      </div>;
+    }
+    const savedPath=mineLink+'&tab='+(waitlist?'waitlist':'demands');
+    const privateSummary=privateLesson&&<EnrollmentIntakeSummary title={enrollmentPrivateLessonTitle(privateLesson.level,language)}
+      detail={enrollmentFixedLessonDuration(privateLesson.lessons,privateLesson.minutes,language)} amount={privateLesson.price*privateLesson.lessons}
+      label={t(['课程学费','Course tuition','Biaya kursus'])} language={language}/>;
     return <>
+      {privateLessonNavigation?.registrationHeading}
       {error && <p className="enrollment-form-error" role="alert">{message}</p>}
-      {!completed&&emailConfirmed&&typeof pendingDemand==='object'&&<button type="button" className="enrollment-quiet" disabled={busy}
+      {!completed&&emailConfirmed&&typeof pendingDemand==='object'&&pendingDemand.appointmentId===privateLesson?.id&&<button type="button" className="enrollment-quiet" disabled={busy}
         onClick={()=>void run(()=>submitDemand(pendingDemand,true,true))}>
         {t(['重试上次提交','Retry previous submission','Kirim ulang pengiriman sebelumnya'])}
       </button>}
@@ -1423,7 +1472,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         <p className="enrollment-result-state" data-paid="true" role="status">{t(waitlist
           ? ['候补已登记。','You joined the waitlist.','Anda masuk daftar tunggu.']
           : ['选课需求已保存。','Course preferences saved.','Preferensi kursus disimpan.'])}</p>
-        <EnrollmentJourneyLink className="enrollment-primary" to={mineLink+'&tab='+(waitlist?'waitlist':'demands')}>{t(waitlist
+        <EnrollmentJourneyLink className="enrollment-primary" to={savedPath}>{t(waitlist
           ? ['查看我的候补','View my waitlist','Lihat daftar tunggu saya']
           : ['查看我的需求','See my preferences','Lihat preferensi saya'])}</EnrollmentJourneyLink>
       </div> : waitlistClass ? <form className="enrollment-journey-form" onSubmit={event=>{event.preventDefault();void join();}}>
@@ -1445,8 +1494,9 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
             {t(['返回课程报名','Back to classes','Kembali ke daftar kelas'])}
           </EnrollmentJourneyLink>}
         </div>
-      </form> : EnrollmentDemandForm&&<EnrollmentDemandForm language={language} prefill={enrollmentDemandPrefill(params,language)} busy={busy} onSave={savePreferences}
-        awaitingCode={awaitingCode} emailVerified={emailConfirmed}
+      </form> : EnrollmentDemandForm&&<EnrollmentDemandForm language={language} prefill={registrationPrefill} privateLesson={!!privateLesson} busy={busy} onSave={savePreferences}
+        awaitingCode={awaitingCode} emailVerified={emailConfirmed} summary={privateSummary}
+        verification={privateLesson&&!emailConfirmed?codeField:undefined}
         contact={{name,phone,fields:learnerFields,checkPhone:phoneField.check}} draft={{owner,key:formKey+':criteria'}}/>}
     </>;
   }
@@ -1534,9 +1584,12 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   }
   const waitlistDetail = record?.kind === 'waitlist' ? interests?.waitlist.find(row=>row.id===record.id) : undefined;
   const demandDetail = record?.kind === 'demands' ? interests?.demands.find(row=>row.id===record.id) : undefined;
-  const demandTitle = (row: DemandItem) => [row.criteria.level,row.criteria.period,row.criteria.format]
+  const demandTitle = (row: DemandItem) => row.appointment?enrollmentPrivateLessonTitle(row.criteria.level,language):[row.criteria.level,row.criteria.period,row.criteria.format]
     .map(value=>interestOption(language,value)).join(' · ');
-  const demandStatus = (row: DemandItem) => row.state==='withdrawn' ? t(['需求已撤回','Request withdrawn','Permintaan ditarik'])
+  const demandStatus = (row: DemandItem) => row.appointment
+    ? row.state==='withdrawn'?t(['约课已撤回','Lesson request withdrawn','Permintaan kelas ditarik']):
+      row.appointment.confirmation?t(['约课已确认','Lessons confirmed','Jadwal dikonfirmasi']):t(['待约课','Schedule pending','Menunggu jadwal'])
+    : row.state==='withdrawn' ? t(['需求已撤回','Request withdrawn','Permintaan ditarik'])
     : row.matches.length ? t(['有符合你需求的班次','Matching classes available','Ada kelas yang cocok'])
     : t(['已登记 · 等待匹配','Saved · Waiting for a match','Tersimpan · Menunggu kecocokan']);
   function renderWaitlistDetail(row: NonNullable<typeof waitlistDetail>) {
@@ -1570,6 +1623,39 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   }
   function renderDemandDetail(row: DemandItem) {
     const active = row.state==='active';
+    if(row.appointment){
+      const {confirmation,learnerName,lessons,minutes,total}=row.appointment;
+      const time=interestOption(language,row.criteria.period);
+      return <div className="enrollment-interest-detail">
+        <EnrollmentRecordSummary language={language} title={demandTitle(row)} status={demandStatus(row)}
+          tone={!active?'full':confirmation?'confirmed':'pending'}>
+          <EnrollmentDetailFields fields={[
+            [t(['学员姓名','Learner name','Nama siswa']),learnerName],
+            [t(['课时安排','Lesson duration','Durasi pelajaran']),enrollmentFixedLessonDuration(lessons,minutes,language)],
+            [t(['登记总价','Tuition at registration','Biaya saat pendaftaran']),formatCurrency(total,language)],
+            [t(['偏好时段','Preferred times','Waktu pilihan']),time],
+            [t(['授课教师','Teacher','Pengajar']),confirmation?.teacher],
+            [t(['首课时间','First lesson','Sesi pertama']),confirmation&&enrollmentDateFormatter(language,'dateTime').format(new Date(confirmation.firstLessonAt))+' WIB'],
+            [t(['上课安排','Lesson schedule','Jadwal kelas']),confirmation?.schedule],
+            [t(['补充说明','Notes','Catatan']),row.criteria.notes],
+          ]}/>
+        </EnrollmentRecordSummary>
+        {active&&!confirmation&&editDemand?.id!==row.id&&<EnrollmentRecordActions
+          tertiary={<button type="button" className="enrollment-quiet enrollment-order-cancel" disabled={busy} onClick={()=>remove('demands',row.id)}>
+            {t(['撤回约课','Withdraw lesson request','Tarik permintaan kelas'])}
+          </button>}
+          secondary={<button type="button" className="enrollment-outline" disabled={busy} onClick={()=>setEditDemand(row)}>
+            {t(['修改时段','Edit preferred times','Ubah waktu pilihan'])}
+          </button>}
+          primary={<a className="enrollment-primary" href={privateLessonWhatsApp(row.criteria.level,row.criteria.period)} target="_blank" rel="noopener noreferrer">
+            {t(['WhatsApp 约课','Open WhatsApp','Buka WhatsApp'])}
+          </a>}/>}
+        {active&&!confirmation&&EnrollmentDemandForm&&editDemand?.id===row.id&&<div className="enrollment-record">
+          <EnrollmentDemandForm key={row.id+':'+row.revision} language={language} initial={row} busy={busy} onSave={savePreferences} privateLesson/>
+          <button type="button" className="enrollment-record-link" disabled={busy} onClick={()=>setEditDemand(undefined)}>{t(['取消修改','Cancel editing','Batalkan perubahan'])}</button>
+        </div>}
+      </div>;
+    }
     return <div className="enrollment-interest-detail">
       <EnrollmentRecordSummary language={language} title={demandTitle(row)} status={demandStatus(row)} tone={!active?'full':row.matches.length?'confirmed':'pending'}>
         <EnrollmentDetailFields fields={[[t(['补充说明','Notes','Catatan']),row.criteria.notes]]}/>
@@ -1624,8 +1710,8 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const matched=row.state==='active'&&row.matches.length>0;
     const key='demand-'+row.id;
     return {key,active:row.state==='active',updatedAt:row.updatedAt,needsAction:matched,card:
-      <EnrollmentListRecord category={t(['选课需求','Course preferences','Preferensi kursus'])} title={recordTitle(key,recordPath('demands',row.id),demandTitle(row))}
-        status={demandStatus(row)} tone={row.state==='withdrawn'?'full':matched?'confirmed':'pending'}
+      <EnrollmentListRecord category={row.appointment?t(['一对一约课','One-to-one request','Permintaan kelas privat']):t(['选课需求','Course preferences','Preferensi kursus'])} title={recordTitle(key,recordPath('demands',row.id),demandTitle(row))}
+        status={demandStatus(row)} tone={row.state==='withdrawn'?'full':matched||row.appointment?.confirmation?'confirmed':'pending'}
         primary={matched&&recordEntry(key+'-matches',recordPath('demands',row.id),
           t(['查看匹配班次','View matching classes','Lihat kelas yang cocok']),true)}>
         {matched&&<p>{t([row.matches.length+' 个匹配班次',row.matches.length===1?'1 matching class':row.matches.length+' matching classes',row.matches.length+' kelas yang cocok'])}</p>}

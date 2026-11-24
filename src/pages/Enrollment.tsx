@@ -1,6 +1,6 @@
 import {EnrollmentClassName} from '../components/EnrollmentClassName';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
-import { enrollmentCopy,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
+import { enrollmentCopy,enrollmentClassTitle,enrollmentFixedLessonDuration,enrollmentPrivateLessonTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import {EnrollmentCourseOverview} from '../components/EnrollmentCourseOverview';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
 import {EnrollmentPriceActions} from '../components/EnrollmentRecordLayout';
@@ -24,7 +24,7 @@ import {visitorScope} from '../services/visitorScope';
 import {learnerPreviewToken} from '../utils/enrollmentLearnerPreview';
 import {linkHubReturnUrl,promotionEntryUrl} from '../utils/promotionNavigation';
 import {normalizeEnrollmentChatSelection} from '../utils/enrollmentChatJourney';
-import {isPlainLinkClick,readChatRecommendation,readEnrollmentPosition,rememberEnrollment,returnAlongJourney,type ChatJourneyState,type EnrollmentPosition} from '../utils/chatJourneyNavigation';
+import {isPlainLinkClick,readChatRecommendation,readEnrollmentPosition,rememberEnrollment,rememberEnrollmentPosition,returnAlongJourney,type ChatJourneyState,type EnrollmentPosition} from '../utils/chatJourneyNavigation';
 import {trackEvent} from '../utils/analytics';
 import {enrollmentOrderReturnParam,EnrollmentJourneyLink,useEnrollmentJourneyState,useEnrollmentRecordReturn} from '../components/EnrollmentJourneyLink';
 import './enrollment.css';
@@ -76,8 +76,8 @@ const copy = {
   standard: ['Standard class', 'Kelas standar', '标准班'],
   small: ['Small group', 'Kelas kecil', '小班'],
   'one-on-one': ['One-to-one', 'Kelas privat', '一对一'],
-  appointment: ['Arrange your session times with our team.', 'Atur jadwal bersama tim kami.', '上课时间与销售客服另行约定。'],
-  appointmentAction: ['Contact us to schedule', 'Hubungi tim untuk atur jadwal', '联系销售客服约课'],
+  appointment: ['Schedule with an advisor', 'Atur jadwal dengan konsultan', '时间与顾问确认'],
+  appointmentAction: ['View course', 'Lihat kursus', '查看课程'],
   opened: ['Class confirmed', 'Kelas dikonfirmasi', '已成班'],
   recruiting: ['Enrollment open', 'Pendaftaran dibuka', '报名中'],
   apply: ['Apply for this class', 'Daftar kelas ini', '申请这个班'],
@@ -108,7 +108,8 @@ const copy = {
   material: ['Course and materials', 'Kursus dan materi', '课程内容与教材'],
   resources: ['Practice and resources', 'Latihan dan sumber daya', '课后练习与资源'],
   consultCatalog: ['Help me choose', 'Tanya kelas', '咨询'],
-  consultClass: ['Ask about this class', 'Tanya tentang kelas ini', '咨询这个班'],
+  consultClass: ['Class advice in AI Chat', 'Tanya kelas ini lewat AI Chat', '咨询这个班'],
+  consultClassAction: ['Class advice', 'Tanya kelas', '咨询'],
   backChat: ['Back to chat', 'Kembali ke chat', '返回咨询'],
   backLinkHub: ['All links', 'Semua tautan', '全部入口'],
 } as const;
@@ -155,13 +156,14 @@ export default function Enrollment() {
   const payment = paymentPage || Boolean(routeClassId&&!invalidClassId&&!previewToken&&!rulesPage&&params.get('order'));
   const appointmentId = params.get('appointment');
   const needsReadiness = !previewToken && !assisted && !topic && !rulesPage;
-  const servicingOnly = mine || payment;
+  const appointmentRegistration=interest&&!!appointmentId;
+  const servicingOnly = mine || payment || appointmentRegistration;
   const readinessUrl = needsReadiness ? servicingOnly ? servicingReadinessUrl : intakeReadinessUrl : undefined;
   const formRoute = interest || (mine && (!recordId || !!record)) || (payment && hasOrder) ||
     (application && !!routeClassId && !invalidClassId);
   const catalogUrl = needsReadiness && !interest && !mine && !payment && !invalidClassId
     ? routeClassId ? '/api/enrollment/classes?'+new URLSearchParams({classId:routeClassId}) : enrollmentCatalogUrl
-    : !previewToken && topic === 'one-on-one' && appointmentId && /^[a-zA-Z0-9-]{1,64}$/.test(appointmentId)
+    : !previewToken && (topic === 'one-on-one'||appointmentRegistration) && appointmentId && /^[a-zA-Z0-9-]{1,64}$/.test(appointmentId)
       ? enrollmentAppointmentUrl(appointmentId)
       : undefined;
   useEffect(() => {
@@ -322,17 +324,30 @@ export default function Enrollment() {
   useLayoutEffect(() => {
     if (restoredPositionKey.current === location.key) return;
     restoredPositionKey.current = undefined;
-    // Browsing position depends on the public catalog, not application readiness.
-    if (!returnPosition || previewToken || !classes) return;
-    restoredPositionKey.current = location.key;
-    for (const detail of document.querySelectorAll<HTMLDetailsElement>('.enrollment-course details[data-enrollment-section]'))
-      detail.open = returnPosition.expanded.includes(detail.dataset.enrollmentSection!);
-    // The catalog may finish loading after the learner starts using this page.
-    const active = document.activeElement;
-    if (active && active !== document.body && active !== document.documentElement) return;
-    document.querySelector<HTMLElement>('[data-enrollment-consult="'+returnPosition.focus+'"]')?.focus({preventScroll:true});
-    window.scrollTo({top:returnPosition.scrollY,behavior:'instant'});
-  }, [location.key, returnPosition, Boolean(classes), previewToken]);
+    if (!returnPosition || previewToken || topic || !classes) return;
+    const fromAppointment=returnPosition.focus.startsWith('appointment:');
+    // The readiness result can add a header action or another row above the cards.
+    if(fromAppointment&&needsReadiness&&!readinessCurrent)return;
+    const restore=()=>{
+      restoredPositionKey.current = location.key;
+      for (const detail of document.querySelectorAll<HTMLDetailsElement>('.enrollment-course details[data-enrollment-section]'))
+        detail.open = returnPosition.expanded.includes(detail.dataset.enrollmentSection!);
+      const active = document.activeElement;
+      if (active && active !== document.body && active !== document.documentElement) return;
+      const focusTarget=fromAppointment
+        ? document.getElementById(returnPosition.focus)
+        : document.querySelector<HTMLElement>('[data-enrollment-consult="'+returnPosition.focus+'"]');
+      focusTarget?.focus({preventScroll:true});
+      const focusOffset=returnPosition.focusOffset;
+      if(focusTarget&&typeof focusOffset==='number'&&Number.isFinite(focusOffset)){
+        window.scrollTo({top:window.scrollY+focusTarget.getBoundingClientRect().top-focusOffset,behavior:'instant'});
+      }else window.scrollTo({top:returnPosition.scrollY,behavior:'instant'});
+    };
+    if(!fromAppointment){restore();return;}
+    let cancelled=false;
+    void document.fonts.ready.then(()=>{if(!cancelled)restore();});
+    return ()=>{cancelled=true;};
+  }, [location.key, returnPosition, Boolean(classes), previewToken, topic, needsReadiness, readinessCurrent]);
 
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -405,6 +420,16 @@ export default function Enrollment() {
     query.set('appointment',item.id);
     return '/enrollment/help/one-on-one?' + query.toString();
   };
+  function openAppointment(event:ReactMouseEvent<HTMLAnchorElement>,id:string) {
+    prepareEnrollmentNavigation(event);
+    if(!isPlainLinkClick(event))return;
+    event.preventDefault();
+    const focus=`appointment:${id}` as const;
+    const focusOffset=document.getElementById(focus)?.getBoundingClientRect().top;
+    const position:EnrollmentPosition={scrollY:window.scrollY,focus,focusOffset,expanded:[]};
+    rememberEnrollmentPosition(position);
+    navigate(event.currentTarget.pathname+event.currentTarget.search,{state:{...chatReturnState,enrollmentPosition:position}});
+  }
   const offline=navigator.onLine===false;
   const offlineReadinessFailure=offline&&readinessFailed;
   const catalogFailure=<p role="alert">{t(offline?'offline':'error')}{!offline&&
@@ -453,7 +478,7 @@ export default function Enrollment() {
     navigationState={inCatalog?{...chatReturnState,enrollmentClassPreview:{
       id:row.id,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,
     }}:chatReturnState} titleLink={inCatalog?detailsPath(row.id):undefined}
-    actionLink={inCatalog&&canApplyToClass&&row.price>0?detailsPath(row.id,true):undefined} onNavigate={prepareEnrollmentNavigation}/>;
+    onNavigate={prepareEnrollmentNavigation}/>;
   function deferredSection(content: ReactNode, navigation?: ReactNode, standalone = false) {
     const notice = (message: ReactNode) => standalone
       ? <section className="enrollment-screen">{navigation}{message}</section>
@@ -481,7 +506,7 @@ export default function Enrollment() {
     <>{backChat}{recordReturn?mineBack:backCatalog}</>, true);
   if (topic) {
     const helpBack=topic==='one-on-one'
-      ? <EnrollmentJourneyLink className="enrollment-back" to={listPath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>
+      ? <EnrollmentJourneyLink className="enrollment-back" to={listPath} state={{...chatReturnState,enrollmentPosition:returnPosition}} onClick={prepareEnrollmentNavigation}>
         <ArrowLeft size={15} aria-hidden="true"/>
         {enrollmentCopy(language,['返回课程报名','Back to course enrollment','Kembali ke pendaftaran kursus'])}
       </EnrollmentJourneyLink>
@@ -490,10 +515,20 @@ export default function Enrollment() {
     const appointment=topic==='one-on-one'?appointments?.find(item=>item.id===appointmentId):undefined;
     const appointmentState=topic==='one-on-one'&&appointmentId!==null&&!appointment
       ? failed?'failed':catalogUrl&&!catalog?'loading':'unavailable' : undefined;
-    return deferredSection(<EnrollmentSupport topic={topic} language={language}
+    const registrationQuery=new URLSearchParams(publicParams);
+    if(appointment){
+      registrationQuery.set('appointment',appointment.id);
+      registrationQuery.set('format','one-on-one');
+    }
+    return deferredSection(<EnrollmentSupport key={appointmentId??topic} topic={topic} language={language}
         level={appointmentLevel && /^[1-4]$/.test(appointmentLevel) ? appointmentLevel : undefined}
         appointment={appointment} appointmentState={appointmentState} onAppointmentRetry={()=>setReload(value=>value+1)}
-        period={period} format={params.get('format')??undefined} returnAction={backChat} backAction={helpBack} offline={params.get('mode')==='offline'}/>,
+        period={appointment&&!fromChat&&params.get('enrollment_via')!=='ai_chat'?undefined:period}
+        format={params.get('format')??undefined} returnAction={backChat} backAction={helpBack} offline={params.get('mode')==='offline'}
+        registrationLink={appointment?{
+          to:'/enrollment/interest?'+registrationQuery,
+          state:{...chatReturnState,enrollmentPosition:returnPosition},
+        }:undefined}/>,
       <>{backChat}{helpBack}</>, true);
   }
 
@@ -536,6 +571,30 @@ export default function Enrollment() {
       : servicing ? deferredSection(<EnrollmentApplication key={pathname} language={language} mine record={record}/>)
       : <p>{t('unavailable')}</p>}
   </section>;
+  if(appointmentRegistration){
+    const appointment=appointments?.find(item=>item.id===appointmentId);
+    const loading=servicing===undefined||catalogUrl&&!catalog;
+    const detail='/enrollment/help/one-on-one?'+new URLSearchParams(params);
+    const demandsParams=new URLSearchParams(catalogParams);
+    demandsParams.set('tab','demands');
+    const registrationHeading=<>
+      {backChat}
+      <Link className="enrollment-back" to={detail} state={{...chatReturnState,enrollmentPosition:returnPosition}}><ArrowLeft size={15} aria-hidden="true"/>
+        {enrollmentCopy(language,['返回一对一详情','Back to one-to-one details','Kembali ke detail kelas privat'])}</Link>
+      <h1>{enrollmentCopy(language,['登记一对一约课','Request one-to-one lessons','Ajukan kelas privat'])}</h1>
+    </>;
+    const completionBack=<EnrollmentJourneyLink className="enrollment-back" to={'/enrollment/mine?'+demandsParams.toString()}
+      onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>
+      {enrollmentCopy(language,['返回选课需求','Back to course preferences','Kembali ke preferensi kursus'])}
+    </EnrollmentJourneyLink>;
+    return <section className="enrollment-screen enrollment-apply-screen enrollment-intake">
+      {!failed&&!loading&&appointment&&servicing?deferredSection(
+        <EnrollmentApplication key={appointment.id} language={language} demandOnly privateLesson={appointment}
+          privateLessonNavigation={{registrationHeading,completionBack}}/>,registrationHeading):
+        <>{registrationHeading}{failed?catalogFailure:loading
+          ? <p role="status">{t('loading')}</p> : <p role="status">{t('unavailable')}</p>}</>}
+    </section>;
+  }
   if (interest) return <section className="enrollment-screen enrollment-apply-screen enrollment-intake">
     {backChat}
     {backCatalog}
@@ -581,7 +640,9 @@ export default function Enrollment() {
       <h1>{t(application && selected ? selected.availability === 'full' ? 'join' : 'apply' : 'details')}</h1>
       {selected&&!application&&!previewToken&&!fromChat&&<Link data-enrollment-consult="class"
         className="enrollment-quiet enrollment-consult-action" to={chatPath}
-        onClick={event=>startConsultation(event,selected)}><MessageCircle size={16} aria-hidden="true"/>{t('consultClass')}</Link>}
+        aria-label={t('consultClass')} onClick={event=>startConsultation(event,selected)}>
+        <MessageCircle size={16} aria-hidden="true"/>{t('consultClassAction')}
+      </Link>}
     </header>
     {failed ? catalogFailure
       : !classes ? <>{classPreview&&<h2 className="enrollment-class-heading"><EnrollmentClassName title={enrollmentClassTitle(classPreview,language)}/></h2>}<p role="status">{t('loading')}</p></>
@@ -660,23 +721,28 @@ export default function Enrollment() {
       : !classes && <p role="status">{t('loading')}</p>}
     {rows.length || privateLessons.length ? <div className="enrollment-class-grid">
       {rows.map(row => classCard(row, true))}
-      {privateLessons.map(item=><article key={item.id} className="enrollment-class-card enrollment-appointment-card">
-        <h2>{item.level} · {t('one-on-one')}</h2>
-        <p>{item.course} · {enrollmentTeacherLabel(item.teacherType,language)}</p>
-        <p>{t('appointment')}</p>
-        <div className="enrollment-class-bottom">
-          <div className="enrollment-prices">
-            <strong>{formatCurrency(item.price,language)}<span className="enrollment-price-unit">{enrollmentCopy(language,['／节',' / period',' / jam pelajaran'])}</span></strong>
-            {item.standardPrice>item.price&&<small><del>{formatCurrency(item.standardPrice,language)}</del></small>}
-            <small>{enrollmentCopy(language,[
-              `${item.lessons} 节 · 每节 ${item.minutes} 分钟 · 参考总价 ${formatCurrency(item.price*item.lessons,language)}`,
-              `${item.lessons} periods · ${item.minutes} min each · reference total ${formatCurrency(item.price*item.lessons,language)}`,
-              `${item.lessons} jam pelajaran · ${item.minutes} menit per jam pelajaran · perkiraan total ${formatCurrency(item.price*item.lessons,language)}`,
-            ])}</small>
+      {privateLessons.map(item=>{
+        const to=appointmentPath(item);
+        const onClick=(event:ReactMouseEvent<HTMLAnchorElement>)=>openAppointment(event,item.id);
+        return <article key={item.id} className="enrollment-class-card enrollment-appointment-card">
+          <h2><Link id={`appointment:${item.id}`} to={to} state={chatReturnState} onClick={onClick}>
+            <EnrollmentClassName title={enrollmentPrivateLessonTitle(item.level,language)}/><ChevronRight size={15} aria-hidden="true"/>
+          </Link></h2>
+          <p className="enrollment-teacher">{enrollmentTeacherLabel(item.teacherType,language)}</p>
+          <p className="enrollment-schedule">{t('appointment')}</p>
+          <p>{enrollmentFixedLessonDuration(item.lessons,item.minutes,language)}</p>
+          <div className="enrollment-class-bottom">
+            <div className="enrollment-prices">
+              <strong>{formatCurrency(item.price*item.lessons,language)}</strong>
+              {item.standardPrice>item.price&&<small>
+                <span className="sr-only">{enrollmentCopy(language,['标准价','Standard price','Harga standar'])}{' '}</span>
+                <del className="enrollment-reference-price">{formatCurrency(item.standardPrice*item.lessons,language)}</del>
+              </small>}
+            </div>
+            <Link className="enrollment-primary" to={to} state={chatReturnState} onClick={onClick}>{t('appointmentAction')}</Link>
           </div>
-          <Link className="enrollment-primary" to={appointmentPath(item)} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('appointmentAction')}</Link>
-        </div>
-      </article>)}
+        </article>;
+      })}
     </div>
       : classes&&!failed&&<div className="enrollment-class-card enrollment-empty">
         <CalendarDays size={20} aria-hidden="true"/><div><p><strong>{t('empty')}</strong></p><p>{t('noMatchBody')}</p></div>

@@ -8,6 +8,18 @@ import {formatCurrency} from '../utils/currency';
 
 type StatusTone='pending'|'confirmed'|'full';
 
+export function EnrollmentIntakeSummary({title,detail,amount,label,language}:{
+  title:string;detail:string;amount:number;label:string;language:InterestLanguage;
+}) {
+  return <>
+    <div className="enrollment-payment-summary">
+      <h2 className="enrollment-class-heading"><EnrollmentClassName title={title}/></h2>
+      <p>{detail}</p>
+    </div>
+    <p className="enrollment-tuition">{label} <strong>{formatCurrency(amount,language)}</strong></p>
+  </>;
+}
+
 export function EnrollmentRecordActions({primary,secondary,tertiary}: {
   primary?:ReactNode;secondary?:ReactNode;tertiary?:ReactNode;
 }) {
@@ -29,7 +41,7 @@ export function EnrollmentPriceActions({label,hideLabel=false,amount,standardPri
         <dd className="enrollment-main-amount">{formatCurrency(amount,language)}</dd>
       </div>
       {standardPrice!==undefined&&standardPrice>amount&&<div className="enrollment-price-actions-standard">
-        <dt>{enrollmentCopy(language,['标准价','Standard price','Harga standar'])}</dt>
+        <dt className="sr-only">{enrollmentCopy(language,['标准价','Standard price','Harga standar'])}</dt>
         <dd><del>{formatCurrency(standardPrice,language)}</del></dd>
       </div>}
     </dl>

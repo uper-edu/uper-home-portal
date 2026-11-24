@@ -1,8 +1,11 @@
 import type { Express, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { demandMatches, enrollmentPhone, parseDemand } from '../../src/utils/enrollmentInterests.ts';
+import { demandMatches, enrollmentPhone, parseDemand,type PrivateLessonRegistration } from '../../src/utils/enrollmentInterests.ts';
 import { enrollmentLearnerNameKey } from '../../src/utils/enrollmentOrderStatus.ts';
-import { invalid } from './trustWorkflow.ts';
+import { invalid,operation,normalizeContactPhone } from './trustWorkflow.ts';
+import { createHash } from 'node:crypto';
+import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
+import { readPublicEnrollmentAppointments } from './enrollmentCatalog.ts';
 import { recordEnrollmentCustomer } from './enrollmentCrm.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { activeLearnerOrder, learnerWaitlist } from './enrollmentLearners.ts';
@@ -220,7 +223,9 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       for(const demand of demands){
         const matched=demand.state==='active'?candidates.filter(cohort=>demandMatches(demand.criteria,cohort.data)):[];
         for (const match of matched) await recordDemandMatch(c,demand,match);
-        enriched.push({id:demand.id,criteria:demand.criteria,state:demand.state,revision:demand.revision,updatedAt:demand.updatedAt,
+        const {appointment,...criteria}=demand.criteria;
+        const publicAppointment=appointment && Object.fromEntries(Object.entries(appointment).filter(([key])=>key!=='learnerKey'));
+        enriched.push({id:demand.id,criteria,state:demand.state,revision:demand.revision,updatedAt:demand.updatedAt,appointment:publicAppointment,
           matches:matched.map(v=>({id:v.id,level:v.data.level,firstLesson:v.data.firstLesson}))});
       }
       const activity=waiting.length||demands.length?(await c.query(`SELECT e.kind,e.interest_id,
@@ -258,6 +263,28 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
     }
     const saved=await transact(async c=>{
       const email=await session(c,q);
+      if(q.body?.appointmentId!==undefined){
+        const {appointmentId,forAnother}=q.body;
+        if(typeof appointmentId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(appointmentId)||revision!==0||!name||
+          typeof forAnother!=='boolean'||criteria.format!=='one-on-one')invalid('enrollment_invalid_demand');
+        await lockEnrollmentEmail(c,email);
+        const actor='enrollment:'+createHash('sha256').update(email).digest('hex');
+        return operation(c,actor,{requestId:id,appointmentId,criteria,name,forAnother},{leadId:actor,kind:'enrollment.private_lesson'},async()=>{
+          const learnerKey=forAnother?'delegate:'+enrollmentLearnerNameKey(name)+':'+normalizeContactPhone(criteria.phone):'self';
+          const rows=(await c.query("SELECT id,revision,criteria FROM enrollment_demands WHERE email=:p1 AND state='active' AND criteria->>'$.appointment.templateId'=:p2",[email,appointmentId])).rows;
+          const prior=rows.find(row=>row.criteria.appointment.learnerKey===learnerKey);
+          if(prior)return {id:prior.id,revision:Number(prior.revision),reused:true};
+          const [offer]=await readPublicEnrollmentAppointments(c,appointmentId);
+          if(!offer||offer.level!==criteria.level)invalid('enrollment_appointment_unavailable',409);
+          const appointment:PrivateLessonRegistration={templateId:offer.id,learnerKey,learnerName:name,
+            lessons:offer.lessons,minutes:offer.minutes,total:offer.price*offer.lessons};
+          await c.query("INSERT INTO enrollment_demands(id,email,revision,state,criteria,updated_at) VALUES(:p1,:p2,1,'active',:p3,UTC_TIMESTAMP(6))",
+            [id,email,{...criteria,appointment}]);
+          await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,name,level:criteria.level});
+          await recordEnrollmentAttribution(c,'demand',id,q.body.source);
+          return {id,revision:1};
+        });
+      }
       const level=['unsure','other'].includes(criteria.level)?undefined:criteria.level;
       const existing=(await c.query('SELECT email,revision,state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE',[id])).rows[0];
       if (!existing) {
@@ -270,25 +297,31 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
         return 1;
       }
       if(existing.email!==email) invalid('enrollment_interest_not_found',404);
-      if(existing.state!=='active') invalid('enrollment_demand_conflict',409);
+      const appointment=existing.criteria.appointment;
+      if(existing.state!=='active'||appointment&&(appointment.confirmation||
+        criteria.level!==existing.criteria.level||criteria.format!==existing.criteria.format||criteria.phone!==existing.criteria.phone)) {
+        invalid('enrollment_demand_conflict',409);
+      }
       if(Number(existing.revision)!==revision){
         const same=Object.entries(criteria!).every(([key,value])=>existing.criteria[key]===value);
         if(Number(existing.revision)===revision+1 && same) return Number(existing.revision);
         invalid('enrollment_demand_conflict',409);
       }
-      await c.query('UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2',[criteria,id]);
-      await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,level});
+      await c.query('UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2',
+        [appointment?{...criteria,appointment}:criteria,id]);
+      if(!appointment)await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,level});
       return revision+1;
     });
-    send(r,{id,revision:saved});
+    send(r,typeof saved==='number'?{id,revision:saved}:{id:saved.id,revision:saved.revision,reused:saved.reused});
   });
 
   post(base+'/demands/:id/withdraw',async(q,r)=>{
     await transact(async c=>{
       const email=await session(c,q);
-      const row=(await c.query('SELECT state FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE',[q.params.id,email])).rows[0];
+      const row=(await c.query('SELECT state,criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE',[q.params.id,email])).rows[0];
       if(!row) invalid('enrollment_interest_not_found',404);
       if(row.state==='withdrawn') return;
+      if(row.criteria?.appointment?.confirmation)invalid('enrollment_demand_conflict',409);
       await c.query("UPDATE enrollment_demands SET state='withdrawn',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",[q.params.id]);
     });
     send(r,{ok:true});

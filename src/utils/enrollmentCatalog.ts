@@ -251,6 +251,22 @@ export function enrollmentTeacherLabel(type:'local'|'foreign'|undefined,language
   return {zh:{local:'本土教师',foreign:'外教'},en:{local:'Indonesian Teacher',foreign:'Foreign Teacher'},id:{local:'Pengajar Lokal',foreign:'Pengajar Asing'}}[language][type];
 }
 
+export function enrollmentPrivateLessonTitle(level:string,language:'zh'|'en'|'id') {
+  return enrollmentCopy(language,[
+    `${level.replace(/^HSK (?=\d)/,'HSK')} · 一对一 · 定制时间`,
+    `${level} · One-to-one · Custom schedule`,
+    `${level} · Kelas privat · Jadwal fleksibel`,
+  ]);
+}
+
+export function enrollmentFixedLessonDuration(lessons:number,minutes:number,language:'zh'|'en'|'id') {
+  return enrollmentCopy(language,[
+    `${lessons} 节 · 每节 ${minutes} 分钟`,
+    `${lessons} lessons · ${minutes} min each`,
+    `${lessons} sesi · ${minutes} menit per sesi`,
+  ]);
+}
+
 /** Seed empty recurring fields from the first session without replacing an existing schedule. */
 export function enrollmentAutofillStart<T extends {firstLesson:string;weeklySchedule?:EnrollmentWeeklySchedule;minutes:number; schedule:string}>(config:T,firstLesson:string):T {
   const next={...config,firstLesson};

@@ -99,7 +99,8 @@ export async function readPublicEnrollmentAppointments(c: Parameters<Parameters<
   return rows.flatMap(({template,course})=>{
     if(!template.saleUnitPrice||!template.standardUnitPrice||!course?.active||!course.teaching)return [];
     return [{id:template.id,level:course.teaching.level,course:course.name,teacherType:template.teacherType,
-      lessons:course.sessions,minutes:course.teaching.minutes,price:template.saleUnitPrice,standardPrice:template.standardUnitPrice}];
+      lessons:course.sessions,minutes:course.teaching.minutes,price:template.saleUnitPrice,standardPrice:template.standardUnitPrice,
+      ...(appointmentId && {introduction:course.teaching.introduction,material:course.teaching.material})}];
   });
 }
 

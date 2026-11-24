@@ -102,6 +102,8 @@ export type PublicEnrollmentAppointment = {
   minutes: number;
   price: number;
   standardPrice: number;
+  introduction?: PublicEnrollmentClass['introduction'];
+  material?: string;
 };
 
 const classTextFields = ['format','period','firstLesson','teacherType','schedule','learningOutcomes','material','resources','teacher'] as const;

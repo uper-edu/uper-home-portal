@@ -9,6 +9,11 @@ export interface DemandCriteria {
   notes: string;
   phone: string;
 }
+export type PrivateLessonRegistration = {
+  templateId:string; learnerName:string; learnerKey:string;
+  lessons:number; minutes:number; total:number;
+  confirmation?:{firstLessonAt:string;teacher:string;schedule:string};
+};
 
 type MatchedClass = {id:string;level:string;firstLesson:string};
 const waitlistStates = ['waiting','converted','withdrawn','closed'] as const;
@@ -20,6 +25,7 @@ type WaitlistItem = MatchedClass & {
 export type DemandItem = {
   id:string; revision:number; state:'active'|'withdrawn'; criteria:DemandCriteria;
   matches:MatchedClass[]; updatedAt?:string|null;
+  appointment?:Omit<PrivateLessonRegistration,'learnerKey'>;
 };
 export type Interests = {waitlist:WaitlistItem[];demands:DemandItem[]};
 
@@ -28,6 +34,13 @@ export function parseEnrollmentInterests(data:unknown):Interests {
   const isClass = (row:MatchedClass | null) => typeof row?.id==='string' &&
     typeof row.level==='string' && typeof row.firstLesson==='string';
   const optionalString = (value:unknown) => value==null || typeof value==='string';
+  const validAppointment = (row:DemandItem) => {
+    const item=row.appointment;
+    return item===undefined||!!item&&row.criteria.format==='one-on-one'&&typeof item.templateId==='string'&&typeof item.learnerName==='string'&&
+      Number.isSafeInteger(item.lessons)&&item.lessons>0&&Number.isSafeInteger(item.minutes)&&item.minutes>0&&Number.isSafeInteger(item.total)&&item.total>0&&
+      (item.confirmation===undefined||!!item.confirmation&&typeof item.confirmation.firstLessonAt==='string'&&Number.isFinite(Date.parse(item.confirmation.firstLessonAt))&&
+        typeof item.confirmation.teacher==='string'&&typeof item.confirmation.schedule==='string');
+  };
   if (!Array.isArray(interests?.waitlist) || interests.waitlist.some(row =>
     !isClass(row) || typeof row.classId!=='string' || !waitlistStates.includes(row.state) ||
     (row.available!==undefined && typeof row.available!=='boolean') ||
@@ -37,7 +50,7 @@ export function parseEnrollmentInterests(data:unknown):Interests {
     !optionalString(row.updatedAt) || !row.criteria || !demandLevels.includes(row.criteria.level) ||
     !demandPeriods.includes(row.criteria.period) || !demandFormats.includes(row.criteria.format) ||
     typeof row.criteria.notes!=='string' || typeof row.criteria.phone!=='string' ||
-    !Array.isArray(row.matches) || row.matches.some(match=>!isClass(match))
+    !Array.isArray(row.matches) || row.matches.some(match=>!isClass(match)) || !validAppointment(row)
   )) throw Error('Invalid enrollment interests');
   return {waitlist:interests.waitlist,demands:interests.demands};
 }

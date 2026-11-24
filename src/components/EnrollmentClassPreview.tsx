@@ -35,6 +35,10 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
  const periods=row.sessions&&row.sessions>0?row.sessions:undefined;
  const title=enrollmentClassTitle(row,language);
  const titleContent=<EnrollmentClassName title={title}/>;
+ const primaryLink=chatPresentation?actionLink:titleLink;
+ const primaryLabel=chatPresentation
+   ? row.availability==='full'?t('加入候补','Join waitlist','Daftar tunggu'):t('申请这个班','Apply for this class','Daftar kelas ini')
+   : t('查看班次','View class','Lihat kelas');
  const availability=!intakeStatus&&row.availability&&({
    full:t('满班','Full','Penuh'),limited:t('空位紧张','Limited seats','Kursi terbatas'),available:t('有空位','Seats available','Kursi tersedia'),
  })[row.availability];
@@ -115,7 +119,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
          <del className={chatPresentation?'chat-value':'enrollment-reference-price'}>{formatCurrency(row.standardPrice,language)}</del>
        </small>}
        {chatPresentation&&periods&&<small><span className={chatPresentation?'chat-value':undefined}>{formatCurrency(Math.round(row.price/periods),language)}</span>{t('／节',' / period',' / jam pelajaran')}</small>}</>:<strong>{t('报价待确认','Quote pending','Harga belum dikonfirmasi')}</strong>}</div>
-     {actionLink&&<Link className={chatPresentation?`chat-enrollment-next${chatPrimaryAction?' chat-enrollment-next--primary':''}`:'enrollment-primary'} to={actionLink} state={navigationState} onClick={onNavigate}>{row.availability==='full'?t('加入候补','Join waitlist','Daftar tunggu'):t('申请这个班','Apply for this class','Daftar kelas ini')}</Link>}
+     {primaryLink&&<Link className={chatPresentation?`chat-enrollment-next${chatPrimaryAction?' chat-enrollment-next--primary':''}`:'enrollment-primary'} to={primaryLink} state={navigationState} onClick={onNavigate}>{primaryLabel}</Link>}
    </div>
    {showDetails&&<section aria-label={t('课程介绍','Course details','Rincian kursus')}>
      {[[t('学习成果','Learning outcomes','Hasil belajar'),row.learningOutcomes],[t('内容与教材','Content and materials','Materi dan buku'),row.material],[t('练习资源','Practice resources','Sumber latihan'),row.resources],[t('授课教师','Teacher','Pengajar'),row.teacher?.trim()]].filter(([,value])=>value).map(([label,value])=><details key={label}><summary>{label}</summary><p>{value}</p></details>)}

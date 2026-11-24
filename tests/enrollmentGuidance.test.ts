@@ -752,7 +752,8 @@ test('explicit Chat inspection scopes the availability lookup and keeps referenc
 test('public appointments preserve quoted prices and exclude incomplete or inactive entries',async()=>{
   const {readPublicEnrollmentAppointments}=await import('../server/portal/enrollmentCatalog');
   const template={id:'valid',teacherType:'local',saleUnitPrice:125000,standardUnitPrice:150000};
-  const course={name:'Mandarin',sessions:12,active:true,teaching:{level:'HSK 1',minutes:45}};
+  const introduction={en:{audience:'Beginners'},id:{audience:'Pemula'},zh:{audience:'零基础学员'}};
+  const course={name:'Mandarin',sessions:12,active:true,teaching:{level:'HSK 1',minutes:45,material:'New Concept Chinese',introduction}};
   const result=await readPublicEnrollmentAppointments({query:async(sql:string)=>{
     assert.match(sql,/JOIN crm_courses/);
     assert.match(sql,/ORDER BY t.id/);
@@ -765,6 +766,12 @@ test('public appointments preserve quoted prices and exclude incomplete or inact
   }});
   assert.deepEqual(result,[{id:'valid',level:'HSK 1',course:'Mandarin',teacherType:'local',
     lessons:12,minutes:45,price:125000,standardPrice:150000}]);
+  const detail=await readPublicEnrollmentAppointments({query:async(sql:string,args:unknown[])=>{
+    assert.match(sql,/t.id=:p2/);
+    assert.equal(args[1],'enrollment_template:valid');
+    return {rows:[{template,course}]};
+  }},'valid');
+  assert.deepEqual(detail,[{...result[0],material:'New Concept Chinese',introduction}]);
 });
 
 test('mixed tuition quotes skip availability reads and retain group totals and private unit prices',async()=>{

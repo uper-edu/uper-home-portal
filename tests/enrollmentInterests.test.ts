@@ -187,3 +187,84 @@ test('interest reads reject malformed rows before rendering and accept nullable 
     {waitlist:[],demands:[{...demand,matches:[null]}]},
   ]) assert.throws(()=>parseEnrollmentInterests(payload),/Invalid enrollment interests/);
 });
+
+test('verified private lesson requests reuse one active record across independent submissions',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {mountEnrollmentInterests}=await import('../server/portal/enrollmentInterests');
+  type Context=Parameters<typeof mountEnrollmentInterests>[1];
+  const handlers=new Map<string,Parameters<Context['post']>[1]>();
+  const email='private-learner@example.invalid';
+  const phone='+6281234567890';
+  const lead={id:'fixture-lead',profile:{id:'fixture-lead',fullName:'Ayu Putri',email,whatsapp:phone}};
+  const appointments:any[]=[];
+  const receipts=new Map<string,any>();
+  const attribution:unknown[][]=[];
+  let verified=false;
+  let activeLock=Promise.resolve();
+  mountEnrollmentInterests({get:()=>{}} as never,{
+    wrap:handler=>handler,post:(path,handler)=>{handlers.set(path,handler);},
+    session:async()=>{
+      if(!verified)throw Error('enrollment_verification_required');
+      return email;
+    },
+    lockClass:async()=>assert.fail('Private requests do not acquire class seats'),
+    expireSeats:async()=>assert.fail('Private requests do not release class seats'),
+    requireNewEnrollment:async()=>assert.fail('Private requests do not start payable orders'),
+    transact:async callback=>{
+      let unlock:(()=>void)|undefined;
+      try{
+        return await callback({async query(sql,params=[]){
+          if(sql.startsWith('SELECT GET_LOCK')&&String(params[0]).startsWith('enrollment-email:')){
+            const previous=activeLock;
+            activeLock=new Promise(resolve=>{unlock=resolve;});
+            await previous;
+            return {rows:[]};
+          }
+          if(sql.startsWith('SELECT GET_LOCK'))return {rows:[]};
+          if(sql.includes('FROM crm_operations'))return {rows:receipts.has(String(params[1]))?[receipts.get(String(params[1]))]:[]};
+          if(sql.includes('INSERT INTO crm_operations')){
+            receipts.set(String(params[1]),{fingerprint:params[2],result:params[3]});
+            return {rows:[]};
+          }
+          if(sql.includes('appointment.templateId'))return {rows:appointments.filter(row=>row.criteria.appointment.templateId===params[1])};
+          if(sql.includes('FROM portal_settings t JOIN crm_courses'))return {rows:[{
+            template:{id:'private-1',teacherType:'local',saleUnitPrice:350000,standardUnitPrice:400000},
+            course:{name:'Fixture',sessions:23,active:true,teaching:{level:'HSK 1',minutes:45}},
+          }]};
+          if(sql.includes('INSERT INTO enrollment_demands')){
+            appointments.push({id:params[0],revision:1,criteria:params[2]});
+            return {rows:[]};
+          }
+          if(sql.includes('INSERT INTO enrollment_record_attribution')){attribution.push(params);return {rows:[]};}
+          if(sql.includes('SELECT id,profile FROM portal_leads'))return {rows:[lead]};
+          if(sql.includes('INSERT INTO enrollment_opportunities')||sql.includes('INSERT INTO enrollment_customer_records')||
+            sql.includes('FROM enrollment_customer_records')||sql.includes('FROM enrollment_opportunities'))return {rows:[]};
+          assert.fail('Unexpected SQL: '+sql);
+        }});
+      }finally{unlock?.();}
+    },
+  });
+  const request=async(id:string,source:string,forAnother=false)=>{
+    let result:unknown;
+    await handlers.get('/api/enrollment/demands')!({body:{id,source,revision:0,appointmentId:'private-1',forAnother,
+      name:'Ayu Putri',criteria:{level:'HSK 1',period:'weekend',format:'one-on-one',notes:'',phone}}} as never,
+      {set:()=>({json:(data:unknown)=>{result=data;}})} as never);
+    return result;
+  };
+  const first='11111111-1111-4111-8111-111111111111';
+  const second='22222222-2222-4222-8222-222222222222';
+  await assert.rejects(request(first,'entry_point=website'),/verification_required/);
+  assert.equal(appointments.length,0);
+  verified=true;
+  const [one,two]=await Promise.all([request(first,'entry_point=website&lang=id'),request(second,'entry_point=direct&lang=en')]);
+  assert.deepEqual(one,{id:first,revision:1,reused:undefined});
+  assert.deepEqual(two,{id:first,revision:1,reused:true});
+  assert.deepEqual(await request(second,'entry_point=direct'),two);
+  assert.equal(appointments.length,1);
+  assert.equal(attribution.length,1);
+  assert.equal((attribution[0][2] as {lang:string}).lang,'id');
+  assert.equal(appointments[0].criteria.appointment.total,8050000);
+  await request('33333333-3333-4333-8333-333333333333','entry_point=website',true);
+  assert.equal(appointments.length,2);
+  assert.equal(demandMatches(appointments[0].criteria,{level:'HSK 1',period:'weekend',format:'one-on-one'}),false);
+});
