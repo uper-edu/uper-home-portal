@@ -1,3 +1,4 @@
+import {EnrollmentClassName} from './EnrollmentClassName';
 import type { EnrollmentClosureReason } from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
@@ -29,7 +30,7 @@ export type EnrollmentOrder = {
 
 type Language = 'zh' | 'en' | 'id';
 
-export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, proofTransfer, onProofTransferChange, upload, existingTransferOnly = false, proofUploadFailed = false, submittingProof = false, onCancel }: {
+export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, proofTransfer, onProofTransferChange, upload, existingTransferOnly = false, proofUploadFailed = false, submittingProof = false }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
   classInfo?:AftercareCourse;
@@ -43,7 +44,6 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   onProofTransferChange: (draft:{amount:string;reference:string}) => void;
   upload: (transfer:{reportedAmount:number;bankReference?:string}) => void;
   existingTransferOnly?: boolean;
-  onCancel?: ()=>void;
   proofUploadFailed?: boolean;
   submittingProof?: boolean;
 }) {
@@ -139,7 +139,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
 
   return <>
     <div className="enrollment-payment-summary">
-      <h2>{title || status}</h2>
+      <h2 className="enrollment-class-heading"><EnrollmentClassName title={title||status}/></h2>
       {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('首课 '+start,'First session '+start,'Pertemuan pertama '+start))].filter(Boolean).join(' · ')}</p>}
       {schedule&&<p>{schedule}</p>}
       {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={serverNow} language={language}/>}
@@ -215,7 +215,6 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
         </div>
       </section>
       <div className="enrollment-proof-actions enrollment-payment-actions">
-        {onCancel&&<button className="enrollment-quiet" type="button" disabled={busy} onClick={onCancel}>{t('取消报名','Cancel enrollment','Batalkan pendaftaran')}</button>}
         {!existingTransferOnly && <p>{t('财务核实足额到账后，报名才算成功。', 'Enrollment is confirmed after Finance verifies full payment.', 'Pendaftaran berhasil setelah pembayaran penuh diverifikasi.')}</p>}
         <button className="enrollment-primary" type="submit" disabled={busy || !file} aria-busy={submittingProof}>{submittingProof
           ? t('正在提交凭证…','Submitting proof…','Mengirim bukti…')

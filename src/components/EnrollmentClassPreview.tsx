@@ -1,3 +1,4 @@
+import {EnrollmentClassName} from './EnrollmentClassName';
 import {Link} from 'react-router-dom';
 import type {MouseEventHandler} from 'react';
 import {BookOpen,CalendarDays,ChevronRight,Clock3} from 'lucide-react';
@@ -32,7 +33,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
  const size=enrollmentClassSizeText(row.classSize,language);
  const periods=row.sessions&&row.sessions>0?row.sessions:undefined;
  const title=enrollmentClassTitle(row,language);
- const titleContent=<span className="enrollment-card-title">{title.split(' · ').map((part,index)=><span className="enrollment-title-part" key={index}>{(index?' · ':'')+part}</span>)}</span>;
+ const titleContent=<EnrollmentClassName title={title}/>;
  const availability=!intakeStatus&&row.availability&&({
    full:t('满班','Full','Penuh'),limited:t('空位紧张','Limited seats','Kursi terbatas'),available:t('有空位','Seats available','Kursi tersedia'),
  })[row.availability];

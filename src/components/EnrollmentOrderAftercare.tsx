@@ -1,5 +1,7 @@
+import {EnrollmentClassName} from './EnrollmentClassName';
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, CircleCheck, Clock3, Copy as CopyIcon } from 'lucide-react';
+import { ArrowRight, Check, Clock3, Copy as CopyIcon } from 'lucide-react';
+import {EnrollmentOrderInformation,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
 import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import { formatCurrency } from '../utils/currency';
 import {enrollmentTeacherLabel,enrollmentClassTitle,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
@@ -12,19 +14,18 @@ import type { AftercareCourse as Course, EnrollmentAftercare } from '../utils/en
 type Copy = readonly [string, string, string];
 
 export function EnrollmentOrderAftercare({
-  order, details, catalog, search, language, minePath, proofPath, busy, onTransfer, onEnablePriority, onRefresh, onCancel,
+  order, details, catalog, search, language, searchBase, proofPath, busy, onTransfer, onEnablePriority, onCancel,
 }: {
   order: EnrollmentOrder;
   details?: EnrollmentAftercare;
   catalog: ReadonlyMap<string,PublicEnrollmentClass>;
   search: URLSearchParams;
   language: InterestLanguage;
-  minePath: string;
+  searchBase: URLSearchParams;
   proofPath?: string;
   busy: boolean;
   onTransfer: (classId: string, choice: 'accept' | 'decline', invitationId?: string) => void;
   onEnablePriority: () => void;
-  onRefresh: () => void;
   onCancel?: () => void;
 }) {
   const [copyState,setCopyState] = useState<'copied'|'failed'>();
@@ -50,7 +51,7 @@ export function EnrollmentOrderAftercare({
   const allowRefundContact = details?.refund.mode==='contact_support' || details?.refund.mode==='special_review';
 
   function orderLink(nextView?: string, item?: string) {
-    const params = new URLSearchParams(minePath.split('?')[1]);
+    const params = new URLSearchParams(searchBase);
     params.set('order',order.id);
     if (nextView) params.set('view',nextView);
     if (item) params.set('target',item);
@@ -59,18 +60,14 @@ export function EnrollmentOrderAftercare({
   const listPath = orderLink('transfers');
   const refundPath = orderLink('refund');
   const refundContactPath = orderLink('refund-contact');
-  const originalPath = orderLink();
   const contact = '/contact?lang='+language;
-  const catalogUrl = new URLSearchParams(minePath.split('?')[1]);
+  const catalogUrl = new URLSearchParams(searchBase);
   catalogUrl.delete('tab');
   const browsePath = '/enrollment?'+catalogUrl.toString();
   const support = t(['联系销售或客服','Contact sales or support','Hubungi tim penjualan atau layanan pelanggan']);
-  const backMine = t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya']);
-  const backOriginal = t(['返回原报名详情','Back to original enrollment','Kembali ke detail pendaftaran asal']);
   const originalClosed = t(['原班无法如期开课','The original class will not open','Kelas asal tidak dibuka']);
   const viewTransfers = t(['查看可转班次','View available classes','Lihat kelas pengganti']);
   const requestRefund = t(['申请退款','Request a refund','Ajukan pengembalian dana']);
-  const refresh = t(['刷新状态','Refresh status','Muat ulang status']);
 
   function courseTitle(value?: Course, fallback?: Course, expected = false) {
     if (!value) return t(['报名编号','Order number','Nomor pendaftaran'])+' · '+order.id;
@@ -83,37 +80,41 @@ export function EnrollmentOrderAftercare({
     return [value.level ?? fallback?.level,format && interestOption(language,format),dayLabel].filter(Boolean).join(' · ');
   }
 
-  const classCard = (value?: Course, label?: string, isOriginal = false) => <article className="enrollment-record">
-    {label&&<small>{label}</small>}
-    <h2>{courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}</h2>
-    {value&&<p>{[enrollmentTeacherLabel(value.teacherType??course?.teacherType,language),value.firstLesson.replace('T',' ')+' WIB'].filter(Boolean).join(' · ')}</p>}
-    {value&&<p>{enrollmentScheduleLabel(value,language)}</p>}
-    {isOriginal&&closed&&<p>{originalClosed}</p>}
-  </article>;
-  const foot = (primary: React.ReactNode, secondary?: React.ReactNode) => <div className="enrollment-journey-actions">
-    {(secondary||onCancel)&&<div className="enrollment-aftercare-secondary">{secondary}
-      {onCancel&&<button type="button" className="enrollment-quiet" disabled={busy} onClick={onCancel}>{t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}</button>}</div>}
-    {primary}
-  </div>;
-  const link = (label: string,to: string,primary = false) => <EnrollmentJourneyLink className={primary?'enrollment-primary':'enrollment-quiet'} to={to}>{label}</EnrollmentJourneyLink>;
-
-  let heading = t(['报名详情','Enrollment details','Detail pendaftaran']);
-  let back = {text:backMine,path:minePath};
+  const classCard = (value?: Course, label?: string, isOriginal = false, status?: string, tone:'pending'|'confirmed'|'full'='full') =>
+    <EnrollmentRecordSummary title={courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}
+      schedule={enrollmentScheduleLabel(value,language)} status={status??(isOriginal&&closed?originalClosed:undefined)} tone={tone}>
+      {label&&<p>{label}</p>}
+      {value&&<p>{[enrollmentTeacherLabel(value.teacherType??course?.teacherType,language),value.firstLesson.replace('T',' ')+' WIB'].filter(Boolean).join(' · ')}</p>}
+    </EnrollmentRecordSummary>;
+  const actions = (primary?: React.ReactNode, secondary?: React.ReactNode) =>
+    <>
+      <EnrollmentOrderInformation order={order} language={language}/>
+      <EnrollmentRecordActions primary={primary} secondary={<>
+        {secondary}
+        {onCancel&&<button type="button" className="enrollment-outline enrollment-order-cancel" disabled={busy} onClick={onCancel}>
+          {t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}
+        </button>}
+      </>}/>
+    </>;
+  const link = (label: string,to: string,primary = false) => <EnrollmentJourneyLink className={primary?'enrollment-primary':'enrollment-quiet'}
+    stepEntry={to===proofPath?'enrollment-aftercare-proof':undefined} to={to}>{label}</EnrollmentJourneyLink>;
+  let heading: string | undefined;
   let body: React.ReactNode;
 
   if (refundState) {
     const complete = order.status==='refunded';
     const returned = progress?.returned ?? 0;
     heading = t(['退款详情','Refund details','Detail pengembalian dana']);
+    const refundStatus=t(complete && progress && progress.refunded>0
+      ? ['退款已发出','Refund issued','Pengembalian dana telah dikirim']
+      : complete ? ['退款已完成','Refund complete','Pengembalian dana selesai']
+        : returned>0 ? ['银行已退回','Returned by the bank','Dikembalikan oleh bank']
+          : ['退款处理中','Refund in progress','Pengembalian dana sedang diproses']);
     body = <>
-      <p className="enrollment-result-state" role="status" data-paid={complete}>{t(complete && progress && progress.refunded>0
-        ? ['退款已发出','Refund issued','Pengembalian dana telah dikirim']
-        : complete ? ['退款已完成','Refund complete','Pengembalian dana selesai']
-          : returned>0 ? ['银行已退回，财务处理中','Returned by the bank · Finance is handling it','Dikembalikan oleh bank · Sedang ditangani tim keuangan']
-            : ['退款处理中','Refund in progress','Pengembalian dana sedang diproses'])}</p>
-      {classCard(course,t(['原报名','Original enrollment','Pendaftaran asal']),true)}
+      {classCard(course,t(['原报名','Original enrollment','Pendaftaran asal']),true,refundStatus,complete?'confirmed':'pending')}
       <article className="enrollment-record">
         <h2>{t(['退款进度','Refund progress','Progres pengembalian dana'])}</h2>
+        {!complete&&returned>0&&<p>{t(['银行已退回，财务正在处理。','The bank returned the refund. Finance is handling it.','Bank mengembalikan dana. Tim keuangan sedang menanganinya.'])}</p>}
         <p>{t(['报名已结束，相关席位已释放。','Enrollment has ended and its seats were released.','Pendaftaran telah berakhir dan kursi sudah dilepas.'])}</p>
         {progress && <dl className="enrollment-result-amounts">
           <div><dt>{t(['申请金额','Approved amount','Jumlah yang disetujui'])}</dt><dd>{currency(progress.expected)}</dd></div>
@@ -126,17 +127,17 @@ export function EnrollmentOrderAftercare({
         </dl>}
         {complete&&progress&&progress.refunded>0&&<p>{t(['实际到账时间以原付款渠道为准。','Arrival times depend on the original payment method.','Waktu dana diterima bergantung pada metode pembayaran awal.'])}</p>}
       </article>
-      <button type="button" className="enrollment-quiet enrollment-aftercare-refresh" disabled={busy} onClick={onRefresh}>{refresh}</button>
-      {foot(link(backMine,minePath,true),link(support,enrollmentSupportPath('refund',language)))}
+
+      {actions(undefined,<EnrollmentJourneyLink className="enrollment-quiet" stepEntry="enrollment-refund-help"
+        to={enrollmentSupportPath('refund',language)}>{support}</EnrollmentJourneyLink>)}
     </>;
   } else if (view==='refund' && allowRefundContact) {
     heading = requestRefund;
-    back = {text:backOriginal,path:originalPath};
     body = <>
       {classCard(course,undefined,true)}
       <article className="enrollment-record">
         <h2>{t(['退款金额与方式','Refund amount and method','Jumlah dan metode pengembalian'])}</h2>
-        {typeof details?.refund.maximum==='number' && <strong>{currency(details.refund.maximum)}</strong>}
+        {typeof details?.refund.maximum==='number' && <strong className="enrollment-main-amount">{currency(details.refund.maximum)}</strong>}
         <p>{t(['客服核实后确认金额，款项按原付款渠道退回，无需提供新的收款账户。','Support confirms the amount after review. Funds go to the original payment method, so no new account is needed.','Layanan pelanggan mengonfirmasi jumlah setelah pemeriksaan. Dana kembali ke metode pembayaran awal tanpa rekening baru.'])}</p>
       </article>
       <article className="enrollment-record">
@@ -144,7 +145,7 @@ export function EnrollmentOrderAftercare({
         <p>{t(['客服登记后，报名和转班等待结束，已保留的席位释放。','When support records the request, enrollment and transfer waiting end and any seat on hold is released.','Setelah tim mencatat pengajuan, pendaftaran dan penantian pindah kelas berakhir, dan kursi yang ditahan dilepas.'])}</p>
         <p>{t(['联系时请提供报名编号','Have your order number ready','Siapkan nomor pendaftaran'])} · {order.id}</p>
       </article>
-      {foot(link(support,refundContactPath,true),link(backOriginal,originalPath))}
+      {actions(link(support,refundContactPath,true))}
     </>;
   } else if (view==='refund-contact' && allowRefundContact) {
     heading = t(['联系销售或客服办理退款','Contact sales or support about a refund','Hubungi tim penjualan atau layanan pelanggan untuk pengembalian dana']);
@@ -158,7 +159,7 @@ export function EnrollmentOrderAftercare({
         ])}</p>
         <div className="enrollment-refund-reference">
           <span>{t(['报名编号','Order number','Nomor pendaftaran'])}</span>
-          <strong>{order.id}</strong>
+          <span className="enrollment-order-reference">{order.id}</span>
           <button className="enrollment-copy" type="button" aria-label={t(['复制报名编号','Copy order number','Salin nomor pendaftaran'])}
             onClick={async()=>{
               try { await navigator.clipboard.writeText(order.id); setCopyState('copied'); }
@@ -171,14 +172,13 @@ export function EnrollmentOrderAftercare({
           ? t(['已复制报名编号','Order number copied','Nomor pendaftaran disalin'])
           : t(['复制失败，可手动复制上方编号。','Could not copy. You can copy the number above manually.','Gagal menyalin. Anda dapat menyalin nomor di atas secara manual.'])}</p>}
       </article>
-      {foot(<a className="enrollment-primary enrollment-whatsapp-action" href={socialProfiles.whatsapp.url} target="_blank" rel="noopener noreferrer">
+      {actions(<a className="enrollment-primary enrollment-whatsapp-action" href={socialProfiles.whatsapp.url} target="_blank" rel="noopener noreferrer">
         <SocialProfileIcon platform="whatsapp" className="size-4"/>
         {t(['通过 WhatsApp 联系','Contact on WhatsApp','Hubungi via WhatsApp'])}
       </a>)}
     </>;
   } else if (view==='invitation' && invitation && closed) {
     heading = t(['转班邀请','Transfer invitation','Undangan pindah kelas']);
-    back = {text:backOriginal,path:originalPath};
     const offered = invitation.state==='offered' && order.status==='paid_cancelled';
     const date = new Date(invitation.expiresAt);
     const reply = Number.isFinite(date.valueOf()) ? dateFormat.format(date)+' '+timeFormat.format(date)+' WIB' : '';
@@ -197,7 +197,7 @@ export function EnrollmentOrderAftercare({
         <p>{currency(order.received)} · {t(['转入目标班，无需再付款。','Applied to the new class. No additional payment is needed.','Dialihkan ke kelas baru. Tidak perlu membayar lagi.'])}</p>
         <p>{t(['超过答复时间，目标班席位将释放。','The held seat is released after the reply deadline.','Kursi dilepas setelah batas waktu jawaban.'])}</p>
       </article>
-      {foot(<button type="button" className="enrollment-primary" disabled={busy} onClick={()=>onTransfer(invitation.targetClassId,'accept',invitation.id)}>
+      {actions(<button type="button" className="enrollment-primary" disabled={busy} onClick={()=>onTransfer(invitation.targetClassId,'accept',invitation.id)}>
         {t(['接受并转班','Accept and transfer','Terima dan pindah kelas'])}</button>,<>
         <button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>onTransfer(invitation.targetClassId,'decline',invitation.id)}>
           {t(['拒绝这次安排','Decline invitation','Tolak undangan'])}</button>
@@ -206,16 +206,15 @@ export function EnrollmentOrderAftercare({
     </> : <>
       <p className="enrollment-journey-note" role="status">{seatLabel}</p>
       {classCard(course,t(['原报名','Original enrollment','Pendaftaran asal']),true)}
-      {foot(link(viewTransfers,listPath,true),allowRefundContact&&link(requestRefund,refundPath))}
+      {actions(link(viewTransfers,listPath,true),allowRefundContact&&link(requestRefund,refundPath))}
     </>;
   } else if (view==='transfers' && closed && order.status==='paid_cancelled') {
     heading = t(['可转班次','Available transfer classes','Kelas pengganti yang tersedia']);
-    back = {text:backOriginal,path:originalPath};
     body = <>
       {transfers.map(row=>{
         const option = catalog.get(row.id);
         return <article key={row.id} className="enrollment-record enrollment-transfer-card">
-          <h2>{courseTitle(row,course,option?.opened===false)}</h2>
+          <h2 className="enrollment-class-heading"><EnrollmentClassName title={courseTitle(row,course,option?.opened===false)}/></h2>
           {option&&<p>{t([option.sessions+' 次课 · 每次 '+option.minutes+' 分钟',option.sessions+' sessions · '+option.minutes+' min each',option.sessions+' sesi · '+option.minutes+' menit per sesi'])}</p>}
           <p>{enrollmentScheduleLabel(row,language)}</p>
           <p><span className="enrollment-status" data-state="confirmed">{t(['可转班','Available for transfer','Tersedia untuk pindah kelas'])}</span></p>
@@ -228,11 +227,10 @@ export function EnrollmentOrderAftercare({
       })}
       {!transfers.length&&<p className="enrollment-journey-note">{t(['暂时没有同级别、同班型的可转班次。','No classes at the same level and in the same format are available right now.','Belum ada kelas dengan level dan jenis yang sama.'])}</p>}
       <p className="enrollment-journey-note">{t(['暂不转班？你可以继续等待合适的班次。','You can wait for another suitable class.','Anda dapat menunggu kelas lain yang sesuai.'])}</p>
-      {foot(link(backOriginal,originalPath,true))}
+      {actions()}
     </>;
   } else if (view==='transfer' && target && closed && order.status==='paid_cancelled') {
     heading = t(['转班详情','Transfer details','Detail pindah kelas']);
-    back = {text:viewTransfers,path:listPath};
     body = <>
       {classCard(course,t(['原班','Original class','Kelas asal']),true)}
       {classCard(target,t(['目标班','New class','Kelas baru']))}
@@ -241,30 +239,30 @@ export function EnrollmentOrderAftercare({
         <p>{currency(order.received)} · {t(['转入目标班，无需再付款。','Applied to the new class. No additional payment is needed.','Dialihkan ke kelas baru. Tidak perlu membayar lagi.'])}</p>
         <p>{t(['提交确认时会核对目标班的实际空位。','Availability is checked when you confirm.','Ketersediaan kursi diperiksa saat Anda mengonfirmasi.'])}</p>
       </article>
-      {foot(<button type="button" className="enrollment-primary" disabled={busy} onClick={()=>onTransfer(target.id,'accept')}>
+      {actions(<button type="button" className="enrollment-primary" disabled={busy} onClick={()=>onTransfer(target.id,'accept')}>
         {t(['确认转班','Confirm transfer','Konfirmasi pindah kelas'])}</button>)}
     </>;
   } else if (order.status==='ended') {
     body = <>
-      {classCard(course)}
-      <p className="enrollment-result-state" role="status">{t(learnerCancelled?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:['报名已结束','Enrollment ended','Pendaftaran telah berakhir'])}</p>
+      {classCard(course,undefined,false,t(learnerCancelled?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:['报名已结束','Enrollment ended','Pendaftaran telah berakhir']))}
       <article className="enrollment-record">
         <p>{t(['席位已释放，付款入口已关闭。','Your seat has been released and the payment link is closed.','Kursi telah dilepas dan tautan pembayaran ditutup.'])}</p>
         <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received)}</p>
       </article>
       {learnerCancelled&&lateProofSubmitted&&<p role="status">{t(['转账凭证待核实','Transfer proof awaiting verification','Bukti transfer menunggu verifikasi'])}</p>}
-      {foot(link(backMine,minePath,true),<>
+      {actions(learnerCancelled&&proofPath&&!lateProofSubmitted
+        ? link(t(['补交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan']),proofPath,true)
+        : undefined, <>
         {allowRefundContact&&link(support,refundContactPath)}
-        {learnerCancelled&&proofPath&&link(t(['补交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan']),proofPath)}
+        {learnerCancelled&&proofPath&&lateProofSubmitted&&link(t(['补交凭证','Submit another proof','Kirim bukti tambahan']),proofPath)}
       </>)}
     </>;
   } else if (expired) {
     body = <>
-      {classCard(course,undefined,true)}
-      <p className="enrollment-result-state" role="status">{t(lateProofSubmitted
-        ? ['订单已终止 · 转账凭证待核实','Order expired · Proof under review','Pesanan kedaluwarsa · Bukti sedang diperiksa']
-        : order.received>0||order.creditOut ? ['订单已终止 · 已核实到账','Order expired · Payment verified','Pesanan kedaluwarsa · Pembayaran terverifikasi']
-        : ['订单已终止 · 付款超时','Order expired · No proof submitted in time','Pesanan kedaluwarsa · Bukti tidak dikirim tepat waktu'])}</p>
+      {classCard(course,undefined,true,t(['付款超时','Payment deadline passed','Tenggat pembayaran terlewati']))}
+      {lateProofSubmitted&&<p className="enrollment-result-state" role="status">
+        {t(['已收凭证，等待核实到账。','Proof received. Awaiting payment verification.','Bukti diterima dan menunggu verifikasi pembayaran.'])}
+      </p>}
       <article className="enrollment-record">
         <h2>{t(order.received>0||order.creditOut?['收款状态','Payment status','Status pembayaran']:lateProofSubmitted?['下一步','What happens next','Langkah berikutnya']:['已经转账？','Already transferred?','Sudah transfer?'])}</h2>
         {order.received>0||order.creditOut ? <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received+(order.creditOut??0))}</p>
@@ -277,24 +275,19 @@ export function EnrollmentOrderAftercare({
         {!!order.creditOut&&<p>{t(['已冲抵新订单','Applied to a new order','Digunakan untuk pesanan baru'])} · {currency(order.creditOut)}</p>}
         <p>{t(['原付款入口已关闭，原席位已释放。','The original payment link is closed and the seat was released.','Pembayaran untuk pesanan awal ditutup dan kursinya sudah dilepas.'])}</p>
       </article>
-      <button type="button" className="enrollment-quiet enrollment-aftercare-refresh" disabled={busy} onClick={onRefresh}>{refresh}</button>
-      {foot(order.received>0 && allowRefundContact ? link(support,refundContactPath,true)
-        : lateProofSubmitted||order.creditOut ? link(backMine,minePath,true)
-        : proofPath ? link(t(['提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan']),proofPath,true)
-        : link(backMine,minePath,true), <>
+
+      {actions(order.received>0 && allowRefundContact ? link(support,refundContactPath,true)
+        : !lateProofSubmitted&&!order.creditOut&&proofPath
+          ? link(t(['提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan']),proofPath,true)
+          : undefined, <>
         {(lateProofSubmitted||order.creditOut||order.received>0&&allowRefundContact)&&proofPath&&link(t(['补交凭证','Submit another proof','Kirim bukti tambahan']),proofPath)}
         {!lateProofSubmitted&&!order.creditOut&&order.received===0&&link(t(['重新查看可报名班次','Browse open classes','Lihat kelas yang masih dibuka']),browsePath)}
       </>)}
     </>;
   } else if (transferred) {
     body = <>
-      <p className="enrollment-result-state" data-paid="true" role="status">
-        <CircleCheck size={19} aria-hidden="true"/>
-        {t(course?.opened===true
-          ? ['转班成功 · 已确认开班','Transfer complete · Class opening confirmed','Pindah kelas berhasil · Pembukaan kelas dikonfirmasi']
-          : ['转班成功','Transfer complete','Pindah kelas berhasil'])}
-      </p>
-      {classCard(course)}
+      {classCard(course,undefined,false,t(['转班成功','Transfer complete','Pindah kelas berhasil']),'confirmed')}
+      {course?.opened===true&&<p>{t(['已确认开班','Class opening confirmed','Pembukaan kelas dikonfirmasi'])}</p>}
       <article className="enrollment-record">
         <h2>{t(['学费','Tuition','Biaya kelas'])}</h2>
         <p>{t([
@@ -303,8 +296,8 @@ export function EnrollmentOrderAftercare({
           'Dana '+currency(order.received)+' yang terverifikasi untuk pendaftaran awal telah digunakan untuk kelas ini. Tidak perlu transfer lagi.',
         ])}</p>
       </article>
-      <button type="button" className="enrollment-quiet enrollment-aftercare-refresh" disabled={busy} onClick={onRefresh}>{refresh}</button>
-      {foot(link(backMine,minePath,true),link(support,contact))}
+
+      {actions(undefined,link(support,contact))}
     </>;
   } else {
     const showTransfers = closed && order.status==='paid_cancelled';
@@ -314,13 +307,11 @@ export function EnrollmentOrderAftercare({
       ? link(t(['查看转班邀请','View transfer invitation','Lihat undangan pindah kelas']),orderLink('invitation',activeInvitation.id),true)
       : showTransfers ? link(viewTransfers,listPath,true)
       : paidPart && allowRefundContact ? link(support,refundContactPath,true)
-      : pendingProof ? link(backMine,minePath,true)
-      : link(t(['查看其他班次','Browse other classes','Lihat kelas lain']),browsePath,true);
+      : undefined;
     const replyDate = activeInvitation && new Date(activeInvitation.expiresAt);
     const replyBy = replyDate && Number.isFinite(replyDate.valueOf()) ? dateFormat.format(replyDate)+' '+timeFormat.format(replyDate)+' WIB' : '';
     body = <>
-      {classCard(course,undefined,false)}
-      {closed&&<p className="enrollment-result-state" role="status">{originalClosed}</p>}
+      {classCard(course,undefined,closed)}
       <article className="enrollment-record">
         <h2>{t(showTransfers?['收款进度','Payment progress','Status pembayaran']:['收款状态','Payment status','Status pembayaran'])}</h2>
         {showTransfers ? <dl className="enrollment-result-amounts">
@@ -363,10 +354,11 @@ export function EnrollmentOrderAftercare({
           {t(row.state==='declined'?['转班邀请 · 已拒绝','Transfer invitation · Declined','Undangan pindah kelas · Ditolak']
             : ['转班邀请 · 已过期','Transfer invitation · Expired','Undangan pindah kelas · Kedaluwarsa'])}<ArrowRight size={14} aria-hidden="true"/>
         </EnrollmentJourneyLink>)}
-      <button type="button" className="enrollment-quiet enrollment-aftercare-refresh" disabled={busy} onClick={onRefresh}>{refresh}</button>
-      {foot(primary, <>
+
+      {actions(primary, <>
         {showTransfers&&activeInvitation&&link(viewTransfers,listPath)}
         {showTransfers&&allowRefundContact&&link(requestRefund,refundPath)}
+        {!showTransfers&&!pendingProof&&!paidPart&&link(t(['查看其他班次','Browse other classes','Lihat kelas lain']),browsePath)}
         {!showTransfers&&proofPath&&link(t(pendingProof
           ? ['补充已转账凭证','Submit additional proof','Kirim bukti tambahan']
           : ['如果已经转账，提交凭证','Already transferred? Submit proof','Sudah transfer? Kirim bukti']),proofPath)}
@@ -374,9 +366,8 @@ export function EnrollmentOrderAftercare({
     </>;
   }
 
-  return <div className="enrollment-order-result enrollment-aftercare">
-    <EnrollmentJourneyLink className="enrollment-back" to={back.path}><ArrowLeft size={15} aria-hidden="true"/>{back.text}</EnrollmentJourneyLink>
-    <h1>{heading}</h1>
-    <div className="enrollment-result-body">{body}</div>
+  return <div className="enrollment-order-result enrollment-aftercare enrollment-result-body">
+    {heading&&<h2 className="enrollment-record-section-title">{heading}</h2>}
+    {body}
   </div>;
 }

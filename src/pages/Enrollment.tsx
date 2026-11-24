@@ -1,3 +1,4 @@
+import {EnrollmentClassName} from '../components/EnrollmentClassName';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import { enrollmentCopy,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
@@ -23,6 +24,7 @@ import {linkHubReturnUrl,promotionEntryUrl} from '../utils/promotionNavigation';
 import {normalizeEnrollmentChatSelection} from '../utils/enrollmentChatJourney';
 import {isPlainLinkClick,readChatRecommendation,readEnrollmentPosition,rememberEnrollment,returnAlongJourney,type ChatJourneyState,type EnrollmentPosition} from '../utils/chatJourneyNavigation';
 import {trackEvent} from '../utils/analytics';
+import {enrollmentOrderReturnParam,EnrollmentJourneyLink,useEnrollmentJourneyState,useEnrollmentRecordReturn} from '../components/EnrollmentJourneyLink';
 import './enrollment.css';
 
 const EnrollmentForm = lazyEnrollmentModule(() => loadEnrollmentIntake().then(module => module.EnrollmentIntake));
@@ -42,10 +44,10 @@ function ClassIntakeMode({classId,application,waitlist}:{classId:string;applicat
   return pending?.applicationRequestId ? application : waitlist;
 }
 
-function EnrollmentAssistance({language}: Pick<ComponentProps<typeof EnrollmentAssistanceForm>, 'language'>) {
+function EnrollmentAssistance({language,navigation}: Pick<ComponentProps<typeof EnrollmentAssistanceForm>, 'language'|'navigation'>) {
   const {hash}=useLocation();
   useEffect(()=>{void loadEnrollmentAssistance().catch(()=>{});},[]);
-  return <VisitorBoundary><EnrollmentAssistanceForm key={hash} hash={hash} language={language}/></VisitorBoundary>;
+  return <VisitorBoundary><EnrollmentAssistanceForm key={hash} hash={hash} language={language} navigation={navigation}/></VisitorBoundary>;
 }
 
 const copy = {
@@ -137,7 +139,11 @@ export default function Enrollment() {
   const interest = pathname === '/enrollment/interest';
   const paymentPage = pathname === '/enrollment/payment';
   const assisted = pathname === '/enrollment/assist';
+  const orderId = params.get('order');
   const hasOrder = params.has('order');
+  const orderView = hasOrder && !recordId ? params.get('view') : null;
+  const journeyState = useEnrollmentJourneyState();
+  const recordReturn = useEnrollmentRecordReturn();
   const application = previewToken?previewView==='apply':params.get('apply') === '1' || hasOrder;
   const classPreview = !application && navigation?.enrollmentClassPreview?.id===classId
     ? navigation?.enrollmentClassPreview : undefined;
@@ -160,6 +166,11 @@ export default function Enrollment() {
   useEffect(() => {
     if (classId && (application || rulesPage)) window.scrollTo(0, 0);
   }, [classId, application, rulesPage]);
+  useEffect(() => {
+    if (!mine || !(orderId || recordId)) return;
+    window.scrollTo(0,0);
+    document.getElementById('enrollment-mine-heading')?.focus({preventScroll:true});
+  }, [mine,orderId,recordId,orderView]);
   // A detail page may have been open for a while before the learner applies.
   const classApplication = !!routeClassId && application && !hasOrder;
   const catalogKey = catalogUrl && (classApplication ? catalogUrl+'#apply' : catalogUrl);
@@ -334,6 +345,7 @@ export default function Enrollment() {
   catalogParams.delete('proof');
   catalogParams.delete('view');
   catalogParams.delete('target');
+  catalogParams.delete(enrollmentOrderReturnParam);
   catalogParams.delete('appointmentLevel');
   catalogParams.delete('appointment');
   const waitlistId = params.get('waitlist');
@@ -344,6 +356,19 @@ export default function Enrollment() {
   const waitlistPath = waitlistId ? '/enrollment/mine/waitlist/'+encodeURIComponent(waitlistId)+'?'+publicParams.toString() : undefined;
   const matchPath = matchId ? '/enrollment/mine/demands/'+encodeURIComponent(matchId)+'?'+publicParams.toString() : undefined;
   const minePath = '/enrollment/mine?' + catalogParams.toString();
+  const originalOrderParams = new URLSearchParams(catalogParams);
+  if (orderId) originalOrderParams.set('order',orderId);
+  const originalOrderPath = '/enrollment/mine?' + originalOrderParams.toString();
+  const returnToOrder=hasOrder&&params.get(enrollmentOrderReturnParam)==='1';
+  const isOrderSubpage = orderView==='refund'||orderView==='refund-contact'||orderView==='invitation'||orderView==='transfers'||orderView==='transfer';
+  const backToOrder = <EnrollmentJourneyLink className="enrollment-back" to={originalOrderPath}
+    state={journeyState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>
+    {enrollmentCopy(language,['返回报名详情','Back to enrollment details','Kembali ke detail pendaftaran'])}
+  </EnrollmentJourneyLink>;
+  const mineBack = <EnrollmentJourneyLink className="enrollment-back" to={minePath}
+    state={journeyState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>
+    {t('backMine')}
+  </EnrollmentJourneyLink>;
   const interestPath = '/enrollment/interest?' + catalogParams.toString();
   const detailsPath = (id: string, apply = false) => {
     const query = new URLSearchParams(catalogParams);
@@ -452,8 +477,15 @@ export default function Enrollment() {
   </section>;
 
   const backCatalog = <Link className="enrollment-back" to={listPath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t('back')}</Link>;
-  if (assisted) return deferredSection(<EnrollmentAssistance language={language}/>, <>{backChat}{backCatalog}</>, true);
+  if (assisted) return deferredSection(<EnrollmentAssistance language={language} navigation={<>{backChat}{recordReturn?mineBack:backCatalog}</>}/>,
+    <>{backChat}{recordReturn?mineBack:backCatalog}</>, true);
   if (topic) {
+    const helpBack=topic==='one-on-one'
+      ? <EnrollmentJourneyLink className="enrollment-back" to={listPath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>
+        <ArrowLeft size={15} aria-hidden="true"/>
+        {enrollmentCopy(language,['返回课程报名','Back to course enrollment','Kembali ke pendaftaran kursus'])}
+      </EnrollmentJourneyLink>
+      : returnToOrder?backToOrder:mineBack;
     const appointmentLevel = params.get('appointmentLevel') ?? requestedLevel;
     const appointment=topic==='one-on-one'?appointments?.find(item=>item.id===appointmentId):undefined;
     const appointmentState=topic==='one-on-one'&&appointmentId!==null&&!appointment
@@ -461,9 +493,8 @@ export default function Enrollment() {
     return deferredSection(<EnrollmentSupport topic={topic} language={language}
         level={appointmentLevel && /^[1-4]$/.test(appointmentLevel) ? appointmentLevel : undefined}
         appointment={appointment} appointmentState={appointmentState} onAppointmentRetry={()=>setReload(value=>value+1)}
-        period={period} format={params.get('format')??undefined} catalogPath={listPath} returnAction={backChat} navigationState={chatReturnState} offline={params.get('mode')==='offline'}/>,
-      <>{backChat}{topic==='one-on-one' ? backCatalog :
-        <Link className="enrollment-back" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t('backMine')}</Link>}</>, true);
+        period={period} format={params.get('format')??undefined} returnAction={backChat} backAction={helpBack} offline={params.get('mode')==='offline'}/>,
+      <>{backChat}{helpBack}</>, true);
   }
 
   if (rulesPage) return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
@@ -488,16 +519,18 @@ export default function Enrollment() {
 
   if (payment) return <section className="enrollment-screen enrollment-payment">
     {backChat}
-    <Link className="enrollment-back" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t('backMine')}</Link>
+    {returnToOrder||params.get('proof')==='upload'&&hasOrder ? backToOrder : mineBack}
     <h1>{t('payment')}</h1>
     {servicing === undefined ? <p role="status">{t('loading')}</p> : servicing && params.has('order')
       ? deferredSection(<VisitorBoundary><EnrollmentPaymentForm key={params.get('order')} language={language} payment/></VisitorBoundary>)
       : <p>{t('unavailable')}</p>}
   </section>;
-  if (mine) return <section className="enrollment-screen enrollment-mine">
-    {backChat}
-    {recordId ? <Link className="enrollment-back" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t('backMine')}</Link> : backCatalog}
-    <h1>{t(record?.kind === 'waitlist' ? 'waitlistDetail' : record?.kind === 'demands' ? 'demandDetail' : 'mine')}</h1>
+  if (mine) return <section className="enrollment-screen enrollment-mine" data-record-detail={!!recordId||hasOrder}>
+    {recordId||hasOrder ? <div>{backChat}{isOrderSubpage?backToOrder:mineBack}</div> : <>{backChat}{backCatalog}</>}
+    <h1 id="enrollment-mine-heading" tabIndex={-1}>
+      {record?.kind==='waitlist'?t('waitlistDetail'):record?.kind==='demands'?t('demandDetail'):hasOrder
+        ?enrollmentCopy(language,['报名详情','Enrollment details','Detail pendaftaran']):t('mine')}
+    </h1>
     {recordId && !record ? <p>{t('recordUnavailable')}</p>
       : servicing === undefined ? <p role="status">{t('loading')}</p>
       : servicing ? deferredSection(<EnrollmentApplication key={pathname} language={language} mine record={record}/>)
@@ -521,7 +554,7 @@ export default function Enrollment() {
         fromWaitlist: waitlistId ?? undefined,
         listPath,
     }};
-    const applicationNavigation=<>{backChat}<Link className="enrollment-back" to={details} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t(waitlistId ? 'backWaitlist' : 'backDetail')}</Link><h1>{t('apply')}</h1></>;
+    const applicationNavigation=<>{backChat}<Link className="enrollment-back" to={details} state={waitlistId?journeyState:chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t(waitlistId ? 'backWaitlist' : 'backDetail')}</Link><h1>{t('apply')}</h1></>;
     const explicitWaitlist=params.get('join')==='1';
     if(selected.availability!=='full'&&!explicitWaitlist)return <section className="enrollment-screen enrollment-apply-screen">
       {deferredSection(<EnrollmentApplication key={selected.id} {...applicationProps}/>,applicationNavigation)}
@@ -541,10 +574,10 @@ export default function Enrollment() {
 
   if (classId) return <section className="enrollment-screen enrollment-detail">
     {backChat}
-    <Link className="enrollment-back" to={application ? detailsPath(classId) : matchPath ?? listPath} state={chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t(application ? 'backDetail' : matchPath ? 'backMatch' : 'back')}</Link>
+    <Link className="enrollment-back" to={application ? detailsPath(classId) : matchPath ?? listPath} state={matchPath?journeyState:chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t(application ? 'backDetail' : matchPath ? 'backMatch' : 'back')}</Link>
     <h1>{t(application && selected ? selected.availability === 'full' ? 'join' : 'apply' : 'details')}</h1>
     {failed ? catalogFailure
-      : !classes ? <>{classPreview&&<h2>{enrollmentClassTitle(classPreview,language)}</h2>}<p role="status">{t('loading')}</p></>
+      : !classes ? <>{classPreview&&<h2 className="enrollment-class-heading"><EnrollmentClassName title={enrollmentClassTitle(classPreview,language)}/></h2>}<p role="status">{t('loading')}</p></>
       : !selected ? <><p>{t('unavailable')}</p>
         {application&&<Link className="enrollment-quiet" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('mine')}</Link>}
       </>
@@ -598,7 +631,7 @@ export default function Enrollment() {
     </header>
     {intakeNotice}
     <div className="enrollment-catalog-controls">
-      <div className="enrollment-levels" role="group" aria-label={t('level')}>
+      <div className="enrollment-category-tabs enrollment-levels" role="group" aria-label={t('level')}>
         {catalogLevels.map(value => <button key={value} type="button" aria-pressed={level === value} onClick={() => filter('level', value)}>
           <span className="enrollment-level-name">{value === 'all' ? t('allLevels') : 'HSK ' + value}</span>
           {classes && !failed && <span className="enrollment-tab-count">{levelCounts.get(value) ?? 0}</span>}

@@ -1,7 +1,7 @@
 import {enrollmentCodeRequestErrors,enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import {enrollmentCopy,enrollmentClassTitle,type EnrollmentClassIdentity} from '../utils/enrollmentCatalog';
-import {useEffect,useEffectEvent,useLayoutEffect,useRef,useState} from 'react';
-import {Link,useNavigate} from 'react-router-dom';
+import {useEffect,useEffectEvent,useLayoutEffect,useRef,useState,type ReactNode} from 'react';
+import {Link,useNavigate,useSearchParams} from 'react-router-dom';
 import {enrollmentCodeInput,enrollmentPost,readEnrollmentEmailVerification,requestEnrollmentEmailCode,verifyEnrollmentEmail,watchEnrollmentEmailSession} from '../services/enrollmentSession';
 import type {InterestLanguage} from '../utils/enrollmentInterestCopy';
 import {formatCurrency} from '../utils/currency';
@@ -9,6 +9,9 @@ import {readEnrollmentDraft,readVisitorContact,writeEnrollmentDraft} from '../se
 import {visitorScope} from '../services/visitorScope';
 import {watchReadReconnect} from '../services/readReconnect';
 import {validContactEmail} from '../utils/contactEmail';
+import {useEnrollmentJourneyState} from './EnrollmentJourneyLink';
+import {EnrollmentRecordSummary} from './EnrollmentRecordLayout';
+import {EnrollmentEmailIdentity} from './EnrollmentEmailIdentity';
 
 type Offer={classId:string;quote:EnrollmentClassIdentity & {level:string;firstLesson:string;schedule:string;price:number;period:string;format:string};name?:string;phone?:string;email?:string;orderId?:string};
 type AssistanceCodeDraft={email:string;challengeId:string};
@@ -17,7 +20,7 @@ function previewReadError(cause:Error&{status?:number}) {
   return Error('enrollment_assistance_read_failed');
 }
 
-export function EnrollmentAssistanceForm({hash,language}:{hash:string;language:InterestLanguage}){
+export function EnrollmentAssistanceForm({hash,language,navigation}:{hash:string;language:InterestLanguage;navigation?:ReactNode}){
   const t=(zh:string,en:string,id:string)=>enrollmentCopy(language,[zh,en,id]);
   const links=new URLSearchParams(hash.slice(1));
   const applicationId=links.get('a')??'';
@@ -33,6 +36,8 @@ export function EnrollmentAssistanceForm({hash,language}:{hash:string;language:I
     if(saved&&validContactEmail(saved.email)&&typeof saved.challengeId==='string'&&saved.challengeId)return saved;
   });
   const navigate=useNavigate();
+  const [params]=useSearchParams();
+  const journeyState=useEnrollmentJourneyState();
   const [offer,setOffer]=useState<Offer>();
   const [email,setEmail]=useState(()=>savedCode?.email??readVisitorContact(owner)?.email??'');
   const [challenge,setChallenge]=useState(savedCode?.challengeId??'');
@@ -52,7 +57,11 @@ export function EnrollmentAssistanceForm({hash,language}:{hash:string;language:I
   },[]);
   const isCurrent=()=>mounted.current&&location.hash===hash&&visitorScope()===owner;
   const payment=(id:string)=>{
-    if(isCurrent())navigate('/enrollment/payment?'+new URLSearchParams({lang:language,order:id}),{replace:true});
+    if(!isCurrent())return;
+    const next=new URLSearchParams(params);
+    next.set('lang',language);
+    next.set('order',id);
+    navigate('/enrollment/payment?'+next,{replace:true,state:journeyState});
   };
   const continueToPayment=useEffectEvent(payment);
   function clearCodeDraft(){
@@ -162,19 +171,22 @@ export function EnrollmentAssistanceForm({hash,language}:{hash:string;language:I
     enrollment_intake_paused:['新报名暂时暂停，请联系销售。','New applications are paused. Please contact your advisor.','Pendaftaran baru dijeda. Hubungi tim kami.'],
     enrollment_email_unavailable:['目前无法发送验证码，请稍后重试或联系销售。','We could not send your verification code. Try again later or contact your advisor.','Kode verifikasi belum dapat dikirim. Coba lagi nanti atau hubungi tim kami.'],
   };
-  return <section className="enrollment-screen enrollment-apply-screen">
+  return <section className="enrollment-screen enrollment-mine enrollment-apply-screen" data-record-detail="true">
+    {navigation}
     <h1>{t('确认课程报名','Confirm course enrollment','Konfirmasi pendaftaran kelas')}</h1>
+    {offer?.email&&<EnrollmentEmailIdentity email={offer.email} language={language}>
+      <p>{offer.email}</p>
+    </EnrollmentEmailIdentity>}
     {error&&<p className="enrollment-form-error" role="alert">{enrollmentReadinessMessage(error.replace(/^enrollment_intake_/,''),language)??enrollmentCopy(language,errors[error]??[
       '暂时无法继续，请核对邮箱、验证码或联系销售。','Check your email and verification code or contact your advisor.','Periksa email dan kode verifikasi, atau hubungi tim kami.'])}</p>}
     {!offer&&error==='enrollment_assistance_read_failed'&&<button type="button" className="enrollment-quiet" onClick={()=>{
       setError('');setPreviewRetry(count=>count+1);
     }}>{t('重新读取报名资料','Reload enrollment details','Muat ulang detail pendaftaran')}</button>}
-    {offer&&<><article className="enrollment-record">
-      <h2>{enrollmentClassTitle(offer.quote,language)}</h2>
-      <p>{offer.quote.firstLesson.replace('T',' ')} WIB</p><p>{offer.quote.schedule}</p><p><strong>{formatCurrency(offer.quote.price,language)}</strong></p>
+    {offer&&<><EnrollmentRecordSummary title={enrollmentClassTitle(offer.quote,language)} schedule={offer.quote.schedule}>
+      <p>{offer.quote.firstLesson.replace('T',' ')} WIB</p><p><strong className="enrollment-main-amount">{formatCurrency(offer.quote.price,language)}</strong></p>
       <Link target="_blank" rel="noopener noreferrer" to={'/enrollment/'+encodeURIComponent(offer.classId)+'?view=rules&lang='+language}>
         {t('查看开班与退款说明','Class opening and refund policy','Ketentuan pembukaan kelas dan pengembalian dana')}</Link>
-    </article>
+    </EnrollmentRecordSummary>
     {!offer.name?<form className="enrollment-journey-form" onSubmit={event=>{
       event.preventDefault();
       void run(async()=>{
@@ -212,7 +224,6 @@ export function EnrollmentAssistanceForm({hash,language}:{hash:string;language:I
     }}>
       <div className="enrollment-record">
         <p>{t('学员姓名','Learner name','Nama siswa')} · {offer.name}</p>
-        <p>{t('报名邮箱','Enrollment email','Email pendaftaran')} · {offer.email}</p>
         <p>{t('WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP')} · {offer.phone}</p>
       </div>
       <label><input type="checkbox" checked={priority} disabled={busy||!!confirmationResult} onChange={event=>setPriority(event.currentTarget.checked)}/> {t('优先安排顺延或同级同班型转班','Prioritize rescheduling or a transfer to the same level and format','Utamakan penjadwalan ulang atau pindah kelas dengan level dan tipe yang sama')}</label>

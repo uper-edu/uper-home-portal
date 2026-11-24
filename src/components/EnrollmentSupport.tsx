@@ -1,6 +1,5 @@
 import type {ReactNode} from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
 import { enrollmentInstant,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
@@ -64,15 +63,15 @@ export function EnrollmentJoiningNote({firstLesson,now,language}:{
   if(!lessonTime||now<lessonTime.valueOf())return null;
   return <p>{interestText(language,[
     '已到原定首课时间。','The scheduled first lesson time has arrived.','Waktu sesi pertama yang dijadwalkan sudah tiba.',
-  ])}{' '}<Link className="enrollment-quiet" to={enrollmentSupportPath('advisor',language)}>{interestText(language,[
+  ])}{' '}<EnrollmentJourneyLink className="enrollment-quiet" stepEntry="enrollment-joining-help" to={enrollmentSupportPath('advisor',language)}>{interestText(language,[
     '联系销售确认上课安排','Contact our team to confirm how to join','Hubungi tim kami untuk memastikan cara bergabung',
-  ])}</Link></p>;
+  ])}</EnrollmentJourneyLink></p>;
 }
 
-export function EnrollmentSupport({topic,language,level,appointment:selection,appointmentState,onAppointmentRetry,period,format,catalogPath,offline,returnAction,navigationState}:{
+export function EnrollmentSupport({topic,language,level,appointment:selection,appointmentState,onAppointmentRetry,period,format,offline,returnAction,backAction}:{
   topic:string;language:InterestLanguage;level?:string;appointment?:{course:string;teacherType:'local'|'foreign'};
   appointmentState?:'loading'|'failed'|'unavailable';onAppointmentRetry?:()=>void;
-  period?:string;format?:string;catalogPath?:string;offline?:boolean;returnAction?:ReactNode;navigationState?:unknown;
+  period?:string;format?:string;offline?:boolean;returnAction?:ReactNode;backAction:ReactNode;
 }) {
   const t = (value: Copy) => interestText(language,value);
   const info = Object.hasOwn(topics,topic) ? topics[topic as keyof typeof topics] : undefined;
@@ -109,8 +108,7 @@ export function EnrollmentSupport({topic,language,level,appointment:selection,ap
   }
   return <section className="enrollment-screen enrollment-apply-screen enrollment-support">
     {returnAction}
-    <Link className="enrollment-back" to={appointment?catalogPath??'/enrollment?lang='+language:'/enrollment/mine?lang='+language} state={navigationState}><ArrowLeft size={15} aria-hidden="true"/>
-      {appointment?t(['返回课程报名','Back to course enrollment','Kembali ke pendaftaran kursus']):t(['返回我的报名','Back to my enrollments','Kembali ke pendaftaran saya'])}</Link>
+    {backAction}
     {info ? <>
       <h1>{t(info.title)}</h1>
       <article className="enrollment-record">
