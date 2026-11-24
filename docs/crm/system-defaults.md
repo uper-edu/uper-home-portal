@@ -24,7 +24,7 @@
 | 账号权限 | [`access.ts`](../../src/data/system-defaults/access.ts) | 六种内置角色模板与九个初始账号的角色组合；不存密码。 |
 | 通知 | [`notifications.ts`](../../src/data/system-defaults/notifications.ts) | 新群与个人渠道真实发送；默认英文、每小时100条；通知策略、个人偏好及不可关闭类型。 |
 | 销售运营 | [`sales.ts`](../../src/data/system-defaults/sales.ts) | 雅加达工作日历、首次联系与后续跟进时限、自动分案默认关闭及轮询策略。 |
-| 课程 | [`courses.ts`](../../src/data/system-defaults/courses.ts) | 课程默认发布、折扣权限为0；价格和课时仍读取已确认的价目表。 |
+| 课程 | [`courses.ts`](../../src/data/system-defaults/courses.ts) | 空课程目录预置 HSK 1–4，主教材为 New Concept Chinese，课程默认发布，初始折扣为 0。保留已有课程目录，包括历史课程 ID、价格和课时。 |
 | AI | [`ai.ts`](../../src/data/system-defaults/ai.ts) | 默认主模型 `gpt-6.2-sol`、备用 `deepseek-v4-pro`；主模型仍允许 `OPENAI_MODEL` 提供默认值，已保存 CRM 选择优先。 |
 
 已有独立业务资源继续作为唯一来源，不把大数据包重复塞进初始化注册表：

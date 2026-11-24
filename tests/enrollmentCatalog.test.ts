@@ -28,7 +28,7 @@ test('a new class uses course and template terms without copying teaching descri
 });
 
 test('the HSK 1 sample provides all introduction fields in each supported language',()=>{
-  const sample=JSON.parse(readFileSync(new URL('../docs/design/examples/hsk1-course-introduction.json',import.meta.url),'utf8'));
+  const sample=JSON.parse(readFileSync(new URL('../src/data/system-defaults/hsk1-course-introduction.json',import.meta.url),'utf8'));
   assert.deepEqual(parseEnrollmentCourseIntroduction(sample),sample);
   assert.deepEqual(Object.keys(sample),['en','id','zh']);
   for(const language of ['en','id','zh']){
