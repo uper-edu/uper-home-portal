@@ -9,11 +9,13 @@ export default function PdfPreview({
   label,
   loadingText,
   errorText,
+  inline = false,
 }: {
   url: string;
   label: string;
   loadingText: string;
   errorText: string;
+  inline?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
@@ -106,7 +108,7 @@ export default function PdfPreview({
             }
           }
         },
-        { root, rootMargin: "160px 0px" },
+        { root: inline ? null : root, rootMargin: "160px 0px" },
       );
       let previousWidth = root.clientWidth;
       let anchorPage = 0,
@@ -128,7 +130,10 @@ export default function PdfPreview({
           anchorFraction = (top - rect.top) / rect.height;
         }
       };
-      root.addEventListener("scroll", remember);
+      if (!inline) {
+        root.addEventListener("scroll", remember);
+        removeScroll = () => root.removeEventListener("scroll", remember);
+      }
       resize = new ResizeObserver(() => {
         if (previousWidth === root.clientWidth) return;
         previousWidth = root.clientWidth;
@@ -136,7 +141,7 @@ export default function PdfPreview({
         resizeFrame = requestAnimationFrame(() => {
           if (disposed) return;
           const frame = frames[anchorPage];
-          if (frame) {
+          if (!inline && frame) {
             const top = root.getBoundingClientRect().top + root.clientTop;
             root.scrollTop +=
               frame.getBoundingClientRect().top -
@@ -147,8 +152,6 @@ export default function PdfPreview({
         });
       });
       resize.observe(root);
-      // The listener belongs to this root and is removed when the preview closes.
-      removeScroll = () => root.removeEventListener("scroll", remember);
       for (let n = 1; n <= pdf.numPages; n++) {
         const frame = document.createElement("div");
         frame.className = "pdf-preview-page";
@@ -183,12 +186,12 @@ export default function PdfPreview({
       void loading?.destroy().catch(() => {});
       root.replaceChildren();
     };
-  }, [url, label]);
+  }, [url, label, inline]);
   return (
     <>
       <div className="pdf-preview-frame">
-        <div ref={ref} className="pdf-preview-pages" aria-label={label}
-          aria-busy={status === 'loading'} tabIndex={0}/>
+        <div ref={ref} className={inline ? "pdf-preview-pages pdf-preview-pages-inline" : "pdf-preview-pages"}
+          aria-label={label} aria-busy={status === 'loading'} tabIndex={inline ? undefined : 0}/>
         {status === 'loading' && <p role="status" className="pdf-preview-loading">{loadingText}</p>}
       </div>
       {status === 'failed' && (

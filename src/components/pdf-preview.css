@@ -11,6 +11,12 @@
   padding: 12px;
   box-sizing: border-box;
 }
+.pdf-preview-pages.pdf-preview-pages-inline {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  overscroll-behavior: auto;
+}
 .pdf-preview-page {
   margin: 0 0 16px;
   text-align: center;

@@ -9,6 +9,8 @@
 @media(max-width:760px){.crm-operation-heading,.crm-operation-content{padding:16px}.crm-identity-table th:first-child{width:100px}.crm-identity-table td,.crm-identity-table th{padding:8px}.crm-identity-evidence,.crm-identity-decision-fields{grid-template-columns:1fr}.crm-identity-decision{bottom:-16px;margin-bottom:-16px}.crm-operation-content .crm-sales-editor-footer{bottom:-16px;margin:0 -16px -16px;padding:16px}}
 /* The workspace base uses align-items:start; modal children must span the layer. */
 .crm-operation-layer[open]{align-items:stretch}.crm-operation-heading,.crm-operation-content{width:100%;min-width:0;box-sizing:border-box}
+.crm-operation-footer{--admin-editor-padding:24px}
+@media(max-width:760px){.crm-operation-footer{--admin-editor-padding:16px}}
 dialog.crm-sales-dialog-backdrop{margin:auto;inset:0;width:min(580px,calc(100vw - 32px));max-height:calc(100dvh - 32px);border:0;border-radius:16px;padding:0;overflow:hidden;display:block;background:var(--admin-surface)}
 dialog.crm-sales-dialog-backdrop:not([open]){display:none}
 .crm-sales-dialog-backdrop>.crm-sales-dialog{width:100%;max-height:calc(100dvh - 32px);box-shadow:none}

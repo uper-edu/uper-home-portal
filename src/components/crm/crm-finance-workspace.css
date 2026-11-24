@@ -19,11 +19,10 @@
 .crm-enrollment-finance-proof,.crm-enrollment-finance-receipts{display:grid;gap:12px;padding-block:12px;border-bottom:1px solid var(--admin-border)}
 .crm-enrollment-finance-proof-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .crm-enrollment-finance-proof-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.crm-enrollment-finance-proof .pdf-preview-pages{height:min(54svh,420px);background:var(--admin-surface);border:1px solid var(--admin-border)}
+.crm-enrollment-finance-proof .pdf-preview-pages{background:var(--admin-surface);border:1px solid var(--admin-border)}
 .crm-enrollment-finance-proof .pdf-preview-error{color:var(--admin-muted)}
 .crm-enrollment-finance-detail h3{font-size:14px;font-weight:650}
 .crm-enrollment-finance-proof-image{display:block;max-width:100%;max-height:420px;object-fit:contain;object-position:left center;border:1px solid var(--admin-border);border-radius:10px}
-.crm-enrollment-finance-actions{display:flex;justify-content:flex-end;padding-block:12px}
-.crm-enrollment-finance-actions .crm-work-button{min-height:40px}
+[data-admin-form].crm-enrollment-receipt-form [data-admin-form-title]{scroll-margin-block-start:16px}
 [data-admin-form].crm-enrollment-receipt-form{--af-border:var(--admin-muted)}
 .crm-enrollment-receipt-form .admin-calendar-trigger:not([aria-invalid=true]){border-color:var(--admin-muted)}
