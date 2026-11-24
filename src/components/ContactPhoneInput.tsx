@@ -1,6 +1,7 @@
-import {useMemo, useState, type ComponentPropsWithRef} from 'react';
+import {useState, type ComponentPropsWithRef} from 'react';
 import {getCountries, getCountryCallingCode, type CountryCode} from 'libphonenumber-js/max';
 import {CONTACT_PHONE_MAX_LENGTH, DEFAULT_CONTACT_PHONE_COUNTRY, parseContactPhone} from '../utils/contactPhone';
+import {ContactPhoneCountrySelect} from './ContactPhoneCountrySelect';
 import './contact-phone-input.css';
 
 const countries = getCountries().map(country => ({country, code: getCountryCallingCode(country)}));
@@ -28,11 +29,6 @@ type Props = Omit<ComponentPropsWithRef<'input'>, 'value' | 'onChange' | 'type'>
 export function ContactPhoneInput({language, value, onValueChange, readOnly, disabled, ...inputProps}: Props) {
   const [selection, setSelection] = useState<{country: CountryCode; value: string}>();
   const lang = language.startsWith('zh') ? 'zh' : language.startsWith('id') ? 'id' : 'en';
-  const options = useMemo(() => {
-    const names = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames([lang], {type: 'region'}) : undefined;
-    return countries.map(option => ({...option, name: names?.of(option.country) ?? option.country}))
-      .sort((a, b) => a.name.localeCompare(b.name, lang));
-  }, [lang]);
   const parsed = /^\s*(?:\+|00|62)/.test(value) ? parseContactPhone(value) : undefined;
   const international = splitInternational(value, Boolean(parsed));
   const code = international?.code ?? getCountryCallingCode(DEFAULT_CONTACT_PHONE_COUNTRY);
@@ -40,7 +36,6 @@ export function ContactPhoneInput({language, value, onValueChange, readOnly, dis
   const country = selection?.value === value ? selection.country
     : parsedCountry ?? (code === '62' ? DEFAULT_CONTACT_PHONE_COUNTRY : countries.find(option => option.code === code)?.country ?? '');
   const national = international?.national ?? value;
-  const countryLabel = {zh: '国家或地区区号', id: 'Kode negara atau wilayah', en: 'Country or region calling code'}[lang];
 
   function changeCountry(nextCountry: CountryCode) {
     const nextCode = getCountryCallingCode(nextCountry);
@@ -58,13 +53,8 @@ export function ContactPhoneInput({language, value, onValueChange, readOnly, dis
   }
 
   return <span className="contact-phone-input">
-    <span className="contact-phone-country">
-      <span aria-hidden="true">+{code}</span>
-      <select aria-label={countryLabel} disabled={disabled || readOnly} value={country} autoComplete="tel-country-code"
-        onChange={event => changeCountry(event.target.value as CountryCode)}>
-        {options.map(option => <option key={option.country} value={option.country}>+{option.code} · {option.name}</option>)}
-      </select>
-    </span>
+    <ContactPhoneCountrySelect countries={countries} country={country} code={code} language={lang}
+      disabled={disabled || readOnly} onChange={changeCountry}/>
     <input {...inputProps} type="tel" autoComplete="tel-national" readOnly={readOnly} disabled={disabled} value={national}
       maxLength={CONTACT_PHONE_MAX_LENGTH}
       onPaste={event => {
