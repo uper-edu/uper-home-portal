@@ -375,10 +375,11 @@ function CourseRecords({ records, link, lang, emails, targetRecord, paymentHref,
 }
 
 function PrivateLessonConfirmation({opportunityId,row,lang,isLight,onClose,onSaved}:{
-  opportunityId:string;row:CourseRecord;lang:CrmLanguage;isLight:boolean;onClose:()=>void;onSaved:()=>void;
+  opportunityId:string;row:CourseRecord;lang:CrmLanguage;isLight:boolean;onClose:()=>void;onSaved:(refreshed?:Opportunity)=>void;
 }) {
   const [busy,setBusy]=useState(false);
-  const [unknown,setUnknown]=useState(false);
+  const [pending,setPending]=useState<NonNullable<PrivateLessonRegistration['confirmation']>>();
+  const unknown=!!pending;
   const [message,setMessage]=useState('');
   const title=t(lang,['确认约课','Confirm schedule','Konfirmasi jadwal']);
   const failed=t(lang,['暂未保存，请核对记录和权限。','Could not save. Check the record and your access.','Belum tersimpan. Periksa catatan dan akses.']);
@@ -389,20 +390,26 @@ function PrivateLessonConfirmation({opportunityId,row,lang,isLight,onClose,onSav
     let firstLessonAt:string;
     try{firstLessonAt=validateLocalInstant(local,new Date(local),viewerTimeZone()).toISOString();}
     catch{setMessage(t(lang,['请核对首课日期和时间。','Check the first lesson date and time.','Periksa tanggal dan waktu sesi pertama.']));return;}
+    const submitted={firstLessonAt,teacher:String(data.get('teacher')??'').trim(),schedule:String(data.get('schedule')??'').trim()};
     setBusy(true);setMessage('');
     try{
       const response=await fetch(base+'/private-lessons/'+encodeURIComponent(row.id),{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({firstLessonAt,teacher:data.get('teacher'),schedule:data.get('schedule')})});
+        body:JSON.stringify(submitted),signal:AbortSignal.timeout(15000)});
       if(response.ok){onSaved();return;}
-      if(response.status>=500)setUnknown(true);else setMessage(failed);
-    }catch{setUnknown(true);}finally{setBusy(false);}
+      if(response.status>=500||response.status===408)setPending(submitted);else setMessage(failed);
+    }catch{setPending(submitted);}finally{setBusy(false);}
   }
   async function check(){
+    if(busy||!pending)return;
     setBusy(true);setMessage('');
     try{
       const result=await read<Opportunity>(base,AbortSignal.timeout(12000));
-      if(result.records.some(item=>item.id===row.id&&item.appointment?.confirmation))onSaved();
-      else{setUnknown(false);setMessage(failed);}
+      const saved=result.records.find(item=>item.id===row.id)?.appointment?.confirmation;
+      if(saved?.firstLessonAt===pending.firstLessonAt&&saved.teacher===pending.teacher&&saved.schedule===pending.schedule){
+        onSaved(result);return;
+      }
+      setPending(undefined);
+      setMessage(saved?t(lang,['这条约课已有其他确认安排，请核对详情。','This request has a different confirmed schedule. Check the details.','Permintaan ini memiliki jadwal terkonfirmasi yang berbeda. Periksa detailnya.']):failed);
     }catch{setMessage(t(lang,['暂时无法查询结果。','The result could not be checked.','Hasil belum dapat diperiksa.']));}
     finally{setBusy(false);}
   }
@@ -1033,7 +1040,11 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
             paymentHref={canFinance&&detail.state==='applying'&&!ended(detail)&&!detail.identityPending?paymentLink:undefined}/>
           {lessonToConfirm&&detail.records.some(row=>row.id===lessonToConfirm.id)&&<PrivateLessonConfirmation
             opportunityId={detail.id} row={lessonToConfirm} lang={lang} isLight={isLight} onClose={()=>setLessonToConfirm(undefined)}
-            onSaved={()=>{setLessonToConfirm(undefined);setDetailRevision(value=>value+1);}}/>}
+            onSaved={refreshed=>{
+              setLessonToConfirm(undefined);
+              if(refreshed?.id===detail.id)setDetail(refreshed);
+              else setDetailRevision(value=>value+1);
+            }}/>}
         </section>
         </div>:<p role="status">{t(lang,['正在读取商机…','Loading opportunity…','Memuat peluang…'])}</p>}
         </div>
