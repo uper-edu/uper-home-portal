@@ -910,3 +910,15 @@
   font-size: 14px;
   font-weight: 650;
 }
+
+.enrollment-course-overview > section { padding-block: 9px; border-bottom: 1px solid var(--enrollment-border); }
+.enrollment-course-overview h3 { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
+.enrollment-course-overview p, .enrollment-course-overview ul {
+  margin: 0;
+  color: var(--enrollment-muted);
+  font-size: 14px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.enrollment-course-overview ul { display: grid; gap: 4px; padding-inline-start: 19px; list-style: disc; }
+.enrollment-course-overview details ul { padding-block-end: 10px; }

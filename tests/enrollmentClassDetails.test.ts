@@ -438,6 +438,7 @@ test('the public catalog reader skips seat counts only for scoped metadata reque
     {wrap:handler=>handler,staff:async()=>({id:'fixture'})});
   const handler=routes.get('/api/enrollment/classes')!;
   const calls:unknown[][]=[];
+  let teaching:unknown;
   const descriptions={learningOutcomes:'Fixture outcomes',material:'Fixture materials',resources:'Fixture resources',teacher:'Fixture teacher'};
   const client={query:async(sql:string,parameters:unknown[])=>{
     calls.push(parameters);
@@ -445,7 +446,7 @@ test('the public catalog reader skips seat counts only for scoped metadata reque
     assert.match(sql,/CASE WHEN :p3=1/);
     assert.match(sql,/CASE WHEN :p4=1 THEN JSON_REMOVE\(e\.data,'\$\.learningOutcomes','\$\.material','\$\.resources','\$\.teacher'\)/);
     return {rows:[{id:'class-fixture',data:{level:'HSK 1',format:'standard',capacity:15,...(parameters[3]===1?{}:descriptions)},opened:1,
-      seats:parameters[2]===1?13:null}]};
+      seats:parameters[2]===1?13:null,teaching:parameters[3]===0?teaching:null}]};
   }};
   const handle=async(query:Record<string,unknown>)=>{
     let payload!: {classes:{availability?:string}[];appointments:unknown[]};
@@ -478,6 +479,18 @@ test('the public catalog reader skips seat counts only for scoped metadata reque
   assert.deepEqual(calls.splice(0),[['enrollment\\_template:%','enrollment_template:fixture']]);
   await assert.rejects(invoke({classId:'class-fixture',appointmentId:'fixture'}),/enrollment_template_invalid/);
   assert.equal(calls.length,0);
+
+
+  teaching={level:'HSK 1',material:'Live textbook',knowledge:'Live topics',learningOutcomes:'Live outcomes',
+    resources:'Live practice',introduction:{en:{audience:'Beginners'},id:{audience:'Pemula'}}};
+  const courseDetail=(await invoke({classId:'class-fixture'})).classes[0];
+  assert.deepEqual(Reflect.get(courseDetail,'introduction'),{en:{audience:'Beginners'},id:{audience:'Pemula'}});
+  assert.equal(Reflect.get(courseDetail,'learningOutcomes'),'Live outcomes');
+  assert.equal(Reflect.get(courseDetail,'material'),'Live textbook\nLive topics');
+  assert.equal(Object.hasOwn((await invoke({view:'summary'})).classes[0],'introduction'),false);
+  teaching={...teaching as object,level:'HSK 2'};
+  assert.equal(Object.hasOwn((await invoke({classId:'class-fixture'})).classes[0],'introduction'),false);
+  calls.splice(0);
 
   const {nativePool}=await import('../cloud/mysql/runtime.mjs');
   const steps:string[]=[];

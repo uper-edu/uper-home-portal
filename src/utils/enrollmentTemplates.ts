@@ -1,3 +1,4 @@
+import type {EnrollmentCourseIntroduction} from './enrollmentCourseIntroduction';
 import {enrollmentLevels, type EnrollmentClassConfig} from './enrollmentCatalog';
 
 export type EnrollmentTeaching = {
@@ -7,6 +8,7 @@ export type EnrollmentTeaching = {
   learningOutcomes: string;
   resources: string;
   minutes: number;
+  introduction?: EnrollmentCourseIntroduction;
 };
 export type EnrollmentTeachingCourse = {
   id: string;
@@ -52,12 +54,11 @@ export function enrollmentTemplateQuote(template: Pick<EnrollmentTemplate,'stand
 
 export function enrollmentTemplateClassFields(template:EnrollmentTemplate, course:EnrollmentTeachingCourse): Partial<EnrollmentClassConfig>|null {
   if (!course.teaching || template.courseId!==course.id || template.format==='one-on-one') return null;
-  const {level, minutes, learningOutcomes, material, knowledge, resources}=course.teaching;
+  const {level, minutes}=course.teaching;
   return {
     templateId:template.id, templateRevision:template.revision, teacherType:template.teacherType,
     courseId:course.id, courseName:course.name, level, format:template.format, sessions:course.sessions, minutes,
     minimumPaid:template.minimumPaid, capacity:template.capacity,
-    learningOutcomes, material:[material,knowledge].filter(Boolean).join('\n'), resources,
     ...(enrollmentTemplateQuote(template,course.sessions)??{price:0,standardPrice:null}),
   };
 }

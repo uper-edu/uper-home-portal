@@ -5,6 +5,7 @@ import {AdminSearchField} from '../admin/AdminSearchField';
 import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
+import {enrollmentIntroductionFields,enrollmentIntroductionLimits,type EnrollmentIntroductionLanguage} from '../../utils/enrollmentCourseIntroduction';
 import {defaultEnrollmentCourseName} from '../../utils/enrollmentTemplates';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {CrmPageAction} from './CrmPageAction';
@@ -58,10 +59,19 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(dirty||unknown){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty,unknown]);
  const [manualName,setManualName]=useState(false);
  const [addingBook,setAddingBook]=useState(false);
+ const [contentLanguage,setContentLanguage]=useState<EnrollmentIntroductionLanguage|'legacy'>('en');
+ const contentLanguageLabel=t('Content language','Bahasa konten','内容语言');
+ const introductionLabels={
+   audience:t('Who it’s for and recommended starting level','Untuk siapa dan kemampuan awal yang disarankan','适合学员与建议基础'),
+   outcomes:t('Learning outcomes','Hasil belajar','学习成果'),
+   topics:t('Core topics','Topik utama','核心知识点'),
+   practice:t('Learning activities and practice resources','Kegiatan dan sumber latihan','教学活动与练习资源'),
+ };
  const emptyTeaching={level:'',material:'',knowledge:'',learningOutcomes:'',resources:'',minutes:0};
  const edit=(c?:any)=>{
    setManualName(!!c&&c.name!==defaultEnrollmentCourseName(c.teaching??emptyTeaching,c.sessions));
    setAddingBook(false);
+   setContentLanguage(c&&c.teaching?.level!=='HSK 1'&&!c.teaching?.introduction?'legacy':'en');
    setForm(c?{...c,config:{name:c.name,sessions:c.sessions,teaching:c.teaching??emptyTeaching,price:c.price,active:c.active,maxDiscountBps:c.maxDiscountBps,maxDiscountAmount:c.maxDiscountAmount}}:{id:crypto.randomUUID(),revision:0,config:{name:'',sessions:'',price:0,teaching:emptyTeaching,active:false,maxDiscountBps:0,maxDiscountAmount:null}});
    setError('');setLatest(null);setState('');setDirty(false);pending.current=null;
  };
@@ -73,7 +83,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
    });
    setDirty(true);setError('');setState('');
  };
- const teach=(key:string,value:string|number)=>patch('teaching',{...form.config.teaching,[key]:value});
+ const teach=(key:string,value:unknown)=>patch('teaching',{...form.config.teaching,[key]:value});
  const books=[...new Set<string>((data?.courses??[]).flatMap((c:any)=>c.teaching?.material?[c.teaching.material]:[]))].sort((a,b)=>a.localeCompare(b,lang));
  const textbookLabel=t('Main textbook and edition','Buku ajar utama dan edisi','主教材及版本');
  const visibleLabel=t('Visible to learners','Ditampilkan kepada siswa','学员可见');
@@ -225,7 +235,23 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
     </AdminFormGrid>
   </AdminFormSection>
   <AdminFormSection variant="subgroup" title={t('Teaching content','Materi pembelajaran','教学内容')}>
-    {([[ 'knowledge','Core topics','Topik utama','核心知识点'],['learningOutcomes','Learning outcomes','Hasil belajar','学习成果'],['resources','Practice resources','Sumber latihan','练习资源']] as const).map(([key,en,id,zh])=><AdminField key={key}><span>{t(en,id,zh)} <span className="crm-work-muted text-xs font-normal">· {visibleLabel}</span></span>
+    <AdminField>{contentLanguageLabel}
+      <CrmSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown} label={contentLanguageLabel}
+        value={contentLanguage} options={[
+          {value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'},
+          {value:'legacy',label:t('Existing unlocalized content','Konten lama tanpa bahasa','既有未分语种内容')},
+        ]} onChange={value=>setContentLanguage(value as typeof contentLanguage)}/>
+    </AdminField>
+    {contentLanguage!=='legacy' ? enrollmentIntroductionFields.map(field=>{
+      const introduction=form.config.teaching.introduction;
+      return <AdminField key={field}>
+        <span>{introductionLabels[field]} <span className="crm-work-muted text-xs font-normal">· {visibleLabel}</span></span>
+        <textarea disabled={busy||unknown} maxLength={enrollmentIntroductionLimits[field]}
+          value={introduction?.[contentLanguage]?.[field]??''} onChange={event=>teach('introduction',{
+            ...introduction,[contentLanguage]:{...introduction?.[contentLanguage],[field]:event.target.value},
+          })}/>
+      </AdminField>;
+    }) :([[ 'knowledge','Core topics','Topik utama','核心知识点'],['learningOutcomes','Learning outcomes','Hasil belajar','学习成果'],['resources','Practice resources','Sumber latihan','练习资源']] as const).map(([key,en,id,zh])=><AdminField key={key}><span>{t(en,id,zh)} <span className="crm-work-muted text-xs font-normal">· {visibleLabel}</span></span>
       <textarea maxLength={key==='knowledge'?1200:2500} value={form.config.teaching[key]} onChange={e=>teach(key,e.target.value)}/>
     </AdminField>)}
   </AdminFormSection>

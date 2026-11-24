@@ -1,6 +1,7 @@
 import {EnrollmentClassName} from '../components/EnrollmentClassName';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import { enrollmentCopy,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
+import {EnrollmentCourseOverview} from '../components/EnrollmentCourseOverview';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
 import {EnrollmentPriceActions} from '../components/EnrollmentRecordLayout';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
@@ -605,7 +606,11 @@ export default function Enrollment() {
         </aside>
         <section className="enrollment-course">
           <h2>{t('courseIntro')}</h2>
-          {(['outcomes', 'material', 'resources', 'teacher'] as const).map(key => {
+          {selected.introduction?.[language] || selected.introduction?.en
+            ? <EnrollmentCourseOverview introduction={selected.introduction} language={language}/>
+            : null}
+          {((selected.introduction?.[language] || selected.introduction?.en)
+            ? ['teacher'] as const : ['outcomes', 'material', 'resources', 'teacher'] as const).map(key => {
             const description = key === 'outcomes' ? selected.learningOutcomes : selected[key];
             if (!description) return null;
             return <details key={key} data-enrollment-section={key} open={key === 'outcomes'}>

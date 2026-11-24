@@ -2,6 +2,7 @@ import {portalPublicOrigin} from './enrollmentEmail.ts';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import {enrollmentTemplateIdPattern,enrollmentTemplateKey,listEnrollmentTemplates,mountEnrollmentTemplates,readEnrollmentTemplate} from './enrollmentTemplates.ts';
+import type {EnrollmentTeaching} from '../../src/utils/enrollmentTemplates.ts';
 import {enrollmentTemplateClassFields} from '../../src/utils/enrollmentTemplates.ts';
 import type { Express, Request, Response } from 'express';
 import { pool, tx } from './store.ts';
@@ -44,6 +45,7 @@ export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeo
       SELECT e.id,e.revision,e.state,
         CAST(CASE WHEN :p4=1 THEN JSON_REMOVE(e.data,'$.learningOutcomes','$.material','$.resources','$.teacher')
           ELSE e.data END AS JSON) AS data,
+        CASE WHEN :p4=1 THEN NULL ELSE JSON_EXTRACT(c.value,'$.teaching') END AS teaching,
         (g.class_id IS NOT NULL) AS opened,
         CASE WHEN :p3=1 THEN (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
           AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
@@ -55,8 +57,15 @@ export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeo
         AND JSON_EXTRACT(c.value,'$.active')=true
         AND (:p1 IS NULL OR e.id IN (:p2))
       ORDER BY e.first_lesson_at,e.id
-    `, [classIds.length ? 1 : null, classIds, Number(includeAvailability), Number(summaryOnly)])).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number | null }) => {
+    `, [classIds.length ? 1 : null, classIds, Number(includeAvailability), Number(summaryOnly)])).rows.map((row: Parameters<typeof record>[0] & { opened: number; seats: number | null; teaching?:EnrollmentTeaching|null }) => {
       const publicClass=publicEnrollmentClass(record(row));
+      const teaching=summaryOnly||row.teaching?.level!==publicClass.level?undefined:row.teaching;
+      if(teaching){
+        publicClass.material=[teaching.material,teaching.knowledge].filter(Boolean).join('\n');
+        publicClass.learningOutcomes=teaching.learningOutcomes;
+        publicClass.resources=teaching.resources;
+        if(teaching.introduction)publicClass.introduction=teaching.introduction;
+      }
       const available=row.seats!==null&&publicClass.classSize?publicClass.classSize.maximum-Number(row.seats):NaN;
       const availability=Number.isFinite(available)?available<=0?'full':available<=3?'limited':'available':undefined;
       return { ...publicClass, opened: Number(row.opened) === 1, availability };
@@ -266,7 +275,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       appointments:await readPublicEnrollmentAppointments(c),
     }));
     const catalog=summaryOnly
-      ? classes.map(({learningOutcomes,material,resources,teacher,...card})=>card)
+      ? classes.map(({learningOutcomes,material,resources,teacher,introduction,...card})=>card)
       : classes;
     r.set('Cache-Control', 'no-store').json({classes:catalog,appointments,publicOrigin:portalPublicOrigin()});
   }));

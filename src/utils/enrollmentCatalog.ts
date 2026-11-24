@@ -1,3 +1,5 @@
+import type {EnrollmentCourseIntroduction} from './enrollmentCourseIntroduction';
+
 export const enrollmentLevels = ['HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 4A', 'HSK 4B'] as const;
 export const enrollmentOpportunityLevels:readonly string[]=enrollmentLevels;
 export const enrollmentFormats = ['standard', 'small'] as const;
@@ -61,6 +63,7 @@ export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,
   'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'decisionAt' | 'canDelete' | 'hasOrders' | 'holidayDates' | 'scheduleReview'> & {
+    introduction?: EnrollmentCourseIntroduction;
     opened?: boolean; availability?: 'full' | 'limited' | 'available';
     classSize?: {maximum:number; usualMinimum?:number};
   };
@@ -165,8 +168,9 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
     firstLesson, enrollmentCloses,
     schedule: string('schedule', 300, {optional:draft}), sessions: integer('sessions', 1000), minutes: integer('minutes', 600),
     minimumPaid, capacity, price, standardPrice,
-    learningOutcomes: input.templateId && input.learningOutcomes === '' ? '' : string('learningOutcomes', 2500), material: string('material', 2500),
-    resources: input.templateId && input.resources === '' ? '' : string('resources', 2500),
+    learningOutcomes: input.templateId&&input.learningOutcomes===undefined?'':string('learningOutcomes',2500,{optional:!!input.templateId}),
+    material: input.templateId&&input.material===undefined?'':string('material',2500,{optional:!!input.templateId}),
+    resources: input.templateId&&input.resources===undefined?'':string('resources',2500,{optional:!!input.templateId}),
     teacher: string('teacher', 2500, { optional: true }),
   };
 }

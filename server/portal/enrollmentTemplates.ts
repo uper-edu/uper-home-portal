@@ -1,6 +1,7 @@
 import type {Express, Request, Response} from 'express';
 import {enrollmentLevels} from '../../src/utils/enrollmentCatalog.ts';
 import {enrollmentTeacherTypes,enrollmentTemplateFormats,enrollmentTemplateQuote, type EnrollmentTeaching, type EnrollmentTemplate} from '../../src/utils/enrollmentTemplates.ts';
+import {parseEnrollmentCourseIntroduction} from '../../src/utils/enrollmentCourseIntroduction.ts';
 import {validMutationOrigin} from './accessTransport.ts';
 import {tx} from './store.ts';
 import {invalid,operation} from './trustWorkflow.ts';
@@ -12,7 +13,13 @@ export function enrollmentTeaching(value:any):EnrollmentTeaching {
     return input.trim();
   };
   if(!enrollmentLevels.includes(value?.level)||!Number.isInteger(value?.minutes)||value.minutes<1||value.minutes>600)invalid('course_information_invalid');
+  let introduction:EnrollmentTeaching['introduction'];
+  if(value.introduction!==undefined){
+    try {introduction=parseEnrollmentCourseIntroduction(value.introduction);}
+    catch {invalid('course_information_invalid');}
+  }
   return {level:value.level,minutes:value.minutes,
+    ...(introduction?{introduction}:{}),
     material:text('material',1200),knowledge:text('knowledge',1200,false),learningOutcomes:text('learningOutcomes',2500,false),resources:text('resources',2500,false)};
 }
 

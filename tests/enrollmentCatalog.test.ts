@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentScheduleDefaults, enrollmentScheduleLabel, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
+import {enrollmentTemplateClassFields} from '../src/utils/enrollmentTemplates';
+import {parseEnrollmentCourseIntroduction} from '../src/utils/enrollmentCourseIntroduction';
 import {enrollmentDateFormatter} from '../src/utils/enrollmentDateFormat';
 
 const sample = {
@@ -11,6 +14,38 @@ const sample = {
   price: 575000, standardPrice: null, learningOutcomes: 'Introduction and greetings',
   material: 'Sample materials', resources: 'Sample practice', teacher: 'Sample teacher',
 };
+
+test('a new class uses course and template terms without copying teaching descriptions',()=>{
+  const teaching={level:'HSK 1' as const,minutes:45,material:'Textbook',knowledge:'Topics',learningOutcomes:'Goals',resources:'Practice'};
+  const template={id:'tpl',revision:1,name:'Standard',courseId:sample.courseId,format:'standard' as const,
+    teacherType:'local' as const,capacity:20,minimumPaid:13,standardUnitPrice:25000,saleUnitPrice:25000};
+  const derived=enrollmentTemplateClassFields(template,{id:sample.courseId,name:'Course',active:true,sessions:23,teaching});
+  assert.ok(derived);
+  for(const field of ['material','knowledge','learningOutcomes','resources','introduction'])assert.equal(Reflect.has(derived,field),false);
+  const config=validateEnrollmentClass({...derived,period:sample.period,firstLesson:sample.firstLesson,
+    enrollmentCloses:sample.enrollmentCloses,schedule:sample.schedule,teacher:''});
+  assert.equal(config.material,'');
+});
+
+test('the HSK 1 sample provides all introduction fields in each supported language',()=>{
+  const sample=JSON.parse(readFileSync(new URL('../docs/design/examples/hsk1-course-introduction.json',import.meta.url),'utf8'));
+  assert.deepEqual(parseEnrollmentCourseIntroduction(sample),sample);
+  assert.deepEqual(Object.keys(sample),['en','id','zh']);
+  for(const language of ['en','id','zh']){
+    assert.deepEqual(Object.keys(sample[language]),['audience','outcomes','topics','practice']);
+    assert.equal(sample[language].outcomes.split('\n').length,3);
+  }
+});
+
+test('course introductions retain supported translations and reject malformed public content',()=>{
+  const content={en:{audience:' Beginners ',practice:'   '},id:{audience:'Pemula'},zh:{audience:'零基础学员'}};
+  assert.deepEqual(parseEnrollmentCourseIntroduction(content),{
+    en:{audience:'Beginners'},id:{audience:'Pemula'},zh:{audience:'零基础学员'},
+  });
+  assert.throws(()=>parseEnrollmentCourseIntroduction({en:{audience:['Beginner']}}));
+  assert.throws(()=>parseEnrollmentCourseIntroduction({en:{audience:'a'.repeat(321)}}));
+  assert.throws(()=>parseEnrollmentCourseIntroduction({fr:{audience:'Débutants'}}));
+});
 
 test('class break preview keeps the period total and uses later sessions on the same weekly schedule',()=>{
   const config={...sample,firstLesson:'2026-12-10T20:00',sessions:5,weeklySchedule:{days:[2,4],start:'20:00',lessons:2}};
