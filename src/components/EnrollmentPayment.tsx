@@ -1,6 +1,6 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
 import type { EnrollmentClosureReason } from '../utils/enrollmentOrderStatus';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
 import { enrollmentInstant, enrollmentTeacherLabel, enrollmentClassTitle, enrollmentScheduleLabel, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { formatCurrency } from '../utils/currency';
@@ -30,7 +30,7 @@ export type EnrollmentOrder = {
 
 type Language = 'zh' | 'en' | 'id';
 
-export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, proofTransfer, onProofTransferChange, upload, existingTransferOnly = false, proofUploadFailed = false, submittingProof = false }: {
+export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, proofTransfer, onProofTransferChange, upload, existingTransferOnly = false, proofUploadFailed = false, submittingProof = false, proofFeedback }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
   classInfo?:AftercareCourse;
@@ -46,6 +46,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   existingTransferOnly?: boolean;
   proofUploadFailed?: boolean;
   submittingProof?: boolean;
+  proofFeedback?: ReactNode;
 }) {
   const t = (zh: string, en: string, id: string) => language === 'zh' ? zh : language === 'en' ? en : id;
   const [now, setNow] = useState(Date.now);
@@ -173,9 +174,6 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
         : order.bankDetailsInvalid ? <p role="status">{t('暂时无法读取收款资料。请刷新状态后再转账。','Bank details are temporarily unavailable. Refresh the status before transferring funds.','Informasi rekening belum dapat dimuat. Muat ulang status sebelum transfer.')}</p>
         : <p>{t('实际到账', 'Verified receipts', 'Dana terverifikasi')} · {formatCurrency(order.received, language)}</p>}
     </div>}
-    {proofUploadFailed && <p className="enrollment-result-state" role="alert">{t(
-      '付款凭证上传失败，请重试。','The payment proof could not be uploaded. Try again.','Bukti pembayaran gagal diunggah. Coba lagi.',
-    )}</p>}
     {canUpload && <form className="enrollment-payment-form" onSubmit={event => {
       event.preventDefault();
       const bankReference=proofTransfer.reference.trim()||undefined;
@@ -183,6 +181,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
     }}>
       <section className="enrollment-upload-section">
         <h2>{t('转账凭证', 'Transfer proof', 'Bukti transfer')}</h2>
+        {proofFeedback}
         <label className="enrollment-file">
           <input ref={proofInput} aria-label={chooseProof} type="file" accept={enrollmentProofAccept+',.png,.jpg,.jpeg,.pdf'}
             required={!file} disabled={busy}

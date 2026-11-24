@@ -173,12 +173,19 @@ test('proof retry checks the old receipt under the order lock before replacing a
   const add=(method:string)=>(path:string,handler:Handler)=>routes.set(method+' '+path,handler);
   const unexpected=async()=>assert.fail('Proof recovery uses only the verified enrollment session');
   const path='/api/enrollment/orders/:id/proofs';
-  const invoke=async(route:string,body:unknown={previousUploadId:oldId})=>{
+  const invoke=async(route:string,body:unknown={previousUploadId:oldId},
+    options:{mime?:string;origin?:string;proofHeader?:string;bytes?:Buffer}={})=>{
     let result:unknown;
-    await routes.get(route)!({headers:{cookie:'uper_enrollment_session='+'a'.repeat(64),origin},
+    const mime=options.mime??'application/json';
+    const request=Object.assign(Readable.from(options.bytes?[options.bytes]:[]),{
+      headers:{cookie:'uper_enrollment_session='+'a'.repeat(64),origin:options.origin??origin,
+        'content-type':mime,...(options.bytes?{'content-length':String(options.bytes.length)}:{})},
       params:{id:orderId,uploadId:oldId},body,protocol:'https',
-      is:()=>true,get:(name:string)=>name==='host'?'enrollment.example.invalid':name==='X-Enrollment-Email'?verified:undefined,
-    } as unknown as Request,{
+      is:(types:string|string[])=>[types].flat().includes(mime)?mime:false,
+      get:(name:string)=>name==='host'?'enrollment.example.invalid':name==='X-Enrollment-Email'?verified:
+        name==='X-Enrollment-Proof'?options.proofHeader:undefined,
+    });
+    await routes.get(route)!(request as unknown as Request,{
       set(){return this;},json(body:unknown){result=body;},
     } as unknown as Response);
     return result;
@@ -213,6 +220,15 @@ test('proof retry checks the old receipt under the order lock before replacing a
       await assert.rejects(invoke(finish,{...proof,reportedAmount}),{message:'enrollment_invalid_proof_amount'});
       assert.deepEqual(operations.splice(0),['lock order','check saved proof']);
     }
+    assert.deepEqual(operations,[]);
+    const options={mime:'application/pdf',proofHeader:encodeURIComponent(JSON.stringify({uploadId:oldId})),
+      bytes:Buffer.from('%PDF-1.7 fixture bytes')};
+    await assert.rejects(invoke(restart,undefined,options),{status:403,message:'enrollment_origin_rejected'});
+    await assert.rejects(invoke(finish,undefined,{...options,origin:'https://other.example.invalid'}),{status:403,message:'enrollment_origin_rejected'});
+    await assert.rejects(invoke(finish,undefined,{...options,mime:'application/octet-stream'}),{status:403,message:'enrollment_origin_rejected'});
+    assert.deepEqual(operations,[]);
+    await assert.rejects(invoke(finish,undefined,options),{message:'enrollment_invalid_proof_amount'});
+    assert.deepEqual(operations.splice(0),['lock order','check saved proof']);
     assert.deepEqual(await invoke(check),{state:'unconfirmed',proofTransport:'binary-v1',uploadActive:true});
     receipt=true;
     assert.equal((await invoke(finish,proof) as {id:string}).id,orderId);

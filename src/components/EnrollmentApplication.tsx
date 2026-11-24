@@ -279,6 +279,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const [pendingProof,setPendingProof]=useState(()=>payment?readEnrollmentDraft<string>(owner,proofKey):undefined);
   const [checkingProofReceipt,setCheckingProofReceipt]=useState(false);
   const [submittingProof,setSubmittingProof]=useState(false);
+  const [proofNeedsCheck,setProofNeedsCheck]=useState(false);
   const proofUpload=useRef<AbortController|undefined>(undefined);
   const [proofRecovery,setProofRecovery]=useState<{uploadId:string;afterNetworkRevision?:number}|undefined>(()=>
     pendingProof?{uploadId:pendingProof}:undefined);
@@ -408,6 +409,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     orderRead.current?.abort();
     operationReceiptRead.current?.abort();
     proofUpload.current?.abort();
+    setProofNeedsCheck(false);
     if(payment){
       const uploadId=readEnrollmentDraft<string>(owner,proofKey);
       if(uploadId)setProofRecovery({uploadId});
@@ -589,8 +591,6 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const address=recordsEmail.current;
     if (!payment || !currentOrderId || !pendingProof || !address || busy || !proofRecovery || proofRecovery.uploadId!==pendingProof) return;
     const {afterNetworkRevision}=proofRecovery;
-    // A reloaded attempt is checked until the learner selects a new file.
-    if(file && afterNetworkRevision===undefined)return;
     const path=base+'/orders/'+encodeURIComponent(currentOrderId)+'/proofs/'+encodeURIComponent(pendingProof)+'/result';
     return recoverEnrollmentOperation<Order>({
       path,email:address,waitForConnection:afterNetworkRevision===networkRevision.current,
@@ -600,13 +600,18 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       onResult:result=>{
         setProofRecovery(undefined);
         if(result.state==='saved')finishProof(result.order);
+        else if(result.uploadActive===false){
+          storePendingProof(undefined);
+          setError('enrollment_upload_expired');
+        }else setProofNeedsCheck(true);
       },
+      onUnavailable:()=>setProofNeedsCheck(true),
       onVerificationRequired:()=>{
         requireEmailVerification();
         setError('enrollment_verification_required');
       },
     });
-  },[payment,currentOrderId,pendingProof,file,owner,busy,proofRecovery]);
+  },[payment,currentOrderId,pendingProof,owner,busy,proofRecovery]);
   useEffect(()=>{
     if(!payment||!currentOrderId||!recordsEmail.current)return;
     const draft=readEnrollmentDraft<typeof proofTransfer & {email:string}>(owner,proofTransferKey);
@@ -1020,11 +1025,11 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     catch(cause){
       if(!current())return;
       const message=(cause as Error).message;
-      if(['enrollment_invalid_proof','enrollment_upload_expired'].includes(message)){
+      if(['enrollment_invalid_proof','enrollment_upload_expired','enrollment_invalid_proof_amount','enrollment_origin_rejected'].includes(message)){
         storePendingProof(undefined);
         throw cause;
       }
-      if(message==='enrollment_verification_required'||message==='enrollment_invalid_proof_amount')throw cause;
+      if(message==='enrollment_verification_required')throw cause;
       // The upload can finish on the server even when its response is lost.
       await checkProofResult(order.id,uploadId,expected);
       return;
@@ -1037,6 +1042,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   }
   function storePendingProof(id?:string){
     setProofRecovery(undefined);
+    setProofNeedsCheck(false);
     setPendingProof(id);
     writeEnrollmentDraft(owner,proofKey,id);
   }
@@ -1093,10 +1099,15 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const path=base+'/orders/'+encodeURIComponent(id)+'/proofs/'+encodeURIComponent(uploadId)+'/result';
     try {
       const result=await readCurrentOperationReceipt(path,expectedEmail,receipt=>isOrderView(receipt,id));
+      if(result.state==='unconfirmed'&&result.uploadActive===false){
+        storePendingProof(undefined);
+        throw Error('enrollment_upload_expired');
+      }
       if(result.state!=='saved')throw Error('enrollment_operation_unconfirmed');
       finishProof(result.order);
     } catch(error) {
       if((error as Error).message==='enrollment_operation_unconfirmed'&&formActive()&&recordsEmail.current===expectedEmail){
+        setProofNeedsCheck(true);
         setProofRecovery({uploadId,afterNetworkRevision:networkRevision.current});
       }
       throw error;
@@ -1173,7 +1184,9 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     enrollment_transfer_unavailable:['该班次目前无法转入，请返回可转班次刷新查看。','This class is no longer available for transfer. Go back and check the list again.','Kelas ini tidak lagi tersedia. Kembali dan periksa daftar kelas.'],
     enrollment_priority_unavailable:['当前报名无法开启优先安排，请刷新核对状态。','Priority arrangements are unavailable for this enrollment. Refresh to check its status.','Pengaturan prioritas tidak tersedia untuk pendaftaran ini. Muat ulang untuk memeriksa status.'],
     enrollment_invalid_proof:['凭证上传失败。请检查文件后重试。','Upload failed. Check the file and retry.','Unggahan gagal. Periksa file dan coba lagi.'],
+    enrollment_upload_expired:['上次上传已失效，请重新提交凭证。','The last upload expired. Submit your proof again.','Unggahan terakhir kedaluwarsa. Kirim kembali bukti Anda.'],
     enrollment_invalid_proof_amount:['请填写有效的实际转账金额（Rp 整数）。','Enter the actual amount transferred as a whole number in Rp.','Masukkan nominal transfer aktual dalam rupiah tanpa desimal.'],
+    enrollment_origin_rejected:['上传请求已被拒绝。请从原报名页面重新打开后再试。','The upload was rejected. Reopen it from your enrollment page and try again.','Unggahan ditolak. Buka kembali dari halaman pendaftaran Anda, lalu coba lagi.'],
     enrollment_operation_unconfirmed:['结果尚未确认。请查询上次提交。','The result is unconfirmed. Check your last submission.','Hasil belum terkonfirmasi. Periksa pengiriman terakhir Anda.'],
   };
   const message=enrollmentReadinessMessage(error.replace(/^enrollment_intake_/,''),language)??t(errors[error] || ['操作未完成，请核对后重试。','The action could not be completed. Please review and retry.','Tindakan belum selesai. Periksa dan coba lagi.']);
@@ -1663,6 +1676,18 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const showEmailIdentity=!!recordsEmail.current&&(!!order||(!!mine&&verified));
   const summaryClass=aftercare?.currentClass??resultCourse;
   const summarySchedule=enrollmentScheduleLabel(summaryClass,language);
+  const showPaymentForm=payment&&!!order&&!!canUpload&&!checkingRecords&&!loadingOrder&&!waitingForAftercare&&!showAftercare&&!showOrderResult;
+  const rejectedProof=showPaymentForm&&['enrollment_invalid_proof','enrollment_upload_expired','enrollment_invalid_proof_amount','enrollment_origin_rejected'].includes(error);
+  const proofFeedback=rejectedProof?<p role="alert" className="enrollment-result-state">{message}</p>:
+    payment&&order&&pendingProof&&!loadingOrder&&!submittingProof&&(checkingProofReceipt||proofNeedsCheck)
+    ?<div className="enrollment-journey-note enrollment-proof-feedback">
+      {checkingProofReceipt?<p role="status">{t(['正在确认上次上传…','Checking the last upload…','Memeriksa unggahan terakhir…'])}</p>:<>
+        <p role="status">{t(['暂未确认是否收到上次凭证。','We could not confirm the last upload.','Unggahan terakhir belum dapat dikonfirmasi.'])}</p>
+        <button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>void run(checkProof)}>
+          {t(['查看上传结果','Check upload status','Periksa status unggahan'])}
+        </button>
+      </>}
+    </div>:null;
   const emailIdentityActions=<div className="enrollment-identity-actions">
     <button className="enrollment-record-link" type="button" disabled={busy} onClick={changeRecordsEmail}>
       {t(['更换邮箱','Change email','Ganti email'])}
@@ -1702,7 +1727,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   }
   if (!open) return <button className="enrollment-action" type="button" onClick={()=>setOpen(true)}>{hasNoSeat?joinText:applyText}</button>;
   return <section className={mine ? "enrollment-application enrollment-mine-content" : payment ? "enrollment-application enrollment-payment-content" : "enrollment-card enrollment-application"}>
-    {error && !(payment && order && ['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)) && <p role="alert">{message}{' '}
+    {error && !rejectedProof && !(proofFeedback&&error==='enrollment_operation_unconfirmed') && <p role="alert">{message}{' '}
       {error==='enrollment_order_read_failed' && orderId && <button type="button" className="enrollment-quiet" disabled={busy}
         onClick={()=>void retryOrderRead(orderId)}>{t(['重试读取报名','Retry loading enrollment','Coba muat ulang pendaftaran'])}</button>}
       {recordsReadFailed && <button type="button" className="enrollment-quiet" disabled={busy}
@@ -1718,11 +1743,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         <button type="button" className="enrollment-primary" disabled={busy} onClick={cancelEnrollment}>{t(['确认取消','Confirm cancellation','Konfirmasi pembatalan'])}</button>
       </div>
     </dialog>
-    {order&&!loadingOrder&&pendingProof&&<button type="button" className="enrollment-quiet" disabled={busy||checkingProofReceipt}
-      aria-busy={checkingProofReceipt} onClick={()=>void run(checkProof)}>
-      {t(checkingProofReceipt?['正在查询上次上传…','Checking last upload…','Memeriksa unggahan terakhir…']:
-        ['查询上次上传','Check last upload','Periksa unggahan terakhir'])}
-    </button>}
+    {!showPaymentForm&&proofFeedback}
     {order&&proofReadFailure&&<p role="status">
       {t(['凭证已保存。暂时无法更新订单详情。','Proof saved. Order details could not be refreshed.','Bukti disimpan. Detail pesanan belum dapat dimuat ulang.'])}{' '}
       <button type="button" className="enrollment-quiet" disabled={busy} onClick={()=>void run(()=>refreshSavedProof(order.id))}>
@@ -1771,7 +1792,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
           status={status ?? ''} canUpload={!!canUpload} file={file} busy={busy||checkingProofReceipt} setFile={setFile}
           proofTransfer={proofTransfer} onProofTransferChange={updateProofTransfer}
           upload={transfer=>void upload(transfer)} existingTransferOnly={existingTransferOnly}
-          submittingProof={submittingProof} proofUploadFailed={['enrollment_invalid_proof','enrollment_upload_expired'].includes(error)}/>
+          submittingProof={submittingProof} proofUploadFailed={rejectedProof} proofFeedback={proofFeedback}/>
       </div> : <>
         <EnrollmentRecordSummary title={(summaryClass&&enrollmentClassTitle(summaryClass,language))||t(['班次报名','Class application','Pendaftaran kelas'])}
           status={status} schedule={summarySchedule}>

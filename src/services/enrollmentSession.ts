@@ -261,12 +261,13 @@ export async function readEnrollmentOperation<T extends {id:string}>(path:string
   return result;
 }
 
-export function recoverEnrollmentOperation<T extends {id:string}>({path,email,waitForConnection,isCurrent,matchesOrder,onResult,onVerificationRequired,onChecking}:{
+export function recoverEnrollmentOperation<T extends {id:string}>({path,email,waitForConnection,isCurrent,matchesOrder,onResult,onVerificationRequired,onChecking,onUnavailable}:{
   path:string;email:string;waitForConnection:boolean;isCurrent:()=>boolean;
   matchesOrder:(order:T)=>boolean;
   onResult:(result:Awaited<ReturnType<typeof readEnrollmentOperation<T>>>)=>void;
   onVerificationRequired:()=>void;
   onChecking?:(checking:boolean)=>void;
+  onUnavailable?:()=>void;
 }) {
   const controller=new AbortController();
   const current=()=>!controller.signal.aborted&&isCurrent();
@@ -290,7 +291,10 @@ export function recoverEnrollmentOperation<T extends {id:string}>({path,email,wa
       if((error as Error).message==='enrollment_verification_required'){
         reconnect.stop();
         onVerificationRequired();
-      }else reconnect.failed();
+      }else{
+        onUnavailable?.();
+        reconnect.failed();
+      }
     });
   }
   if(waitForConnection)reconnect.failed();

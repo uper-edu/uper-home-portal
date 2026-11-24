@@ -420,6 +420,13 @@
 .enrollment-email-disclosure > summary svg { flex-shrink: 0; color: var(--enrollment-muted); }
 .enrollment-email-disclosure[open] > summary svg { transform: rotate(180deg); }
 .enrollment-email-disclosure > .enrollment-email-disclosure-body { padding: 0 12px 8px; overflow-wrap: anywhere; }
+.enrollment-proof-feedback {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.enrollment-proof-feedback > p { margin: 0; }
 .enrollment-learner-identity { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
 .enrollment-learner-meta { grid-column: 1 / -1; display: grid; gap: 3px; min-width: 0; }
 .enrollment-identity-info { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }

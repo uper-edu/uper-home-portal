@@ -197,8 +197,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
   mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow,servicing:policy.servicing});
   if (!policy.servicing) return;
 
-  const post = (path: string, handler: Route) => app.post(path, wrap(async (q, r) => {
-    if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected', 403);
+  const post = (path: string, handler: Route, contentTypes?: string[]) => app.post(path, wrap(async (q, r) => {
+    if (!validMutationOrigin(q, contentTypes)) invalid('enrollment_origin_rejected', 403);
     r.set('Cache-Control', 'no-store');
     return handler(q, r);
   }));
@@ -708,7 +708,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     }));
     if (!result) invalid('enrollment_invalid_proof');
     r.json(result);
-  });
+  }, ['application/json', ...proofMimeTypes]);
 
   app.get(finance+'/worklist',wrap(async(q,r)=>{
     await financeActor(q);
