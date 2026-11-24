@@ -5,7 +5,7 @@ import {AdminSearchField} from '../admin/AdminSearchField';
 import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
-import {enrollmentIntroductionFields,enrollmentIntroductionLimits,type EnrollmentIntroductionLanguage} from '../../utils/enrollmentCourseIntroduction';
+import {enrollmentIntroductionFields,enrollmentIntroductionLanguages,enrollmentIntroductionLimits,enrollmentIntroductionStages,type EnrollmentCourseIntroduction,type EnrollmentIntroductionLanguage,type EnrollmentIntroductionStage} from '../../utils/enrollmentCourseIntroduction';
 import {defaultEnrollmentCourseName} from '../../utils/enrollmentTemplates';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {CrmPageAction} from './CrmPageAction';
@@ -13,11 +13,11 @@ import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useId,useRef,useState} from 'react';
 import {AdminField} from '../AdminForm';
 import {AdminSavedReadError,AdminStaticField,AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
 import {AdminEditor} from '../admin/AdminEditor';
-import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
+import {CrmDetailTabs,CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
 import {courseError} from '../../utils/crmCoursePricing';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:CrmLanguage;isLight:boolean;onDraftChange:(dirty:boolean)=>void;onCreateTemplate:(courseId:string)=>void}){
@@ -59,7 +59,15 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(dirty||unknown){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty,unknown]);
  const [manualName,setManualName]=useState(false);
  const [addingBook,setAddingBook]=useState(false);
- const [contentLanguage,setContentLanguage]=useState<EnrollmentIntroductionLanguage|'legacy'>('en');
+ const [contentLanguage,setContentLanguage]=useState<EnrollmentIntroductionLanguage>('en');
+ const [contentStage,setContentStage]=useState<EnrollmentIntroductionStage|'course'>('course');
+ const contentTabsId=useId();
+ const contentPanelId=contentTabsId+'-panel';
+ const introduction:EnrollmentCourseIntroduction|undefined=form?.config.teaching.introduction;
+ const translation=introduction?.[contentLanguage];
+ const isStagedCourse=form?.config.teaching.level==='HSK 4';
+ const stage=isStagedCourse&&contentStage!=='course'?contentStage:undefined;
+ const visibleContent=stage?translation?.stages?.[stage]:translation;
  const contentLanguageLabel=t('Content language','Bahasa konten','内容语言');
  const introductionLabels={
    audience:t('Who it’s for and recommended starting level','Untuk siapa dan kemampuan awal yang disarankan','适合学员与建议基础'),
@@ -71,7 +79,8 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  const edit=(c?:any)=>{
    setManualName(!!c&&c.name!==defaultEnrollmentCourseName(c.teaching??emptyTeaching,c.sessions));
    setAddingBook(false);
-   setContentLanguage(c&&c.teaching?.level!=='HSK 1'&&!c.teaching?.introduction?'legacy':'en');
+   setContentLanguage('en');
+   setContentStage(c?.teaching?.level==='HSK 4'?'4A':'course');
    setForm(c?{...c,config:{name:c.name,sessions:c.sessions,teaching:c.teaching??emptyTeaching,price:c.price,active:c.active,maxDiscountBps:c.maxDiscountBps,maxDiscountAmount:c.maxDiscountAmount}}:{id:crypto.randomUUID(),revision:0,config:{name:'',sessions:'',price:0,teaching:emptyTeaching,active:false,maxDiscountBps:0,maxDiscountAmount:null}});
    setError('');setLatest(null);setState('');setDirty(false);pending.current=null;
  };
@@ -235,25 +244,42 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
     </AdminFormGrid>
   </AdminFormSection>
   <AdminFormSection variant="subgroup" title={t('Teaching content','Materi pembelajaran','教学内容')}>
-    <AdminField>{contentLanguageLabel}
-      <CrmSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown} label={contentLanguageLabel}
-        value={contentLanguage} options={[
-          {value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'},
-          {value:'legacy',label:t('Existing unlocalized content','Konten lama tanpa bahasa','既有未分语种内容')},
-        ]} onChange={value=>setContentLanguage(value as typeof contentLanguage)}/>
-    </AdminField>
-    {contentLanguage!=='legacy' ? enrollmentIntroductionFields.map(field=>{
-      const introduction=form.config.teaching.introduction;
-      return <AdminField key={field}>
+    <CrmDetailTabs id={contentTabsId} value={contentLanguage} label={contentLanguageLabel} contentId={contentPanelId}
+      disabled={busy||unknown} tabs={[
+        {id:'en',label:'English'},{id:'id',label:'Bahasa Indonesia'},{id:'zh',label:'中文'},
+      ]} onChange={value=>{
+        const locale=enrollmentIntroductionLanguages.find(candidate=>candidate===value);
+        if(locale)setContentLanguage(locale);
+      }}/>
+    <div id={contentPanelId} role="tabpanel" aria-labelledby={contentTabsId+'-tab-'+contentLanguage}>
+      {isStagedCourse&&<AdminField>{t('Course stage','Tahap kursus','课程阶段')}
+        <CrmSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
+          label={t('Course stage','Tahap kursus','课程阶段')} value={contentStage}
+          options={[
+            {value:'course',label:t('Course overview','Ringkasan kursus','课程总览')},
+            ...enrollmentIntroductionStages.map(value=>({value,label:'HSK '+value})),
+          ]} onChange={value=>setContentStage(enrollmentIntroductionStages.find(candidate=>candidate===value)??'course')}/>
+      </AdminField>}
+      {enrollmentIntroductionFields.map(field=><AdminField key={field}>
         <span>{introductionLabels[field]} <span className="crm-work-muted text-xs font-normal">· {visibleLabel}</span></span>
         <textarea disabled={busy||unknown} maxLength={enrollmentIntroductionLimits[field]}
-          value={introduction?.[contentLanguage]?.[field]??''} onChange={event=>teach('introduction',{
-            ...introduction,[contentLanguage]:{...introduction?.[contentLanguage],[field]:event.target.value},
-          })}/>
-      </AdminField>;
-    }) :([[ 'knowledge','Core topics','Topik utama','核心知识点'],['learningOutcomes','Learning outcomes','Hasil belajar','学习成果'],['resources','Practice resources','Sumber latihan','练习资源']] as const).map(([key,en,id,zh])=><AdminField key={key}><span>{t(en,id,zh)} <span className="crm-work-muted text-xs font-normal">· {visibleLabel}</span></span>
-      <textarea maxLength={key==='knowledge'?1200:2500} value={form.config.teaching[key]} onChange={e=>teach(key,e.target.value)}/>
-    </AdminField>)}
+          value={visibleContent?.[field]??''} onChange={event=>{
+            const next={...visibleContent,[field]:event.target.value};
+            teach('introduction',{
+              ...introduction,[contentLanguage]:stage
+                ? {...translation,stages:{...translation?.stages,[stage]:next}}
+                : next,
+            });
+          }}/>
+      </AdminField>)}
+    </div>
+    {(['knowledge','learningOutcomes','resources'] as const).some(key=>form.config.teaching[key])&&<details>
+      <summary>{t('Existing unlocalized content','Konten lama tanpa bahasa','既有未分语种内容')}</summary>
+      {([['knowledge','Core topics','Topik utama','核心知识点'],['learningOutcomes','Learning outcomes','Hasil belajar','学习成果'],['resources','Practice resources','Sumber latihan','练习资源']] as const).map(([key,en,id,zh])=><AdminField key={key}>
+        <span>{t(en,id,zh)}</span>
+        <textarea disabled={busy||unknown} maxLength={key==='knowledge'?1200:2500} value={form.config.teaching[key]} onChange={e=>teach(key,e.target.value)}/>
+      </AdminField>)}
+    </details>}
   </AdminFormSection>
   <AdminFormSection variant="subgroup" title={t('Publication settings','Pengaturan publikasi','发布设置')}>
     <label className="admin-field admin-field--choice"><input type="checkbox" disabled={busy||unknown} checked={form.config.active} onChange={e=>patch('active',e.target.checked)}/>

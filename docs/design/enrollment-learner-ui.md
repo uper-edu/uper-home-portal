@@ -73,3 +73,7 @@
 课程介绍依次显示「适合谁」「学完能做什么」「课程学什么」「怎么学、怎么练」。适合人群用一句话说明；学习成果用短列表；知识点和练习各用一个默认收起的区块。课堂练习与教材资源只写已核对的项目。
 
 [HSK 1 三语样板](../../src/data/system-defaults/hsk1-course-introduction.json)以 HSK Overview 为底稿。三语逐条保留原稿的七项学习成果和三项进阶价值，开篇保留从第一堂课开口、逐步建立交流信心的说明。教材话题、交际活动与练习资源作为补充。词汇数量按教材口径展示，第 1 册的 400 多个常用词、300 多个汉字、40 多个语法项目及 20 个单元均为全册数据。课程实际覆盖量以核定教学计划为准。资源包括线上教材练习、HSK 模拟试题和课堂录像。[北京语言大学出版社教材说明](https://www.blcup.com/PInfo/index/787)
+
+[HSK 2](../../src/data/system-defaults/hsk2-course-introduction.json) 和 [HSK 3](../../src/data/system-defaults/hsk3-course-introduction.json) 分别保留原稿的七项学习成果和三项进阶价值。[HSK 4](../../src/data/system-defaults/hsk4-course-introduction.json) 以一门课呈现两个可展开的阶段。4A、4B 各保留五项学习成果、三项进阶价值和三项教材重点。课程目标与教材全册数据各自注明。教学内容可在管理端按语言页签编辑，HSK 4 在同一课程内选择阶段。
+
+教材数据由出版社的第 2、3 册说明及第 4 册教师用书核实。4B 保留高校、CSC 奖学金与就业方向，申请资格以目标项目的语言和其他条件为准。[第 2 册](https://www.blcup.com/EnPInfo/index/391) · [第 3 册](https://www.blcup.com/EnPInfo/index/234) · [第 4 册教师用书](https://file.purpleculture.net/file/pdfpreview/9787561945490.pdf) · [中国政府奖学金院校要求示例](https://study.cqu.edu.cn/info/1387/2793.htm)

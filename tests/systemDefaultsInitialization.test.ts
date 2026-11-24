@@ -62,7 +62,7 @@ test('fresh defaults create two campaigns, fourteen indexed links and the four e
     assert.equal(course.name,`${course.teaching.level} · New Concept Chinese · ${course.sessions} × 45 min`);
     assert.equal(course.active,true);
   }
-  assert.deepEqual(Object.keys(courses[0].teaching.introduction).sort(),['en','id','zh']);
+  assert.ok(courses.every(c=>Object.keys(c.teaching.introduction).sort().join(',')==='en,id,zh'));
   assert.doesNotMatch(JSON.stringify(courses),/新概念汉语/);
   assert.deepEqual(f.state.roles.get('finance').grants, {'crm.read':'all','crm.payments.verify':'all'});
   const saved = structuredClone(f.state);

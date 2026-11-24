@@ -6,6 +6,7 @@ import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedu
 import {enrollmentTemplateClassFields} from '../src/utils/enrollmentTemplates';
 import {parseEnrollmentCourseIntroduction} from '../src/utils/enrollmentCourseIntroduction';
 import {enrollmentDateFormatter} from '../src/utils/enrollmentDateFormat';
+import {enrollmentCoursePresets} from '../src/data/system-defaults/courses';
 
 const sample = {
   courseId: 'hsk1', level: 'HSK 1', format: 'standard', period: 'weekend',
@@ -47,6 +48,30 @@ test('course introductions retain supported translations and reject malformed pu
   assert.throws(()=>parseEnrollmentCourseIntroduction({en:{audience:['Beginner']}}));
   assert.throws(()=>parseEnrollmentCourseIntroduction({en:{audience:'a'.repeat(321)}}));
   assert.throws(()=>parseEnrollmentCourseIntroduction({fr:{audience:'Débutants'}}));
+  assert.throws(()=>parseEnrollmentCourseIntroduction({en:{stages:{'4C':{audience:'Unknown stage'}}}}));
+  assert.throws(()=>parseEnrollmentCourseIntroduction({en:{stages:{'4A':{outcomes:['Invalid list']}}}}));
+  assert.deepEqual(parseEnrollmentCourseIntroduction({en:{stages:{'4A':{audience:'  '},'4B':{audience:' Stage B '}}}}),
+    {en:{stages:{'4B':{audience:'Stage B'}}}});
+});
+
+test('HSK 2 through 4 presets preserve each translated outcome and both HSK 4 stages',()=>{
+  const [hsk2,hsk3,hsk4]=enrollmentCoursePresets.slice(1).map(course=>course.config.teaching.introduction);
+  for(const introduction of [hsk2,hsk3,hsk4]){
+    assert.ok(introduction);
+    assert.deepEqual(parseEnrollmentCourseIntroduction(introduction),introduction);
+    assert.deepEqual(Object.keys(introduction),['en','id','zh']);
+  }
+  for(const language of ['en','id','zh'] as const){
+    assert.equal(hsk2?.[language]?.outcomes?.split('\n').length,10);
+    assert.equal(hsk3?.[language]?.outcomes?.split('\n').length,10);
+    const stages=hsk4?.[language]?.stages;
+    assert.ok(stages?.['4A']&&stages['4B']);
+    assert.equal(stages['4A'].outcomes?.split('\n').length,8);
+    assert.equal(stages['4B'].outcomes?.split('\n').length,8);
+    assert.match(stages['4A'].topics??'',/579[\s\S]*303[\s\S]*40/);
+    assert.match(stages['4B'].topics??'',/600[\s\S]*200[\s\S]*40/);
+    assert.match(stages['4B'].outcomes??'',/CSC/);
+  }
 });
 
 test('class break preview keeps the period total and uses later sessions on the same weekly schedule',()=>{

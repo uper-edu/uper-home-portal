@@ -197,11 +197,11 @@
   font-weight: 400;
   color: var(--enrollment-muted);
 }
-.enrollment-course details[open] summary small { display: none; }
+.enrollment-course details[open] > summary small { display: none; }
 .enrollment-course summary::-webkit-details-marker { display: none; }
 .enrollment-course summary svg { color: var(--enrollment-accent); flex: none; }
-.enrollment-course details:not([open]) summary svg:last-child,
-.enrollment-course details[open] summary svg:first-of-type { display: none; }
+.enrollment-course details:not([open]) > summary svg:last-child,
+.enrollment-course details[open] > summary svg:first-of-type { display: none; }
 .enrollment-course details p { margin: -2px 0 12px; color: var(--enrollment-muted); white-space: pre-wrap; }
 .enrollment-course-policy {
   display: flex;
@@ -934,7 +934,9 @@
 }
 
 .enrollment-course-overview > section { padding-block: 9px; border-bottom: 1px solid var(--enrollment-border); }
-.enrollment-course-overview h3 { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
+.enrollment-course-overview :is(h3,h4) { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
+.enrollment-course [data-enrollment-stage] > .enrollment-course-overview { padding-inline-start: 12px; }
+.enrollment-course [data-enrollment-stage] > .enrollment-course-overview > :last-child { border-bottom: 0; }
 .enrollment-course-overview p, .enrollment-course-overview ul {
   margin: 0;
   color: var(--enrollment-muted);

@@ -1,4 +1,7 @@
 import hsk1Introduction from './hsk1-course-introduction.json' with {type:'json'};
+import hsk2Introduction from './hsk2-course-introduction.json' with {type:'json'};
+import hsk3Introduction from './hsk3-course-introduction.json' with {type:'json'};
+import hsk4Introduction from './hsk4-course-introduction.json' with {type:'json'};
 import {defaultEnrollmentCourseName,type EnrollmentTeaching} from '../../utils/enrollmentTemplates.ts';
 
 const terms = {
@@ -18,11 +21,13 @@ const definitions = [
   {id:'3abe725a-d334-4b3c-8c49-12b679fe09b6',level:'HSK 4',sessions:84,price:10_080_000},
 ] as const;
 
+const introductions = {'HSK 1':hsk1Introduction,'HSK 2':hsk2Introduction,'HSK 3':hsk3Introduction,'HSK 4':hsk4Introduction};
+
 export const enrollmentCoursePresets = definitions.map(({id,level,sessions,price})=>{
   const teaching:EnrollmentTeaching={
     level, material:'New Concept Chinese', minutes:45,
     knowledge:'', learningOutcomes:'', resources:'',
-    ...(level==='HSK 1'?{introduction:hsk1Introduction}:{}),
+    introduction:introductions[level],
   };
   return {id,config:{name:defaultEnrollmentCourseName(teaching,sessions),sessions,price,...terms,teaching}};
 });
