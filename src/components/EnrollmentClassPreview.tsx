@@ -59,6 +59,8 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
  const lessonCount=periods?t(periods+' 节',periods+' periods',periods+' jam pelajaran'):undefined;
  const schedule=enrollmentScheduleLabel(row,language);
  if(detail){
+   const statusAtSize=Boolean(size&&row.price&&availableText);
+   const badge=<span className="enrollment-status" data-state={publicTone}>{publicStatus}</span>;
    const teacherName=row.teacher?.trim();
    const teacherOrigin=row.teacherType&&{
      local:t('印尼教师','Indonesian teacher','Pengajar Indonesia'),
@@ -70,7 +72,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
    return <div className="enrollment-class-detail">
      <header className="enrollment-detail-heading">
        <h2 className="enrollment-class-heading">{titleContent}</h2>
-       <span className="enrollment-status" data-state={publicTone}>{publicStatus}</span>
+       {!statusAtSize&&badge}
      </header>
      <section className="enrollment-detail-section">
        <h3 className="enrollment-record-section-title">{t('班次信息','Class information','Informasi kelas')}</h3>
@@ -81,7 +83,9 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
            ? <time dateTime={dateValue.toISOString()}>{enrollmentDateFormatter(language,'dateTime').format(dateValue)} WIB</time>
            : t('待确认','To be confirmed','Belum dikonfirmasi')],
          [t('开班状态','Class opening','Status pembukaan kelas'),row.opened?t('已确认开班','Confirmed','Dikonfirmasi'):undefined],
-         [t('班级规模','Class size','Ukuran kelas'),size],
+         [t('班级规模','Class size','Ukuran kelas'),statusAtSize
+           ? <span className="enrollment-class-size-value"><span>{size}</span>{badge}</span>
+           : size],
          [t('课时安排','Lesson duration','Durasi pelajaran'),[lessonCount,duration].filter(Boolean).join(' · ')],
          [t('每节价格','Approx. per period','Perkiraan per jam pelajaran'),row.price>0&&!!periods&&formatCurrency(Math.round(row.price/periods),language)],
        ]}/>

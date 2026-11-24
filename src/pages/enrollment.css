@@ -742,6 +742,9 @@
   font-size: 14px;
 }
 .enrollment-class-detail { display: grid; gap: 8px; }
+.enrollment-class-size-value { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.enrollment-class-size-value > :first-child { min-width: 0; word-break: normal; }
+.enrollment-class-size-value .enrollment-status { flex: none; max-width: 62%; text-align: end; }
 .enrollment-detail-heading {
   display: flex;
   align-items: flex-start;
