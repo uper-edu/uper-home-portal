@@ -1,9 +1,10 @@
-import {memo,useEffect,useId,useRef,type ReactNode} from 'react';
+import {memo,useId,type ReactNode} from 'react';
 import {Link} from 'react-router-dom';
 import {ArrowLeft,ArrowRight,ChevronRight,ClipboardCheck,ClipboardList,Maximize2,Minimize2,X,type LucideIcon} from 'lucide-react';
 import {chooseText,type HskLanguage,type HskResult} from '../data/hskAssessment';
 import {learnerAssessmentGuidance} from '../data/hskLearnerGuidance';
 import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
+import {useNativeModal} from './useNativeModal';
 import {PublicPageLinkActions} from './PublicLinkActions';
 import {SocialProfileIcon, socialProfileOrder, socialProfiles} from './SocialProfileIcon';
 import {PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenu} from './PublicHeaderMenu';
@@ -134,13 +135,8 @@ export const ChatAssessmentSummary=memo(function ChatAssessmentSummary({result,l
 export function StandaloneChatDialog({title,closeLabel,onClose,children,wide=false,locked=false,variant}:{
   title:string;closeLabel:string;onClose:()=>void;children:ReactNode;wide?:boolean;locked?:boolean;variant?:'retake'|'assessment-report';
 }){
-  const dialog=useRef<HTMLDialogElement>(null);
+  const dialog=useNativeModal({focusAfterClose:'restore'});
   const label=useId();
-  useEffect(()=>{
-    const el=dialog.current;
-    el?.showModal();
-    return ()=>el?.close();
-  },[]);
   return <dialog ref={dialog} className={`standalone-chat-dialog${wide?' is-wide':''}`} aria-labelledby={label} data-chat-dialog={variant}
     onCancel={event=>{event.preventDefault();event.stopPropagation();if(!locked)onClose();}}>
     <header><h2 id={label}>{title}</h2><button type="button" className="chat-dialog-close" aria-label={closeLabel} disabled={locked} onClick={onClose}><X size={19}/></button></header>

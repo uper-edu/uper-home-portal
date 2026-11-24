@@ -1,5 +1,6 @@
 import {useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode} from 'react';
 import {Bookmark, Check, ChevronDown, ChevronRight, Copy, Download, EllipsisVertical, Monitor, PlusSquare, Share, Share2, Smartphone, X} from 'lucide-react';
+import {useNativeModal} from './useNativeModal';
 import {promotionJourneyUrl} from '../utils/promotionNavigation';
 import {promptPublicInstall, publicInstallState, subscribePublicInstall} from '../utils/publicAppInstall';
 import type {SiteLanguage} from '../utils/siteMetadata';
@@ -113,22 +114,12 @@ function saveContext() {
 export function PublicLinkModal({title, close, label, children, className = '', focusTitle = false, restoreFocus = true}: {
   title:string; close:()=>void; label:string; children:ReactNode; className?:string; focusTitle?:boolean; restoreFocus?:boolean;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => {
-    const dialog = ref.current!;
-    const opener = document.activeElement as HTMLElement | null;
-    const previous = document.body.style.overflow;
-    dialog.showModal();
-    if (focusTitle) heading.current?.focus({preventScroll:true});
-    document.body.style.overflow = 'hidden';
-    return () => {
-      dialog.close();
-      document.body.style.overflow = previous;
-      if (restoreFocus && opener?.isConnected) opener.focus({preventScroll:true});
-      if (!restoreFocus && document.activeElement===opener) opener?.blur();
-    };
-  }, [focusTitle,restoreFocus]);
+  const ref = useNativeModal({
+    initialFocus: focusTitle ? heading : undefined,
+    focusAfterClose: restoreFocus ? 'restore' : 'blur',
+    lockBodyScroll: true,
+  });
   return <dialog ref={ref} className={`public-link-dialog ${className}`} aria-label={title}
     onCancel={event=>{event.preventDefault();event.stopPropagation();close();}}
     onClick={event=>{if (event.target === event.currentTarget) close();}}>
