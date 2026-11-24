@@ -19,6 +19,7 @@ import { opportunitySourceKind, type OpportunitySourceRef } from '../../src/util
 import { salesProgressContext } from './salesProgress.ts';
 import { enrollmentOpportunityLevels } from '../../src/utils/enrollmentCatalog.ts';
 import { latestAssistanceMail } from './enrollmentNotices.ts';
+import { enrollmentAssistanceLink } from './enrollmentEmail.ts';
 import { lockPurchaseIntentSuggestion, purchaseIntentReviewable, readOpportunityChatEvidence, recordPurchaseIntentReview } from './purchaseIntentSuggestions.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[];rowCount?:number}> };
@@ -441,7 +442,8 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
     const mail=assistanceHistory?await latestAssistanceMail(c,assistanceHistory.id):undefined;
     return {...actions,progress,emails,chatEvidence,assistance,
       assistanceDueAt:Number(assistanceHistory?.active)===1&&!assistanceHistory?.orderId?assistanceHistory.expiresAt:undefined,
-      assistanceHistory:assistanceHistory&&{...assistanceHistory,mail}};
+      assistanceHistory:assistanceHistory&&{...assistanceHistory,mail,
+        confirmationUrl:enrollmentAssistanceLink(assistanceHistory.id,assistanceHistory.lang)}};
   }));
   app.get('/api/crm/leads/:id/enrollment-opportunities',read(async(c,q,actor)=>{
     const customer=await canonicalIdentity(c,String(q.params.id));

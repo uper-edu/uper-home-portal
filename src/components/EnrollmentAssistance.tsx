@@ -2,19 +2,20 @@ import {enrollmentCodeRequestErrors,enrollmentReadinessMessage} from '../utils/e
 import {enrollmentCopy,enrollmentClassTitle,type EnrollmentClassIdentity} from '../utils/enrollmentCatalog';
 import {useEffect,useEffectEvent,useLayoutEffect,useRef,useState,type ReactNode} from 'react';
 import {Link,useNavigate,useSearchParams} from 'react-router-dom';
-import {enrollmentCodeInput,enrollmentPost,readEnrollmentEmailVerification,requestEnrollmentEmailCode,verifyEnrollmentEmail,watchEnrollmentEmailSession} from '../services/enrollmentSession';
+import {enrollmentCodeInput,enrollmentPost,readEnrollmentEmailVerification,requestAssistanceEmailCode,verifyAssistanceEmailCode,watchEnrollmentEmailSession} from '../services/enrollmentSession';
 import type {InterestLanguage} from '../utils/enrollmentInterestCopy';
 import {formatCurrency} from '../utils/currency';
-import {readEnrollmentDraft,readVisitorContact,writeEnrollmentDraft} from '../services/visitorContact';
+import {readEnrollmentDraft,writeEnrollmentDraft} from '../services/visitorContact';
 import {visitorScope} from '../services/visitorScope';
 import {watchReadReconnect} from '../services/readReconnect';
-import {validContactEmail} from '../utils/contactEmail';
+import {maskEnrollmentEmail} from '../utils/enrollmentEmailIdentity';
 import {useEnrollmentJourneyState} from './EnrollmentJourneyLink';
 import {EnrollmentRecordSummary} from './EnrollmentRecordLayout';
 import {EnrollmentEmailIdentity} from './EnrollmentEmailIdentity';
 
-type Offer={classId:string;quote:EnrollmentClassIdentity & {level:string;firstLesson:string;schedule:string;price:number;period:string;format:string};name?:string;phone?:string;email?:string;orderId?:string};
-type AssistanceCodeDraft={email:string;challengeId:string};
+type Offer={classId:string;quote:EnrollmentClassIdentity & {level:string;firstLesson:string;schedule:string;price:number;period:string;format:string};name?:string;phone?:string;email?:string;maskedEmail?:string;orderId?:string};
+type AssistanceCodeDraft={challengeId:string};
+type VerificationReadback='verified'|'unknown';
 function previewReadError(cause:Error&{status?:number}) {
   if(cause.message==='enrollment_verification_required'||(cause.status&&cause.status<500&&cause.status!==408))return cause;
   return Error('enrollment_assistance_read_failed');
@@ -31,18 +32,16 @@ export function EnrollmentAssistanceForm({hash,language,navigation}:{hash:string
   // bearer tokens out of browser storage, including storage keys.
   const codeDraftKey=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(applicationId)
     ? 'assist-code:'+applicationId.toLowerCase() : undefined;
-  const [savedCode]=useState(()=>{
-    const saved=codeDraftKey&&readEnrollmentDraft<AssistanceCodeDraft>(owner,codeDraftKey);
-    if(saved&&validContactEmail(saved.email)&&typeof saved.challengeId==='string'&&saved.challengeId)return saved;
-  });
   const navigate=useNavigate();
   const [params]=useSearchParams();
   const journeyState=useEnrollmentJourneyState();
   const [offer,setOffer]=useState<Offer>();
-  const [email,setEmail]=useState(()=>savedCode?.email??readVisitorContact(owner)?.email??'');
-  const [challenge,setChallenge]=useState(savedCode?.challengeId??'');
+  const [challenge,setChallenge]=useState(()=>{
+    const saved=codeDraftKey&&readEnrollmentDraft<AssistanceCodeDraft>(owner,codeDraftKey);
+    return saved&&typeof saved.challengeId==='string'?saved.challengeId:'';
+  });
   const [code,setCode]=useState('');
-  const [previewPending,setPreviewPending]=useState(false);
+  const [previewPending,setPreviewPending]=useState<VerificationReadback>();
   const [previewRetry,setPreviewRetry]=useState(0);
   const [confirmed,setConfirmed]=useState(false);
   const [confirmationResult,setConfirmationResult]=useState<'unknown'|'no-order'>();
@@ -51,6 +50,10 @@ export function EnrollmentAssistanceForm({hash,language,navigation}:{hash:string
   const running=useRef(false);
   const [error,setError]=useState('');
   const mounted=useRef(false);
+  useEffect(()=>{
+    // Rewrite older drafts without the address. The application now identifies the recipient.
+    if(codeDraftKey&&challenge)writeEnrollmentDraft<AssistanceCodeDraft>(owner,codeDraftKey,{challengeId:challenge});
+  },[codeDraftKey,owner,challenge]);
   useLayoutEffect(()=>{
     mounted.current=true;
     return ()=>{mounted.current=false;};
@@ -69,9 +72,9 @@ export function EnrollmentAssistanceForm({hash,language,navigation}:{hash:string
     setChallenge('');setCode('');
   }
   function removeVerifiedDetails(){
-    setOffer(current=>current&&{classId:current.classId,quote:current.quote});
-    if(offer?.email)setEmail(offer.email);
-    setPreviewPending(false);
+    setOffer(current=>current&&{classId:current.classId,quote:current.quote,
+      maskedEmail:current.email?maskEnrollmentEmail(current.email):current.maskedEmail});
+    setPreviewPending(undefined);
     setConfirmationResult(undefined);
     setConfirmed(false);clearCodeDraft();
   }
@@ -118,9 +121,37 @@ export function EnrollmentAssistanceForm({hash,language,navigation}:{hash:string
   async function readVerifiedOffer(){
     const verified:Offer=await enrollmentPost('/api/enrollment/assistance/preview',{...lookup,verified:true},undefined,AbortSignal.timeout(15000))
       .catch(cause=>{throw previewReadError(cause);});
-    setPreviewPending(false);
+    if(!isCurrent())return;
+    if(!verified.email)throw Error('enrollment_assistance_read_failed');
+    setPreviewPending(undefined);
+    clearCodeDraft();
     if(verified.orderId){payment(verified.orderId);return;}
     setOffer(verified);
+  }
+  async function verifyAndReadOffer(){
+    let readback=previewPending;
+    if(!readback){
+      try{
+        await verifyAssistanceEmailCode(lookup,challenge,code);
+        readback='verified';
+      }catch(cause){
+        const status=(cause as {status?:number}).status;
+        if(status&&status>=400&&status<500&&status!==408)throw cause;
+        readback='unknown';
+      }
+      if(!isCurrent())return;
+      setPreviewPending(readback);
+      if(readback==='verified')clearCodeDraft();
+    }
+    try{
+      await readVerifiedOffer();
+    }catch(cause){
+      if(readback==='unknown'&&['enrollment_verification_required','enrollment_assistance_email'].includes((cause as Error).message)){
+        setPreviewPending(undefined);
+        throw Error('enrollment_email_verification_unconfirmed');
+      }
+      throw cause;
+    }
   }
   async function readConfirmation(address:string){
     const verified:Offer=await enrollmentPost('/api/enrollment/assistance/preview',
@@ -154,6 +185,7 @@ export function EnrollmentAssistanceForm({hash,language,navigation}:{hash:string
       if(!isCurrent())return;
       const message=(cause as Error).message;
       if(message==='enrollment_verification_required'||message==='enrollment_assistance_email')removeVerifiedDetails();
+      if(message==='enrollment_assistance_unavailable'){setOffer(undefined);clearCodeDraft();}
       setError(message);
     }
     finally{running.current=false;setBusy(false);}
@@ -164,6 +196,7 @@ export function EnrollmentAssistanceForm({hash,language,navigation}:{hash:string
     enrollment_assistance_quote_changed:['班次或学费已更新，请联系销售获取新链接。','The class or fee has changed. Contact your advisor for a new link.','Kelas atau biaya berubah. Hubungi tim kami untuk tautan baru.'],
     enrollment_assistance_email:['请使用与销售确认的报名邮箱。','Use the email address agreed with your advisor.','Gunakan email yang disepakati dengan tim kami.'],
     enrollment_assistance_read_failed:['暂时无法读取报名资料，请重试。','Enrollment details are temporarily unavailable. Try again.','Detail pendaftaran belum tersedia. Silakan coba lagi.'],
+    enrollment_invalid_code:['验证码错误或已过期，请核对或重新发送。','The code is incorrect or expired. Check it or request a new one.','Kode salah atau sudah kedaluwarsa. Periksa atau minta kode baru.'],
     enrollment_verification_required:['请验证当前邮箱后继续。','Verify this email address to continue.','Verifikasi alamat email ini untuk melanjutkan.'],
     enrollment_email_verification_unconfirmed:['暂时无法确认邮箱验证结果。请重试验证，或重新获取验证码。','We could not confirm email verification. Try verifying again or request a new code.','Verifikasi email belum dapat dikonfirmasi. Coba verifikasi lagi atau minta kode baru.'],
     enrollment_class_full:['该班次已满。你可以加入候补。','This class is full. You can join the waitlist.','Kelas penuh. Kamu dapat masuk daftar tunggu.'],
@@ -189,33 +222,28 @@ export function EnrollmentAssistanceForm({hash,language,navigation}:{hash:string
     </EnrollmentRecordSummary>
     {!offer.name?<form className="enrollment-journey-form" onSubmit={event=>{
       event.preventDefault();
-      void run(async()=>{
-        if(!previewPending){
-          await verifyEnrollmentEmail(email,challenge,code);
-          if(!isCurrent())return;
-          setPreviewPending(true);
-          clearCodeDraft();
-        }
-        await readVerifiedOffer();
-      });
+      if(previewPending||challenge&&code.length===6)void run(verifyAndReadOffer);
     }}>
-      <label className="enrollment-field">{t('报名邮箱','Enrollment email','Email pendaftaran')}
-        <input type="email" required autoComplete="email" disabled={busy} value={email} onChange={event=>{setEmail(event.currentTarget.value);setPreviewPending(false);clearCodeDraft();setError('');}}/>
-      </label>
-      {challenge&&<label className="enrollment-field">{t('邮箱验证码','Email verification code','Kode verifikasi email')}
+      <div className="enrollment-record">
+        <p>{t('报名邮箱','Enrollment email','Email pendaftaran')} · <strong>{offer.maskedEmail}</strong></p>
+        <p>{t('邮箱有误？请联系课程顾问重新发起申请。','Wrong email? Ask your course advisor to send a new application.','Email salah? Minta tim kami membuat pengajuan baru.')}</p>
+      </div>
+      {challenge&&!previewPending&&<label className="enrollment-field">{t('邮箱验证码','Email verification code','Kode verifikasi email')}
         <input value={code} inputMode="numeric" pattern="[0-9]{6}" autoComplete="one-time-code"
-          onChange={event=>setCode(enrollmentCodeInput(event.currentTarget.value,code))} required/>
+          disabled={busy} onChange={event=>setCode(enrollmentCodeInput(event.currentTarget.value,code))} required/>
       </label>}
       {previewPending?<div className="enrollment-journey-actions">
-        <p role="status">{t('邮箱已验证。','Email verified.','Email sudah diverifikasi.')}</p>
+        <p role="status">{previewPending==='verified'?t('邮箱已验证。','Email verified.','Email sudah diverifikasi.'):
+          t('邮箱验证结果待确认。','Email verification is unconfirmed.','Hasil verifikasi email belum pasti.')}</p>
         <button type="submit" className="enrollment-primary" disabled={busy}>{t('重新读取报名资料','Reload enrollment details','Muat ulang detail pendaftaran')}</button>
       </div>:<div className="enrollment-journey-actions">
-        <button type="button" className={challenge?'enrollment-quiet':'enrollment-primary'} disabled={busy||!email} onClick={()=>void run(async()=>{
-          const challengeId=await requestEnrollmentEmailCode(email,language,'apply');
-          if(codeDraftKey)writeEnrollmentDraft<AssistanceCodeDraft>(owner,codeDraftKey,{email,challengeId});
+        <button type="button" className={challenge?'enrollment-quiet':'enrollment-primary'} disabled={busy||!offer.maskedEmail} onClick={()=>void run(async()=>{
+          const challengeId=await requestAssistanceEmailCode(lookup,language);
+          if(!isCurrent())return;
           setChallenge(challengeId);
           setCode(current=>current===code?'':current);
-        })}>{t('发送验证码','Send code','Kirim kode')}</button>
+        })}>{challenge?t('重新发送验证码','Resend code','Kirim ulang kode'):
+          t('发送验证码到报名邮箱','Send code to enrollment email','Kirim kode ke email pendaftaran')}</button>
         {challenge&&<button type="submit" className="enrollment-primary" disabled={busy||code.length!==6}>{t('验证邮箱','Verify email','Verifikasi email')}</button>}
       </div>}
     </form>:<form className="enrollment-journey-form" onSubmit={event=>{

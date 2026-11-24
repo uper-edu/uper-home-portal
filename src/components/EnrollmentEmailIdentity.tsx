@@ -2,11 +2,8 @@ import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { enrollmentCopy } from '../utils/enrollmentCatalog';
 import type { InterestLanguage } from '../utils/enrollmentInterestCopy';
-
-export function maskEnrollmentEmail(email: string) {
-  const [local,domain]=email.split('@');
-  return local.slice(0,1)+'•••@'+domain;
-}
+import {maskEnrollmentEmail} from '../utils/enrollmentEmailIdentity';
+export {maskEnrollmentEmail} from '../utils/enrollmentEmailIdentity';
 
 export function EnrollmentEmailIdentity({email,language,children}:{
   email:string;

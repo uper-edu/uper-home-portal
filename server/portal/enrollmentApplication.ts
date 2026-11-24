@@ -7,6 +7,7 @@ import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { validContactEmail } from '../../src/utils/contactEmail.ts';
+import { maskEnrollmentEmail } from '../../src/utils/enrollmentEmailIdentity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import type { Employee } from './identity.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
@@ -26,11 +27,11 @@ import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
 import { isEnrollmentProofAmount,proofTransferDetails } from './enrollmentProofTotals.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
-import { latestAssistanceMail, orderNotice, proofNotices, sendAssistanceMail, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
+import { latestAssistanceMail, orderNotice, proofNotices, retryAssistanceMail, sendAssistanceMail, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
 
 import { applyEnrollmentPaymentCredits, lockEnrollmentFunds, updateEnrollmentPayment } from './enrollmentPaymentCredits.ts';
 import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
-import { enrollmentEmailWhatsAppDestination, enrollmentEmailWhatsAppPath, renderEnrollmentEmail } from './enrollmentEmail.ts';
+import { enrollmentAssistanceLink, enrollmentEmailWhatsAppDestination, enrollmentEmailWhatsAppPath, renderEnrollmentEmail } from './enrollmentEmail.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 import { hasConfiguredEnrollmentBank,mountEnrollmentBank,readEnrollmentBank } from './enrollmentBank.ts';
 
@@ -59,18 +60,24 @@ async function session(c: Client, q: Request): Promise<string> {
 }
 
 export async function enrollmentAssistancePreview(c:Client,offer:{
-  class_id:string;email:string;order_id:string|null;data:{quote:unknown;name:string;phone:string};
+  class_id:string;email:string;active:number;order_id:string|null;data:{quote:unknown;name:string;phone:string};
 },mode:unknown,cookie:string|undefined,expectedEmail?:string) {
   const preview={classId:offer.class_id,quote:offer.data.quote};
-  if(mode!==true&&mode!=='if-verified')return preview;
-  const sessionRead=readEnrollmentEmailSession(c,cookie,expectedEmail);
-  const email=await (mode===true?sessionRead:sessionRead.catch(()=>undefined));
-  if(email&&email===offer.email)return {...preview,name:offer.data.name,phone:offer.data.phone,email,orderId:offer.order_id};
-  if(mode===true){
-    if(!email)invalid('enrollment_verification_required',401);
-    invalid('enrollment_assistance_email',403);
+  if(mode===true||mode==='if-verified'){
+    const sessionRead=readEnrollmentEmailSession(c,cookie,expectedEmail);
+    const email=await (mode===true?sessionRead:sessionRead.catch(()=>undefined));
+    if(email&&email===offer.email)return {...preview,name:offer.data.name,phone:offer.data.phone,email,orderId:offer.order_id};
+    if(mode===true){
+      if(!email)invalid('enrollment_verification_required',401);
+      invalid('enrollment_assistance_email',403);
+    }
   }
-  return preview;
+  return {...preview,maskedEmail:maskEnrollmentEmail(activeAssistanceEmail(offer))};
+}
+
+function activeAssistanceEmail(offer?:{email:string;active:number}) {
+  if(!offer||!Number(offer.active))invalid('enrollment_assistance_unavailable',404);
+  return offer.email;
 }
 
 async function lockClass(c: Client, classId: string) {
@@ -282,11 +289,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     r.set('Cache-Control','no-store').json(result);
   }));
 
-  post(base + '/email/request', async (q, r) => {
-    const email = contact(q.body.email);
+  const requestEmailCode=(assisted=false):Route=>async (q,r) => {
+    const suppliedEmail=assisted?undefined:contact(q.body.email);
     const id = randomUUID();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const pending=await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
+      const email=suppliedEmail??await readAssistanceEmail(c,q.body);
       const {delivery,configured}=await enrollmentMailDeliveryState(c);
       const local=enrollmentMailbox(delivery.mode);
       if(delivery.mode==='disabled'||delivery.mode==='simulation'&&!local)invalid('enrollment_email_unavailable',503);
@@ -300,14 +308,15 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       await c.query(`UPDATE enrollment_email_challenges SET challenge_id=:p1,digest=:p2,attempts=0,used=FALSE,locked_until=NULL,
         expires_at=TIMESTAMPADD(MINUTE,:p4,UTC_TIMESTAMP(6)),resend_at=TIMESTAMPADD(SECOND,:p5,UTC_TIMESTAMP(6)) WHERE email=:p3`,
       [id, otpHash(id, code), email,emailCodeMinutes,emailResendSeconds]);
-      const message=renderEnrollmentEmail(q.body.purpose==='mine'?'otp_mine':'otp_apply',{
+      const message=renderEnrollmentEmail(!assisted&&q.body.purpose==='mine'?'otp_mine':'otp_apply',{
         language:q.body.language,code,codeMinutes:emailCodeMinutes,
       });
-      if(configured)return {message,delivery};
+      if(configured)return {message,delivery,email};
       if(!local)invalid('enrollment_email_unavailable',503);
       await local.deliver(id,email,code,message);
     }));
     if(pending){
+      const {email}=pending;
       const result=await measureEnrollmentPhase(r,'mail_dispatch',()=>dispatchEnrollmentMail('otp:'+id,email,pending.message,{code,deliveryId:id,expected:pending.delivery}));
       if(result.state!=='accepted'&&result.state!=='simulated'){
         await enrollTx(c=>c.query(`UPDATE enrollment_email_challenges SET used=TRUE,
@@ -318,7 +327,9 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       }
     }
     r.json({ challengeId: id });
-  });
+  };
+  post(base + '/email/request',requestEmailCode());
+  post(base + '/assistance/email/request',requestEmailCode(true));
 
   post(base + '/email/session', async (q, r) => {
     if(q.body?.email===undefined){
@@ -339,13 +350,14 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     r.json({signedOut:true});
   });
 
-  post(base + '/email/verify', async (q, r) => {
-    const email = contact(q.body.email);
+  const verifyEmailCode=(assisted=false):Route=>async (q,r) => {
+    const suppliedEmail=assisted?undefined:contact(q.body.email);
     const { challengeId, code } = q.body;
     if (!uuid.test(challengeId) || typeof code !== 'string' || !/^\d{6}$/.test(code)) invalid('enrollment_invalid_code');
     const token = randomBytes(32).toString('hex');
     const scope=await visitor(q,r);
     const sessionHours = await enrollTx(async (c: Client) => {
+      const email=suppliedEmail??await readAssistanceEmail(c,q.body);
       await lockEnrollmentEmail(c, email);
       const row = (await c.query(`SELECT *,expires_at>UTC_TIMESTAMP(6) AS active
         FROM enrollment_email_challenges WHERE email=:p1 FOR UPDATE`, [email])).rows[0];
@@ -366,7 +378,9 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     if (sessionHours===null) invalid('enrollment_invalid_code', 401);
     r.cookie(enrollmentSessionCookie, 'v2.'+token, { httpOnly: true, secure: q.secure, sameSite: 'strict', path: base, maxAge: sessionHours*3_600_000 });
     r.json({ verified: true });
-  });
+  };
+  post(base + '/email/verify',verifyEmailCode());
+  post(base + '/assistance/email/verify',verifyEmailCode(true));
 
   async function reserveSeat(c:Client,cohort:Awaited<ReturnType<typeof lockClass>>,seats:number,input:{
     email:string;name:string;phone:string;requestId:string;fingerprint:string;price:number;priority:boolean;source?:unknown;actor?:string;assistance?:{id:string;customerId:string;opportunityId:string};
@@ -412,6 +426,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     if(typeof body?.applicationId==='string'&&uuid.test(body.applicationId))return [null,body.applicationId];
     return [assistanceToken(body?.token),null];
   }
+  async function readAssistanceEmail(c:Client,body:unknown){
+    const offer=(await c.query(offerProjection+' FOR UPDATE',offerLookup(body))).rows[0];
+    return activeAssistanceEmail(offer);
+  }
   post('/api/crm/opportunities/:id/enrollment-assistance',async(q,r)=>{
     const actor=await staff(q,'crm.followup');
     const {token,classId,requestId,name:rawName,phone:rawPhone,email:rawEmail,lang}=q.body??{};
@@ -449,7 +467,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       return latest??(Number(offer.active)&&!offer.order_id
         ?await sendAssistanceMail(c,offer,sha(actor.id+':'+requestId)):undefined);
     });
-    r.json({...result,mail});
+    r.json({...result,mail,confirmationUrl:enrollmentAssistanceLink(result.id,result.lang)});
   });
   post('/api/crm/opportunities/:id/enrollment-assistance/:applicationId/retry',async(q,r)=>{
     const actor=await staff(q,'crm.followup');
@@ -461,9 +479,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       const offer=(await c.query(offerProjection+' FOR UPDATE',[null,applicationId])).rows[0];
       if(!offer||offer.opportunity_id!==opportunityId||offer.customer_id!==customer.id||
           !Number(offer.active)||offer.order_id)invalid('enrollment_assistance_unavailable',404);
-      const latest=await latestAssistanceMail(c,applicationId);
-      if(['simulated','accepted','queued','unknown'].includes(latest?.state)||(latest?.id??null)!==q.body?.previousAttempt)return latest;
-      return sendAssistanceMail(c,offer,sha(latest?.id??'resume:'+applicationId));
+      return retryAssistanceMail(c,offer,q.body?.previousAttempt);
     });
     r.json({mail});
   });

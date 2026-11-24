@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import {mkdtemp,readFile,readdir,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import test from 'node:test';
 import {enrollmentServicePolicy} from '../server/portal/enrollmentRuntime.ts';
 import {hasConfiguredEnrollmentBank} from '../server/portal/enrollmentBank.ts';
@@ -32,16 +35,91 @@ test('assisted enrollment preview only includes private details for the verified
     const email=sessions.get(String(params?.[0]));
     return {rows:email?[{email}]:[]};
   }};
-  const offer={class_id:'fixture-class',email:ownEmail,order_id:'fixture-order',data:{quote:{price:1000},name:'Fixture',phone:'+6281234567890'}};
-  const publicPreview={classId:offer.class_id,quote:offer.data.quote};
+  const offer={class_id:'fixture-class',email:ownEmail,active:1,order_id:'fixture-order',data:{quote:{price:1000},name:'Fixture',phone:'+6281234567890'}};
+  const preview={classId:offer.class_id,quote:offer.data.quote};
+  const publicPreview={...preview,maskedEmail:'l•••@example.invalid'};
   assert.deepEqual(await enrollmentAssistancePreview(c,offer,'if-verified',undefined),publicPreview);
   assert.deepEqual(await enrollmentAssistancePreview(c,offer,'if-verified',cookies(other)),publicPreview);
   assert.deepEqual(await enrollmentAssistancePreview(c,offer,'if-verified',cookies(owner),otherEmail),publicPreview);
   assert.deepEqual(await enrollmentAssistancePreview(c,offer,false,cookies(owner)),publicPreview);
   assert.deepEqual(await enrollmentAssistancePreview(c,offer,'if-verified',cookies(owner)),
-    {...publicPreview,name:offer.data.name,phone:offer.data.phone,email:ownEmail,orderId:offer.order_id});
+    {...preview,name:offer.data.name,phone:offer.data.phone,email:ownEmail,orderId:offer.order_id});
   await assert.rejects(enrollmentAssistancePreview(c,offer,true,undefined),/enrollment_verification_required/);
   await assert.rejects(enrollmentAssistancePreview(c,offer,true,cookies(other)),/enrollment_assistance_email/);
+  await assert.rejects(enrollmentAssistancePreview(c,{...offer,active:0},'if-verified',undefined),
+    {status:404,message:'enrollment_assistance_unavailable'});
+  assert.deepEqual(await enrollmentAssistancePreview(c,{...offer,active:0},'if-verified',cookies(owner)),
+    {...preview,name:offer.data.name,phone:offer.data.phone,email:ownEmail,orderId:offer.order_id});
+});
+
+test('assistance OTP uses the bound recipient and existing resend, expiry and verification rules',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {mountEnrollmentApplication}=await import('../server/portal/enrollmentApplication.ts');
+  const {operationContext}=await import('../server/portal/operationContext.ts');
+  const mailbox=await mkdtemp(join(tmpdir(),'uper-assistance-otp-'));
+  const previous=process.env;
+  try{
+    const host='enrollment.example.invalid';
+    process.env={...previous,PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial',PORTAL_ENROLLMENT_SERVICE_ENABLED:'true',
+      UPER_PORTAL_PUBLIC_ORIGIN:'https://'+host,PORTAL_ENROLLMENT_SIMULATION_DATABASE:'uper_trial_mock_fixture',
+      PORTAL_ENROLLMENT_SIMULATION_MAILBOX:mailbox};
+    type Handler=(request:Request,response:Response)=>Promise<unknown>;
+    const routes=new Map<string,Handler>();
+    const app={get:()=>{},post:(path:string,handler:Handler)=>routes.set(path,handler)} as unknown as Express;
+    mountEnrollmentApplication(app,{wrap:fn=>fn,staff:async()=>assert.fail('Public route'),visitor:async()=>({id:'b'.repeat(64)})});
+    const email='learner@example.invalid',applicationId='530c315b-2933-4217-9e36-f2b5ad8d0f7e';
+    let offerActive=1,codeActive=1,blocked=0,challengeId='',digest='',attempts=0,used=false,sessionEmail='';
+    const client={transactionIsolation:'READ COMMITTED',query:async(sql:string,args:unknown[]=[])=>{
+      if(sql.includes('FROM enrollment_assisted_applications')){
+        assert.deepEqual(args,[null,applicationId]);
+        return {rows:[{email,active:offerActive}]};
+      }
+      if(sql.includes('enrollment_mail_configuration'))return {rows:[{revision:0,config:{delivery:{mode:'simulation',generation:'fixture'}}}]};
+      if(sql.includes('GET_LOCK'))assert.deepEqual(args,['enrollment-email:'+email]);
+      else if(sql.includes('SELECT resend_at'))return {rows:[{blocked,locked:0}]};
+      else if(sql.includes('SET challenge_id=')){assert.equal(args[2],email);[challengeId,digest]=[String(args[0]),String(args[1])];}
+      else if(sql.includes('SELECT *,expires_at')){assert.deepEqual(args,[email]);return {rows:[{challenge_id:challengeId,digest,active:codeActive,attempts,used}]};}
+      else if(sql.includes('SET attempts=')){assert.equal(args[1],email);attempts=Number(args[0]);}
+      else if(sql.includes('SET used=TRUE')){assert.deepEqual(args,[email]);used=true;}
+      else if(sql.includes('INSERT INTO enrollment_email_sessions'))sessionEmail=String(args[1]);
+      else assert.ok(sql.includes('enrollment_rules')||sql.includes('INSERT INTO enrollment_email_challenges'),sql);
+      return {rows:[]};
+    }};
+    let result:unknown,cookieSet=false;
+    const response={set:()=>response,json:(data:unknown)=>{result=data;},cookie:()=>{cookieSet=true;}} as unknown as Response;
+    const post=(action:'request'|'verify',body:object={})=>operationContext.run(client,()=>routes.get('/api/enrollment/assistance/email/'+action)!({
+      body:{applicationId,email:'different@example.invalid',...body},headers:{origin:'https://'+host},
+      protocol:'https',get:(name:string)=>name==='host'?host:undefined,is:()=>true,
+    } as unknown as Request,response));
+    await post('request',{language:'zh'});
+    assert.deepEqual(result,{challengeId});
+    const letters=await readdir(mailbox);
+    assert.deepEqual(letters,[challengeId+'.json']);
+    const message=JSON.parse(await readFile(join(mailbox,letters[0]),'utf8'));
+    assert.equal(message.email,email);
+    blocked=1;
+    await assert.rejects(post('request'),{status:429});
+    assert.deepEqual(await readdir(mailbox),letters);
+    const wrong=message.code==='000000'?'111111':'000000';
+    await assert.rejects(post('verify',{challengeId,code:wrong}),{status:401,message:'enrollment_invalid_code'});
+    assert.equal(attempts,1);
+    codeActive=0;
+    await assert.rejects(post('verify',{challengeId,code:message.code}),{status:401,message:'enrollment_invalid_code'});
+    codeActive=1;
+    offerActive=0;
+    await assert.rejects(post('request'),{status:404});
+    await assert.rejects(post('verify',{challengeId,code:message.code}),{status:404});
+    assert.equal(cookieSet,false);
+    offerActive=1;
+    await post('verify',{challengeId,code:message.code});
+    assert.deepEqual(result,{verified:true});
+    assert.equal(sessionEmail,email);
+    assert.equal(cookieSet,true);
+    await assert.rejects(post('verify',{challengeId,code:message.code}),{status:401});
+  }finally{
+    process.env=previous;
+    await rm(mailbox,{recursive:true,force:true});
+  }
 });
 
 test('only approved deployments can opt in to enrollment servicing',()=>{

@@ -170,11 +170,11 @@ async function postEnrollmentBody(path:string,body:BodyInit,headers:Record<strin
   if(owner&&owner!==visitorScope())throw Error('enrollment_verification_required');
   if (!response.ok) {
     const fallback=response.status===401?'enrollment_verification_required'
-      : response.status===429&&path==='/api/enrollment/email/request'?'enrollment_code_wait':'enrollment_failed';
+      : response.status===429&&path.endsWith('/email/request')?'enrollment_code_wait':'enrollment_failed';
     const message=typeof data?.error==='string'&&data.error?data.error:fallback;
     throw Object.assign(Error(message),{status:response.status});
   }
-  if (path === '/api/enrollment/email/verify' || path === '/api/enrollment/email/logout') {
+  if (path.endsWith('/email/verify') || path === '/api/enrollment/email/logout') {
     notifyEmailSessionChange();
   }
   return data;
@@ -216,20 +216,34 @@ export async function signOutEnrollmentEmail(email:string) {
 }
 
 const pendingCodeSends = new Map<string,Promise<string>>();
+type AssistanceLookup = {applicationId:string} | {token:string};
 
 export function requestEnrollmentEmailCode(email:string,language:string,purpose:'mine'|'apply'):Promise<string> {
-  const key=JSON.stringify([visitorScope(),email.trim().toLowerCase(),purpose]);
+  return requestEmailCode('/api/enrollment/email/request',[email.trim().toLowerCase(),purpose],{email,language,purpose});
+}
+
+export function requestAssistanceEmailCode(lookup:AssistanceLookup,language:string) {
+  return requestEmailCode('/api/enrollment/assistance/email/request',lookup,{...lookup,language});
+}
+
+export async function verifyAssistanceEmailCode(lookup:AssistanceLookup,challengeId:string,code:string) {
+  const result=await enrollmentPost('/api/enrollment/assistance/email/verify',{...lookup,challengeId,code},undefined,AbortSignal.timeout(15000));
+  if(result?.verified!==true)throw Error('enrollment_email_verification_unconfirmed');
+}
+
+function requestEmailCode(path:string,identity:unknown,body:object):Promise<string> {
+  const key=JSON.stringify([visitorScope(),path,identity]);
   const existing=pendingCodeSends.get(key);
   if(existing)return existing;
-  const response=sendEnrollmentEmailCode(email,language,purpose).finally(()=>pendingCodeSends.delete(key));
+  const response=sendEnrollmentEmailCode(path,body).finally(()=>pendingCodeSends.delete(key));
   pendingCodeSends.set(key,response);
   return response;
 }
 
-async function sendEnrollmentEmailCode(email:string,language:string,purpose:'mine'|'apply'):Promise<string> {
+async function sendEnrollmentEmailCode(path:string,body:object):Promise<string> {
   if(globalThis.navigator?.onLine===false)throw Error('enrollment_code_offline');
   try {
-    const result=await enrollmentPost('/api/enrollment/email/request',{email,language,purpose},undefined,AbortSignal.timeout(60000));
+    const result=await enrollmentPost(path,body,undefined,AbortSignal.timeout(60000));
     if(typeof result?.challengeId==='string'&&result.challengeId)return result.challengeId;
   } catch(error) {
     const cause=error as Error&{status?:number};
