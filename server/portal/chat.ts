@@ -4,6 +4,7 @@ import {assessmentWorkspaceReply,chatWorkspaceEntry,type ChatWorkspaceEntry} fro
 import {resolveChatLocalSchedule} from './chatLocalSchedule';
 import {chineseChatInput} from '../../src/utils/chatLanguage.ts';
 import {chatEnrollmentAction,chatEnrollmentInstruction,enrollmentReply,previousTuition,previousTuitionFollowUp,refundConsultationIntent} from './chatEnrollment.ts';
+import {chatCourseContentInstruction,chatCourseContentReply,normalizeChatCourseContent} from './chatCourseContent.ts';
 import {assessmentEnrollmentSelection,enrollmentGuideText,enrollmentReplyLanguage,hasConsultationEvidence,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,resolveEnrollmentComparison,sharedEnrollmentComparison,withExplicitChatAppointmentTime,type ConsultationConstraints,type EnrollmentGuideAction} from '../../src/utils/enrollmentGuidance.ts';
 import {managedCoursePrices} from './courseCatalog.ts';
 import {readPublicEnrollmentClassReference} from './enrollmentCatalog.ts';
@@ -303,7 +304,7 @@ export function mountChat(app: Express) {
                     role: "system",
                     content:
                       chatConsultationCore +
-                      "\n" + chatEnrollmentInstruction + enrollmentConsultationPolicy +
+                      "\n" + chatEnrollmentInstruction + enrollmentConsultationPolicy + chatCourseContentInstruction +
                       "\nGive one useful, tailored piece of advice after answering the current question if it helps the learner decide. Ask at most one question and only when the missing answer changes the recommendation. A beginner with usable weekly availability and a group preference can be matched at HSK 1 now. When a learner asks for a specific recommendation with a known level and a first-session date window, use recommend now even if weekly availability is unknown. For one option per class type, put both types in formats, not a single format. Use recommend with verified facts and fields for this request, rather than a generic directory. When asked about a shown class’s tuition and periods, use inspect with price and duration; a request for useful next steps is not consent to apply. When there is a whole-course budget plus schedule, use recommend with maximumTotal and exact timing; the server finds and explains matching options. When a learner who finished HSK 1 switches in as the subject with exact availability, check HSK 2 as a tentative starting point this turn; do not persist that as their confirmed level. Only set classCriteria.level when the new learner clearly chose a target level. Weekday evenings with specific days are enough for a first check against the published WIB schedule. Use the weekday-evening period and the complete allowed days, and leave needsReview false; check the catalogue before asking for exact hours. If the result needs exact hours to distinguish plausible options, ask one question. Explicitly foreign or unknown timezones still require the existing clarification." +
                       (introduction?'':`\nAnswer in the language the learner used in their current message, regardless of the interface language, unless the learner explicitly requests a different reply language. An explicit request takes priority. With mixed-language input prefer the main language of the question, not isolated course names, borrowed words or quoted text. If the current message has no clear language, use the latest clear learner language, or the interface language (${lang}) if none. In the JSON response, include "replyLanguage": "zh", "en", or "id" matching the selected response language so the server can localize verified class facts and links. For other languages write the conversational reply in the requested language and omit replyLanguage. If the learner explicitly asks for a different supported language, also include replyLanguageOverride with the exact words of that request.`) +
                       "\nOnly self-report is known unless an actual saved assessment exists. Never guarantee schedule, seats, scholarships or outcomes. A stored request is not a completed contact or booking. No new tasks are created." +
@@ -373,7 +374,8 @@ export function mountChat(app: Express) {
             let responseMessages=answerMessages;
             await attempt.request('consultation',responseMessages);
             let parsed=parseConsultationReply(attempt.content);
-            const reference=!introduction&&parsed.policyTopic!=='refund'&&parsed.catalogue===null&&parsed.enrollment==null
+            const reference=!introduction&&parsed.policyTopic!=='refund'&&parsed.catalogue===null&&parsed.enrollment==null&&
+              !normalizeChatCourseContent(parsed.courseContent)
               ?chatConsultationReference(parsed?.referenceTopic):undefined;
             if(reference){
               attempt.content="";
@@ -461,11 +463,20 @@ export function mountChat(app: Express) {
               ?{...normalized.value,referenceIds:fallbackReferences}
               :normalized.value;
             const learningAdvice=parsed.learningAdvice==='fluency_expectations';
+            const allowedClassIds=[...referenceContext.map(row=>row.id),...pairIds,...(previousActions[0]?.rows?.map(row=>row.id)??[]),
+              ...(enrollmentContext?.kind==='class'?[enrollmentContext.classId]:[])];
             const rawAction=workspaceEntry||held||learningAdvice||(priorPrice&&!priorPrice.appointment)?undefined:await chatEnrollmentAction(
-              db,priorPrice?.appointment??actionIntent,assessmentIntroduction,profileIntroduction,
-              [...referenceContext.map(row=>row.id),...pairIds,...(previousActions[0]?.rows?.map(row=>row.id)??[]),
-                ...(enrollmentContext?.kind==='class'?[enrollmentContext.classId]:[])],
+              db,priorPrice?.appointment??actionIntent,assessmentIntroduction,profileIntroduction,allowedClassIds,
               normalized.constraints??previousConstraints);
+            const courseRequest=!introduction&&!workspaceEntry&&normalizeChatCourseContent(parsed.courseContent);
+            const courseReply=courseRequest?await chatCourseContentReply(db,courseRequest,replyLang,{
+              allowedClassIds:subjectChanged?[]:allowedClassIds,
+              openedClassId:!subjectChanged&&enrollmentContext?.kind==='class'?enrollmentContext.classId:undefined,
+            }).catch(error=>{
+              log.warn('chat.course_content_unavailable',{messageId:assistantId,error});
+              return enrollmentGuideText(replyLang,'现在无法读取课程介绍，请稍后再试。','The course overview could not be loaded. Please try again shortly.',
+                'Pengantar kursus tidak dapat dimuat. Silakan coba lagi nanti.');
+            }):'';
             const action=withExplicitChatAppointmentTime(rawAction,parsed.appointmentTime,learnerMessage);
             const linkOnlyClassIds=action?.scheduleConflict||action?.firstDateConflict||action?.kind==='viewing'
               ?action.rows?.map(row=>row.id)??[]:action?repeatedEnrollmentCards(action,previousActions):[];
@@ -503,10 +514,14 @@ export function mountChat(app: Express) {
                 preserveAnswer&&!assessmentGuidance?.needsReview?directAnswer:'',
                 facts!==directAnswer?facts:''].filter(Boolean).join('\n\n');
               catalogueUsed=false;
+            }else if(courseReply&&parsed.catalogue===null){
+              reply=typeof parsed.reply==='string'?parsed.reply.trim():'';
+              catalogueUsed=false;
             }else{
               ({ reply, catalogueUsed } = renderConsultationReply(attempt.content, currentPriceBook, replyLang));
               if(enrollment&&!catalogueUsed)reply+='\n\n'+enrollmentReply(enrollment,replyLang);
             }
+            if(courseReply)reply=[courseReply,reply].filter(Boolean).join('\n\n');
             if(assessmentGuidance){
               reply=[assessmentIntroOpening(assessmentGuidance,ownedProfile?.reportedLevel,replyLang),assessmentScopeNote(replyLang),reply,
                 assessmentClass?enrollmentGuideText(replyLang,

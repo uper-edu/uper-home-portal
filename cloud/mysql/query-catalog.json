@@ -3995,6 +3995,12 @@
       "cloud/mysql/runtime.mjs"
     ]
   },
+  "SELECT value->>'$.teaching.level' AS level, JSON_EXTRACT(value,'$.teaching.introduction') AS introduction\n    FROM crm_courses\n    WHERE JSON_EXTRACT(value,'$.active')=true AND value->>'$.teaching.level' IN (:p1)": {
+    "sql": "SELECT value->>'$.teaching.level' AS level, JSON_EXTRACT(value,'$.teaching.introduction') AS introduction\n    FROM crm_courses\n    WHERE JSON_EXTRACT(value,'$.active')=true AND value->>'$.teaching.level' IN (:p1)",
+    "sources": [
+      "server/portal/chatCourseContent.ts"
+    ]
+  },
   "SELECT version,config FROM notification_rules WHERE id=:p1 FOR UPDATE": {
     "sql": "SELECT version,config FROM notification_rules WHERE id=:p1 FOR UPDATE",
     "sources": [
