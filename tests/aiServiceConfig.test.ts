@@ -37,7 +37,7 @@ test('only complete System Administrator can manage AI, not CRM Manager or Sales
  assert.equal(isAiAdministrator({roles:['access_admin'],permissions:permissions.slice(1)}),false);
 });
 test('model selection is allowlisted, different and strips unexpected properties',()=>{
- assert.deepEqual(aiModels,['gpt-6.2-sol','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','deepseek-v4-pro','deepseek-chat']);
+ assert.deepEqual(aiModels,['gpt-6.2-sol','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','MiniMax-M3.1-Flash','deepseek-v4-pro','deepseek-flash','deepseek-chat']);
  for(const model of aiModels){
   const other=model==='gpt-6-luna'?'gpt-4o':'gpt-6-luna';
   assert.deepEqual(validateSelection({primary:model,fallback:other}),{primary:model,fallback:other});
@@ -89,7 +89,9 @@ test('new model candidates use their own provider credentials and endpoints',()=
  Object.assign(process.env,overrides);
  try{
   assert.deepEqual(providerFor('gpt-6.2-sol'),{model:'gpt-6.2-sol',provider:'openai',key:overrides.OPENAI_API_KEY,url:overrides.OPENAI_API_BASE_URL});
+  assert.deepEqual(providerFor('MiniMax-M3.1-Flash','low'),{model:'MiniMax-M3.1-Flash',provider:'openai',key:overrides.OPENAI_API_KEY,url:overrides.OPENAI_API_BASE_URL,reasoningEffort:'low'});
   assert.deepEqual(providerFor('deepseek-v4-pro'),{model:'deepseek-v4-pro',provider:'deepseek',key:overrides.DEEPSEEK_API_KEY,url:overrides.DEEPSEEK_API_BASE_URL});
+  assert.deepEqual(providerFor('deepseek-flash'),{model:'deepseek-flash',provider:'deepseek',key:overrides.DEEPSEEK_API_KEY,url:overrides.DEEPSEEK_API_BASE_URL});
  }finally{
   for(const [key,value] of Object.entries(prior))if(value===undefined)delete process.env[key];else process.env[key]=value;
  }

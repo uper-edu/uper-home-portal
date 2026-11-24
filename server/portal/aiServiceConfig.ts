@@ -20,7 +20,17 @@ export function validateSelection(v:any):AiSelection {
  }
  return selection;
 }
-export function providerFor(model:string,reasoningEffort?:ReasoningEffort){const deep=model==='deepseek-v4-pro'||model==='deepseek-flash'||model==='deepseek-chat';return {model,provider:deep?'deepseek':'openai',key:deep?process.env.DEEPSEEK_API_KEY:process.env.OPENAI_API_KEY,url:aiCredentialUrl(deep?'deepseek':'openai'),...(supportsReasoningEffort(model)&&reasoningEffort?{reasoningEffort}:{})};}
+export function providerFor(model:string,reasoningEffort?:ReasoningEffort){
+ const deep=model==='deepseek-v4-pro'||model==='deepseek-flash'||model==='deepseek-chat';
+ const minimax=model==='MiniMax-M3.1-Flash';
+ return {
+  model,
+  provider:deep?'deepseek':'openai',
+  key:minimax?(process.env.MINIMAX_API_KEY||process.env.OPENAI_API_KEY):(deep?process.env.DEEPSEEK_API_KEY:process.env.OPENAI_API_KEY),
+  url:minimax?(process.env.MINIMAX_API_BASE_URL||process.env.OPENAI_API_BASE_URL||'https://api.minimaxi.com/v1/chat/completions'):aiCredentialUrl(deep?'deepseek':'openai'),
+  ...(supportsReasoningEffort(model)&&reasoningEffort?{reasoningEffort}:{}),
+ };
+}
 export async function aiState(db?:any){db ||= (await import('./store.ts')).pool;return (await db.query("SELECT value FROM portal_settings WHERE id='ai_service'")).rows[0]?.value||{revision:0,current:defaults(),previous:null,checks:[],history:[]};}
 export async function configuredAiKey(provider:string,db?:CredentialClient){
  return (await integrationCredential('ai',provider,aiCredentialTarget(provider),()=>legacyAiCredential(provider),db))?.key;
@@ -31,6 +41,9 @@ export async function runtimeProviders(db?:CredentialClient){
  const keys=new Map<string,ReturnType<typeof configuredAiKey>>();
  return Promise.all(aiModelSlots.map(async role=>{
   const provider=providerFor(s.current[role],s.current[effortField[role]]);
+  if(provider.model==='MiniMax-M3.1-Flash'&&process.env.MINIMAX_API_KEY){
+   return {...provider,key:process.env.MINIMAX_API_KEY};
+  }
   let key=keys.get(provider.provider);
   if(!key){
    key=configuredAiKey(provider.provider,usesDatabase?db:undefined);
@@ -52,7 +65,7 @@ export function activationCheck(s:any,body:any,actor:string,now=Date.now()){
 
 export function acceptedModel(requested:string,actual:string){return actual===requested||actual.startsWith(requested+'-')||(requested==='deepseek-chat'&&actual==='deepseek-flash');}
 export async function probeModel(model:string,reasoningEffort?:ReasoningEffort,candidateKey?:string){
- const p=providerFor(model,reasoningEffort);p.key=candidateKey??await configuredAiKey(p.provider);if(!p.key)return {model,ok:false,error:'key_missing'};
+ const p=providerFor(model,reasoningEffort);p.key=candidateKey??(model==='MiniMax-M3.1-Flash'&&process.env.MINIMAX_API_KEY?process.env.MINIMAX_API_KEY:await configuredAiKey(p.provider));if(!p.key)return {model,ok:false,error:'key_missing'};
  let calls=0;const start=Date.now();
  try{
   const ask=async(stream=false)=>{calls++;const r=await fetch(p.url,{method:'POST',redirect:'error',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model,messages:[{role:'user',content:'TEST connection check. Return JSON only: {"ok":true}'}],...(stream?{stream:true}:{response_format:{type:'json_object'}}),...modelParameters(model,600,0,p.reasoningEffort)}),signal:AbortSignal.timeout(45000)});if(!r.ok)throw Error('provider_http_'+r.status);return r;};

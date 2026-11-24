@@ -1,7 +1,7 @@
 export const reasoningEfforts=['low','medium','high'] as const;
 export type ReasoningEffort=typeof reasoningEfforts[number];
 export const defaultReasoningEffort:ReasoningEffort='low';
-const reasoningModels=['gpt-6.2-sol','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna'];
+const reasoningModels=['gpt-6.2-sol','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','MiniMax-M3.1-Flash'];
 export const supportsReasoningEffort=(model:string)=>reasoningModels.includes(model);
 
 export type AiSelection={

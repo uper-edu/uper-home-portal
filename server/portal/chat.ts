@@ -300,7 +300,7 @@ export function mountChat(app: Express) {
         const chineseInput = !introduction && chineseChatInput(content);
         await runChatProviderAttempts(await runtimeProviders(db), async attempt => {
             const {provider} = attempt;
-            const history = provider.provider === 'deepseek' ? formattedHistory : rawHistory;
+            const history = provider.provider === 'deepseek' || provider.model === 'MiniMax-M3.1-Flash' ? formattedHistory : rawHistory;
             const consultationMessages = [
                   {
                     role: "system",
@@ -338,10 +338,14 @@ export function mountChat(app: Express) {
                       "\nYou are an AI assistant. This chat sends no messages to advisors and makes no bookings. For any advisor contact or delivery-status request, use the advisor action and reply rules above. Include format:'one-on-one' when the learner wants to discuss private lessons with a person. On a follow-up, keep the known level, period and format; use null only to clear a preference the learner explicitly withdrew. Do not mention internal extraction, queues or processing contracts to the customer. Never impersonate an employee.",
                   },
                   ...history,
+                  {role:"system",content:
+                    'Both Chat surfaces can open assessment and learning details directly from a button below the reply. Point to that button in the prose. When the learner asks for an assessment link, how to start, resume or retake it, where to view their own result, or how to add or update learning details, return workspaceAction as assessment, assessment_result, or learning_profile respectively. The interface renders the correct button based on current state. Do not invent URLs, claim anything was opened or saved, assume a result exists, or require registration before assessment. The placement assessment suggests a learning starting point. Learning details are optional for consultation. For these navigation requests return catalogue and enrollment as null, do not redirect to enrollment or an external HSK page, and use no suggested prompts. Omit workspaceAction for unrelated requests.'},
+                  {role:"system",content:
+                    'Always include "suggestedPrompts" in the same JSON response. For an ongoing consultation, give 1 or 2 short example messages the learner can send next in the language of your reply. Use the latest learner and their current conditions only. Give useful follow-ups or answers to the one question you asked. Once specific availability is given, do not ask the learner to restate it or suggest they change it unless no match is found. Any new timing option must be an explicit question or hypothetical, not a statement about the learner. Never repeat an answered question, include personal details, prices, dates, URLs, or suggest submitting, booking, paying or contacting someone as a chat message. If there is no useful follow-up, or they ask to stop, use []. When asked about Chat itself (including the follow-up controls), answer the feature question and set followupScope to "none"; never revive an earlier topic. If the learner updates their goal, suggest only the new current task; do not ask them to repeat a decision already answered in this turn. Example: "suggestedPrompts":["周末下午方便","上午下午都可以"].'},
                   ...(introduction
                     ? [
                         {
-                          role: "system",
+                          role: !rawHistory.some(message=>message.role==='user') ? "user" : "system",
                           content:
                             introInstruction +
                             consultationNextStep(
@@ -352,10 +356,6 @@ export function mountChat(app: Express) {
                         },
                       ]
                     : []),
-                  {role:"system",content:
-                    'Both Chat surfaces can open assessment and learning details directly from a button below the reply. Point to that button in the prose. When the learner asks for an assessment link, how to start, resume or retake it, where to view their own result, or how to add or update learning details, return workspaceAction as assessment, assessment_result, or learning_profile respectively. The interface renders the correct button based on current state. Do not invent URLs, claim anything was opened or saved, assume a result exists, or require registration before assessment. The placement assessment suggests a learning starting point. Learning details are optional for consultation. For these navigation requests return catalogue and enrollment as null, do not redirect to enrollment or an external HSK page, and use no suggested prompts. Omit workspaceAction for unrelated requests.'},
-                  {role:"system",content:
-                    'Always include "suggestedPrompts" in the same JSON response. For an ongoing consultation, give 1 or 2 short example messages the learner can send next in the language of your reply. Use the latest learner and their current conditions only. Give useful follow-ups or answers to the one question you asked. Once specific availability is given, do not ask the learner to restate it or suggest they change it unless no match is found. Any new timing option must be an explicit question or hypothetical, not a statement about the learner. Never repeat an answered question, include personal details, prices, dates, URLs, or suggest submitting, booking, paying or contacting someone as a chat message. If there is no useful follow-up, or they ask to stop, use []. When asked about Chat itself (including the follow-up controls), answer the feature question and set followupScope to "none"; never revive an earlier topic. If the learner updates their goal, suggest only the new current task; do not ask them to repeat a decision already answered in this turn. Example: "suggestedPrompts":["周末下午方便","上午下午都可以"].'},
             ];
             let requiredLanguage:string|undefined;
             if(!introduction){
