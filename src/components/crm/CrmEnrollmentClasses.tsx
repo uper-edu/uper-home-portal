@@ -23,7 +23,7 @@ import { AdminField, AdminFieldLabel, AdminForm, AdminRequiredNote } from '../Ad
 import { AdminStaticField, AdminFormActions, AdminFormFeedback, AdminSavedReadError, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
-import { CrmSingleSelect, type CrmChoice } from './CrmSingleSelect';
+import { AdminSingleSelect, type AdminSelectChoice } from '../admin/AdminSingleSelect';
 import { enrollmentAutofillStart,enrollmentScheduleErrors,enrollmentSessionStart,enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant,enrollmentLevels,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentScheduleReviewField,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import { validEnrollmentHolidayDate } from '../../utils/enrollmentCatalog';
@@ -461,7 +461,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     return tokens.every(token=>haystack.includes(token))?[entry]:[];
   }).sort((a,b)=>compareEnrollmentClassStarts(a.time,b.time,filters.sort,now)||a.row.id.localeCompare(b.row.id));
   const advancedCount=Number(!!filters.date)+Number(!!filters.teacher);
-  const select=(field:keyof typeof classFiltersDefault,label:EnrollmentListCopy,options:CrmChoice[],all?:EnrollmentListCopy)=>
+  const select=(field:keyof typeof classFiltersDefault,label:EnrollmentListCopy,options:AdminSelectChoice[],all?:EnrollmentListCopy)=>
     <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={label} all={all} options={options}
       value={filters[field]} onChange={value=>changeFilters({[field]:value})}/>;
   const additionalFilters=<>
@@ -495,11 +495,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       {name==='firstLesson'&&sourceHint(name)}
     </AdminField>;
   };
-  const selectField=(name:'courseId'|'level'|'format'|'period',label:Copy,options:CrmChoice[],fullWidth=false)=>
+  const selectField=(name:'courseId'|'level'|'format'|'period',label:Copy,options:AdminSelectChoice[],fullWidth=false)=>
     name==='period'&&draft?.state==='published'
       ? <AdminStaticField label={t(label)} value={options.find(option=>option.value===draft.config.period)?.label} fullWidth={fullWidth}/>
       : <AdminField required data-admin-full-width={fullWidth||undefined}>{t(label)}
-      <CrmSingleSelect label={t(label)} value={draft?.config[name]??''} options={options} lang={lang} isLight={isLight}
+      <AdminSingleSelect label={t(label)} value={draft?.config[name]??''} options={options} lang={lang} isLight={isLight}
         disabled={fieldDisabled} onChange={value=>change(name,value)}/>
       {hint(name)}
     </AdminField>;
@@ -612,7 +612,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
                   value={catalog?.templates.find(item=>item.id===draft.config.templateId)?.name}/>
               : <AdminField required={!draft.revision||!!draft.config.templateId}>
               {t(['Select a class template','Pilih templat kelas','选择班型模板'])}
-              <CrmSingleSelect label={t(['Select a class template','Pilih templat kelas','选择班型模板'])} lang={lang} isLight={isLight}
+              <AdminSingleSelect label={t(['Select a class template','Pilih templat kelas','选择班型模板'])} lang={lang} isLight={isLight}
                 value={draft.config.templateId??''} disabled={fieldDisabled}
                 options={(catalog?.templates??[]).filter(item=>item.format!=='one-on-one').map(item=>({value:item.id,
                   label:item.name+(item.saleUnitPrice?'':' · '+t(['Quote pending','Harga belum dikonfirmasi','报价待确认']))}))}
@@ -644,7 +644,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
               {dateTimeField('firstLesson')}
               <AdminField as="div" role="group" {...(weekly.days.length?hintProps('days'):{})} required={!!draft.config.templateId} data-admin-full-width="">
                 <label>{t(['Weekly class days','Hari kelas setiap minggu','每周上课日'])}</label>
-                <CrmSingleSelect multiple value="" lang={lang} isLight={isLight} disabled={fieldDisabled}
+                <AdminSingleSelect multiple value="" lang={lang} isLight={isLight} disabled={fieldDisabled}
                   label={t(['Weekly class days','Hari kelas setiap minggu','每周上课日'])}
                   emptyLabel={t(['Select weekdays','Pilih hari','请选择上课日'])} values={weekly.days.map(String)} onChange={()=>{}} onValuesChange={days=>changeWeekly({days:days.map(Number)})}
                   options={enrollmentWeekdays.map(([zh,en,id],index)=>({value:String(index+1),label:t([en,id,zh])}))}/>

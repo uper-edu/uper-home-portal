@@ -1,6 +1,6 @@
 import {useEffect,useState,type ReactNode} from 'react';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-import {CrmSingleSelect,type CrmChoice} from './CrmSingleSelect';
+import {AdminSingleSelect,type AdminSelectChoice} from '../admin/AdminSingleSelect';
 
 export type EnrollmentListCopy=readonly [string,string,string];
 
@@ -30,9 +30,9 @@ export function useEnrollmentSettingsFilters<K extends string>(list:string,defau
 
 export function EnrollmentSettingsSelect({lang,isLight,label,all,options,value,onChange}:{
   lang:CrmLanguage;isLight:boolean;label:EnrollmentListCopy;all?:EnrollmentListCopy;
-  options:CrmChoice[];value:string;onChange:(value:string)=>void;
+  options:AdminSelectChoice[];value:string;onChange:(value:string)=>void;
 }){
-  return <CrmSingleSelect lang={lang} isLight={isLight} label={enrollmentListText(lang,label)} value={value} onChange={onChange}
+  return <AdminSingleSelect lang={lang} isLight={isLight} label={enrollmentListText(lang,label)} value={value} onChange={onChange}
     options={all?[{value:'',label:enrollmentListText(lang,all)},...options]:options}/>;
 }
 

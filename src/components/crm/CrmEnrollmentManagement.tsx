@@ -21,7 +21,7 @@ import { canViewEnrollmentManagement, enrollmentManagementScopes, enrollmentClas
   type EnrollmentClassFilters,
   type EnrollmentClassSummary, type EnrollmentRosterEntry, type EnrollmentRosterState } from '../../utils/crmEnrollmentManagement';
 import { CrmEnrollmentSupport } from './CrmEnrollmentResolution';
-import { CrmSingleSelect } from './CrmSingleSelect';
+import { AdminSingleSelect } from '../admin/AdminSingleSelect';
 import { AdminPageHeader } from '../admin/AdminPageHeader';
 import { CrmPageAction } from './CrmPageAction';
 import { enrollmentSettingsPath } from './operationsSections';
@@ -275,23 +275,23 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
   const classFilterCount=[classFilters.search.trim(),classFilters.level,classFilters.format,classFilters.period,
     classFilters.status,classFilters.seats,classFilters.date].filter(Boolean).length;
   const classFilterControls=<>
-    <CrmSingleSelect lang={lang} isLight={isLight} label={t(['级别','Level','Level'])} value={classFilters.level}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['级别','Level','Level'])} value={classFilters.level}
       onChange={level=>changeClassFilters({level})} options={classOptions('level',['全部级别','All levels','Semua level'])}/>
-    <CrmSingleSelect lang={lang} isLight={isLight} label={t(['班型','Class format','Tipe kelas'])} value={classFilters.format}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['班型','Class format','Tipe kelas'])} value={classFilters.format}
       onChange={format=>changeClassFilters({format})} options={classOptions('format',['全部班型','All formats','Semua tipe kelas'])}/>
-    <CrmSingleSelect lang={lang} isLight={isLight} label={t(['时段','Schedule','Jadwal'])} value={classFilters.period}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['时段','Schedule','Jadwal'])} value={classFilters.period}
       onChange={period=>changeClassFilters({period})} options={classOptions('period',['全部时段','All schedules','Semua jadwal'])}/>
-    <CrmSingleSelect lang={lang} isLight={isLight} label={t(['班次状态','Class status','Status kelas'])} value={classFilters.status}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['班次状态','Class status','Status kelas'])} value={classFilters.status}
       onChange={status=>changeClassFilters({status})} options={[{value:'',label:t(['全部班次状态','All class statuses','Semua status kelas'])},
         ...Object.entries(statuses).map(([value,copy])=>({value,label:t(copy)}))]}/>
-    <CrmSingleSelect lang={lang} isLight={isLight} label={t(['招生余位','Seat availability','Kursi tersedia'])} value={classFilters.seats}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['招生余位','Seat availability','Kursi tersedia'])} value={classFilters.seats}
       onChange={seats=>changeClassFilters({seats})} options={[
         {value:'',label:t(['全部余位状态','All seat statuses','Semua status kursi'])},
         {value:'available',label:t(['可报名 · 有余位','Enrollment open · Seats available','Pendaftaran dibuka · Kursi tersedia'])},
         {value:'full',label:t(['已满班','Full','Kelas penuh'])},
         {value:'closed',label:t(['自助报名已截止','Self-service closed','Pendaftaran mandiri ditutup'])},
       ]}/>
-    <CrmSingleSelect lang={lang} isLight={isLight} label={t(['首课日期','First-session date','Tanggal pertemuan pertama'])} value={classFilters.date}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['首课日期','First-session date','Tanggal pertemuan pertama'])} value={classFilters.date}
       onChange={date=>changeClassFilters({date})} options={[
         {value:'',label:t(['全部首课日期','All first-session dates','Semua tanggal pertemuan pertama'])},
         {value:'7',label:t(['未来 7 天（含今天）','Next 7 days including today','7 hari ke depan termasuk hari ini'])},
@@ -301,7 +301,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     {hasClassFilters&&<button className="crm-work-link" type="button" onClick={()=>changeClassFilters({search:'',level:'',format:'',period:'',status:'',seats:'',date:''})}>
       {t(['清除筛选','Clear filters','Hapus filter'])}</button>}
   </>;
-  const classSortControl=<CrmSingleSelect lang={lang} isLight={isLight} label={t(['排序','Sort','Urutkan'])} value={classFilters.sort}
+  const classSortControl=<AdminSingleSelect lang={lang} isLight={isLight} label={t(['排序','Sort','Urutkan'])} value={classFilters.sort}
       onChange={sort=>changeClassFilters({sort:sort as EnrollmentClassFilters['sort']})} options={[
         {value:'upcoming',label:t(['即将开课优先','Upcoming first','Kelas mendatang dahulu'])},
         {value:'latest',label:t(['首课日期从晚到早','First session · Latest first','Pertemuan pertama · Terbaru dahulu'])},
@@ -446,7 +446,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
                   {t(groups[state])} <strong>{cohort.counts[state]}</strong>
                 </button>)}
               </div>
-              {filter==='history'&&<div className="crm-opportunity-filters"><CrmSingleSelect lang={lang} isLight={isLight} label={t(['关闭原因','Closure reason','Alasan penutupan'])} value={closure} onChange={setClosure}
+              {filter==='history'&&<div className="crm-opportunity-filters"><AdminSingleSelect lang={lang} isLight={isLight} label={t(['关闭原因','Closure reason','Alasan penutupan'])} value={closure} onChange={setClosure}
                 options={[{value:'',label:t(['全部原因','All reasons','Semua alasan'])},...Object.entries(closeReasons).map(([value,copy])=>({value,label:t(copy)}))]}/></div>}
               {rows?.length?<AdminListTable className="crm-enrollment-table" viewportRef={rosterTable} busy={loading}
                 label={t(['学员名单','Learner roster','Daftar siswa'])} headers={([

@@ -16,7 +16,7 @@ import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
 import { CrmPageAction } from './CrmPageAction';
 import { CrmDetailActions, CrmRecordFilters, CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordTitle } from './CrmRecordWorkspace';
-import { CrmSingleSelect } from './CrmSingleSelect';
+import { AdminSingleSelect } from '../admin/AdminSingleSelect';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone, CrmListViews } from './CrmList';
 import { interestOption } from '../../utils/enrollmentInterestCopy';
 import { enrollmentClassManagementPath,type EnrollmentClassSummary } from '../../utils/crmEnrollmentManagement';
@@ -277,14 +277,14 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
   };
   const currency=(value:number)=>formatCurrency(value,lang);
   const orderFilters=(sidebar:boolean)=><>
-        <CrmSingleSelect lang={lang} isLight={isLight} label={t('班次','Class','Kelas')} value={classFilter}
+        <AdminSingleSelect lang={lang} isLight={isLight} label={t('班次','Class','Kelas')} value={classFilter}
           onChange={value=>{setClassFilter(value);setOffset(0);}}
           options={[{value:'',label:t('全部班次','All classes','Semua kelas')},...classOptions.map(row=>({
             value:row.id,label:[row.level,interestOption(lang,row.period),interestOption(lang,row.format),formatCrmEventTime(row.firstLessonAt).slice(0,16)].filter(Boolean).join(' · '),
           }))]}/>
-        <CrmSingleSelect lang={lang} isLight={isLight} label={t('报名状态','Enrollment status','Status pendaftaran')} value={progressFilter}
+        <AdminSingleSelect lang={lang} isLight={isLight} label={t('报名状态','Enrollment status','Status pendaftaran')} value={progressFilter}
           onChange={value=>{setProgressFilter(value);setOffset(0);}} options={recordStatusOptions}/>
-        {sidebar&&<CrmSingleSelect lang={lang} isLight={isLight} label={progressLabel} value={quickFilter}
+        {sidebar&&<AdminSingleSelect lang={lang} isLight={isLight} label={progressLabel} value={quickFilter}
           options={quickOptions} onChange={value=>{setQuickFilter(value as SupportFilter);setOffset(0);}}/>}
         {(query||classFilter||progressFilter||quickFilter)&&<button type="button" className="crm-work-link" onClick={()=>{setQuery('');setSearch('');setClassFilter('');setProgressFilter('');setQuickFilter('');setOffset(0);}}>
           {t('清除筛选','Clear filters','Hapus filter')}</button>}
@@ -469,7 +469,7 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
           onCheck={()=>void aftercareOutcome(aftercareOperation.check())} onRetry={()=>void aftercareOutcome(aftercareOperation.retry())}/>
         <fieldset data-admin-stack="" style={{border:0,padding:0,margin:0,minWidth:0}} disabled={busy||!!aftercareOperation.pending}>
         {editor.mode==='invite'?<><AdminField required>{t('目标班次','Target class','Kelas tujuan')}
-          <CrmSingleSelect lang={lang} isLight={isLight} required label={t('目标班次','Target class','Kelas tujuan')} value={targetId}
+          <AdminSingleSelect lang={lang} isLight={isLight} required label={t('目标班次','Target class','Kelas tujuan')} value={targetId}
             options={classes.filter(row=>row.id!==editor.order.classId&&row.level===editor.order.level&&row.format===editor.order.format&&row.availability!=='full')
               .map(row=>({value:row.id,label:row.level+' · '+row.firstLesson.replace('T',' ')+' WIB'}))}
             onChange={value=>{setTargetId(value);setDirty(true);}}/></AdminField>
@@ -607,7 +607,7 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange,onDra
     }}>
       <fieldset className="crm-form-layout" style={{border:0,padding:0,margin:0,minWidth:0}} disabled={busy||!!refundOperation.pending}>
       <AdminField required>{t('原收款流水','Original receipt','Referensi penerimaan asal')}
-        <CrmSingleSelect label={t('原收款流水','Original receipt','Referensi penerimaan asal')} value={source}
+        <AdminSingleSelect label={t('原收款流水','Original receipt','Referensi penerimaan asal')} value={source}
           lang={lang} isLight={isLight} required options={details.receipts.filter(row=>row.remaining>0)
             .map(row=>({value:row.reference,label:row.reference+' · '+formatCurrency(row.remaining,lang)}))}
           onChange={value=>{if(value!==source){setSource(value);onDraftChange?.();}}}/>

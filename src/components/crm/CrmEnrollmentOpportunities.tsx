@@ -17,7 +17,7 @@ import { CrmSalesStage } from './CrmSalesStage';
 import { CrmIdentityStatus } from './CrmCurrentSalesState';
 import { assistanceMailLabel, CrmEnrollmentAssistance, type AssistanceResult } from './CrmEnrollmentAssistance';
 import type { PurchaseIntentResult } from './CrmOpenEnrollmentOpportunity';
-import { CrmSingleSelect } from './CrmSingleSelect';
+import { AdminSingleSelect } from '../admin/AdminSingleSelect';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { crmInstant, formatCrmEventTime, formatCrmSummaryTime, validateLocalInstant, viewerTimeZone } from '../../utils/crmOperatingTime';
 import type {PrivateLessonRegistration} from '../../utils/enrollmentInterestRecords';
@@ -564,7 +564,7 @@ function EnrollmentOpportunityLink({leadId,row,lang,isLight,onClose,onSaved}:{
             !choices?<p role="status">{t(lang,['正在读取商机…','Loading opportunities…','Memuat peluang…'])}</p>:
             choices.opportunityId?<p>{t(lang,['这条记录已经关联。','This record is already linked.','Catatan ini sudah ditautkan.'])} <a className="crm-work-link" href={crmHref({tab:'opportunities',opportunity:choices.opportunityId,enrollmentRecord:row.id})}>{t(lang,['查看商机','View opportunity','Lihat peluang'])}</a></p>:
             choices.opportunities.length?<div className="crm-simple-select-field"><p><AdminFieldLabel required>{label}</AdminFieldLabel></p>
-              <CrmSingleSelect required label={label} lang={lang} isLight={isLight} value={selected} onChange={setSelected} disabled={busy||unknown}
+              <AdminSingleSelect required label={label} lang={lang} isLight={isLight} value={selected} onChange={setSelected} disabled={busy||unknown}
                 options={[{value:'',label:t(lang,['选择对应商机','Select the matching opportunity','Pilih peluang yang sesuai'])},...choices.opportunities.map(option=>({value:option.id,
                   label:[option.level,progressLabel(option.stage,lang),option.class?.schedule??(option.criteria&&[option.criteria.period,option.criteria.format]
                     .map(value=>interestOption(lang,value)).join(' · ')),formatCrmSummaryTime(option.createdAt),option.id.slice(-8)].filter(Boolean).join(' · ')}))]}/>
@@ -887,17 +887,17 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const filterLabel=t(lang,['商机筛选','Opportunity filters','Filter peluang']);
   const filterCount=Object.entries(filters).filter(([key,value])=>value!==filterDefaults[key as keyof Filters]).length;
   const filterControls=<>
-        <CrmSingleSelect label={t(lang,['负责人','Owner','Penanggung jawab'])} value={filters.opportunityOwner} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityOwner',value)} options={[
+        <AdminSingleSelect label={t(lang,['负责人','Owner','Penanggung jawab'])} value={filters.opportunityOwner} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityOwner',value)} options={[
           {value:'mine',label:t(lang,['我的商机','My opportunities','Peluang saya'])},{value:'all',label:t(lang,['权限内商机','Accessible opportunities','Peluang yang dapat diakses'])},
           {value:'unassigned',label:t(lang,['未分配','Unassigned','Belum ditugaskan'])},...ownerOptions.map(value=>({value,label:employeeName(value)||value})),
         ]}/>
-        <CrmSingleSelect label={t(lang,['级别','Level','Level'])} value={filters.opportunityLevel} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityLevel',value)}
+        <AdminSingleSelect label={t(lang,['级别','Level','Level'])} value={filters.opportunityLevel} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityLevel',value)}
           options={[{value:'',label:t(lang,['全部级别','All levels','Semua level'])},...levels.map(value=>({value,label:value}))]}/>
-        <CrmSingleSelect label={t(lang,['销售阶段','Sales stage','Tahap penjualan'])} value={filters.opportunityStage} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityStage',value)}
+        <AdminSingleSelect label={t(lang,['销售阶段','Sales stage','Tahap penjualan'])} value={filters.opportunityStage} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityStage',value)}
           options={[{value:'',label:t(lang,['全部销售阶段','All sales stages','Semua tahap penjualan'])},...salesProgressStages.map(([value])=>({value,label:progressLabel(value,lang)}))]}/>
-        <CrmSingleSelect label={t(lang,['报名状态','Enrollment status','Status pendaftaran'])} value={filters.opportunityState} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityState',value)}
+        <AdminSingleSelect label={t(lang,['报名状态','Enrollment status','Status pendaftaran'])} value={filters.opportunityState} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityState',value)}
           options={[{value:'',label:t(lang,['全部报名状态','All enrollment statuses','Semua status pendaftaran'])},...businessStates.map(value=>({value,label:states[value]?t(lang,states[value]):value}))]}/>
-        <CrmSingleSelect label={t(lang,['待办','Follow-up','Tindak lanjut'])} value={filters.opportunityFollowup} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityFollowup',value)}
+        <AdminSingleSelect label={t(lang,['待办','Follow-up','Tindak lanjut'])} value={filters.opportunityFollowup} lang={lang} isLight={isLight} onChange={value=>changeFilter('opportunityFollowup',value)}
           options={[{value:'',label:t(lang,['全部待办状态','All follow-up statuses','Semua status tindak lanjut'])},{value:'with',label:t(lang,['已有待办','Has follow-up','Ada tindak lanjut'])},
             {value:'without',label:t(lang,['暂无待办','No follow-up','Belum ada tindak lanjut'])}]}/>
   </>;
@@ -915,7 +915,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
         filters={<CrmRecordFilters lang={lang} count={filterCount}
           search={<CrmRecordSearch label={searchLabel} placeholder={searchHint} value={filters.opportunityQuery}
             onChange={value=>changeFilter('opportunityQuery',value)}/>}>
-          <CrmSingleSelect label={scopeLabel} value={filters.opportunityStatus} options={scopes} lang={lang} isLight={isLight}
+          <AdminSingleSelect label={scopeLabel} value={filters.opportunityStatus} options={scopes} lang={lang} isLight={isLight}
             onChange={value=>changeFilter('opportunityStatus',value)}/>
           {filterControls}
           <div className="crm-record-filter-reset">

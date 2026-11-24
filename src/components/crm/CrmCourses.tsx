@@ -3,7 +3,7 @@ import {Plus} from 'lucide-react';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
 import {enrollmentIntroductionFields,enrollmentIntroductionLanguages,enrollmentIntroductionLimits,enrollmentIntroductionStages,type EnrollmentCourseIntroduction,type EnrollmentIntroductionLanguage,type EnrollmentIntroductionStage} from '../../utils/enrollmentCourseIntroduction';
 import {defaultEnrollmentCourseName} from '../../utils/enrollmentTemplates';
@@ -217,10 +217,10 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
         <AdminStaticField label={t('Periods','Jam pelajaran','总节数')} value={form.config.sessions}/>
         <AdminStaticField label={t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')} value={form.config.teaching.minutes}/>
       </>:<>
-      <AdminField required>{t('Level','Level','级别')}<CrmSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
+      <AdminField required>{t('Level','Level','级别')}<AdminSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
         label={t('Level','Level','级别')} value={form.config.teaching.level} onChange={v=>teach('level',v)} options={enrollmentLevels.map(value=>({value,label:value}))}/></AdminField>
       <AdminField required>{textbookLabel}
-        <CrmSingleSelect lang={lang} isLight={isLight} searchable disabled={busy||unknown} label={textbookLabel}
+        <AdminSingleSelect lang={lang} isLight={isLight} searchable disabled={busy||unknown} label={textbookLabel}
           value={addingBook?'new-textbook:':form.config.teaching.material?'book:'+form.config.teaching.material:''}
           options={[...books.map(book=>({value:'book:'+book,label:book})),{value:'new-textbook:',label:t('Add a textbook','Tambah buku ajar','新增教材')}]}
           onChange={value=>{setAddingBook(value==='new-textbook:');teach('material',value.startsWith('book:')?value.slice(5):'');}}/>
@@ -229,7 +229,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
         <input required maxLength={1200} value={form.config.teaching.material} onChange={e=>teach('material',e.target.value)}/></AdminField>}
       <AdminField required>{t('Periods','Jam pelajaran','总节数')}<input type="number" required min="1" max="1000" disabled={busy||unknown} value={form.config.sessions} onChange={e=>patch('sessions',e.target.value)}/></AdminField>
       <AdminField required>{t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')}
-        <CrmSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
+        <AdminSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
           label={t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')}
           value={form.config.teaching.minutes?String(form.config.teaching.minutes):''}
           options={[30,45,50,60,90].map(minutes=>({value:String(minutes),label:String(minutes)}))}
@@ -253,7 +253,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
       }}/>
     <div id={contentPanelId} role="tabpanel" aria-labelledby={contentTabsId+'-tab-'+contentLanguage}>
       {isStagedCourse&&<AdminField>{t('Course stage','Tahap kursus','课程阶段')}
-        <CrmSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
+        <AdminSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
           label={t('Course stage','Tahap kursus','课程阶段')} value={contentStage}
           options={[
             {value:'course',label:t('Course overview','Ringkasan kursus','课程总览')},

@@ -6,7 +6,7 @@ import {formatCurrency} from '../../utils/currency';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {CrmPageAction} from './CrmPageAction';
 import {AdminSearchField} from '../admin/AdminSearchField';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
 import {AdminFormGuide} from '../AdminFormGuide';
 import {AdminEditor} from '../admin/AdminEditor';
@@ -1010,7 +1010,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
                 {activeSection === 'programGallery' && (
                   <AdminField as="div" required>
-                    <CrmSingleSelect
+                    <AdminSingleSelect
                       label={t('Program', '所属项目')}
                       value={editingItem.program || ''}
                       options={[
@@ -1031,7 +1031,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   <AdminFormGrid>
                     <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Category', '所属类别')}</label>
-                      <CrmSingleSelect label={t('Category','所属类别')} lang={lang} isLight={isLight}
+                      <AdminSingleSelect label={t('Category','所属类别')} lang={lang} isLight={isLight}
                         value={editingItem.category || ''}
                         onChange={category=>setEditingItem({...editingItem,category})}
                         options={partnerCategories.map(([value,zh])=>({value,label:t(value,zh)}))}/>

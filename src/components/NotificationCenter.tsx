@@ -25,7 +25,7 @@ import {notificationTopicIcons} from "./crm/notificationTopicIcons";
 import {createElement} from "react";
 import {AdminTopicFrame} from "./AdminTopicFrame";
 import {notificationTopics} from "./crm/operationsSections";
-import { CrmSingleSelect } from "./crm/CrmSingleSelect";
+import { AdminSingleSelect } from "./admin/AdminSingleSelect";
 import { crmId } from "../utils/crmIndonesian";
 import { notificationPlanningSummary } from '../utils/notificationPlanning';
 import {
@@ -625,7 +625,7 @@ export default function NotificationCenter({
   ) =>
     field(
       title,
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={title}
         value={value}
         options={options.map(([value, label]) => ({ value, label }))}
@@ -1657,7 +1657,7 @@ export default function NotificationCenter({
                         <AdminField as="div" className="notification-channel-row" required>
                           <AdminFieldLabel required>{t("发送模式", "Delivery mode")}</AdminFieldLabel>
                           <div className="notification-channel-mode">
-                            <CrmSingleSelect label={t("发送模式", "Delivery mode")} value={channel.mode}
+                            <AdminSingleSelect label={t("发送模式", "Delivery mode")} value={channel.mode}
                               options={[
                                 {value: "simulation", label: t("模拟发送", "Simulation")},
                                 {value: "live", label: t("真实发送", "Live delivery"),

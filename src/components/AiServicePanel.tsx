@@ -5,7 +5,7 @@ import {AdminListState} from './admin/AdminList';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminField,AdminForm,AdminRequiredNote} from './AdminForm';
 import {AdminFormFeedback,AdminSavedReadError,AdminFormGrid,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
-import {CrmSingleSelect} from './crm/CrmSingleSelect';
+import {AdminSingleSelect} from './admin/AdminSingleSelect';
 import {CrmDisclosure} from './crm/CrmDisclosure';
 import {CrmPageAction} from './crm/CrmPageAction';
 import {aiModelSlots,defaultReasoningEffort,effortField,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection} from '../utils/aiModelSelection';
@@ -213,13 +213,13 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
             const modelId='ai-'+role+'-model',effortId='ai-'+role+'-effort',key=effortField[role];
             return <div key={role} data-admin-stack>
               <AdminField as="div" required><label htmlFor={modelId}>{t(role)}</label>
-                <CrmSingleSelect controlId={modelId} label={t(role)} value={selection[role]}
+                <AdminSingleSelect controlId={modelId} label={t(role)} value={selection[role]}
                   options={data.models.map(model=>({value:model,label:model}))}
                   onChange={model=>onSelect({...selection,[role]:model,[key]:supportsReasoningEffort(model)?selection[key]:undefined})}
                   lang={lang} isLight={isLight} required disabled={blocked}/>
               </AdminField>
               {effort?<AdminField as="div"><label htmlFor={effortId}>{t(key)}</label>
-                <CrmSingleSelect controlId={effortId} label={t(key)} value={effort} options={reasoningEfforts.map(value=>({value,label:t(value)}))}
+                <AdminSingleSelect controlId={effortId} label={t(key)} value={effort} options={reasoningEfforts.map(value=>({value,label:t(value)}))}
                   onChange={value=>{
                     const effort=reasoningEfforts.find(item=>item===value);
                     if(effort)onSelect({...selection,[key]:effort===defaultReasoningEffort?undefined:effort});

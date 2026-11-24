@@ -5,7 +5,7 @@ import {AdminRecordBack} from '../admin/AdminRecordHeader';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone } from './CrmList';
 import { lazy, Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { CrmSingleSelect } from './CrmSingleSelect';
+import { AdminSingleSelect } from '../admin/AdminSingleSelect';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog } from './CrmDetailWorkspace';
 import { interestOption } from '../../utils/enrollmentInterestCopy';
@@ -61,7 +61,7 @@ function EnrollmentProofs({proofs,lang,isLight}:{proofs:FinanceProof[];lang:CrmL
     <div className="crm-enrollment-finance-proof-heading">
       <h3>{title}</h3>
       <div className="crm-enrollment-finance-proof-actions">
-        {proofs.length>1&&<CrmSingleSelect lang={lang} isLight={isLight} label={title} value={id}
+        {proofs.length>1&&<AdminSingleSelect lang={lang} isLight={isLight} label={title} value={id}
           onChange={setSelectedId} options={proofs.map((proof,index)=>({
             value:proof.id,
             label:[t(`凭证 ${index+1}`,`Proof ${index+1}`,`Bukti ${index+1}`),
@@ -256,7 +256,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
         <CrmListSearch label={t('搜索报名核款订单','Search enrollment payments','Cari pembayaran pendaftaran')}
           placeholder={t('学员、报名编号或班次','Learner, order number or class','Siswa, nomor pendaftaran, atau kelas')}
           value={search} onChange={setSearch}/>
-        <CrmSingleSelect lang={lang} isLight={isLight} label={t('核款队列','Payment queue','Antrean verifikasi')} value={status}
+        <AdminSingleSelect lang={lang} isLight={isLight} label={t('核款队列','Payment queue','Antrean verifikasi')} value={status}
           options={filters} onChange={next=>{setStatus(next);setPage(1);}}/>
       </CrmListFilters>
       {error&&(savedListRead?<AdminSavedReadError lang={lang} busy={loading} onRetry={()=>setRefresh(value=>value+1)}/>:<p role="alert">{error}</p>)}
@@ -370,7 +370,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
         <AdminField>{t('银行流水号','Bank reference','Nomor referensi bank')}<input className="admin-text-input" name="reference" maxLength={120} required/></AdminField>
         <AdminField as="div" htmlFor={receivingAccountId} required>
           <label>{receivingAccountLabel}</label>
-          <CrmSingleSelect controlId={receivingAccountId} lang={lang} isLight={isLight} required disabled={busy||!!receiptOperation.pending}
+          <AdminSingleSelect controlId={receivingAccountId} lang={lang} isLight={isLight} required disabled={busy||!!receiptOperation.pending}
             label={receivingAccountLabel} emptyLabel={t('选择收款账户','Select a receiving account','Pilih rekening penerima')}
             value={useManualAccount?'other':selectedReceivingAccount?.value??''}
             onChange={value=>{setReceivingAccountChoice(value);setDirty(true);setDetailError('');}}

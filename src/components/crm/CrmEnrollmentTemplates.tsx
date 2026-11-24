@@ -14,7 +14,7 @@ import {AdminStatus} from '../AdminStatus';
 import {AdminField} from '../AdminForm';
 import {AdminStaticField,AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
 import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
-import {CrmSingleSelect, type CrmChoice} from './CrmSingleSelect';
+import {AdminSingleSelect, type AdminSelectChoice} from '../admin/AdminSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
 import {defaultEnrollmentCourseName,enrollmentTemplateFormats,enrollmentTeacherTypes,enrollmentTemplateQuote,templateSize,type EnrollmentTemplate,type EnrollmentTeachingCourse} from '../../utils/enrollmentTemplates';
 import {formatCurrency} from '../../utils/currency';
@@ -202,9 +202,9 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      setDeleteError(t('Deletion is unconfirmed. Check the original result.','Penghapusan belum terkonfirmasi. Periksa hasil awal.','删除结果尚未确认，请查询原操作结果。'));
    }finally{inFlight.current=false;setBusy(false);}
  };
- const field=(label:string,value:string,options:CrmChoice[],change:(v:string)=>void,locked=false)=>locked
+ const field=(label:string,value:string,options:AdminSelectChoice[],change:(v:string)=>void,locked=false)=>locked
    ? <AdminStaticField label={label} value={options.find(option=>option.value===value)?.label}/>
-   : <AdminField required>{label}<CrmSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change}/></AdminField>;
+   : <AdminField required>{label}<AdminSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change}/></AdminField>;
  const termsLocked=!!draft&&referencedTemplates.has(draft.id);
  const searchLabel=t('Search templates','Cari templat','搜索模板');
  const filterControls=<div className="crm-class-config-filters">

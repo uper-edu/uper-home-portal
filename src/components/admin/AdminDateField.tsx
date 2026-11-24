@@ -2,7 +2,7 @@ import {useId,useState} from 'react';
 import {AdminField,AdminFieldLabel} from '../AdminForm';
 import {AdminRowAction} from './AdminListControl';
 import {AdminCalendarPicker} from './AdminCalendarPicker';
-import {CrmSingleSelect} from '../crm/CrmSingleSelect';
+import {AdminSingleSelect} from './AdminSingleSelect';
 import {useAdminTheme} from '../../utils/adminPreferences';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
@@ -45,10 +45,10 @@ export function AdminDateField({label,value:controlled,defaultValue="",name,onCh
         invalid={!!error} describedBy={error?errorId:undefined}
         onChange={([next])=>change(withTime?`${next}T${time}`:next)}/>
       {withTime&&<div className="admin-schedule-time">
-        <CrmSingleSelect controlId={errorId+'-hour'} label={`${label} · ${ui.hour}`} emptyLabel={ui.hour}
+        <AdminSingleSelect controlId={errorId+'-hour'} label={`${label} · ${ui.hour}`} emptyLabel={ui.hour}
           lang={lang} isLight={isLight} options={hours} value={hour} onChange={next=>change(`${date}T${next}:${minute}`)}
           required={required} disabled={disabled} invalid={!!error} describedBy={error?errorId:undefined}/>
-        <CrmSingleSelect controlId={errorId+'-minute'} label={`${label} · ${ui.minute}`} emptyLabel={ui.minute}
+        <AdminSingleSelect controlId={errorId+'-minute'} label={`${label} · ${ui.minute}`} emptyLabel={ui.minute}
           lang={lang} isLight={isLight} options={minutes} value={minute} onChange={next=>change(`${date}T${hour}:${next}`)}
           required={required} disabled={disabled} invalid={!!error} describedBy={error?errorId:undefined}/>
       </div>}

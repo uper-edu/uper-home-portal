@@ -1,5 +1,5 @@
 import {AdminField,AdminFieldLabel} from '../AdminForm';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {progressLabel,salesProgressStages} from '../../utils/crmSalesProgress';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
@@ -31,7 +31,7 @@ export function CrmOpportunityProgressFields({lang,isLight,anchorId,linked,disab
         <>
           {!fixed&&<div className="crm-simple-select-field">
             <p><AdminFieldLabel required>{opportunityLabel}</AdminFieldLabel></p>
-            <CrmSingleSelect required label={opportunityLabel} lang={lang} isLight={isLight} disabled={disabled}
+            <AdminSingleSelect required label={opportunityLabel} lang={lang} isLight={isLight} disabled={disabled}
               value={latest?.id??''} options={[{value:'',label:t('选择要推进的商机','Select an opportunity','Pilih peluang')},
                 ...options.map(op=>({value:op.id,label:describe(op)}))]} onChange={id=>onSelect(options.find(op=>op.id===id))}/>
           </div>}
@@ -41,7 +41,7 @@ export function CrmOpportunityProgressFields({lang,isLight,anchorId,linked,disab
           </div>}
           {selection&&!changed&&selection.state!=='aftercare'&&<div className="crm-simple-select-field">
             <p><AdminFieldLabel>{stageLabel}</AdminFieldLabel></p>
-            <CrmSingleSelect label={stageLabel} lang={lang} isLight={isLight} disabled={disabled} value={stage}
+            <AdminSingleSelect label={stageLabel} lang={lang} isLight={isLight} disabled={disabled} value={stage}
               options={[{value:'',label:t('保持现有阶段','Keep the current stage','Pertahankan tahap saat ini')},
                 ...salesProgressStages.filter(([value])=>value!=='progress:enrolled'&&value!==selection.salesStage)
                   .map(([value])=>({value,label:progressLabel(value,lang)}))]} onChange={onStage}/>

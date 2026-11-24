@@ -2,7 +2,7 @@ import {CrmFormSummary} from './CrmFormLayout';
 import {AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
 import { CrmDisclosure } from "./CrmDisclosure";
 import { useEffect, useRef, useState } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { AdminFieldLabel } from "../AdminForm";
 import { crmError, type CrmLanguage } from "../../utils/crmLanguage";
 import { draftsFor } from "../../utils/crmDrafts";
@@ -47,7 +47,7 @@ export function CrmAttendanceFields({
         : t('Confirmation withdrawn', 'Konfirmasi ditarik', '已撤销确认')}{record.confirmed && <> · {record.mode === 'onsite' ? t('Onsite', 'Di lokasi', '现场') : t('Online', 'Daring', '线上')}</>}</p>}
       <div className="crm-attendance-mode">
       <AdminFieldLabel required>{t("Participation mode", "Mode partisipasi", "参与方式")}</AdminFieldLabel>
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={t("Participation mode", "Mode partisipasi", "参与方式")}
         required
         value={mode}

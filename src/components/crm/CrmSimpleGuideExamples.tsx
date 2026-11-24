@@ -1,4 +1,4 @@
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {useState} from 'react';
 export function guidePracticeOutcome(result:string,note:string){
  if(!['No Response','Connected'].includes(result)||!note.trim())return null;
@@ -12,7 +12,7 @@ export function CrmSimpleGuideExamples({col,isLight}:{col:number;isLight:boolean
  <div role="status"><strong>{stages[step]}</strong><p>{step===0?t('One first-contact requirement with a deadline.','Satu kewajiban kontak pertama dengan tenggat.','一个有截止时间的首次联系要求。'):t('The first attempt was recorded. No additional task is created.','Percobaan pertama dicatat. Tidak ada tugas tambahan.','首次尝试已记录，不新增任务。')}</p>{step>=2&&<p>{t('Booking requested is not booking confirmed. Reading does not answer it.','Permintaan janji temu bukan konfirmasi. Membaca bukan menjawab.','预约请求不等于预约确认；看过不等于已回应。')}</p>}{step===3&&<p>{t('Agreed date: 2 November. No exact time was given, so none is invented.','Tanggal disepakati: 2 November. Jam tidak diberikan dan tidak dikarang.','约定日期：11月2日。未约定具体时刻，系统不补造。')}</p>}</div>
  <details><summary>{t('Try recording an unanswered contact','Coba catat kontak tanpa balasan','练习记录一次未回复联系')}</summary>
  <div>{t('Actual contact result','Hasil kontak nyata','实际联系结果')}
-  <CrmSingleSelect label={t('Actual contact result','Hasil kontak nyata','实际联系结果')}
+  <AdminSingleSelect label={t('Actual contact result','Hasil kontak nyata','实际联系结果')}
     lang={col===2?'zh':col===1?'id':'en'} isLight={isLight} value={result}
     options={[
       {value:'',label:t('Choose explicitly','Pilih secara eksplisit','主动选择结果')},

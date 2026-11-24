@@ -47,7 +47,7 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 
 ## 管理端搜索、下拉和内容页签
 
-CRM、CMS 和系统管理新增或调整搜索、枚举下拉与内容页签时，必须遵循[共享控件规范](docs/design/admin-list-controls.md)。使用 `AdminSearchField`、`CrmSingleSelect` 与 `CrmDetailTabs`／`CrmContentNav` 对应接入，页面只定义业务选项和布局，不复制控件样式。验收应检查展开后的选项与键盘焦点，并区分页内切换和链接导航。
+CRM、CMS 和系统管理新增或调整搜索、枚举下拉与内容页签时，必须遵循[共享控件规范](docs/design/admin-list-controls.md)。使用 `AdminSearchField`、`AdminSingleSelect` 与 `CrmDetailTabs`／`CrmContentNav` 对应接入，页面只定义业务选项和布局，不复制控件样式。验收应检查展开后的选项与键盘焦点，并区分页内切换和链接导航。
 
 ## 管理界面颜色执行要求
 

@@ -40,7 +40,7 @@
 
 ## 不属于编辑表单的内容
 
-Lead／活动／通知列表筛选，证据搜索与定位、只读运行状态、环境信息复制、在线指南示例不纳入保存表单统一，不新增保存按钮。`CrmSingleSelect`、`CampaignDateTimeField`属于共用控件。`CrmWorkflowForm`中保留的旧安排表单、`LegacyCrmTrustPanel`的历史任务／身份实现不作为当前入口推广，不恢复旧任务流程。
+Lead／活动／通知列表筛选，证据搜索与定位、只读运行状态、环境信息复制、在线指南示例不纳入保存表单统一，不新增保存按钮。`AdminSingleSelect`、`CampaignDateTimeField`属于共用控件。`CrmWorkflowForm`中保留的旧安排表单、`LegacyCrmTrustPanel`的历史任务／身份实现不作为当前入口推广，不恢复旧任务流程。
 
 ## 交互约束
 

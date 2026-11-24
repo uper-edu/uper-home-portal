@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { adminText } from "./AdminHeader";
 import type { CrmEmployee } from "./CrmAccess";
 import type { CrmLanguage } from "../utils/crmLanguage";
-import { CrmSingleSelect } from "./crm/CrmSingleSelect";
+import { AdminSingleSelect } from "./admin/AdminSingleSelect";
 import { managementRequest } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "./AccessOperationStatus";
 import { accessError } from "../utils/accessLanguage";
@@ -164,7 +164,7 @@ export function AccessHandoverPanel({
                       </AdminField>
                     ))}
                     {h.customerCount + h.taskCount > 0 && (
-                      <><AdminFieldLabel required>{t("Receiving owner","Penerima tanggung jawab","接收负责人")}</AdminFieldLabel><CrmSingleSelect
+                      <><AdminFieldLabel required>{t("Receiving owner","Penerima tanggung jawab","接收负责人")}</AdminFieldLabel><AdminSingleSelect
                         label={t(
                           "Receiving owner",
                           "Penerima tanggung jawab",

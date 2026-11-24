@@ -16,7 +16,7 @@ import {CrmPageAction} from './crm/CrmPageAction';
 import {AdminPageHeader} from './admin/AdminPageHeader';
 import {AdminTopicHeader} from './admin/AdminTopicHeader';
 import {CrmContentNav,CrmDiscardDialog} from './crm/CrmDetailWorkspace';
-import {CrmSingleSelect} from './crm/CrmSingleSelect';
+import {AdminSingleSelect} from './admin/AdminSingleSelect';
 import {AdminStatus} from './AdminStatus';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import {enrollmentMailDefaults,enrollmentMailPoolLimit,isMailPoolStrategy,mailAccountDefaults,mailPoolDailyLimitMax,mailPoolDefaults,mailPoolMembers,mailSmtpEndpoint,mailSmtpProvider,mailSmtpProviders,type EnrollmentMailConfig,type MailAccount,type MailPool} from '../utils/enrollmentMailConfig';
@@ -569,13 +569,13 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
       <AdminFormGrid>
         <AdminField as="div" required>
           <label htmlFor={stickyHelpId+'-pool'}>{t('选用发信池','Select sending pool','Pilih pool pengiriman')}</label>
-          <CrmSingleSelect controlId={stickyHelpId+'-pool'} required lang={lang} isLight={isLight} label={t('选用发信池','Select sending pool','Pilih pool pengiriman')}
+          <AdminSingleSelect controlId={stickyHelpId+'-pool'} required lang={lang} isLight={isLight} label={t('选用发信池','Select sending pool','Pilih pool pengiriman')}
             disabled={busy||settingsUnknown||!!failure} value={settings.pool} options={(business.pools??[]).map(pool=>({value:pool.id,
               label:pool.enabled?pool.name:pool.name+' · '+word('disabled')}))} onChange={pool=>changeSettings({pool})}/>
         </AdminField>
         {business.canEditMode?<AdminField as="div">
           <label htmlFor={stickyHelpId+'-delivery'}>{t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')}</label>
-          <CrmSingleSelect controlId={stickyHelpId+'-delivery'} lang={lang} isLight={isLight}
+          <AdminSingleSelect controlId={stickyHelpId+'-delivery'} lang={lang} isLight={isLight}
             label={t('当前投递方式','Current delivery mode','Mode pengiriman saat ini')}
             value={settings.mode} disabled={busy||settingsUnknown||!!failure}
             options={enrollmentMailModes.map(mode=>({value:mode,label:t(...deliveryModeWords[mode])}))}
@@ -625,7 +625,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
           <AdminSearchField label={t('搜索主题或发件账号','Search subject or sender','Cari subjek atau pengirim')}
             placeholder={t('搜索主题或发件账号','Search subject or sender','Cari subjek atau pengirim')}
             value={historySearch} onChange={value=>{setHistorySearch(value);setHistoryPage(1);}}/>
-          <CrmSingleSelect lang={lang} isLight={isLight} label={t('发送状态','Delivery status','Status pengiriman')}
+          <AdminSingleSelect lang={lang} isLight={isLight} label={t('发送状态','Delivery status','Status pengiriman')}
             value={historyStatus} onChange={value=>{setHistoryStatus(value);setHistoryPage(1);}}
             options={[{value:'',label:t('全部状态','All statuses','Semua status')},...Object.keys(deliveryTones).map(value=>({value,label:word(value)}))]}/>
         </div>
@@ -683,7 +683,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
           {!!replacement.recipient&&!validRecipient&&<small>{contactEmailText(lang).error}</small>}
         </AdminField>
         <AdminField as="div" required><label>{t('新发件账号','New sender','Pengirim baru')}</label>
-          <CrmSingleSelect lang={lang} isLight={isLight} label={t('新发件账号','New sender','Pengirim baru')} value={replacement.account}
+          <AdminSingleSelect lang={lang} isLight={isLight} label={t('新发件账号','New sender','Pengirim baru')} value={replacement.account}
             options={[{value:'',label:t('请选择','Select an account','Pilih akun')},...draft.accounts.filter(a=>a.enabled&&mailPoolMembers(draft).includes(a.address)).map(a=>({value:a.address,label:a.address}))]}
             onChange={account=>changeReplacement({account})}/>
         </AdminField>
@@ -714,7 +714,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
         <AdminFormGrid>
           <AdminField as="div">
             <label>{strategyLabel}</label>
-            <CrmSingleSelect lang={lang} isLight={isLight} label={strategyLabel} disabled={busy}
+            <AdminSingleSelect lang={lang} isLight={isLight} label={strategyLabel} disabled={busy}
               value={draft.strategy??'balanced'} options={[...strategyOptions]}
               onChange={strategy=>{if(isMailPoolStrategy(strategy))changePool({strategy});}}/>
             {draft.strategy==='message_count'&&<small>{t('优先选择发出后每日封数额度占比较低的账号。',
@@ -767,7 +767,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
           </AdminField>}
           <AdminField required as="div">
             <label>{smtpProviderLabel}</label>
-            <CrmSingleSelect lang={lang} isLight={isLight} label={smtpProviderLabel}
+            <AdminSingleSelect lang={lang} isLight={isLight} label={smtpProviderLabel}
               value={mailSmtpProvider(account.host)??''} options={smtpProviderOptions} disabled={busy}
               onChange={provider=>{
                 if((provider==='lark'||provider==='gmail')&&provider!==mailSmtpProvider(account.host))

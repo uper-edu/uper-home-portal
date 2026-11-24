@@ -1,6 +1,6 @@
 # Personal notification settings
 
-Account menu → Notification settings is the shared employee entry in CRM, CMS and system management. The drawer combines Lark connection management and personal notification preferences. Language selection reuses CrmSingleSelect and shared styles. Disconnect uses the shared confirmation dialog with Cancel focused first and an explicit warning that personal CRM Lark notifications, including required reminders, will stop; group messages are unaffected. Fixed header, one scrolling body and one fixed footer; the footer places Cancel and Save on the right. The saved-result check is shown only when the result cannot be confirmed.
+Account menu → Notification settings is the shared employee entry in CRM, CMS and system management. The drawer combines Lark connection management and personal notification preferences. Language selection reuses AdminSingleSelect and shared styles. Disconnect uses the shared confirmation dialog with Cancel focused first and an explicit warning that personal CRM Lark notifications, including required reminders, will stop; group messages are unaffected. Fixed header, one scrolling body and one fixed footer; the footer places Cancel and Save on the right. The saved-result check is shown only when the result cannot be confirmed.
 
 ## Notification categories
 

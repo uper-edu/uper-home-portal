@@ -7,7 +7,7 @@ import {useCrmUiText,useCrmUiLanguage} from './CrmUiLanguage';
 import {CrmOperationLayer} from './CrmOperationLayer';
 import {AdminField,AdminRequiredNote} from '../AdminForm';
 import {useEffect,useState} from 'react';
-import {CrmSingleSelect}from'./CrmSingleSelect';
+import {AdminSingleSelect}from'../admin/AdminSingleSelect';
 import {CrmDisclosure}from'./CrmDisclosure';
 import {CrmSaveFeedback,CrmDiscardDialog}from'./CrmDetailWorkspace';
 import {contactCorrectionOptions,linkedAmendments}from'../../utils/crmRecordAmendments';
@@ -30,9 +30,9 @@ export function CrmRecordAmendmentForm({target,lead,timezone,isLight,onSaved,onC
  const close=()=>unknown?setError('保存结果尚未确认，请先查询保存结果，输入已保留。'):dirty?setConfirm(true):(onDirty?.(false),onCancel());
  return <CrmOperationLayer compose title={ui("补充／修正")} context={lead.fullName} lang={lang} isLight={isLight} busy={busy||suspended} onClose={close}><div className="crm-editor-compose" aria-label={ui("追加补充／修正")}><div className="crm-editor-scroll" data-admin-stack=""><CrmFormSection name="original" lang={lang}><blockquote className="crm-editor-original">{target.original||target.payload?.summary||ui("请对照原始记录进行补充或修正")}</blockquote><p>{ui("直接编辑客户资料请到“客户资料”页签。")}</p><AdminRequiredNote lang={lang}/><p>{ui("原文不会修改或删除。客户后来改变想法，请正常添加进展；这里只补充原记录或纠正误记。")}</p>
  </CrmFormSection>
- <CrmFormSection name="amendment" lang={lang}><CrmSingleSelect label={ui("记录方式")} lang={lang} isLight={isLight} value={kind} disabled={busy||unknown||suspended} options={[{value:'supplement',label:ui('补充说明')},{value:'correction',label:ui('修正误记')}]} onChange={v=>change(()=>{setKind(v);if(v==='supplement'){setResult('');setWithdrawIds([]);}})}/>
+ <CrmFormSection name="amendment" lang={lang}><AdminSingleSelect label={ui("记录方式")} lang={lang} isLight={isLight} value={kind} disabled={busy||unknown||suspended} options={[{value:'supplement',label:ui('补充说明')},{value:'correction',label:ui('修正误记')}]} onChange={v=>change(()=>{setKind(v);if(v==='supplement'){setResult('');setWithdrawIds([]);}})}/>
  <AdminField>{ui("新增内容（必填）")}<textarea aria-label={ui("补充／修正内容")} value={text} maxLength={10000} disabled={busy||unknown||suspended} onChange={e=>change(()=>setText(e.target.value))}/></AdminField>
- {kind==='correction'&&<><AdminField>{ui("修正原因（必填）")}<input aria-label={ui("修正原因")} value={reason} maxLength={2000} disabled={busy||unknown||suspended} onChange={e=>change(()=>setReason(e.target.value))}/></AdminField>{contact&&<><CrmSingleSelect label={ui("联系结果如何修正")} lang={lang} isLight={isLight} value={result} disabled={busy||unknown||suspended} options={contactCorrectionOptions.map(([value,label])=>({value,label:ui(label)}))} onChange={v=>change(()=>setResult(v))}/><p>{ui("不增加联系次数。未回复仍满足首次尝试；未实际发生／重复登记不计数。若无其他有效依据，只恢复原首次要求和原期限，不新建任务、不重发旧通知。")}</p></>}</>}
+ {kind==='correction'&&<><AdminField>{ui("修正原因（必填）")}<input aria-label={ui("修正原因")} value={reason} maxLength={2000} disabled={busy||unknown||suspended} onChange={e=>change(()=>setReason(e.target.value))}/></AdminField>{contact&&<><AdminSingleSelect label={ui("联系结果如何修正")} lang={lang} isLight={isLight} value={result} disabled={busy||unknown||suspended} options={contactCorrectionOptions.map(([value,label])=>({value,label:ui(label)}))} onChange={v=>change(()=>setResult(v))}/><p>{ui("不增加联系次数。未回复仍满足首次尝试；未实际发生／重复登记不计数。若无其他有效依据，只恢复原首次要求和原期限，不新建任务、不重发旧通知。")}</p></>}</>}
  </CrmFormSection>
  {kind==='correction'&&agreements.length>0&&<CrmFormSection name="agreements" lang={lang}><p>{ui('仅选择从未实际达成的约定；客户后来取消或改约，请正常记录进展。')}</p>{agreements.map((v:any)=><AdminField key={v.id}><input type="checkbox" disabled={busy||unknown||suspended} checked={withdrawIds.includes(v.id)} onChange={e=>change(()=>setWithdrawIds(ids=>e.target.checked?[...ids,v.id]:ids.filter(id=>id!==v.id)))}/><span>{v.action}<br/>{agreementTime(v,timezone,lang)}</span></AdminField>)}</CrmFormSection>}
  {error&&<CrmSaveFeedback state={unknown?'unknown':'error'} lang={lang}>{ui(error)}</CrmSaveFeedback>}

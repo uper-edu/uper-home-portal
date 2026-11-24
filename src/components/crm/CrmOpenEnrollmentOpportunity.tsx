@@ -4,7 +4,7 @@ import {AdminFormFeedback} from '../AdminFormLayout';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminListState} from '../admin/AdminList';
 import {AdminRowAction} from '../admin/AdminListControl';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {CrmOpportunitySourcePicker} from './CrmOpportunitySources';
 import type {OpportunitySourceRef} from '../../utils/crmOpportunitySources';
 import {opportunityFilterDefaults,opportunityListPath} from '../../utils/crmEnrollmentOpportunityRoute';
@@ -113,7 +113,7 @@ export function CrmOpenEnrollmentOpportunity({customer,lang,isLight,onBusy,onDir
     </>}>
     <div data-admin-stack="">
       <AdminField required>{levelLabel}
-        <CrmSingleSelect required label={levelLabel} lang={lang} isLight={isLight} value={level}
+        <AdminSingleSelect required label={levelLabel} lang={lang} isLight={isLight} value={level}
           emptyLabel={t('选择课程级别','Select a course level','Pilih level kursus')}
           onChange={value=>{setPreview(undefined);setLevel(value);setError('');}} disabled={busy||unknown}
           options={enrollmentOpportunityLevels.map(value=>({value,label:value}))}/>

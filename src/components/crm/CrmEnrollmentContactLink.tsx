@@ -6,7 +6,7 @@ import {AdminFormGrid} from '../AdminFormLayout';
 import {enrollmentClassTitle,enrollmentFormats,enrollmentLevels,enrollmentPeriods,type PublicEnrollmentClass} from '../../utils/enrollmentCatalog';
 import {enrollmentGuideHref,enrollmentGuideText,type EnrollmentGuideAction,type EnrollmentGuideLanguage} from '../../utils/enrollmentGuidance';
 import {interestOption} from '../../utils/enrollmentInterestCopy';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 
 export function CrmEnrollmentContactLink({lang,language,isLight,disabled,onInsert}:{
   lang:EnrollmentGuideLanguage;language:string;isLight:boolean;disabled:boolean;onInsert:(text:string)=>void;
@@ -46,7 +46,7 @@ export function CrmEnrollmentContactLink({lang,language,isLight,disabled,onInser
     onInsert(enrollmentGuideText(language,copy[0],copy[1],copy[2])+'\n'+url);
   }
   const select=(label:string,value:string,choices:{value:string;label:string}[],onChange:(value:string)=>void)=>
-    <CrmSingleSelect {...{label,value,onChange,lang,isLight,disabled}} options={choices}/>;
+    <AdminSingleSelect {...{label,value,onChange,lang,isLight,disabled}} options={choices}/>;
   const optional=(label:string,values:readonly string[])=>[{value:'',label},...values.map(value=>({value,label:interestOption(lang,value)}))];
   return <AdminDisclosure heading={t('加入报名链接','Add enrollment link','Tambahkan tautan pendaftaran')} density="compact" onToggle={event=>setOpen(event.currentTarget.open)}>
     {failed?<AdminListState lang={lang} state="error" onRetry={()=>setAttempt(value=>value+1)}/>:

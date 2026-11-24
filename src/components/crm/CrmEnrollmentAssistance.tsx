@@ -8,7 +8,7 @@ import {enrollmentCopy,type PublicEnrollmentClass} from '../../utils/enrollmentC
 import {enrollmentPost} from '../../services/enrollmentSession';
 import {CrmOperationLayer} from './CrmOperationLayer';
 import {CrmDiscardDialog} from './CrmDetailWorkspace';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {interestOption} from '../../utils/enrollmentInterestCopy';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {formatCurrency} from '../../utils/currency';
@@ -156,7 +156,7 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
           {feedback&&<AdminFormFeedback state={feedback.state} lang={lang}>{feedback.message}</AdminFormFeedback>}
           {classes?.length===0&&<p>{t('该级别暂无可报名班次。','No classes are available for this level.','Belum ada kelas untuk level ini.')}</p>}
           <AdminField required>{t('班次','Class','Kelas')}
-            <CrmSingleSelect required lang={lang} isLight={isLight} label={t('班次','Class','Kelas')} value={classId}
+            <AdminSingleSelect required lang={lang} isLight={isLight} label={t('班次','Class','Kelas')} value={classId}
               onChange={value=>{setClassId(value);setDirty(true);}} options={(classes??[]).map(row=>({value:row.id,
                 label:[row.level,interestOption(lang,row.period),interestOption(lang,row.format),row.firstLesson.replace('T',' ')+' WIB'].join(' · ')}))}/>
           </AdminField>

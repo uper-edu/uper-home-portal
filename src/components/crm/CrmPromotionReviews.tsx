@@ -8,7 +8,7 @@ import {
   campaignUiError,
 } from "../../utils/campaignI18n";
 import React, { useEffect, useRef, useState } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { ChevronDown, ClipboardCheck, History } from "lucide-react";
 import { CrmDetailTabs, CrmSaveFeedback } from "./CrmDetailWorkspace";
 import { CrmDisclosure } from "./CrmDisclosure";
@@ -431,7 +431,7 @@ function PromotionReviewCard({
                 <fieldset disabled={busy || unknown || row.canReview === false}>
                   <AdminField as="div" required>
                     <label>{u("Review action")}</label>
-                    <CrmSingleSelect required label={u("Review action")} value={action}
+                    <AdminSingleSelect required label={u("Review action")} value={action}
                       options={[
                         { value: "", label: u("Choose an action"), disabled: true },
                         ...promotionReviewActions.map(({value, label}) => ({value, label: u(label)})),
@@ -442,7 +442,7 @@ function PromotionReviewCard({
                   {needsCampaign && (
                     <AdminField as="div" required>
                       <label>{u("Campaign")}</label>
-                      <CrmSingleSelect required searchable label={u("Campaign")} value={campaignId}
+                      <AdminSingleSelect required searchable label={u("Campaign")} value={campaignId}
                         options={[
                           { value: "", label: u("Choose a campaign"), disabled: true },
                           ...campaigns.map(item => ({value: item.id, label: item.name + " · " + item.code})),
@@ -454,7 +454,7 @@ function PromotionReviewCard({
                   {action === "link" && campaign && (
                     <AdminField as="div" required>
                       <label>{u("Existing promotion entry")}</label>
-                      <CrmSingleSelect required searchable label={u("Existing promotion entry")} value={target}
+                      <AdminSingleSelect required searchable label={u("Existing promotion entry")} value={target}
                         options={[
                           { value: "", label: u("Choose an entry from this campaign"), disabled: true },
                           ...links.map(link => ({value: link.id, label: link.name + " · " + link.id})),

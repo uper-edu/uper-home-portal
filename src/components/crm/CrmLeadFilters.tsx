@@ -4,7 +4,7 @@ import { useState } from "react";
 import { SlidersHorizontal, X, ChevronDown } from "lucide-react";
 import { CrmRecordFilters, CrmRecordSearch } from "./CrmRecordWorkspace";
 import {AdminSearchField} from '../admin/AdminSearchField';
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { crmId } from "../../utils/crmIndonesian";
 import {
   defaultLeadFilters,
@@ -92,7 +92,7 @@ export function CrmLeadFilters({
     change: (patch: Partial<LeadFilters>) => void,
     className = "",
   ) => (
-    <CrmSingleSelect
+    <AdminSingleSelect
       className={className}
       label={dimLabel(k)}
       value=""
@@ -163,7 +163,7 @@ export function CrmLeadFilters({
     </fieldset>
   );
   const conditions=<>
-          <CrmSingleSelect
+          <AdminSingleSelect
             className="crm-filter-owner"
             label={t("Owner", "负责人")}
             value={ownerValue}
@@ -182,7 +182,7 @@ export function CrmLeadFilters({
           />
           {selectDimension("communication", f, update, "crm-filter-stage")}
           <div className="crm-filter-task">
-            <CrmSingleSelect
+            <AdminSingleSelect
               label={t("First contact requirement", "首次联系")}
               value={f.task}
               options={firstOptions}
@@ -242,7 +242,7 @@ export function CrmLeadFilters({
         <button type="button" className="crm-lead-defaults" title={t("Restore role defaults and sorting; keep view unchanged","恢复角色默认筛选和排序，视图不变")} onClick={reset}>
           {t("Restore default filters", "恢复默认筛选")}
         </button>
-        {!analysis && <CrmSingleSelect
+        {!analysis && <AdminSingleSelect
           className="crm-lead-sort"
           label={t("Sort", "排序")}
           value={f.sort}
@@ -329,7 +329,7 @@ export function CrmLeadFilters({
         </p>
         {resultControls}
         {!analysis && (
-          <CrmSingleSelect
+          <AdminSingleSelect
             className="crm-lead-view"
             label={t("View", "视图")}
             value={viewMode}

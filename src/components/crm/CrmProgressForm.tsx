@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { CrmDisclosure } from "./CrmDisclosure";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { taskCompletionGuidance } from "../../utils/crmTaskGuidance";
@@ -175,7 +175,7 @@ export function CrmProgressForm({
   ) => (
     <label>
       <span>{label}</span>
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={label}
         value={value}
         onChange={change}

@@ -35,7 +35,7 @@ import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail, KeyRound } from "luci
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
-import { CrmSingleSelect } from "../components/crm/CrmSingleSelect";
+import { AdminSingleSelect } from "../components/admin/AdminSingleSelect";
 import { useAdminTheme } from "../utils/adminPreferences";
 import { type CrmLanguage } from "../utils/crmLanguage";
 import {
@@ -677,9 +677,9 @@ export function AccessWorkspace({
       href:recordHref(tab,'',userTab?roleFilter:undefined),onClick:event=>openRecord(event,tab,'')}});
   const searchControl=<AdminSearchField inputRef={listSearch} label={searchLabel} value={query} onChange={setQuery}/>;
   const filterControls=<>
-    <CrmSingleSelect lang={lang} isLight={isLight} label={statusLabel} value={statusFilter} onChange={setStatusFilter}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={statusLabel} value={statusFilter} onChange={setStatusFilter}
       options={[{value:'',label:t('All statuses','Semua status','全部状态')},{value:'active',label:activeLabel},{value:'inactive',label:inactiveLabel}]}/>
-    {userTab&&<CrmSingleSelect lang={lang} isLight={isLight} label={rolesLabel} value={roleFilter} onChange={changeRoleFilter}
+    {userTab&&<AdminSingleSelect lang={lang} isLight={isLight} label={rolesLabel} value={roleFilter} onChange={changeRoleFilter}
       options={[{value:'',label:t('All roles','Semua peran','全部角色')},...(data?.roles??[]).map(r=>({value:r.id,label:roleName(r.id)}))]}/>}
   </>;
   const permissions=(r:User|Role)=>{
@@ -1149,7 +1149,7 @@ export function AccessWorkspace({
                     )}
                   </small>
                 </AdminField>
-                <CrmSingleSelect
+                <AdminSingleSelect
                   label={t("Roles", "Peran", "角色")}
                   footer={() => (
                     <button
@@ -1389,7 +1389,7 @@ export function AccessWorkspace({
                         {p.names[col]}
                       </AdminField>
                       {p.scoped && role.config.grants[p.key] && (
-                        <CrmSingleSelect
+                        <AdminSingleSelect
                           label={t("Data scope", "Cakupan data", "数据范围")}
                           value={role.config.grants[p.key]}
                           options={

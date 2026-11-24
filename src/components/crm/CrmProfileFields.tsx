@@ -36,7 +36,7 @@ import {
 import { CrmAiIndicator } from "./CrmAiIndicator";
 import {useCrmGoalReview} from './useCrmGoalReview';
 import {goalRelation} from '../../utils/crmGoalReview';
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { crmValue } from "../../utils/crmLanguage";
 import {
   formatCrmOperatingTime,
@@ -190,7 +190,7 @@ export function CrmProfileFields({
                 </button>
               </div>
               {["mode", "communicationLanguage"].includes(key) ? (
-                <CrmSingleSelect
+                <AdminSingleSelect
                   label={ui(manualProfileFields[key])}
                   required={value !== null}
                   lang={lang}

@@ -24,7 +24,7 @@ import {
   type ConversationRecord,
   type ConversationTask,
 } from "../../utils/crmConversations";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { CrmDisclosure } from "./CrmDisclosure";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 
@@ -210,7 +210,7 @@ export function CrmConversationTimeline({
           </div>
         </div>
         {groups.length > 1 && (
-          <CrmSingleSelect
+          <AdminSingleSelect
             label={t("Conversation history", "历史对话")}
             displayValue={`${t("Conversation history", "历史对话")} (${groups.length})`}
             value={group.id}

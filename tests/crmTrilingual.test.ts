@@ -264,11 +264,11 @@ test("language preference presents three visible exclusive choices without a fil
 });
 
 test("customer edit choices preserve owner labels, stale values and disabled stage permissions", async () => {
-  const { CrmSingleSelect } =
-    await import("../src/components/crm/CrmSingleSelect.tsx");
+  const { AdminSingleSelect } =
+    await import("../src/components/admin/AdminSingleSelect.tsx");
   for (const lang of ["en", "id", "zh"] as const) {
     const html = renderToStaticMarkup(
-      React.createElement(CrmSingleSelect, {
+      React.createElement(AdminSingleSelect, {
         label: "TEST Owner",
         value: "old-owner",
         options: [
@@ -288,7 +288,7 @@ test("customer edit choices preserve owner labels, stale values and disabled sta
     assert.match(html, /aria-haspopup="dialog"/);
     assert.doesNotMatch(html, /<select/);
     const disabled = renderToStaticMarkup(
-      React.createElement(CrmSingleSelect, {
+      React.createElement(AdminSingleSelect, {
         label: "TEST Stage",
         value: "Historical stage",
         options: [],

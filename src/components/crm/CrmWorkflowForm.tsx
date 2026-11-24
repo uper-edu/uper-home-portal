@@ -9,7 +9,7 @@ import { completionForEntry } from "../../utils/crmSalesInput";
 import { CrmDisclosure } from "./CrmDisclosure";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { useState, useEffect, useRef } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { calendarSample, nextWork } from "../../utils/workCalendar";
 import { crmError } from "../../utils/crmLanguage";
 import type { CrmLanguage } from "../../utils/crmLanguage";
@@ -220,7 +220,7 @@ function CrmArrangementForm({
   ) => (
     <label className="block">
       <span>{label}</span>
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={label}
         value={value}
         onChange={change}

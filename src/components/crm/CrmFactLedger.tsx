@@ -17,7 +17,7 @@ import {CrmHistorySearch,CrmSearchHighlight} from './CrmSearchHighlight';
 import {historyBusinessTitle} from '../../utils/crmHistoryTimeline';
 import {useCrmUiText} from './CrmUiLanguage';
 import {CrmSalesStageChange} from './CrmSalesStage';
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {historyInformation,historyAmendmentTitle,type HistoryCitation} from '../../utils/crmHistoryInformation';
 import {CrmEvidenceAction} from './CrmEvidenceAction';
 import {CrmHistoryInformation,historyInformationValue,CrmHistoryOriginal,CrmHistoryQuestionnaireOriginal,historyOriginalId} from './CrmHistoryInformation';
@@ -132,7 +132,7 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
    disabled={!!target} onClick={()=>{setRetry(n=>n+1);onReloadExtraction?.();}}/>
  </header>
  <div className="crm-history-toolbar" role="group" aria-label={ui("历史记录筛选")}>
- <div className="crm-history-type-filter"><label htmlFor={typeId}>{ui("类型")}</label><CrmSingleSelect controlId={typeId} label={ui("历史记录类型")} value={filter} disabled={!!target} onChange={setFilter} lang={lang} isLight={isLight} options={Object.entries(historyCategories).map(([key,label])=>({value:key,label:ui(label)+(data?'（'+(key==='all'?groups.length:groups.filter(g=>g.category===key).length)+'）':'')}))}/></div>
+ <div className="crm-history-type-filter"><label htmlFor={typeId}>{ui("类型")}</label><AdminSingleSelect controlId={typeId} label={ui("历史记录类型")} value={filter} disabled={!!target} onChange={setFilter} lang={lang} isLight={isLight} options={Object.entries(historyCategories).map(([key,label])=>({value:key,label:ui(label)+(data?'（'+(key==='all'?groups.length:groups.filter(g=>g.category===key).length)+'）':'')}))}/></div>
  <div className="crm-history-search"><label htmlFor={searchId}>{ui("搜索原文与内容")}</label><AdminSearchField id={searchId} label={ui("搜索历史记录")} value={search} disabled={!!target} onChange={setSearch}/></div>
  </div>
 
