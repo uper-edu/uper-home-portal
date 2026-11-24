@@ -171,6 +171,8 @@ test("static bilingual labels have Indonesian entries and templates have no extr
     "src/components/crm/CrmCustomerDetails.tsx",
     "src/pages/CrmWorkbench.tsx",
     "src/components/CrmAccess.tsx",
+    "src/components/admin/AdminLoginView.tsx",
+    "src/components/admin/AdminAccountMenu.tsx",
     "src/utils/crmLanguage.ts",
     "src/components/NotificationCenter.tsx",
   ];
