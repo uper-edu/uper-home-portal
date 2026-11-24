@@ -20,7 +20,8 @@ test('partial legacy facts remain visible, with explicit clear and no invented d
  for(const [date,time] of [['2026-11-10',''],['','10:30'],['2026-02-30','10:30']]){
   assert.equal(campaignDateTimeValue(date,time),'');
   const html=renderToStaticMarkup(React.createElement(CampaignDateTimeField,{label:'Start date and time',date,time,onChange:()=>{}}));
-  assert.match(html,/Start date and time · Date · Select date/);assert.match(html,/value=""/);
+  assert.match(html,/Start date and time · Date · Select date/);
+  assert.equal(html.match(/data-admin-has-value="false"/g)?.length,2);
   assert.match(html,/Kept until replaced or cleared/);assert.match(html,/Clear start date and time/);
   assert.ok(html.includes(date||'Date not recorded'));assert.ok(html.includes(time||'Time not recorded'));
  }

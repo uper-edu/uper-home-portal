@@ -31,9 +31,13 @@ export function CrmSingleSelect({
   footer,
   required: ownRequired,
   controlId,
+  invalid,
+  describedBy,
 }: {
   required?: boolean;
   controlId?: string;
+  invalid?: boolean;
+  describedBy?: string;
   label: string;
   value: string;
   options: CrmChoice[];
@@ -191,6 +195,8 @@ export function CrmSingleSelect({
         id={controlId||field?.id}
         role={!multiple||required?'combobox':undefined}
         aria-required={required||undefined}
+        aria-invalid={invalid||undefined}
+        aria-describedby={describedBy}
         data-admin-has-value={multiple?values.length>0:!!value}
         aria-label={label}
         aria-description={displayValue||(selected?[selected.label,selected.description].filter(Boolean).join('; '):!multiple?emptyLabel:undefined)}

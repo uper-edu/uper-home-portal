@@ -61,8 +61,11 @@
 .admin-calendar-footer { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--admin-border); }
 .admin-calendar-footer-summary { display: grid; gap: 2px; }
 .admin-calendar-footer [role=status] { font-size: 13px; color: var(--admin-muted); }
-.admin-schedule-date-time { display: grid; grid-template-columns: minmax(0, 1fr) minmax(85px, 1fr); gap: 8px; }
-.admin-schedule-date-time > :is(.admin-calendar-trigger,input) { min-width: 0; width: 100%; }
+.admin-schedule-date-time { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%, 10rem),1fr)); gap: 8px; }
+.admin-schedule-date-time > .admin-calendar-trigger { min-width: 0; width: 100%; }
+.admin-schedule-time { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.admin-schedule-time > .crm-detail-choice { min-width: 0; }
+.admin-schedule-time .crm-filter-dimension-button[aria-invalid=true] { border-color: var(--admin-danger-border); }
 .admin-calendar-date-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .admin-calendar-date-list li { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; border: 1px solid var(--admin-border); border-radius: 8px; }
 .admin-calendar-date-list .admin-compact-action { width: 28px; height: 28px; }
