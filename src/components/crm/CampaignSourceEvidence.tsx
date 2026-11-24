@@ -1,6 +1,6 @@
 import {AdminRowAction} from '../admin/AdminListControl';
 import { AdminFormSection } from '../AdminFormLayout';
-import { CrmDisclosure } from './CrmDisclosure';
+import { AdminDisclosure } from '../admin/AdminDisclosure';
 import { campaignUi, type CampaignUiLanguage } from '../../utils/campaignI18n';
 
 import { formatCrmEventTime } from "../../utils/crmOperatingTime";
@@ -44,10 +44,10 @@ export function CampaignSourceEvidence({
         const additional = distinctParameters(entry.parameters).filter(({key, value}) =>
           !savedParameters.some(parameter => parameter.key === key && parameter.value === value));
         return additional.length || entry.possiblyTruncated ? (
-          <CrmDisclosure key={entry.conversationId} className="campaign-review-evidence-entry" heading={heading}>
+          <AdminDisclosure key={entry.conversationId} className="campaign-review-evidence-entry" heading={heading}>
             {parameterList(additional)}
             {entry.possiblyTruncated && <p role="note">{u('The saved entry was limited to 300 characters; later parameters may be missing or incomplete.')}</p>}
-          </CrmDisclosure>
+          </AdminDisclosure>
         ) : <p className="campaign-review-evidence-entry" key={entry.conversationId}>{heading}</p>;
       })}
       {!savedParameters.length && !evidence?.entries?.length && <p>{u('No additional entry parameters recorded.')}</p>}

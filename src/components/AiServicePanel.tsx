@@ -6,8 +6,8 @@ import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminField,AdminForm,AdminRequiredNote} from './AdminForm';
 import {AdminFormFeedback,AdminSavedReadError,AdminFormGrid,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
 import {AdminSingleSelect} from './admin/AdminSingleSelect';
-import {CrmDisclosure} from './crm/CrmDisclosure';
-import {CrmPageAction} from './crm/CrmPageAction';
+import {AdminDisclosure} from './admin/AdminDisclosure';
+import {AdminPageAction} from './admin/AdminPageAction';
 import {aiModelSlots,defaultReasoningEffort,effortField,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection} from '../utils/aiModelSelection';
 import {aiServiceText} from '../utils/aiServiceLanguage';
 import {testAndSaveAi} from '../utils/aiServiceSubmit';
@@ -199,13 +199,13 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
       {renderHeading(failure!=='denied'&&<>
         <AdminRefreshAction label={t(unresolved||notice==='conflict'?'checkOperation':'refresh')}
           loading={querying} disabled={busy} onClick={onQuery}/>
-        {data&&!unresolved&&notice!=='conflict'&&<CrmPageAction icon={Save} type="submit" variant="primary"
+        {data&&!unresolved&&notice!=='conflict'&&<AdminPageAction icon={Save} type="submit" variant="primary"
           label={t(busy&&!diagnosing?'busy':'testSave')} keepFocusWhileLoading loading={busy&&!diagnosing}
           disabled={actionDisabled||(!busy&&blocked)||!!diagnosing} />}
       </>,!!data)}
       {awaitingSavedRead&&failure==='error'?<AdminSavedReadError lang={lang} busy={querying} onRetry={onQuery}/>:(!data||failure)&&<AdminListState lang={lang} state={failure??'loading'} onRetry={onQuery}/>}
       {!data&&!diagnosing&&feedback}
-      {data&&<AdminFormSection variant="card" title={t('models')} actions={<CrmPageAction icon={FlaskConical}
+      {data&&<AdminFormSection variant="card" title={t('models')} actions={<AdminPageAction icon={FlaskConical}
         label={t('testCurrent')} onClick={onDiagnose} disabled={blocked}/>}>
         <AdminFormGrid>
           {aiModelSlots.map(role=>{
@@ -235,25 +235,25 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
     {children}
     {data&&<AdminFormSection variant="card" title={t('support')}>
       <div className="ai-service-support">
-        <CrmDisclosure heading={t('actual')}>
+        <AdminDisclosure heading={t('actual')}>
           <p className="ai-service-muted">{t('callNote')}</p>
           <ul className="ai-service-records">{attempts.map((attempt,i)=><li key={i}>
             <strong>{attempt.model}</strong>{status(attempt.ok)}<time>{formatCrmEventTime(attempt.at)}</time>
             {attempt.fallbackModel&&<span>{t('fallbackUsed')} · {attempt.fallbackModel}</span>}
           </li>)}{!attempts.length&&<li>{t('empty')}</li>}</ul>
-        </CrmDisclosure>
-        <CrmDisclosure heading={t('extract')}>
+        </AdminDisclosure>
+        <AdminDisclosure heading={t('extract')}>
           <ul className="ai-service-records">{extractions.map((attempt,i)=><li key={i}>
             <strong>{attempt.model}</strong>{status(attempt.status==='completed')}<time>{formatCrmEventTime(attempt.completed_at)}</time>
           </li>)}{!extractions.length&&<li>{t('empty')}</li>}</ul>
-        </CrmDisclosure>
-        <CrmDisclosure heading={t('history')}>
+        </AdminDisclosure>
+        <AdminDisclosure heading={t('history')}>
           <ul className="ai-service-records">{history.map(record=><li key={record.requestId}>
             <strong>{describe(record.current,'primary')} → {describe(record.current,'fallback')}</strong>
             <span>{record.actor}</span><time>{formatCrmEventTime(record.at)}</time>
           </li>)}{!history.length&&<li>{t('empty')}</li>}</ul>
-        </CrmDisclosure>
-        <CrmDisclosure heading={t('help')}><p>{t('guide')}</p><p>{t('reasoningHint')}</p></CrmDisclosure>
+        </AdminDisclosure>
+        <AdminDisclosure heading={t('help')}><p>{t('guide')}</p><p>{t('reasoningHint')}</p></AdminDisclosure>
       </div>
     </AdminFormSection>}
     {data&&diagnosing&&<AdminEditor lang={lang} light={isLight} title={t('testCurrent')} busy={busy}

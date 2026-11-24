@@ -1,7 +1,7 @@
 import {formatCurrencyNumber} from '../../utils/currency';
 import {campaignViewerSchedule} from '../../utils/campaignScheduleInput';
 import { campaignUi, campaignUiLocale } from "../../utils/campaignI18n";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import React from "react";
 import type { CrmCampaignRecord } from "../../types/crmCampaign";
 import {
@@ -108,7 +108,7 @@ export function CampaignInformation({
           </Field>
         </dl>
       </section>
-      <CrmDisclosure
+      <AdminDisclosure
         className="campaign-info-section"
         open={hasSchedule}
         heading={
@@ -140,8 +140,8 @@ export function CampaignInformation({
           </Field>
           <Field label={u("Schedule notes")}>{r(c.scheduleNotes)}</Field>
         </dl>
-      </CrmDisclosure>
-      <CrmDisclosure
+      </AdminDisclosure>
+      <AdminDisclosure
         className="campaign-info-section"
         open={hasContext}
         heading={
@@ -195,8 +195,8 @@ export function CampaignInformation({
             )}
           </Field>
         </dl>
-      </CrmDisclosure>
-      <CrmDisclosure
+      </AdminDisclosure>
+      <AdminDisclosure
         className="campaign-info-section campaign-info-audit"
         heading={u("System record")}
       >
@@ -232,7 +232,7 @@ export function CampaignInformation({
             </dl>
           </>
         )}
-      </CrmDisclosure>
+      </AdminDisclosure>
     </div>
   );
 }

@@ -14,7 +14,7 @@ import {CrmOrderOperationFeedback,useCrmOrderOperation} from './CrmOrderOperatio
 import { AdminFormActions,AdminFormFeedback,AdminSavedReadError } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
-import { CrmPageAction } from './CrmPageAction';
+import { AdminPageAction } from '../admin/AdminPageAction';
 import { CrmDetailActions, CrmRecordFilters, CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordTitle } from './CrmRecordWorkspace';
 import { AdminSingleSelect } from '../admin/AdminSingleSelect';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone, CrmListViews } from './CrmList';
@@ -369,12 +369,12 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
             status={selected&&status(selected)} meta={selected&&orderNumberLabel+' '+selected.id}/>} actions={<CrmDetailActions label={t('售后订单操作','After-sales actions','Tindakan purnajual')}
             secondary={<>
               {recordLayout.browseAction}
-              {selected&&selectedDetails?.canRefund&&<CrmPageAction icon={Wallet} label={refundTitle}
+              {selected&&selectedDetails?.canRefund&&<AdminPageAction icon={Wallet} label={refundTitle}
                 disabled={isSearching} onClick={()=>start(selected,'refund')}/>}
               <AdminRefreshAction label={t('刷新','Refresh','Segarkan')} loading={isSearching}
                 onClick={()=>setListRevision(version=>version+1)}/>
             </>}
-            primary={selected&&selectedDetails&&inviteReady(selected)&&<CrmPageAction icon={Send} variant="primary"
+            primary={selected&&selectedDetails&&inviteReady(selected)&&<AdminPageAction icon={Send} variant="primary"
               label={inviteTitle} disabled={isSearching} onClick={()=>start(selected,'invite')}/>}/>}/>
         {selected&&<div className="crm-panel-next">
           <dl className="crm-opportunity-summary crm-aftercare-summary">

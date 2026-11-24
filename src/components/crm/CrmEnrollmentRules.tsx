@@ -1,7 +1,7 @@
 import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {useEffect,useId,useRef,useState} from 'react';
 import {Save} from 'lucide-react';
-import {CrmPageAction} from './CrmPageAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
 import {AdminListState} from '../admin/AdminList';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
 import {AdminFormSection} from '../AdminFormLayout';
@@ -122,7 +122,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
         'Atur aturan umum untuk pembayaran, pindah kelas, pengembalian dana, dan verifikasi email. Tenggat yang sudah tercatat tetap berlaku.',
         '统一设置付款、转班、退款及邮箱验证规则。已生成的截止时间沿用原记录。')}
       actions={saved&&
-        <CrmPageAction type="submit" icon={Save} variant="primary" label={t('Save','Simpan','保存')}
+        <AdminPageAction type="submit" icon={Save} variant="primary" label={t('Save','Simpan','保存')}
           disabled={!dirty||controlsDisabled||feedback==='conflict'}/>
       }/>
     <div className="crm-enrollment-rules-body" data-admin-stack>

@@ -23,7 +23,7 @@ import { canViewEnrollmentManagement, enrollmentManagementScopes, enrollmentClas
 import { CrmEnrollmentSupport } from './CrmEnrollmentResolution';
 import { AdminSingleSelect } from '../admin/AdminSingleSelect';
 import { AdminPageHeader } from '../admin/AdminPageHeader';
-import { CrmPageAction } from './CrmPageAction';
+import { AdminPageAction } from '../admin/AdminPageAction';
 import { enrollmentSettingsPath } from './operationsSections';
 import { CrmDetailActions, CrmRecordFilters, CrmRecordRow, CrmRecordSearch,
   CrmRecordSidebar, CrmRecordTitle } from './CrmRecordWorkspace';
@@ -331,7 +331,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
       ?t(['按报名订单查找学员，跟进转班、退款和其他售后处理。','Find learners by enrollment order and follow up on transfers, refunds and other after-sales requests.','Cari peserta berdasarkan pesanan pendaftaran dan tindak lanjuti pindah kelas, pengembalian dana, serta layanan purnajual lainnya.'])
       :t(['按班次查看报名人数、名单和学员的付款状态。','Review enrollment counts, rosters and learner payment status by class.','Lihat jumlah pendaftar, daftar peserta, dan status pembayaran per kelas.'])}
       actions={allowed&&(scope.operations||canRefresh)&&<>
-        {scope.operations&&<CrmPageAction icon={Settings}
+        {scope.operations&&<AdminPageAction icon={Settings}
           label={t(['课程与班次设置','Course and class settings','Pengaturan kursus dan kelas'])}
           onClick={()=>onNavigate(enrollmentSettingsPath('courses',{returnTo:(aftercare?aftercarePath:list)+classFilterQuery}))}/>}
         {canRefresh&&<AdminRefreshAction label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
@@ -422,7 +422,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
             <AdminRecordHeader back={recordLayout.headerBack} title={<CrmRecordTitle title={cohort?classTitle(cohort):t(['班次详情','Class details','Detail kelas'])}
                 status={cohort&&statusBadge(cohort)} meta={cohort&&[firstLesson(cohort),cohort.schedule].filter(Boolean).join(' · ')}/>}
               actions={<CrmDetailActions label={t(['班次操作','Class actions','Tindakan kelas'])} secondary={<>{recordLayout.browseAction}
-                {scope.operations&&cohort&&<CrmPageAction id={settingsButtonId} icon={Settings} label={t(['班次设置','Class settings','Pengaturan kelas'])}
+                {scope.operations&&cohort&&<AdminPageAction id={settingsButtonId} icon={Settings} label={t(['班次设置','Class settings','Pengaturan kelas'])}
                   onClick={()=>openClassSettings(cohort.id)}/>}
                 {canRefresh&&<AdminRefreshAction label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
               </>}/>}/>

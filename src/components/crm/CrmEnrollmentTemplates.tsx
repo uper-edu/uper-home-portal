@@ -1,7 +1,7 @@
 import {AdminSavedReadError} from '../AdminFormLayout';
 import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {Plus} from 'lucide-react';
-import {CrmPageAction} from './CrmPageAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
 import {useEffect,useRef,useState} from 'react';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
@@ -226,7 +226,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      {!quoteEdit&&<><AdminTopicHeader title={title} isLight={isLight}
        subtitle={t('Set class size, teacher type and tuition for each course’s class templates.','Atur ukuran kelas, jenis pengajar, dan biaya pada templat setiap kursus.','按课程维护建班模板，设置人数、教师类型和报价。')}
        actions={<>{titleActions}
-       <CrmPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></>}/>
+       <AdminPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></>}/>
      {ready&&filterControls}
      {ready&&<EnrollmentSettingsListSummary lang={lang} count={visible.length} total={catalog.templates.length}
        filtered={!!(filters.search||filters.level||filters.format||filters.teacher||filters.quote)} onClear={clear}>

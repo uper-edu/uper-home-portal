@@ -2,7 +2,7 @@ import React, { type ComponentPropsWithoutRef, type MouseEventHandler, type Reac
 import type { LucideIcon } from "lucide-react";
 
 /** Shared page-level actions; permission checks remain at each call site. */
-export function CrmPageAction({
+export function AdminPageAction({
   label,
   icon: Icon,
   variant = "secondary",

@@ -58,12 +58,12 @@ import {identityRoute,identityUrl} from '../utils/crmIdentityNavigation';
 import {outreachText,canClaimForContact,canReviewIdentityRole,isCrmManager} from '../utils/crmOutreach';
 import {CrmPolling,crmJson,CrmRefreshError,stableCrmOrder} from "../utils/crmPolling";
 import { AdminPageHeader } from '../components/admin/AdminPageHeader';
-import { CrmPageAction } from "../components/crm/CrmPageAction";
+import { AdminPageAction } from "../components/admin/AdminPageAction";
 import {leadDetailTab,leadDetailUrl} from "../utils/crmDetailNavigation";
 import {CrmDetailActions,CrmRecordTitle} from "../components/crm/CrmRecordWorkspace";
 import {CrmContentNav,CrmDetailTabs,CrmSaveFeedback,CrmDiscardDialog} from "../components/crm/CrmDetailWorkspace";
 import {CrmFollowupContext} from "../components/crm/CrmFollowupContext";
-import { CrmDisclosure } from "../components/crm/CrmDisclosure";
+import { AdminDisclosure } from "../components/admin/AdminDisclosure";
 import {CrmTrustPanel} from "../components/crm/CrmTrustPanel";
 import {PageMetadata} from '../components/PageMetadata';
 import {AccessHandoverPanel} from "../components/AccessSafetyPanel";
@@ -1462,9 +1462,9 @@ function CrmWorkspace({
               title={leadAnalysis ? adminText(lang,"Customer statistics and analysis","Statistik dan analisis pelanggan","客户统计与分析") : adminText(lang, "Customer follow-up", "Tindak lanjut pelanggan", "客户跟进")}
               subtitle={leadAnalysis ? adminText(lang,"Analyse the current filtered customer cohort.","Analisis pelanggan sesuai filter saat ini.","查看当前筛选范围内的客户与联系情况，点击数据返回客户列表。") : t("Prioritize customers, record outcomes and plan the next step.", "明确优先客户，记录沟通结果，安排下一步。")}
               actions={<>
-                <CrmPageAction label={leadAnalysis ? adminText(lang,"Back to customer list","Kembali ke daftar pelanggan","返回客户列表") : adminText(lang,"Statistics and analysis","Statistik dan analisis","统计与分析")} icon={leadAnalysis ? ArrowLeft : BarChart3} onClick={()=>navigateLeadAnalysis(!leadAnalysis)}/>
+                <AdminPageAction label={leadAnalysis ? adminText(lang,"Back to customer list","Kembali ke daftar pelanggan","返回客户列表") : adminText(lang,"Statistics and analysis","Statistik dan analisis","统计与分析")} icon={leadAnalysis ? ArrowLeft : BarChart3} onClick={()=>navigateLeadAnalysis(!leadAnalysis)}/>
                 {employee.permissions.includes("crm.export") && (
-                  <CrmPageAction
+                  <AdminPageAction
                     href={"/api/crm/export?" + queryKey}
                     icon={Download}
                     label={t("Export current results (.JSON)", "导出当前结果 (.JSON)")}

@@ -3,7 +3,7 @@ import { contactRestriction } from '../../utils/crmContact';
 import { CrmNoResponseSummary } from './CrmNoResponseSummary';
 import { useState } from 'react';
 import { ArrowUpRight } from 'lucide-react';
-import { CrmDisclosure } from './CrmDisclosure';
+import { AdminDisclosure } from '../admin/AdminDisclosure';
 import { followupOverview, messageTaskLinks } from '../../utils/crmFollowupOverview';
 import { crmMessageTimestamp } from '../../utils/crmMessageTime';
 import { presentFollowUpTask } from '../../utils/crmTaskPresentation';
@@ -55,6 +55,6 @@ export function CrmFollowupContext({lead,lang,timezone,onSource,tasks,facts,requ
   {latest?<ContactRecord key={lead.id+'-latest-'+(latest.id||latest.timestamp||latest.at)} log={latest} heading={t('Latest saved contact record','Catatan kontak terakhir disimpan','最近保存的联系记录')} lang={lang} timezone={timezone} onSource={onSource}/>:<p className="crm-recent-empty">{(lead.recordAmendments||[]).length?t('No qualifying staff contact for statistics; originals and corrections remain below.','Tidak ada kontak staf yang memenuhi kriteria statistik; teks asli dan koreksi tetap tersedia di bawah.','当前没有计入统计的人工联系记录；原记录和修正仍保留在下方。'):t('No human contact recorded yet','Belum ada catatan kontak oleh staf','尚无人工联系记录')}</p>}
   {stats.lastConnected&&stats.lastConnected!==latest&&<ContactRecord key={lead.id+'-connected-'+(stats.lastConnected.id||stats.lastConnected.timestamp||stats.lastConnected.at)} log={stats.lastConnected} heading={t('Previous saved connected / replied record','Catatan tersambung / dibalas tersimpan sebelumnya','此前保存的已接通／回复记录')} lang={lang} timezone={timezone} onSource={onSource}/>}
 
-  {lead.nextAction&&<div className="crm-recent-note"><CrmDisclosure heading={t('Saved customer note','Catatan pelanggan tersimpan','客户人工备注')}><p className="crm-followup-record-text">{lead.nextAction}</p></CrmDisclosure></div>}
+  {lead.nextAction&&<div className="crm-recent-note"><AdminDisclosure heading={t('Saved customer note','Catatan pelanggan tersimpan','客户人工备注')}><p className="crm-followup-record-text">{lead.nextAction}</p></AdminDisclosure></div>}
  </div>;
 }

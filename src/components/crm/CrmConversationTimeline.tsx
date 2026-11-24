@@ -25,7 +25,7 @@ import {
   type ConversationTask,
 } from "../../utils/crmConversations";
 import { AdminSingleSelect } from "../admin/AdminSingleSelect";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 
 export function CrmConversationTimeline({
@@ -323,7 +323,7 @@ export function CrmConversationTimeline({
       {group.messages.some(
         (message) => message.metadata?.followupAction && message.content,
       ) && (
-        <CrmDisclosure
+        <AdminDisclosure
           className="crm-conversation-receipt"
           heading={t("Original request confirmations", "请求确认原文")}
         >
@@ -348,10 +348,10 @@ export function CrmConversationTimeline({
                 </li>
               ))}
           </ol>
-        </CrmDisclosure>
+        </AdminDisclosure>
       )}
 
-      <CrmDisclosure
+      <AdminDisclosure
         className="crm-conversation-reference"
         heading={t("Conversation details", "会话详情")}
       >
@@ -362,7 +362,7 @@ export function CrmConversationTimeline({
           </dd>
 
         </dl>
-      </CrmDisclosure>
+      </AdminDisclosure>
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentL
 import { enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useMemo, useRef, useState, type MouseEventHandler } from 'react';
 import { AdminPageHeader } from '../admin/AdminPageHeader';
-import { CrmPageAction } from './CrmPageAction';
+import { AdminPageAction } from '../admin/AdminPageAction';
 import { CrmSalesStage } from './CrmSalesStage';
 import { CrmIdentityStatus } from './CrmCurrentSalesState';
 import { assistanceMailLabel, CrmEnrollmentAssistance, type AssistanceResult } from './CrmEnrollmentAssistance';
@@ -30,7 +30,6 @@ import { AdminField, AdminFieldLabel, AdminForm, AdminRequiredNote } from '../Ad
 import { AdminFormActions, AdminFormFeedback, AdminSavedReadError } from '../AdminFormLayout';
 import { describeFollowUpTask } from '../../utils/crmFollowUp';
 import { CrmSimpleWorkflow } from './CrmSimpleWorkflow';
-import { CrmDisclosure } from './CrmDisclosure';
 import { CrmDiscardDialog, CrmSaveFeedback, useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
 import { opportunityFilterDefaults as filterDefaults,opportunityListPath,type OpportunityFilters as Filters } from '../../utils/crmEnrollmentOpportunityRoute';
 import { contactEmailText, validContactEmail } from '../../utils/contactEmail';
@@ -300,7 +299,7 @@ const emailLocale:Record<string,Copy> = {
   zh:['中文','Chinese','Mandarin'],en:['英文','English','Inggris'],id:['印尼文','Indonesian','Indonesia'],
 };
 function OrderEmailHistory({rows,lang,open}:{rows:EnrollmentEmail[];lang:CrmLanguage;open:boolean}) {
-  return <CrmDisclosure heading={t(lang,['邮件记录','Email history','Riwayat email'])} open={open}>
+  return <AdminDisclosure heading={t(lang,['邮件记录','Email history','Riwayat email'])} open={open}>
     {rows.length===0?<p className="crm-work-muted">{t(lang,['暂无邮件记录。','No email history.','Belum ada riwayat email.'])}</p>:
       <ol className="crm-enrollment-email-history">{rows.map(mail=><li key={mail.id}>
         <strong>{mail.subject||'—'}</strong>
@@ -308,7 +307,7 @@ function OrderEmailHistory({rows,lang,open}:{rows:EnrollmentEmail[];lang:CrmLang
           {emailKind[mail.kind]?t(lang,emailKind[mail.kind]):mail.kind} · {mail.language&&emailLocale[mail.language]?t(lang,emailLocale[mail.language]):'—'} · {emailDelivery[mail.state]?t(lang,emailDelivery[mail.state]):t(lang,['状态待核对','Status unconfirmed','Status belum dikonfirmasi'])} · <time dateTime={mail.recordedAt}>{formatCrmEventTime(mail.recordedAt)}</time>
         </div>
       </li>)}</ol>}
-  </CrmDisclosure>;
+  </AdminDisclosure>;
 }
 function sourceLabel(attribution:CourseRecord['attribution'],lang:CrmLanguage) {
   if(!attribution) return '—';
@@ -969,11 +968,11 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
                 {following&&<Link className="admin-row-action" to={recordPath(following)}>{t(lang,['下一笔','Next','Berikutnya'])}</Link>}
               </div>}
               {recordLayout.browseAction}
-              {detail&&!error&&detail.assistance?.allowed&&<CrmPageAction icon={GraduationCap} disabled={busy}
+              {detail&&!error&&detail.assistance?.allowed&&<AdminPageAction icon={GraduationCap} disabled={busy}
                 label={pendingAssistance?t(lang,['查看协助报名','View assisted application','Lihat pendaftaran berbantuan']):
                   t(lang,['协助报名','Assist enrollment','Bantu pendaftaran'])}
                 onClick={()=>setAssisting(pendingAssistance?'saved':'new')}/>}</>}
-              primary={detail&&!error&&detail.canProgress&&<CrmPageAction icon={NotebookPen} variant="primary" loading={busy}
+              primary={detail&&!error&&detail.canProgress&&<AdminPageAction icon={NotebookPen} variant="primary" loading={busy}
                 label={t(lang,['记录商机进展','Record opportunity progress','Catat kemajuan peluang'])}
                 onClick={()=>void openProgress(detail)}/>}/>}/>
         {detail&&!error&&<div className="crm-panel-next">

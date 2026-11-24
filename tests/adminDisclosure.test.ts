@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CrmDisclosure } from "../src/components/crm/CrmDisclosure.tsx";
+import { AdminDisclosure } from "../src/components/admin/AdminDisclosure.tsx";
 import { CrmCustomerProfile } from "../src/components/crm/CrmCustomerDetails.tsx";
 import { CrmAssessmentEvidence as CrmCustomerAssessment } from "../src/components/crm/CrmAssessmentEvidence.tsx";
 import { CrmAttendanceEditor } from "../src/components/crm/CrmAttendanceEditor.tsx";
@@ -27,12 +27,12 @@ test("Disclosure retains native keyboard semantics, accessible text and decorati
       "div",
       null,
       React.createElement(
-        CrmDisclosure,
+        AdminDisclosure,
         { heading: "Evidence", open: true },
         React.createElement("p", null, "First original record"),
       ),
       React.createElement(
-        CrmDisclosure,
+        AdminDisclosure,
         { heading: "History", open: true },
         React.createElement("p", null, "Second original record"),
       ),
@@ -105,7 +105,7 @@ test("Shared compact and panel disclosures preserve literal evidence with one ke
   const original = '<provider-receipt>';
   for (const density of ['compact', 'panel'] as const) {
     const html = renderToStaticMarkup(
-      React.createElement(CrmDisclosure, { heading: 'Original receipt', density },
+      React.createElement(AdminDisclosure, { heading: 'Original receipt', density },
         React.createElement('pre', null, original)),
     );
     assert.match(html, new RegExp('data-admin-disclosure="' + density + '"'));

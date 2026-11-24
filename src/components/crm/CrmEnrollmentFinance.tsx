@@ -21,7 +21,7 @@ import { formatCrmEventTime,validateLocalInstant,viewerTimeZone } from '../../ut
 import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
 import {enrollmentReceivingAccountMaxLength,type EnrollmentReceivingAccount} from '../../utils/enrollmentBank';
 import { AdminSavedReadError } from '../AdminFormLayout';
-import { CrmDisclosure } from './CrmDisclosure';
+import { AdminDisclosure } from '../admin/AdminDisclosure';
 import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
 
 type Receipt = {reference:string;amount:number;account:string|null;settledAt:string};
@@ -318,7 +318,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
           <p>{t('银行流水号','Bank reference','Nomor referensi bank')} · {receipt.reference}</p>
         </li>)}</ul>
       </section>}
-      {!!row.credits?.length&&<CrmDisclosure heading={t('订单冲抵记录','Order payment credit history','Riwayat penggunaan dana antar pesanan')}>
+      {!!row.credits?.length&&<AdminDisclosure heading={t('订单冲抵记录','Order payment credit history','Riwayat penggunaan dana antar pesanan')}>
         <ul className="crm-course-records">{row.credits.map(credit=><li key={credit.id}>
           <strong>{credit.direction==='in'
             ?t('旧单款项冲抵本单','Applied from an earlier order','Dana dari pesanan sebelumnya')
@@ -329,7 +329,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
             {t('查看关联订单','View related order','Lihat pesanan terkait')}
           </a>
         </li>)}</ul>
-      </CrmDisclosure>}
+      </AdminDisclosure>}
       {recoveringReceipt ?
         <CrmOrderOperationFeedback lang={lang} command={receiptOperation} onCheck={()=>void receiptOutcome(receiptOperation.check())} onRetry={()=>{}}
           onResume={refunding?undefined:()=>{

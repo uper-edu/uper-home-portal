@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Download, RefreshCw } from "lucide-react";
-import { CrmPageAction } from "../src/components/crm/CrmPageAction.tsx";
+import { AdminPageAction } from "../src/components/admin/AdminPageAction.tsx";
 
 test("page actions retain native link behavior and accessible icon-only busy state", () => {
   const refresh = renderToStaticMarkup(
-    React.createElement(CrmPageAction, {
+    React.createElement(AdminPageAction, {
       icon: RefreshCw,
       label: "刷新活动",
       iconOnly: true,
@@ -19,7 +19,7 @@ test("page actions retain native link behavior and accessible icon-only busy sta
   assert.match(refresh, /aria-busy="true"/);
   assert.match(refresh, /disabled=""/);
   const link = renderToStaticMarkup(
-    React.createElement(CrmPageAction, {
+    React.createElement(AdminPageAction, {
       icon: Download,
       label: "Export",
       href: "/api/crm/export?owner=me",
@@ -29,7 +29,7 @@ test("page actions retain native link behavior and accessible icon-only busy sta
   assert.match(link, /href="\/api\/crm\/export\?owner=me"/);
   assert.match(link, /<span>Export<\/span>/);
   const disabledLink = renderToStaticMarkup(
-    React.createElement(CrmPageAction, {
+    React.createElement(AdminPageAction, {
       icon: Download,
       label: "Export",
       href: "/api/crm/export",

@@ -12,7 +12,7 @@ import {AdminStaticField,AdminFormActions,AdminFormGrid,AdminFormSection,AdminFo
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminRecordHeader} from './admin/AdminRecordHeader';
 import {AdminDetailActions,AdminRecordTitle} from './admin/AdminRecordWorkspace';
-import {CrmPageAction} from './crm/CrmPageAction';
+import {AdminPageAction} from './admin/AdminPageAction';
 import {AdminPageHeader} from './admin/AdminPageHeader';
 import {AdminTopicHeader} from './admin/AdminTopicHeader';
 import {CrmContentNav,CrmDiscardDialog} from './crm/CrmDetailWorkspace';
@@ -419,8 +419,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
       :t('管理发件账号的连接参数、凭证和发送限额。','Manage sending accounts, connection settings, credentials and quotas.','Kelola akun pengirim, pengaturan koneksi, kredensial, dan kuota.')}
       actions={allowed&&failure!=='denied'&&<>
         <AdminRefreshAction label={t('刷新','Refresh','Segarkan')} loading={loading} onClick={()=>void refresh()}/>
-        {config&&view==='accounts'&&<CrmPageAction icon={Plus} variant="primary" label={t('新增账号','Add account','Tambah akun')} onClick={()=>edit(config.accounts.length)}/>}
-        {config?.pools&&view==='pool'&&<CrmPageAction icon={Plus} variant="primary" label={addPoolLabel}
+        {config&&view==='accounts'&&<AdminPageAction icon={Plus} variant="primary" label={t('新增账号','Add account','Tambah akun')} onClick={()=>edit(config.accounts.length)}/>}
+        {config?.pools&&view==='pool'&&<AdminPageAction icon={Plus} variant="primary" label={addPoolLabel}
           disabled={config.pools.length>=enrollmentMailPoolLimit}
           title={config.pools.length>=enrollmentMailPoolLimit?t(`最多可配置 ${enrollmentMailPoolLimit} 个发信池`,
             `Up to ${enrollmentMailPoolLimit} sending pools are allowed`,`Maksimal ${enrollmentMailPoolLimit} pool pengiriman`):undefined}
@@ -428,10 +428,10 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
       </>}/>}
     {!admin&&<AdminTopicHeader title={heading} isLight={isLight}
       subtitle={t('选择招生发信池，设置发件账号规则，并查询发送记录。','Choose the admissions email pool, set sender rules and review delivery records.','Pilih pool email penerimaan, atur aturan pengirim, dan lihat riwayat pengiriman.')} actions={<>
-        {settingsUnknown&&<CrmPageAction icon={ClipboardCheck} label={t('核对保存结果','Check save result','Periksa hasil penyimpanan')}
+        {settingsUnknown&&<AdminPageAction icon={ClipboardCheck} label={t('核对保存结果','Check save result','Periksa hasil penyimpanan')}
           disabled={loading||busy} onClick={()=>void checkSettings()}/>}
         <AdminRefreshAction label={t('刷新','Refresh','Segarkan')} loading={loading} disabled={busy} onClick={()=>void refresh()}/>
-        {settings&&!settingsUnknown&&<CrmPageAction icon={Save} variant="primary" keepFocusWhileLoading loading={busy}
+        {settings&&!settingsUnknown&&<AdminPageAction icon={Save} variant="primary" keepFocusWhileLoading loading={busy}
           label={busy?t('正在保存…','Saving…','Menyimpan…'):t('保存发信设置','Save email settings','Simpan pengaturan email')}
           disabled={!choiceDirty||!settingsPoolAvailable||settingsConflict||loading&&!busy||!!failure} onClick={()=>void saveChoice()}/>}
     </>}/>}
@@ -452,9 +452,9 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
             t('发件账号','Sending account','Akun pengirim'))} titleRef={detailTitle}
             status={detailAccount?accountStatus(detailAccount):detailPool&&<AdminStatus active={detailPool.enabled}>{detailPool.enabled?t('已启用','Enabled','Aktif'):word('disabled')}</AdminStatus>}/>}
           actions={allowed&&failure!=='denied'&&recordName&&<AdminDetailActions label={t('记录操作','Record actions','Tindakan rekaman')}
-            secondary={detailPool&&detailPool.id===config?.selectedPool&&canReplace&&<CrmPageAction icon={ArrowRightLeft}
+            secondary={detailPool&&detailPool.id===config?.selectedPool&&canReplace&&<AdminPageAction icon={ArrowRightLeft}
               label={t('更换不可用发件账号','Replace unavailable sender','Ganti pengirim yang tidak tersedia')} onClick={()=>edit('reassign')}/>}
-            primary={<CrmPageAction icon={Pencil} variant="primary" label={poolView?t('编辑发信池','Edit sending pool','Edit pool pengiriman'):
+            primary={<AdminPageAction icon={Pencil} variant="primary" label={poolView?t('编辑发信池','Edit sending pool','Edit pool pengiriman'):
               t('编辑发件账号','Edit sending account','Edit akun pengirim')}
               onClick={()=>edit(detailPool?{pool:detailPool}:accountIndex)}/>}/>}/>
         <div className="crm-detail-body access-record-body">
@@ -648,7 +648,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
       onSubmit={event=>{event.preventDefault();if(dirty&&(!isPoolEditor||draft.name.trim()))void save();}}
       onClose={()=>{if(dirty)setDiscard(true);else close();}}
       footer={<><button type="button" disabled={busy} onClick={()=>{if(dirty)setDiscard(true);else close();}}>{cancel}</button>
-        {pendingOperation&&<CrmPageAction icon={ClipboardCheck} label={t('核对保存结果','Check save result','Periksa hasil penyimpanan')}
+        {pendingOperation&&<AdminPageAction icon={ClipboardCheck} label={t('核对保存结果','Check save result','Periksa hasil penyimpanan')}
           disabled={busy} onClick={()=>void checkAdminResult()}/>}
         <button type="submit" data-primary
           disabled={busy||!dirty||!!pendingOperation||adminConflict||isPoolEditor&&(!draft.name.trim()||!validPoolLimit)||
@@ -743,9 +743,9 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
                 <td>{address}</td><td>{accountStatus(account)}</td>
                 {draft.strategy==='priority'&&<><td>{index===-1?'—':index+1}</td><td>
                   {index!==-1&&<AdminFormActions>
-                    <CrmPageAction id={memberActionId(address,-1)} icon={ArrowUp} iconOnly label={t('上移 ','Move up ','Naikkan ')+address}
+                    <AdminPageAction id={memberActionId(address,-1)} icon={ArrowUp} iconOnly label={t('上移 ','Move up ','Naikkan ')+address}
                       disabled={busy||index===0} onClick={()=>moveMember(index,-1)}/>
-                    <CrmPageAction id={memberActionId(address,1)} icon={ArrowDown} iconOnly label={t('下移 ','Move down ','Turunkan ')+address}
+                    <AdminPageAction id={memberActionId(address,1)} icon={ArrowDown} iconOnly label={t('下移 ','Move down ','Turunkan ')+address}
                       disabled={busy||index===orderedMembers.length-1} onClick={()=>moveMember(index,1)}/>
                   </AdminFormActions>}
                 </td></>}

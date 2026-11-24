@@ -4,7 +4,7 @@ import {AdminListState} from '../admin/AdminList';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
-import {CrmPageAction} from './CrmPageAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
@@ -698,7 +698,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
             <div className="admin-page-actions">
               {contentState!=='denied'&&<AdminRefreshAction label={t('Refresh data','刷新数据')}
                 loading={isLoading||contentState==='refreshing'} onClick={()=>void fetchItems(activeSection,hasSnapshot)}/>}
-              {hasSnapshot&&<CrmPageAction icon={Plus} variant="primary" disabled={!canChangeContent}
+              {hasSnapshot&&<AdminPageAction icon={Plus} variant="primary" disabled={!canChangeContent}
                 label={t('Add New Item','新增内容')} onClick={handleOpenAdd}/>}
             </div>
           </header>

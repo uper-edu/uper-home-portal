@@ -11,7 +11,7 @@ import {enrollmentTemplateClassFields,type EnrollmentTeachingCourse,type Enrollm
 import {EnrollmentLearnerPreview} from './EnrollmentLearnerPreview';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminEditor} from '../admin/AdminEditor';
-import {CrmPageAction} from './CrmPageAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
@@ -508,7 +508,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       subtitle={t(['Create classes from templates, set lesson schedules and preview before publishing.','Buat kelas dari templat, atur jadwal, dan lihat pratinjau sebelum menerbitkan.','从班型模板创建班次，维护上课时间并预览发布。'])} actions={<>
         {target&&<AdminRowAction onClick={onShowAll}>{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
         <AdminRefreshAction label={t(['Refresh', 'Segarkan', '刷新'])} loading={readState==='loading'} onClick={refresh}/>
-        <CrmPageAction icon={Plus} variant="primary" label={t(['Create class','Buat kelas','创建班次'])} disabled={readState!=='ready'} onClick={()=>edit()}/>
+        <AdminPageAction icon={Plus} variant="primary" label={t(['Create class','Buat kelas','创建班次'])} disabled={readState!=='ready'} onClick={()=>edit()}/>
     </>}/>
     {!!error && !draft && !insertion && <p role="alert">{error}</p>}
     {awaitingSavedRead&&readState==='error'&&<AdminSavedReadError lang={lang} onRetry={refresh}/>}

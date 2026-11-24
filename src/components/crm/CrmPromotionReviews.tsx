@@ -11,7 +11,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { ChevronDown, ClipboardCheck, History } from "lucide-react";
 import { CrmDetailTabs, CrmSaveFeedback } from "./CrmDetailWorkspace";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { CampaignSourceEvidence } from "./CampaignSourceEvidence";
 import { isPromotionReviewPending, promotionReviewActions } from "../../utils/promotionReviewActions";
 import { PROMOTION_MEDIUM_LABELS } from "../../utils/campaignPromotion";
@@ -407,9 +407,9 @@ function PromotionReviewCard({
           <p>{row.resolution.reason}</p>
         </div>
       )}
-      {(!open||!canReview)&&<CrmDisclosure className="campaign-review-history" heading={u("Source evidence")}>
+      {(!open||!canReview)&&<AdminDisclosure className="campaign-review-history" heading={u("Source evidence")}>
         {sourceEvidence(true)}
-      </CrmDisclosure>}
+      </AdminDisclosure>}
       {open && canReview && (
         <AdminForm lang={lang}
           id={"promotion-review-" + row.leadId}
@@ -494,7 +494,7 @@ function PromotionReviewCard({
         </AdminForm>
       )}
       {!!row.history.length && (
-        <CrmDisclosure className="campaign-review-history"
+        <AdminDisclosure className="campaign-review-history"
           heading={u("Decision history ({count})", { count: row.history.length })}>
           {row.history.map((h: any) => (
             <div key={h.requestId} className="campaign-review-history-item">
@@ -518,7 +518,7 @@ function PromotionReviewCard({
               )}
             </div>
           ))}
-        </CrmDisclosure>
+        </AdminDisclosure>
       )}
     </article>
   );

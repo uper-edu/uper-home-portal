@@ -1,7 +1,7 @@
 import {AdminFormActions,AdminFormFeedback} from './AdminFormLayout';
 import {AdminRecordHeader} from './admin/AdminRecordHeader';
 import {AdminRecordTitle} from './admin/AdminRecordWorkspace';
-import {CrmPageAction} from './crm/CrmPageAction';
+import {AdminPageAction} from './admin/AdminPageAction';
 import {ShieldAlert} from 'lucide-react';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminDisclosure} from './admin/AdminDisclosure';
@@ -400,7 +400,7 @@ export function AccessSafetyPanel({
         <AdminFormFeedback state="unknown" lang={lang} role="status">
           {t('Business access is locked pending security review.','Akses bisnis dikunci hingga tinjauan keamanan selesai.','恢复后安全复核待完成，业务访问已锁定。')}
         </AdminFormFeedback>
-        <CrmPageAction icon={ShieldAlert} label={t('Open security review','Buka tinjauan keamanan','进入安全复核')} onClick={onReview}/>
+        <AdminPageAction icon={ShieldAlert} label={t('Open security review','Buka tinjauan keamanan','进入安全复核')} onClick={onReview}/>
       </section>}
       {view&&<AdminRecordHeader back={{label:t('Back to users & access','Kembali ke pengguna & akses','返回用户与权限'),onClick:onReturn}}
         title={<AdminRecordTitle titleRef={titleRef} title={t('Restore security review','Tinjauan keamanan pemulihan','恢复后安全复核')}/>}/>}

@@ -3,7 +3,7 @@ import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminRecordBack,AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {useAdminRecordSidebarLayout} from '../admin/AdminRecordWorkspace';
 import {CrmDetailActions,CrmRecordFilters,CrmRecordSearch,CrmRecordSidebar,CrmRecordTitle} from './CrmRecordWorkspace';
-import {CrmPageAction} from './CrmPageAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
 import {formatCurrency} from '../../utils/currency';
 import {promotionResultKey, promotionResultOrigins} from '../../utils/crmCampaignMetrics';
 import {CrmSalesStage} from "./CrmSalesStage";
@@ -808,14 +808,14 @@ export function CrmCampaignHub({
                     secondary={<>
                       {recordLayout.browseAction}
                       {canManageCampaigns&&!organicDetail&&!presetDetail&&<>
-                        <CrmPageAction icon={Edit3} label={u("Edit information")} onClick={()=>handleOpenEditWizard(activeDetailCampaign)}/>
-                        <CrmPageAction icon={Trash2} label={u("Delete campaign")} onClick={()=>{
+                        <AdminPageAction icon={Edit3} label={u("Edit information")} onClick={()=>handleOpenEditWizard(activeDetailCampaign)}/>
+                        <AdminPageAction icon={Trash2} label={u("Delete campaign")} onClick={()=>{
                           setCampaignDeleteError("");
                           setCampaignDeleteTarget(activeDetailCampaign);
                         }}/>
                       </>}
                     </>}
-                    primary={detailTab==="overview"&&canManageCampaigns&&<CrmPageAction icon={Plus} variant="primary"
+                    primary={detailTab==="overview"&&canManageCampaigns&&<AdminPageAction icon={Plus} variant="primary"
                       label={u(activeDetailCampaign.promotionLinks?.length?"Add another promotion link":"Add promotion link")}
                       onClick={()=>setPromotionFormCampaignId(activeDetailCampaign.id)}/>}/>}/>
                 {canManageCampaigns && !organicDetail && !presetDetail &&

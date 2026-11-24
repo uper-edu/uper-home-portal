@@ -1,6 +1,6 @@
 import {CrmFormSummary} from './CrmFormLayout';
 import {AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { useEffect, useRef, useState } from "react";
 import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { AdminFieldLabel } from "../AdminForm";
@@ -226,7 +226,7 @@ export function CrmAttendanceEditor({
   };
   return (
     <>
-      <CrmDisclosure
+      <AdminDisclosure
         heading={t(
           "Record event participation (optional)",
           "Catat partisipasi acara (opsional)",
@@ -263,7 +263,7 @@ export function CrmAttendanceEditor({
             }}
           />
         )}
-      </CrmDisclosure>
+      </AdminDisclosure>
       {status&&(pending||failed)&&<AdminFormFeedback ref={errorFocus} tabIndex={-1} lang={lang}
         state={pending?'unknown':'error'}>{failed?crmError(status,lang):status}</AdminFormFeedback>}
       {pending&&<button className="crm-work-button" type="button" disabled={busy} onClick={()=>void check()}>

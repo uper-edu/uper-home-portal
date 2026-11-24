@@ -3,7 +3,7 @@ import {Pencil} from 'lucide-react';
 import {AdminField} from '../AdminForm';
 import {AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
 import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
-import {CrmPageAction} from './CrmPageAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
 import {AdminEditor} from '../admin/AdminEditor';
 import {enrollmentBankFields,enrollmentBankPlaceholder,hasConfiguredEnrollmentBank,type EnrollmentBank} from '../../utils/enrollmentBank';
 import type {CrmLanguage} from '../../utils/crmLanguage';
@@ -92,7 +92,7 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
   return <>
     <AdminFormSection title={title} variant="card"
       description={t(['修改只影响之后获席的新订单。现有订单保留原收款账户。','Changes apply to future orders. Existing orders keep their original bank details.','Perubahan berlaku untuk pesanan baru. Pesanan lama tetap memakai rekening sebelumnya.'])}
-      actions={saved&&<CrmPageAction icon={Pencil} aria-haspopup="dialog" label={t(['编辑收款账户','Edit bank account','Edit rekening'])} onClick={event=>{
+      actions={saved&&<AdminPageAction icon={Pencil} aria-haspopup="dialog" label={t(['编辑收款账户','Edit bank account','Edit rekening'])} onClick={event=>{
         event.currentTarget.focus({preventScroll:true});
         setError(undefined);setReviewedConflict(false);
         setDraft({...saved,bank:editableBank(saved.bank)});

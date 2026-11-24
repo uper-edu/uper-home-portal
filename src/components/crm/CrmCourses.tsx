@@ -8,7 +8,7 @@ import {enrollmentLevels} from '../../utils/enrollmentCatalog';
 import {enrollmentIntroductionFields,enrollmentIntroductionLanguages,enrollmentIntroductionLimits,enrollmentIntroductionStages,type EnrollmentCourseIntroduction,type EnrollmentIntroductionLanguage,type EnrollmentIntroductionStage} from '../../utils/enrollmentCourseIntroduction';
 import {defaultEnrollmentCourseName} from '../../utils/enrollmentTemplates';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
-import {CrmPageAction} from './CrmPageAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
@@ -152,7 +152,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  <AdminTopicHeader title={title} isLight={isLight}
    subtitle={t('Maintain teaching content and course specifications.','Kelola materi dan spesifikasi kursus.','维护主教材、节数和学习成果。')}
    actions={<><AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>
-     {data?.canManage&&<CrmPageAction icon={Plus} variant="primary" label={t('Create course','Buat kursus','创建课程')} disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}/>}</>}/>
+     {data?.canManage&&<AdminPageAction icon={Plus} variant="primary" label={t('Create course','Buat kursus','创建课程')} disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}/>}</>}/>
  {awaitingSavedRead&&readState==='error'&&<AdminSavedReadError lang={lang} onRetry={refresh}/>}
  {!form&&unknown&&<div><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" className="crm-work-button" onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></div>}{!form&&state==='saved'&&<CrmSaveFeedback state="saved" lang={lang}/ >}{!form&&error&&<p role="alert">{error}</p>}
  {(listState!=='ready'||!data?.courses.length)&&!(awaitingSavedRead&&readState==='error')&&<AdminListState lang={lang}

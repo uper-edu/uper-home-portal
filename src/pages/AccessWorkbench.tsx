@@ -4,7 +4,7 @@ import {EnrollmentMailWorkspace} from '../components/EnrollmentMailWorkspace';
 import {SystemAccessGuide} from '../components/SystemAccessGuide';
 import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
 import {AdminPageHeader} from '../components/admin/AdminPageHeader';
-import {CrmPageAction} from '../components/crm/CrmPageAction';
+import {AdminPageAction} from '../components/admin/AdminPageAction';
 import {AdminConfirmation} from '../components/admin/AdminConfirmation';
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
 import {AdminEditor} from '../components/admin/AdminEditor';
@@ -789,7 +789,7 @@ export function AccessWorkspace({
                 onClick={() => void refreshAccess()}/>
               </>}
               primary={recordTab&&can(userTab?'access.users':'access.roles')&&
-                <CrmPageAction icon={Plus} variant="primary"
+                <AdminPageAction icon={Plus} variant="primary"
                   label={userTab?t('Add user','Tambah pengguna','新增用户'):t('Add role','Tambah peran','新增角色')}
                   onClick={()=>userTab?openUser(null):openRole(null)}/>}/>
           )}/>}
@@ -874,10 +874,10 @@ export function AccessWorkspace({
                         <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={isRefreshing} disabled={busy||editorHasDraft} onClick={()=>void refreshAccess()}/>
                       </>}
                       primary={selectedRecord&&('loginId' in selectedRecord
-                        ?(can('access.users')||can('access.sessions'))&&<CrmPageAction icon={Pencil} variant="primary"
+                        ?(can('access.users')||can('access.sessions'))&&<AdminPageAction icon={Pencil} variant="primary"
                           label={can('access.users')?t('Edit user','Edit pengguna','编辑用户'):t('Manage sessions and password','Kelola sesi dan sandi','管理会话与密码')}
                           onClick={()=>openUser(selectedRecord)}/>
-                        :can('access.roles')&&<CrmPageAction icon={Pencil} variant="primary" label={t('Edit role','Edit peran','编辑角色')}
+                        :can('access.roles')&&<AdminPageAction icon={Pencil} variant="primary" label={t('Edit role','Edit peran','编辑角色')}
                           onClick={()=>openRole(selectedRecord)}/>)}/>}/>
                   <div className="crm-detail-body access-record-body" data-admin-scroll="detail" tabIndex={0} onKeyDown={containPaneKeys}>
                     {signInNoticeUserId&&signInNoticeUserId===selectedRecord?.id&&<div className="access-user-signin">

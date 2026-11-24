@@ -21,7 +21,7 @@ import {CrmSaveFeedback} from "./CrmDetailWorkspace";
 import { CrmSalesDialog } from "./CrmSalesDialog";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { MessageSquarePlus, NotebookPen, Plus } from "lucide-react";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { CrmFollowupHistory } from "./CrmFollowupHistory";
 import { CrmTaskCard } from "./CrmTaskCard";
 import { projectPendingTasks } from "../../utils/crmTaskPresentation";
@@ -1184,7 +1184,7 @@ function LegacyCrmTrustPanel({
       </div>
       {mode === "identity" &&
         data?.candidates.some((c: any) => c.decision === "pending") && (
-          <CrmDisclosure open
+          <AdminDisclosure open
             heading={
               <>{t("Identity candidates", "Kandidat identitas", "身份候选")}</>
             }
@@ -1208,7 +1208,7 @@ function LegacyCrmTrustPanel({
                   {c.name} · {c.email||c.whatsapp} · {kindLabel("identity")}
                 </button>
               ))}
-          </CrmDisclosure>
+          </AdminDisclosure>
         )}
       {mode !== "identity" && data && !workflowOpen && (
         <CrmFollowupHistory
@@ -1231,7 +1231,7 @@ function LegacyCrmTrustPanel({
                   (v.status === "migration_hold" &&
                     ["Enrolled", "Lost"].includes(lead.currentStage)),
               ) && (
-                <CrmDisclosure
+                <AdminDisclosure
                   heading={t("Past tasks", "Riwayat tugas", "历史任务")}
                   open={historyOpen}
                   onToggle={(e) => setHistoryOpen(e.currentTarget.open)}
@@ -1244,7 +1244,7 @@ function LegacyCrmTrustPanel({
                           ["Enrolled", "Lost"].includes(lead.currentStage)),
                     )
                     .map(renderTask)}
-                </CrmDisclosure>
+                </AdminDisclosure>
               )}
             </>
           }

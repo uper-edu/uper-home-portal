@@ -2,7 +2,7 @@ import {IntegrationCredentialControl} from './IntegrationCredentials';
 import {AdminDateField,completeAdminDateTime} from './admin/AdminDateField';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminTopicHeader} from './admin/AdminTopicHeader';
-import {CrmPageAction} from './crm/CrmPageAction';
+import {AdminPageAction} from './admin/AdminPageAction';
 import {AdminConfirmation} from './admin/AdminConfirmation';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminListPagination,AdminListState,AdminListTable} from './admin/AdminList';
@@ -974,7 +974,7 @@ export default function NotificationCenter({
           <AdminTopicHeader isLight={isLight} title={notificationHeading.title[languageIndex]}
             subtitle={notificationHeading.purpose[languageIndex]} actions={!editor&&!denied&&<>
               <AdminRefreshAction label={t("刷新", "Refresh")} loading={loading} onClick={()=>void load()}/>
-              {(isRuleTopic||isChannelTopic)&&canEdit&&<CrmPageAction icon={Plus} variant="primary"
+              {(isRuleTopic||isChannelTopic)&&canEdit&&<AdminPageAction icon={Plus} variant="primary"
                 id={editorTriggerId(isRuleTopic?'rule':'channel','')}
                 label={isRuleTopic?t('新增策略','Add policy'):t('新增渠道','Add channel')} onClick={()=>edit()}/>}
             </>}/>

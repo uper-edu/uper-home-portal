@@ -4,7 +4,7 @@ import {useCrmUiText} from './CrmUiLanguage';
 import { CrmCurrentField, CrmContactPreferences, CrmLearningGoals, CrmReportedLevel } from "./CrmProfileFields";
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmBuyingEvidence } from "./CrmBuyingEvidence";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { crmId } from "../../utils/crmIndonesian";
 import React, { useEffect, useState } from "react";
 import type { CrmLeadRecord } from "../../types/crmLead";
@@ -231,7 +231,7 @@ export function CrmCustomerProfile({
               ...(hasValue(lead.tierUpdatedAt) ? [[t("Group updated", "分组更新时间"), knownDate(lead.tierUpdatedAt, timezone, lang)] as [string,React.ReactNode]] : []),
               ...trackingItems,
             ]}/>
-        {(lead.promotionReview || lead.rawPromotionLinkId !== undefined || activityRecords.length > 0 || lead.attendanceConfirmed !== undefined) && <CrmDisclosure className="crm-acquisition-records" heading={t("Source and activity evidence", "来源与活动依据")}>
+        {(lead.promotionReview || lead.rawPromotionLinkId !== undefined || activityRecords.length > 0 || lead.attendanceConfirmed !== undefined) && <AdminDisclosure className="crm-acquisition-records" heading={t("Source and activity evidence", "来源与活动依据")}>
           <div className="crm-acquisition-body">
             {(lead.promotionReview || lead.rawPromotionLinkId !== undefined) && (
               <section className="crm-detail-subsection">
@@ -309,7 +309,7 @@ export function CrmCustomerProfile({
             )}
 
           </div>
-        </CrmDisclosure>}
+        </AdminDisclosure>}
           {signalFocus && (
             <CrmBuyingEvidence
               lead={lead}
