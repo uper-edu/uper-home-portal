@@ -82,12 +82,26 @@
 .chat-reply-text p { line-height: inherit; text-wrap: pretty; }
 .chat-reply-text > p + p { margin-top: 9px; }
 .chat-reply-actions { display: grid; justify-items: start; gap: 7px; margin-top: 12px; }
-.chat-reply-actions:not(:first-child, :has(.chat-comparison)) { padding-top: 10px; border-top: 1px solid var(--chat-border); }
+.chat-reply-actions:not(:first-child, [data-chat-attachment-layout=comparison] *) { padding-top: 10px; border-top: 1px solid var(--chat-border); }
 .chat-reply-actions:first-child { margin-top: 0; }
 .chat-reply-actions > [data-chat-enrollment] { min-width: 0; max-width: 100%; }
-.chat-reply-actions:has(.chat-comparison) > [data-chat-enrollment] { width: 100%; }
+[data-chat-attachment-layout=comparison] .chat-reply-actions > [data-chat-enrollment] { width: 100%; }
 .standalone-chat-flow [data-chat-message-body] { gap: 10px; }
 .standalone-chat-flow [data-chat-enrollment] .enrollment-class-grid { max-width: 554px; margin-top: 0; }
+.chat-text-loading {
+  inline-size: min(18rem, 60vw);
+  max-inline-size: 100%;
+  min-block-size: 8.5rem;
+  border-radius: 8px;
+  background: var(--chat-reply-option);
+}
+.chat-class-loading { display: grid; gap: 10px; inline-size: min(100%, 554px); }
+.chat-class-placeholder {
+  min-block-size: 13.75rem;
+  border: 1px solid var(--chat-border);
+  border-radius: 13px;
+  background: var(--chat-reply-option);
+}
 .standalone-chat-flow .enrollment-class-card--chat {
   width: 100%;
   container: chat-class-card / inline-size;
@@ -167,9 +181,9 @@
   overflow-wrap: anywhere;
 }
 .chat-comparison { container-type: inline-size; }
-.standalone-chat-flow [data-chat-message=assistant]:has(.chat-comparison, [data-enrollment-card-group]) > div:last-child { width: min(100%, 594px); }
-.standalone-chat-flow [data-chat-message-body]:has(.chat-comparison, [data-enrollment-card-group]),
-.standalone-chat-flow .chat-reply-bubble:has(.chat-comparison) { width: 100%; }
+.standalone-chat-flow [data-chat-attachment-layout] > div:last-child { width: min(100%, 594px); }
+.standalone-chat-flow [data-chat-attachment-layout] [data-chat-message-body],
+.standalone-chat-flow [data-chat-attachment-layout=comparison] .chat-reply-bubble { width: 100%; }
 .chat-value { white-space: nowrap; }
 .chat-schedule-groups { display: flex; flex-wrap: wrap; column-gap: .6em; }
 .chat-comparison-schedule .chat-schedule-groups { display: grid; }

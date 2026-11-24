@@ -35,9 +35,17 @@ const EnrollmentGuide=lazy(()=>import('./ChatEnrollmentGuide').then(module=>({de
 
 type EnrollmentGuideProps=ComponentProps<typeof import('./ChatEnrollmentGuide').ChatEnrollmentGuide>;
 function ChatEnrollmentGuide(props:EnrollmentGuideProps) {
-  return <Suspense fallback={<span role="status" className="text-sm">
-    {copy(props.action.replyLanguage??props.language,'正在加载报名操作…','Loading enrollment actions…','Memuat aksi pendaftaran…')}
-  </span>}><EnrollmentGuide {...props}/></Suspense>;
+  const lang=props.action.replyLanguage??props.language;
+  const fallback=props.cards
+    ? <div className="chat-class-loading" role="status">
+        <span className="sr-only">{copy(lang,'正在加载班次…','Loading classes…','Memuat kelas…')}</span>
+        {props.action.rows?.filter(row=>!props.action.linkOnlyClassIds?.includes(row.id)).map(row=>
+          <div key={row.id} className="chat-class-placeholder" aria-hidden="true"/>)}
+      </div>
+    : <span role="status" className="text-sm">
+        {copy(lang,'正在加载报名操作…','Loading enrollment actions…','Memuat aksi pendaftaran…')}
+      </span>;
+  return <Suspense fallback={fallback}><EnrollmentGuide {...props}/></Suspense>;
 }
 
 export function ChatFollowups({prompts, onSelect}: {prompts?: string[]; onSelect: (prompt: string) => void}) {
@@ -72,11 +80,11 @@ export function ChatMessage({role,content,language,entry,origin,anchor,enrollmen
       <ChatEnrollmentGuide {...shared} comparison={comparison}/>;
     const cards=!comparison&&rows?.some(row=>!enrollment.linkOnlyClassIds?.includes(row.id))&&
       <ChatEnrollmentGuide {...shared} cards active={active}/>;
-    return {embeddedGuide,cards};
+    return {embeddedGuide,cards,wide:comparison?'comparison':cards?'cards':undefined};
   },[enrollment,language,entry,originSource,originPage,owner,conversationId,messageId,widget,active]);
   const {embeddedGuide,cards}=attachments??{};
   if(!content&&!children&&!enrollment&&!entryAction)return null;
-  return <div data-chat-message={role} className={`flex flex-col ${user?'items-end':'items-start'}`}>
+  return <div data-chat-message={role} data-chat-attachment-layout={attachments?.wide} className={`flex flex-col ${user?'items-end':'items-start'}`}>
     {user&&delivery&&delivery!=='saved'&&<div role="status" className="mb-1 flex flex-wrap items-center justify-end gap-2 text-xs text-slate-600">
       <span>{deliveryText(delivery,language)}</span>
       {delivery==='unknown'&&onCheckReply&&<button type="button" className="min-h-8 rounded px-1 font-semibold text-primary-800 underline underline-offset-2 disabled:opacity-50" disabled={busy||checkingReply} onClick={onCheckReply}>
@@ -94,7 +102,9 @@ export function ChatMessage({role,content,language,entry,origin,anchor,enrollmen
         {(content||children||entryAction||embeddedGuide)&&<div data-chat-bubble className={`min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm leading-relaxed [overflow-wrap:anywhere] ${compact?'':'sm:px-4'} ${user?'rounded-tr-sm bg-primary-600 text-white shadow-sm':'chat-reply-bubble'}`}>
           {children??(user?<span className="whitespace-pre-wrap">{content}</span>:
             content&&<div className="chat-reply-text prose prose-sm max-w-none text-inherit prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-a:text-primary-800 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-              {paragraphs ? paragraphs.map((paragraph,index)=><p key={index}>{paragraph}</p>) : <Suspense fallback={<PlainReply content={content}/>}>
+              {paragraphs ? paragraphs.map((paragraph,index)=><p key={index}>{paragraph}</p>) : <Suspense fallback={<div className="chat-text-loading" role="status">
+                <span className="sr-only">{copy(language,'正在加载回复…','Loading reply…','Memuat balasan…')}</span>
+              </div>}>
                 <ChatReplyMarkdown content={content}/>
               </Suspense>}
             </div>)}

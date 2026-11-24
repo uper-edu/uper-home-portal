@@ -710,7 +710,8 @@ export default function Enrollment() {
       <div className="enrollment-category-tabs enrollment-levels" role="group" aria-label={t('level')}>
         {catalogLevels.map(value => <button key={value} type="button" aria-pressed={level === value} onClick={() => filter('level', value)}>
           <span className="enrollment-level-name">{value === 'all' ? t('allLevels') : 'HSK ' + value}</span>
-          {value !== 'all' && classes && !failed && <span className="enrollment-tab-count">{levelCounts.get(value) ?? 0}</span>}
+          {value !== 'all' && <span className="enrollment-tab-count" hidden={Boolean(failed)}
+            aria-hidden={!classes || undefined} data-pending={!classes || undefined}>{levelCounts.get(value) ?? 0}</span>}
         </button>)}
       </div>
       <div className="enrollment-filters">
@@ -722,7 +723,11 @@ export default function Enrollment() {
     </div>
     {failed
       ? catalogFailure
-      : !classes && <p role="status">{t('loading')}</p>}
+      : !classes && <div className="enrollment-class-grid" role="status">
+        <span className="sr-only">{t('loading')}</span>
+        <div className="enrollment-catalog-placeholder" aria-hidden="true"/>
+        <div className="enrollment-catalog-placeholder hidden md:block" aria-hidden="true"/>
+      </div>}
     {rows.length || privateLessons.length ? <div className="enrollment-class-grid">
       {rows.map(row => classCard(row, true))}
       {privateLessons.map(item=>{
@@ -761,6 +766,6 @@ export default function Enrollment() {
             <MessageCircle size={16} aria-hidden="true"/>{t('consultCatalog')}</Link>}
         </div>
       </div>}
-    {accepting && <div className="enrollment-interest-link"><p>{t('noMatch')}</p><Link className="enrollment-quiet" to={interestPath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('interest')}<ArrowUpRight size={15} aria-hidden="true"/></Link></div>}
+    {accepting && (classes || failed) && <div className="enrollment-interest-link"><p>{t('noMatch')}</p><Link className="enrollment-quiet" to={interestPath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('interest')}<ArrowUpRight size={15} aria-hidden="true"/></Link></div>}
   </section>;
 }

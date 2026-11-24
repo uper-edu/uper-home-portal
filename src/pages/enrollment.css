@@ -131,7 +131,14 @@
   font-weight: 640;
 }
 .enrollment-level-name { white-space: nowrap; }
-.enrollment-levels .enrollment-tab-count { margin-inline-start: 0; font-variant-numeric: tabular-nums; }
+.enrollment-levels .enrollment-tab-count { margin-inline-start: 0; min-inline-size: calc(2ch + .8rem); font-variant-numeric: tabular-nums; }
+.enrollment-levels .enrollment-tab-count[data-pending] { visibility: hidden; }
+.enrollment-catalog-placeholder {
+  min-block-size: 15.5rem;
+  border: 1px solid var(--enrollment-border);
+  border-radius: 14px;
+  background: var(--enrollment-wash);
+}
 .enrollment-category-tabs button[aria-pressed="true"] {
   background: var(--enrollment-accent);
   border-color: var(--enrollment-accent);
