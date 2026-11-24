@@ -1,4 +1,4 @@
-import {useState,type ReactNode} from 'react';
+import {useState,type MouseEventHandler,type ReactNode} from 'react';
 import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
@@ -78,7 +78,7 @@ export function EnrollmentSupport({topic,language,level,appointment:selection,ap
   topic:string;language:InterestLanguage;level?:string;appointment?:PublicEnrollmentAppointment;
   appointmentState?:'loading'|'failed'|'unavailable';onAppointmentRetry?:()=>void;
   period?:string;format?:string;offline?:boolean;returnAction?:ReactNode;backAction:ReactNode;
-  registrationLink?:{to:string;state:unknown};
+  registrationLink?:{to:string;state:unknown;onClick:MouseEventHandler<HTMLAnchorElement>};
 }) {
   const t = (value: Copy) => interestText(language,value);
   const info = Object.hasOwn(topics,topic) ? topics[topic as keyof typeof topics] : undefined;

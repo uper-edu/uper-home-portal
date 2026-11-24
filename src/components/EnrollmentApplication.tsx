@@ -3,7 +3,7 @@ import {createBrowserUuid} from '../utils/browserUuid';
 import {visitorScope} from '../services/visitorScope';
 import {preloadEnrollmentNavigation,readEnrollmentClassDetails,type PublicEnrollmentAppointment} from '../services/enrollmentClassDetails';
 import {watchReadReconnect} from '../services/readReconnect';
-import {readPendingDemand,sameDemandDraft,submitPendingDemand,type PendingDemand} from '../services/enrollmentDemandSubmission';
+import {readPendingDemand,sameDemandDraft,submitPendingDemand,type DemandReceipt,type PendingDemand} from '../services/enrollmentDemandSubmission';
 import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
 import {enrollmentCodeInput,enrollmentPost,postEnrollmentProof,readEnrollmentAftercareResponse,readEnrollmentOperation,readEnrollmentEmailAddress,readEnrollmentInterestsResponse,readEnrollmentOrderResponse,readEnrollmentOrdersResponse,recoverEnrollmentOperation,requestEnrollmentEmailCode,signOutEnrollmentEmail,submitEnrollmentInterest,verifyEnrollmentEmail,watchEnrollmentEmailSession} from '../services/enrollmentSession';
 import {readVisitorContact,readEnrollmentDraft,writeEnrollmentDraft,subscribeVisitorContact} from '../services/visitorContact';
@@ -185,7 +185,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const [editDemand,setEditDemand] = useState<DemandItem>();
   const [joined,setJoined] = useState(false);
   const [lastSeatWaitlist,setLastSeatWaitlist] = useState<{id:string;classId:string;email:string;waiting:boolean}>();
-  const [savedDemand,setSavedDemand] = useState<string>();
+  const [savedDemand,setSavedDemand] = useState<DemandReceipt>();
   const [hasNoSeat,setHasNoSeat] = useState(full);
   const [owner]=useState(visitorScope);
   const mounted=useRef(false);
@@ -1431,7 +1431,8 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const privateLevel=privateLesson?.level;
     const registrationPrefill:DemandCriteria=privateLesson?{...prefill,level:privateLevel==='HSK 2'||privateLevel==='HSK 3'||privateLevel==='HSK 4'?privateLevel:'HSK 1',format:'one-on-one'}:prefill;
     if(privateLesson&&savedDemand){
-      const savedPath=promotionJourneyUrl('/enrollment/mine/demands/'+encodeURIComponent(savedDemand)+publicQuery+'&tab=demands',params);
+      const savedPath=promotionJourneyUrl('/enrollment/mine/demands/'+encodeURIComponent(savedDemand.id)+publicQuery+'&tab=demands',params);
+      const quote=savedDemand.quote;
       return <div className="enrollment-private-confirmation">
         <header>
           {privateLessonNavigation?.completionBack}
@@ -1440,10 +1441,10 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         </header>
         <section className="enrollment-detail-section">
           <h2 className="enrollment-class-heading"><EnrollmentClassName title={enrollmentPrivateLessonTitle(privateLesson.level,language)}/></h2>
-          <EnrollmentDetailFields fields={[
-            [t(['课时安排','Lesson duration','Durasi pelajaran']),enrollmentFixedLessonDuration(privateLesson.lessons,privateLesson.minutes,language)],
-            [t(['课程学费','Course tuition','Biaya kursus']),formatCurrency(privateLesson.price*privateLesson.lessons,language)],
-          ]}/>
+          {quote&&<EnrollmentDetailFields fields={[
+            [t(['课时安排','Lesson duration','Durasi pelajaran']),enrollmentFixedLessonDuration(quote.lessons,quote.minutes,language)],
+            [t(['课程学费','Course tuition','Biaya kursus']),formatCurrency(quote.total,language)],
+          ]}/>}
         </section>
         <a className="enrollment-quiet enrollment-private-confirmation-contact" href={privateLessonWhatsApp(privateLesson.level)}
           target="_blank" rel="noopener noreferrer"><SocialProfileIcon platform="whatsapp" className="size-4"/>

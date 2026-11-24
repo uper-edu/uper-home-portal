@@ -200,6 +200,7 @@ test('verified private lesson requests reuse one active record across independen
   const receipts=new Map<string,any>();
   const attribution:unknown[][]=[];
   let verified=false;
+  let unitPrice=350000;
   let activeLock=Promise.resolve();
   mountEnrollmentInterests({get:()=>{}} as never,{
     wrap:handler=>handler,post:(path,handler)=>{handlers.set(path,handler);},
@@ -226,13 +227,22 @@ test('verified private lesson requests reuse one active record across independen
             receipts.set(String(params[1]),{fingerprint:params[2],result:params[3]});
             return {rows:[]};
           }
-          if(sql.includes('appointment.templateId'))return {rows:appointments.filter(row=>row.criteria.appointment.templateId===params[1])};
+          if(sql.includes('appointment.templateId')){
+            assert.match(sql,/learnerKey.*AS BINARY.*LIMIT 1$/);
+            assert.equal(params[0],email);
+            return {rows:appointments.filter(row=>row.state==='active'&&
+              row.criteria.appointment.templateId===params[1]&&row.criteria.appointment.learnerKey===params[2]).slice(0,1)};
+          }
+          if(sql.includes('state,criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2')){
+            assert.equal(params[1],email);
+            return {rows:appointments.filter(row=>row.id===params[0])};
+          }
           if(sql.includes('FROM portal_settings t JOIN crm_courses'))return {rows:[{
-            template:{id:'private-1',teacherType:'local',saleUnitPrice:350000,standardUnitPrice:400000},
+            template:{id:'private-1',teacherType:'local',saleUnitPrice:unitPrice,standardUnitPrice:400000},
             course:{name:'Fixture',sessions:23,active:true,teaching:{level:'HSK 1',minutes:45}},
           }]};
           if(sql.includes('INSERT INTO enrollment_demands')){
-            appointments.push({id:params[0],revision:1,criteria:params[2]});
+            appointments.push({id:params[0],revision:1,state:'active',criteria:params[2]});
             return {rows:[]};
           }
           if(sql.includes('INSERT INTO enrollment_record_attribution')){attribution.push(params);return {rows:[]};}
@@ -257,9 +267,14 @@ test('verified private lesson requests reuse one active record across independen
   assert.equal(appointments.length,0);
   verified=true;
   const [one,two]=await Promise.all([request(first,'entry_point=website&lang=id'),request(second,'entry_point=direct&lang=en')]);
-  assert.deepEqual(one,{id:first,revision:1,reused:undefined});
-  assert.deepEqual(two,{id:first,revision:1,reused:true});
+  const quote={lessons:23,minutes:45,total:8050000};
+  assert.deepEqual(one,{id:first,revision:1,reused:undefined,quote});
+  assert.deepEqual(two,{id:first,revision:1,reused:true,quote});
+  unitPrice=375000;
   assert.deepEqual(await request(second,'entry_point=direct'),two);
+  delete receipts.get(second).result.quote;
+  assert.deepEqual(await request(second,'entry_point=direct'),two);
+  assert.deepEqual(await request('44444444-4444-4444-8444-444444444444','entry_point=website'),two);
   assert.equal(appointments.length,1);
   assert.equal(attribution.length,1);
   assert.equal((attribution[0][2] as {lang:string}).lang,'id');
@@ -267,4 +282,10 @@ test('verified private lesson requests reuse one active record across independen
   await request('33333333-3333-4333-8333-333333333333','entry_point=website',true);
   assert.equal(appointments.length,2);
   assert.equal(demandMatches(appointments[0].criteria,{level:'HSK 1',period:'weekend',format:'one-on-one'}),false);
+  appointments[0].state='withdrawn';
+  const replacement='55555555-5555-4555-8555-555555555555';
+  assert.deepEqual(await request(replacement,'entry_point=website'),{
+    id:replacement,revision:1,reused:undefined,quote:{...quote,total:8625000},
+  });
+  assert.equal(appointments.length,3);
 });

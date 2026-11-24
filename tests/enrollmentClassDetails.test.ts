@@ -128,6 +128,20 @@ test('public enrollment navigation reads only the catalog or chosen class and re
   preloadEnrollmentNavigation(new URL('/enrollment/interest?level=2&p=fixture',origin));
   assert.deepEqual(calls,[intakeReadinessUrl]);
   assert.equal(browser.__uperEnrollmentLanding?.classes,undefined);
+  calls.length=0;
+  const appointment=new URL('/enrollment/interest?appointment=private-1&p=fixture',origin);
+  const snapshot={id:'private-1',data:{classes:[],appointments:[]},receivedAt:performance.now()};
+  preloadEnrollmentNavigation(appointment,snapshot);
+  preloadEnrollmentNavigation(appointment,snapshot);
+  assert.deepEqual(calls,[servicingReadinessUrl]);
+  assert.equal(browser.__uperEnrollmentLanding?.appointmentId,'private-1');
+  calls.length=0;
+  // Open a new destination so coalescing the prior target cannot affect the assertion.
+  preloadEnrollmentNavigation(new URL('/enrollment/interest?appointment=private-2',origin),snapshot);
+  assert.deepEqual(calls,['/api/enrollment/classes?appointmentId=private-2',servicingReadinessUrl]);
+  calls.length=0;
+  preloadEnrollmentNavigation(appointment,{...snapshot,receivedAt:performance.now()-9000});
+  assert.deepEqual(calls,['/api/enrollment/classes?appointmentId=private-1',servicingReadinessUrl]);
 });
 
 test('leaving a destination before its page mounts cancels both public preloads',async t=>{

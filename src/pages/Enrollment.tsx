@@ -178,7 +178,7 @@ export default function Enrollment() {
   const classApplication = !!routeClassId && application && !hasOrder;
   const catalogKey = catalogUrl && (classApplication ? catalogUrl+'#apply' : catalogUrl);
   const readinessKey = readinessUrl && (classApplication ? readinessUrl+'#apply:'+routeClassId : readinessUrl);
-  const [loadedCatalog,setCatalog]=useState<{key:string;revision:number;data:ReturnType<typeof parseEnrollmentCatalog>}>();
+  const [loadedCatalog,setCatalog]=useState<{key:string;revision:number;data:ReturnType<typeof parseEnrollmentCatalog>;receivedAt:number}>();
   const [failedKey,setFailedKey]=useState<string>();
   const [reload, setReload] = useState(0);
   const [readinessReload,setReadinessReload]=useState(0);
@@ -226,7 +226,7 @@ export default function Enrollment() {
     const reconnect=watchReadReconnect(()=>setReload(reload+1),{foregroundOnly:true});
     const signal=AbortSignal.any([abort.signal,AbortSignal.timeout(enrollmentLandingTimeoutMs)]);
     readEnrollmentLandingData(catalogUrl,signal,parseEnrollmentCatalog,'classes').then(data => {
-      if(!abort.signal.aborted)setCatalog({key:catalogKey,revision:reload,data});
+      if(!abort.signal.aborted)setCatalog({key:catalogKey,revision:reload,data,receivedAt:performance.now()});
       reconnect.stop();
     }).catch(() => {
       if(!abort.signal.aborted&&!reconnect.failed())setFailedKey(catalogKey);
@@ -434,11 +434,12 @@ export default function Enrollment() {
   const offlineReadinessFailure=offline&&readinessFailed;
   const catalogFailure=<p role="alert">{t(offline?'offline':'error')}{!offline&&
     <> <button className="enrollment-quiet" type="button" onClick={()=>setReload(value=>value+1)}>{t('retry')}</button></>}</p>;
-  const intakeNotice=accepting===false&&!previewToken&&!(failed&&offlineReadinessFailure)&&<div role="status" className="enrollment-form-error">
+  const readinessNotice=<div role="status" className="enrollment-form-error">
     {availability?.reasons.map(reason=><p key={reason}>{offlineReadinessFailure&&reason==='check_failed'?t('offline'):enrollmentReadinessMessage(reason,language)}</p>)}
     {readinessFailed&&!offline&&<button type="button" className="enrollment-quiet" disabled={checkingReadiness}
       onClick={()=>setReadinessReload(value=>value+1)}>{t('retry')}</button>}
   </div>;
+  const intakeNotice=accepting===false&&!previewToken&&!(failed&&offlineReadinessFailure)&&readinessNotice;
   const backChat = !previewToken && fromChat && <Link
     className="enrollment-back enrollment-chat-return" to={fromChat.url}
     onClick={event => {
@@ -464,10 +465,10 @@ export default function Enrollment() {
   const consultCatalog = !previewToken && !fromChat && <Link data-enrollment-consult="catalog"
     className="enrollment-outline enrollment-consult-action" to={chatPath} onClick={event=>startConsultation(event)}>
     <MessageCircle size={16} aria-hidden="true"/>{t('consultCatalog')}</Link>;
-  function prepareEnrollmentNavigation(event:ReactMouseEvent<HTMLAnchorElement>) {
+  function prepareEnrollmentNavigation(event:ReactMouseEvent<HTMLAnchorElement>,appointmentSnapshot?:Parameters<typeof preloadEnrollmentNavigation>[1]) {
     if (previewToken || !isPlainLinkClick(event)) return;
     const url = new URL(event.currentTarget.href);
-    preloadEnrollmentNavigation(url);
+    preloadEnrollmentNavigation(url,appointmentSnapshot);
     const recordPage = /^\/enrollment\/mine(?:\/|$)/.test(url.pathname);
     if (recordPage || url.searchParams.get('apply') === '1' || url.pathname === '/enrollment/interest') {
       void loadEnrollmentIntake().catch(() => {});
@@ -528,6 +529,8 @@ export default function Enrollment() {
         registrationLink={appointment?{
           to:'/enrollment/interest?'+registrationQuery,
           state:{...chatReturnState,enrollmentPosition:returnPosition},
+          onClick:event=>prepareEnrollmentNavigation(event,catalog&&loadedCatalog?
+            {id:appointment.id,data:catalog,receivedAt:loadedCatalog.receivedAt}:undefined),
         }:undefined}/>,
       <>{backChat}{helpBack}</>, true);
   }
@@ -588,10 +591,10 @@ export default function Enrollment() {
       {enrollmentCopy(language,['返回选课需求','Back to course preferences','Kembali ke preferensi kursus'])}
     </EnrollmentJourneyLink>;
     return <section className="enrollment-screen enrollment-apply-screen enrollment-intake">
-      {!failed&&!loading&&appointment&&servicing?deferredSection(
+      {!failed&&!readinessFailed&&!loading&&appointment&&servicing?deferredSection(
         <EnrollmentApplication key={appointment.id} language={language} demandOnly privateLesson={appointment}
           privateLessonNavigation={{registrationHeading,completionBack}}/>,registrationHeading):
-        <>{registrationHeading}{failed?catalogFailure:loading
+        <>{registrationHeading}{failed?catalogFailure:readinessFailed?readinessNotice:loading
           ? <p role="status">{t('loading')}</p> : <p role="status">{t('unavailable')}</p>}</>}
     </section>;
   }

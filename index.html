@@ -30,6 +30,12 @@
             readinessUrl += '?scope=servicing';
           } else if (classId === 'interest') {
             catalogUrl = null;
+            appointmentId = params.get('appointment') || undefined;
+            if (appointmentId) {
+              if (!/^[a-zA-Z0-9-]{1,64}$/.test(appointmentId) || params.get('view') === 'rules') return;
+              catalogUrl = '/api/enrollment/classes?appointmentId=' + encodeURIComponent(appointmentId);
+              readinessUrl += '?scope=servicing';
+            }
           } else {
             if (!/^[a-zA-Z0-9-]{1,64}$/.test(classId) || /^(interest|assist)$/i.test(classId) || params.get('view') === 'rules') return;
             if (params.get('order')) {

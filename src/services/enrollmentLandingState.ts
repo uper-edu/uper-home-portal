@@ -8,7 +8,7 @@ declare global {
 }
 
 export function enrollmentLandingAppointmentId(url:Pick<Location,'pathname'|'search'>) {
-  if (!/^\/enrollment\/help\/one-on-one\/?$/.test(url.pathname)) return;
+  if (!/^\/enrollment\/(?:help\/one-on-one|interest)\/?$/.test(url.pathname)) return;
   const id=new URLSearchParams(url.search).get('appointment');
   if (id && /^[a-zA-Z0-9-]{1,64}$/.test(id)) return id;
 }

@@ -269,11 +269,16 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
           typeof forAnother!=='boolean'||criteria.format!=='one-on-one')invalid('enrollment_invalid_demand');
         await lockEnrollmentEmail(c,email);
         const actor='enrollment:'+createHash('sha256').update(email).digest('hex');
-        return operation(c,actor,{requestId:id,appointmentId,criteria,name,forAnother},{leadId:actor,kind:'enrollment.private_lesson'},async()=>{
+        const saved=await operation(c,actor,{requestId:id,appointmentId,criteria,name,forAnother},{leadId:actor,kind:'enrollment.private_lesson'},async()=>{
           const learnerKey=forAnother?'delegate:'+enrollmentLearnerNameKey(name)+':'+normalizeContactPhone(criteria.phone):'self';
-          const rows=(await c.query("SELECT id,revision,criteria FROM enrollment_demands WHERE email=:p1 AND state='active' AND criteria->>'$.appointment.templateId'=:p2",[email,appointmentId])).rows;
-          const prior=rows.find(row=>row.criteria.appointment.learnerKey===learnerKey);
-          if(prior)return {id:prior.id,revision:Number(prior.revision),reused:true};
+          const [candidate]=(await c.query("SELECT id FROM enrollment_demands WHERE email=:p1 AND state='active' AND criteria->>'$.appointment.templateId'=:p2 AND CAST(criteria->>'$.appointment.learnerKey' AS BINARY)=CAST(:p3 AS BINARY) LIMIT 1",[email,appointmentId,learnerKey])).rows;
+          // Lock by primary key, as withdrawal and staff confirmation do. Locking
+          // through the email index can deadlock with a withdrawal updating that index.
+          const prior=candidate&&(await c.query('SELECT revision,state,criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE',[candidate.id,email])).rows[0];
+          if(prior?.state==='active'){
+            const {lessons,minutes,total}=prior.criteria.appointment;
+            return {id:candidate.id,revision:Number(prior.revision),reused:true,quote:{lessons,minutes,total}};
+          }
           const [offer]=await readPublicEnrollmentAppointments(c,appointmentId);
           if(!offer||offer.level!==criteria.level)invalid('enrollment_appointment_unavailable',409);
           const appointment:PrivateLessonRegistration={templateId:offer.id,learnerKey,learnerName:name,
@@ -282,8 +287,18 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
             [id,email,{...criteria,appointment}]);
           await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,name,level:criteria.level});
           await recordEnrollmentAttribution(c,'demand',id,q.body.source);
-          return {id,revision:1};
+          return {id,revision:1,quote:{lessons:appointment.lessons,minutes:appointment.minutes,total:appointment.total}};
         });
+        // Receipts written before quote snapshots were returned can still use the original registration.
+        if(!saved.quote){
+          const [record]=(await c.query('SELECT state,criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE',[saved.id,email])).rows;
+          const original=record?.criteria?.appointment;
+          if(original?.templateId===appointmentId){
+            const {lessons,minutes,total}=original;
+            return {...saved,quote:{lessons,minutes,total}};
+          }
+        }
+        return saved;
       }
       const level=['unsure','other'].includes(criteria.level)?undefined:criteria.level;
       const existing=(await c.query('SELECT email,revision,state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE',[id])).rows[0];
@@ -312,7 +327,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       if(!appointment)await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,level});
       return revision+1;
     });
-    send(r,typeof saved==='number'?{id,revision:saved}:{id:saved.id,revision:saved.revision,reused:saved.reused});
+    send(r,typeof saved==='number'?{id,revision:saved}:{id:saved.id,revision:saved.revision,reused:saved.reused,quote:saved.quote});
   });
 
   post(base+'/demands/:id/withdraw',async(q,r)=>{

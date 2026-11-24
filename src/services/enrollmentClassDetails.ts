@@ -5,6 +5,7 @@ export const intakeReadinessUrl='/api/enrollment/availability';
 export const servicingReadinessUrl=intakeReadinessUrl+'?scope=servicing';
 export const enrollmentCatalogUrl='/api/enrollment/classes?view=summary';
 export const enrollmentLandingTimeoutMs=15000;
+const preloadLifetimeMs=8000;
 export const enrollmentAppointmentUrl=(appointmentId:string)=>'/api/enrollment/classes?'+new URLSearchParams({appointmentId});
 
 function startEnrollmentPreload(url:string):EnrollmentPreload {
@@ -18,7 +19,7 @@ function startEnrollmentPreload(url:string):EnrollmentPreload {
   return entry;
 }
 
-export function preloadEnrollmentNavigation(url:URL) {
+export function preloadEnrollmentNavigation(url:URL,appointmentSnapshot?:{id:string;data:ReturnType<typeof parseEnrollmentCatalog>;receivedAt:number}) {
   if(url.origin!==window.location.origin || url.searchParams.get('view')==='rules' || url.searchParams.has('learnerPreview'))return;
   const appointmentId=enrollmentLandingAppointmentId(url);
   const target=/^\/enrollment(?:\/([a-zA-Z0-9-]{1,64}))?\/?$/.exec(url.pathname);
@@ -32,7 +33,8 @@ export function preloadEnrollmentNavigation(url:URL) {
   const catalogUrl=appointmentId ? enrollmentAppointmentUrl(appointmentId)
     : servicing||coursePreference ? undefined
     : classId ? '/api/enrollment/classes?'+new URLSearchParams({classId}) : enrollmentCatalogUrl;
-  const availabilityUrl=appointmentId ? undefined : servicing ? servicingReadinessUrl : intakeReadinessUrl;
+  const availabilityUrl=appointmentId ? (coursePreference ? servicingReadinessUrl : undefined)
+    : servicing ? servicingReadinessUrl : intakeReadinessUrl;
   const application=url.searchParams.get('apply')==='1';
   const previous=window.__uperEnrollmentLanding;
   // Repeated clicks can arrive before the destination starts consuming the requests.
@@ -40,12 +42,17 @@ export function preloadEnrollmentNavigation(url:URL) {
     previous.classes?.url===catalogUrl&&previous.availability?.url===availabilityUrl)return;
   cancelEnrollmentPreload();
   if(navigator.onLine===false)return;
+  const reuseAppointment=catalogUrl&&appointmentSnapshot&&appointmentSnapshot.id===appointmentId&&
+    performance.now()-appointmentSnapshot.receivedAt<preloadLifetimeMs;
   window.__uperEnrollmentLanding={
     pathname:url.pathname,
     application,
     hasOrder:Boolean(url.searchParams.get('order')),
     appointmentId,
-    classes:catalogUrl?startEnrollmentPreload(catalogUrl):undefined,
+    classes:catalogUrl?(reuseAppointment?{
+      url:catalogUrl,response:Promise.resolve(appointmentSnapshot.data),
+      receivedAt:appointmentSnapshot.receivedAt,cancel:()=>{},
+    }:startEnrollmentPreload(catalogUrl)):undefined,
     availability:availabilityUrl?startEnrollmentPreload(availabilityUrl):undefined,
   };
 }
@@ -77,7 +84,7 @@ export async function readEnrollmentLandingData<T>(
         if(!matchesEnrollmentLanding(landing,window.location))throw new DOMException('Enrollment navigation changed','AbortError');
         delete landing[preload];
         // Reuse fresh data after slow script startup, subject to the same validation as a normal read.
-        if (data!==null && entry.receivedAt!==undefined && performance.now()-entry.receivedAt<8000) {
+        if (data!==null && entry.receivedAt!==undefined && performance.now()-entry.receivedAt<preloadLifetimeMs) {
           try { return parse(data); } catch { /* Try one normal read if the preload is unusable. */ }
         }
       } finally {

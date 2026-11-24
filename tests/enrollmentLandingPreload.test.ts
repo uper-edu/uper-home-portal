@@ -55,6 +55,17 @@ test('direct course preference landing starts only public intake readiness', () 
   assert.deepEqual(initialRequests('/enrollment/interest?level=2&p=fixture'), ['/api/enrollment/availability']);
 });
 
+test('direct one-to-one registration starts the quote and servicing checks together', () => {
+  const window:{__uperEnrollmentLanding?:EnrollmentLanding}={};
+  const path='/enrollment/interest?appointment=private-1&lang=zh';
+  assert.deepEqual(initialRequests(path,true,window), [
+    '/api/enrollment/classes?appointmentId=private-1','/api/enrollment/availability?scope=servicing',
+  ]);
+  assert.equal(matchesEnrollmentLanding(window.__uperEnrollmentLanding!,new URL(path,'https://example.invalid')),true);
+  assert.equal(matchesEnrollmentLanding(window.__uperEnrollmentLanding!,new URL(path.replace('private-1','private-2'),'https://example.invalid')),false);
+  assert.deepEqual(initialRequests('/enrollment/interest?appointment=bad%2Fid'),[]);
+});
+
 test('direct one-to-one quote landing preloads only the selected appointment', () => {
   assert.deepEqual(initialRequests('/enrollment/help/one-on-one/?appointment=demo-quote&lang=zh&p=fixture'),
     ['/api/enrollment/classes?appointmentId=demo-quote']);
