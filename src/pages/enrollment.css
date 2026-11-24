@@ -269,6 +269,9 @@
 .enrollment-proof-transfer label { display:grid; gap:5px; font-size:13px; }
 .enrollment-proof-transfer p { grid-column:1/-1; font-size:13px; margin:0; }
 .enrollment-payment-summary p, .enrollment-payment-section > p { margin-top: 3px; font-size: 13px; color: var(--enrollment-muted); }
+.enrollment-payment-class-meta { display: flex; align-items: baseline; gap: 4px 10px; margin-top: 3px; }
+.enrollment-payment-class-meta > p { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.enrollment-payment-class-meta > .enrollment-status { max-width: 48%; overflow-wrap: anywhere; }
 .enrollment-payment-deadline {
   display: flex;
   align-items: center;
