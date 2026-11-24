@@ -110,7 +110,10 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
    </>}
    <div className="enrollment-class-bottom">
      <div className="enrollment-prices">{row.price>0?<><strong><span className={chatPresentation?'chat-value':undefined}>{formatCurrency(row.price,language)}</span>{chatPresentation&&<small>{t('实付总价','Total tuition','Total biaya')}</small>}</strong>
-       {!!row.standardPrice&&(chatPresentation||row.standardPrice>row.price)&&<small>{t('标准价','Standard price','Harga standar')} <del className={chatPresentation?'chat-value':undefined}>{formatCurrency(row.standardPrice,language)}</del></small>}
+       {!!row.standardPrice&&(chatPresentation||row.standardPrice>row.price)&&<small>
+         <span className={chatPresentation?undefined:'sr-only'}>{t('标准价','Standard price','Harga standar')}{' '}</span>
+         <del className={chatPresentation?'chat-value':'enrollment-reference-price'}>{formatCurrency(row.standardPrice,language)}</del>
+       </small>}
        {chatPresentation&&periods&&<small><span className={chatPresentation?'chat-value':undefined}>{formatCurrency(Math.round(row.price/periods),language)}</span>{t('／节',' / period',' / jam pelajaran')}</small>}</>:<strong>{t('报价待确认','Quote pending','Harga belum dikonfirmasi')}</strong>}</div>
      {actionLink&&<Link className={chatPresentation?`chat-enrollment-next${chatPrimaryAction?' chat-enrollment-next--primary':''}`:'enrollment-primary'} to={actionLink} state={navigationState} onClick={onNavigate}>{row.availability==='full'?t('加入候补','Join waitlist','Daftar tunggu'):t('申请这个班','Apply for this class','Daftar kelas ini')}</Link>}
    </div>

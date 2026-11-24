@@ -107,7 +107,7 @@ const copy = {
   outcomes: ['What you will learn', 'Yang akan Anda pelajari', '学完能做什么'],
   material: ['Course and materials', 'Kursus dan materi', '课程内容与教材'],
   resources: ['Practice and resources', 'Latihan dan sumber daya', '课后练习与资源'],
-  consultCatalog: ['Help me choose', 'Tanya kelas', '咨询选班'],
+  consultCatalog: ['Help me choose', 'Tanya kelas', '咨询'],
   consultClass: ['Ask about this class', 'Tanya tentang kelas ini', '咨询这个班'],
   backChat: ['Back to chat', 'Kembali ke chat', '返回咨询'],
   backLinkHub: ['All links', 'Semua tautan', '全部入口'],
@@ -385,7 +385,6 @@ export default function Enrollment() {
       const countAndMatch=(label:string)=>{
         const key=catalogLevel(label);
         levelCounts.set(key,(levelCounts.get(key)??0)+1);
-        levelCounts.set('all',(levelCounts.get('all')??0)+1);
         return level==='all'||key===level;
       };
       for(const row of classes??[]){
@@ -648,7 +647,7 @@ export default function Enrollment() {
       <div className="enrollment-category-tabs enrollment-levels" role="group" aria-label={t('level')}>
         {catalogLevels.map(value => <button key={value} type="button" aria-pressed={level === value} onClick={() => filter('level', value)}>
           <span className="enrollment-level-name">{value === 'all' ? t('allLevels') : 'HSK ' + value}</span>
-          {classes && !failed && <span className="enrollment-tab-count">{levelCounts.get(value) ?? 0}</span>}
+          {value !== 'all' && classes && !failed && <span className="enrollment-tab-count">{levelCounts.get(value) ?? 0}</span>}
         </button>)}
       </div>
       <div className="enrollment-filters">

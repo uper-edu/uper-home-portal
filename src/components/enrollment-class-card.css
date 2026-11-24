@@ -1,3 +1,5 @@
+.enrollment-title-separator { white-space: pre; }
+
 [data-enrollment-screen], [data-enrollment-card-group] {
   --enrollment-ink: #162830;
   --enrollment-muted: #4d6065;
@@ -44,6 +46,7 @@
 .enrollment-prices { display: grid; color: var(--enrollment-muted); gap: 1px; }
 .enrollment-prices strong { color: var(--enrollment-ink); line-height: 1.25; font-size: 17px; font-weight: 750; letter-spacing: -.015em; }
 .enrollment-prices small { font-size: 11px; }
+.enrollment-reference-price { white-space: nowrap; text-decoration-color: currentColor; }
 
 @media (min-width: 768px) {
   .enrollment-class-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
