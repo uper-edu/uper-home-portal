@@ -2,6 +2,7 @@ import {EnrollmentClassName} from '../components/EnrollmentClassName';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
 import { enrollmentCopy,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
+import {EnrollmentPriceActions} from '../components/EnrollmentRecordLayout';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, MessageCircle, Minus, Plus } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -448,7 +449,7 @@ export default function Enrollment() {
       void loadEnrollmentIntake().catch(() => {});
     }
   }
-  const classCard=(row:PublicEnrollmentClass,inCatalog:boolean)=><EnrollmentClassPreview key={row.id} row={row} language={language}
+  const classCard=(row:PublicEnrollmentClass,inCatalog:boolean,priceInActions=false)=><EnrollmentClassPreview key={row.id} row={row} language={language} detail={!inCatalog} priceInActions={priceInActions}
     intakeStatus={previewToken||canApplyToClass===true?undefined:canApplyToClass===false&&!readinessFailed?'paused':failed||readinessFailed?'unverified':'checking'}
     navigationState={inCatalog?{...chatReturnState,enrollmentClassPreview:{
       id:row.id,level:row.level,format:row.format,period:row.period,batchNumber:row.batchNumber,
@@ -588,15 +589,19 @@ export default function Enrollment() {
         {accepting===false&&servicing&&<Link className="enrollment-quiet" to={minePath} state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t('mine')}</Link>}
       </div> : <div className="enrollment-detail-layout">
         <aside className="enrollment-detail-aside">
-          {classCard(selected, false)}
+          {classCard(selected, false, !!canApplyToClass&&selected.price>0)}
           {intakeNotice}
           <div className="enrollment-detail-actions">
             <Link className="enrollment-quiet" to={detailsPath(selected.id)+'&view=rules'} state={chatReturnState}>{t('rules')}</Link>
-            {canApplyToClass && selected.price>0 && <Link className="enrollment-primary" to={detailsPath(selected.id, true)}
-              state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>}
             {!previewToken && !fromChat && <Link data-enrollment-consult="class" className="enrollment-outline enrollment-consult-action"
               to={chatPath} onClick={event=>startConsultation(event,selected)}><MessageCircle size={16} aria-hidden="true"/>{t('consultClass')}</Link>}
           </div>
+          {canApplyToClass && selected.price>0 && <EnrollmentPriceActions hideLabel
+            label={enrollmentCopy(language,['课程总价','Total tuition','Total biaya'])}
+            amount={selected.price} standardPrice={selected.standardPrice} language={language}>
+            <Link className="enrollment-primary" to={detailsPath(selected.id, true)}
+              state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>
+          </EnrollmentPriceActions>}
         </aside>
         <section className="enrollment-course">
           <h2>{t('courseIntro')}</h2>

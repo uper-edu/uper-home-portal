@@ -182,8 +182,8 @@ export function EnrollmentAssistanceForm({hash,language,navigation}:{hash:string
     {!offer&&error==='enrollment_assistance_read_failed'&&<button type="button" className="enrollment-quiet" onClick={()=>{
       setError('');setPreviewRetry(count=>count+1);
     }}>{t('重新读取报名资料','Reload enrollment details','Muat ulang detail pendaftaran')}</button>}
-    {offer&&<><EnrollmentRecordSummary title={enrollmentClassTitle(offer.quote,language)} schedule={offer.quote.schedule}>
-      <p>{offer.quote.firstLesson.replace('T',' ')} WIB</p><p><strong className="enrollment-main-amount">{formatCurrency(offer.quote.price,language)}</strong></p>
+    {offer&&<><EnrollmentRecordSummary language={language} title={enrollmentClassTitle(offer.quote,language)} schedule={offer.quote.schedule} firstLesson={offer.quote.firstLesson}>
+      <p><strong className="enrollment-main-amount">{formatCurrency(offer.quote.price,language)}</strong></p>
       <Link target="_blank" rel="noopener noreferrer" to={'/enrollment/'+encodeURIComponent(offer.classId)+'?view=rules&lang='+language}>
         {t('查看开班与退款说明','Class opening and refund policy','Ketentuan pembukaan kelas dan pengembalian dana')}</Link>
     </EnrollmentRecordSummary>

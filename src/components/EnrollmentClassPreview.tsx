@@ -1,4 +1,5 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
+import {EnrollmentDetailFields} from './EnrollmentRecordLayout';
 import {Link} from 'react-router-dom';
 import type {MouseEventHandler} from 'react';
 import {BookOpen,CalendarDays,ChevronRight,Clock3} from 'lucide-react';
@@ -22,8 +23,8 @@ export function ChatClassSchedule({row,language,withZone=false}:{
   </span>)}</span>;
 }
 
-export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDetails=false,intakeStatus,availabilitySnapshot=false,onNavigate,navigationState,chatPresentation=false,chatPrimaryAction=false}:{
-  row:EnrollmentCardRow;language:Language;titleLink?:string;actionLink?:string;showDetails?:boolean;intakeStatus?:'checking'|'paused'|'unverified';
+export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDetails=false,detail=false,priceInActions=false,intakeStatus,availabilitySnapshot=false,onNavigate,navigationState,chatPresentation=false,chatPrimaryAction=false}:{
+  row:EnrollmentCardRow;language:Language;titleLink?:string;actionLink?:string;showDetails?:boolean;detail?:boolean;priceInActions?:boolean;intakeStatus?:'checking'|'paused'|'unverified';
   availabilitySnapshot?:boolean;onNavigate?:MouseEventHandler<HTMLAnchorElement>;navigationState?:unknown;chatPresentation?:boolean;chatPrimaryAction?:boolean;
 }){
  const t=(zh:string,en:string,id:string)=>enrollmentCopy(language,[zh,en,id]);
@@ -47,23 +48,60 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
  const state=checkingIntake?'pending':(chatPresentation&&intakeStatus==='paused')||(!intakeStatus&&row.availability==='full')
    ? 'full' : row.opened||(chatPresentation&&row.availability==='available')?'confirmed':'pending';
  const statusText=chatPresentation&&row.price&&availableText?availableText:status+(availableText&&(!chatPresentation||row.price)?' · '+availableText:'');
+ const teacher=enrollmentTeacherLabel(row.teacherType,language);
+ const publicStatus=row.price&&availableText||status;
+ const publicTone=row.price&&availableText&&row.availability==='available'?'confirmed':state;
+ const duration=t('每节 '+row.minutes+' 分钟',row.minutes+' min each',row.minutes+' menit per jam pelajaran');
+ const lessonCount=periods?t(periods+' 节',periods+' periods',periods+' jam pelajaran'):undefined;
+ const schedule=enrollmentScheduleLabel(row,language);
+ if(detail)return <div className="enrollment-class-detail">
+   <header className="enrollment-detail-heading">
+     <h2 className="enrollment-class-heading">{titleContent}</h2>
+     <span className="enrollment-status" data-state={publicTone}>{publicStatus}</span>
+   </header>
+   <section className="enrollment-detail-section">
+     <h3 className="enrollment-record-section-title">{t('班次信息','Class information','Informasi kelas')}</h3>
+     <EnrollmentDetailFields fields={[
+       [t('授课教师','Teacher','Pengajar'),teacher],
+       [t('每周课表','Weekly schedule','Jadwal mingguan'),schedule],
+       [t('首课时间','First class','Pertemuan pertama'),date
+         ? <time dateTime={dateValue.toISOString()}>{enrollmentDateFormatter(language,'dateTime').format(dateValue)} WIB</time>
+         : t('待确认','To be confirmed','Belum dikonfirmasi')],
+       [t('开班状态','Class opening','Status pembukaan kelas'),row.opened?t('已确认开班','Confirmed','Dikonfirmasi'):undefined],
+       [t('班级规模','Class size','Ukuran kelas'),size],
+       [t('课时安排','Lesson duration','Durasi pelajaran'),[lessonCount,duration].filter(Boolean).join(' · ')],
+       [t('每节价格','Approx. per period','Perkiraan per jam pelajaran'),row.price>0&&!!periods&&formatCurrency(Math.round(row.price/periods),language)],
+     ]}/>
+   </section>
+   {!priceInActions&&<section className="enrollment-detail-section">
+     <h3 className="enrollment-record-section-title">{t('课程费用','Tuition','Biaya kursus')}</h3>
+     <EnrollmentDetailFields fields={[
+       [t('课程总价','Total tuition','Total biaya'),row.price>0
+         ? <span className="enrollment-main-amount">{formatCurrency(row.price,language)}</span>
+         : t('报价待确认','Quote pending','Harga belum dikonfirmasi')],
+       [t('标准价','Standard price','Harga standar'),!!row.standardPrice&&row.standardPrice>row.price&&<del>{formatCurrency(row.standardPrice,language)}</del>],
+     ]}/>
+   </section>}
+ </div>;
  return <article className={`enrollment-class-card${chatPresentation?' enrollment-class-card--chat':''}`}>
    {chatPresentation?<div className="chat-class-heading">{heading}<span className="enrollment-status" data-state={state}>{statusText}</span></div>:heading}
-   <p>{chatPresentation&&<CalendarDays size={15} aria-hidden="true"/>}{(chatPresentation?[dateLabel,enrollmentTeacherLabel(row.teacherType,language)]:[enrollmentTeacherLabel(row.teacherType,language),dateLabel]).filter(Boolean).join(' · ')}</p>
+   {chatPresentation&&<p><CalendarDays size={15} aria-hidden="true"/>{[dateLabel,enrollmentTeacherLabel(row.teacherType,language)].filter(Boolean).join(' · ')}</p>}
    {chatPresentation&&<p className="enrollment-schedule"><Clock3 size={15} aria-hidden="true"/><ChatClassSchedule row={row} language={language} withZone/></p>}
-   <p>{chatPresentation&&<BookOpen size={15} aria-hidden="true"/>}{[
+   {chatPresentation&&<p><BookOpen size={15} aria-hidden="true"/>{[
      size,
      periods&&t(periods+' 节',periods+' periods',periods+' jam pelajaran'),
      t('每节 '+row.minutes+' 分钟',row.minutes+' min each',row.minutes+' menit per jam pelajaran'),
-   ].filter(Boolean).join(' · ')}</p>
+   ].filter(Boolean).join(' · ')}</p>}
    {!chatPresentation&&<>
-     <p className="enrollment-schedule">{enrollmentScheduleLabel(row,language)}</p>
-     <div className="enrollment-class-status"><span className="enrollment-status" data-state={state}>{statusText}</span></div>
+     {teacher&&<p className="enrollment-teacher">{teacher}</p>}
+     <p className="enrollment-schedule">{schedule}</p>
+     <div className="enrollment-catalog-facts"><p>{dateLabel}</p><span className="enrollment-status" data-state={publicTone}>{publicStatus}</span></div>
+     <p>{[size,lessonCount,duration].filter(Boolean).join(' · ')}</p>
    </>}
    <div className="enrollment-class-bottom">
      <div className="enrollment-prices">{row.price>0?<><strong><span className={chatPresentation?'chat-value':undefined}>{formatCurrency(row.price,language)}</span>{chatPresentation&&<small>{t('实付总价','Total tuition','Total biaya')}</small>}</strong>
-       {row.standardPrice&&<small>{t('标准价','Standard price','Harga standar')} <del className={chatPresentation?'chat-value':undefined}>{formatCurrency(row.standardPrice,language)}</del></small>}
-       {periods&&<small><span className={chatPresentation?'chat-value':undefined}>{formatCurrency(Math.round(row.price/periods),language)}</span>{t('／节',' / period',' / jam pelajaran')}</small>}</>:<strong>{t('报价待确认','Quote pending','Harga belum dikonfirmasi')}</strong>}</div>
+       {!!row.standardPrice&&(chatPresentation||row.standardPrice>row.price)&&<small>{t('标准价','Standard price','Harga standar')} <del className={chatPresentation?'chat-value':undefined}>{formatCurrency(row.standardPrice,language)}</del></small>}
+       {chatPresentation&&periods&&<small><span className={chatPresentation?'chat-value':undefined}>{formatCurrency(Math.round(row.price/periods),language)}</span>{t('／节',' / period',' / jam pelajaran')}</small>}</>:<strong>{t('报价待确认','Quote pending','Harga belum dikonfirmasi')}</strong>}</div>
      {actionLink&&<Link className={chatPresentation?`chat-enrollment-next${chatPrimaryAction?' chat-enrollment-next--primary':''}`:'enrollment-primary'} to={actionLink} state={navigationState} onClick={onNavigate}>{row.availability==='full'?t('加入候补','Join waitlist','Daftar tunggu'):t('申请这个班','Apply for this class','Daftar kelas ini')}</Link>}
    </div>
    {showDetails&&<section aria-label={t('课程介绍','Course details','Rincian kursus')}>

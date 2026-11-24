@@ -1,8 +1,10 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
 import type {ReactNode} from 'react';
-import {enrollmentCopy} from '../utils/enrollmentCatalog';
+import {enrollmentCopy,enrollmentInstant,enrollmentTeacherLabel} from '../utils/enrollmentCatalog';
 import type {InterestLanguage} from '../utils/enrollmentInterestCopy';
 import type {EnrollmentOrder} from './EnrollmentPayment';
+import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
+import {formatCurrency} from '../utils/currency';
 
 type StatusTone='pending'|'confirmed'|'full';
 
@@ -17,40 +19,78 @@ export function EnrollmentRecordActions({primary,secondary,tertiary}: {
   </div>;
 }
 
-export function EnrollmentRecordSummary({title,status,tone='pending',schedule,children}: {
-  title:string;status?:string;tone?:StatusTone;schedule?:string;children?:ReactNode;
+export function EnrollmentPriceActions({label,hideLabel=false,amount,standardPrice,language,children}:{
+  label:string;hideLabel?:boolean;amount:number;standardPrice?:number;language:InterestLanguage;children:ReactNode;
 }) {
-  return <article className="enrollment-record enrollment-record-summary">
-    <header>
-      <h2 className="enrollment-class-heading"><EnrollmentClassName title={title}/></h2>
-      {status&&<span className="enrollment-status" data-state={tone} role="status">{status}</span>}
-    </header>
-    {schedule&&<p className="enrollment-record-schedule">{schedule}</p>}
+  return <div className="enrollment-price-actions">
+    <dl className="enrollment-price-actions-summary">
+      <div>
+        <dt className={hideLabel?'sr-only':undefined}>{label}</dt>
+        <dd className="enrollment-main-amount">{formatCurrency(amount,language)}</dd>
+      </div>
+      {standardPrice!==undefined&&standardPrice>amount&&<div className="enrollment-price-actions-standard">
+        <dt>{enrollmentCopy(language,['标准价','Standard price','Harga standar'])}</dt>
+        <dd><del>{formatCurrency(standardPrice,language)}</del></dd>
+      </div>}
+    </dl>
     {children}
-  </article>;
+  </div>;
 }
 
-export function EnrollmentListRecord({category,title,status,tone,children,primary,secondary}:{
-  category:string;title:string;status:string;tone:StatusTone;children?:ReactNode;primary?:ReactNode;secondary?:ReactNode;
+export function EnrollmentDetailFields({fields}:{
+  fields:ReadonlyArray<readonly [string,ReactNode]>
+}) {
+  const visible=fields.filter(([,value])=>value!==undefined&&value!==null&&value!==false&&value!=='');
+  if(!visible.length)return null;
+  return <dl className="enrollment-detail-fields">
+    {visible.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+  </dl>;
+}
+
+export function EnrollmentRecordSummary({title,status,tone='pending',schedule,teacherType,firstLesson,language,children}: {
+  title:string;status?:string;tone?:StatusTone;schedule?:string;teacherType?:'local'|'foreign';firstLesson?:string;
+  language:InterestLanguage;children?:ReactNode;
+}) {
+  const t=(copy:readonly [string,string,string])=>enrollmentCopy(language,copy);
+  const firstDate=enrollmentInstant(firstLesson);
+  return <header className="enrollment-record-summary">
+    <div className="enrollment-detail-heading">
+      <h2 className="enrollment-class-heading"><EnrollmentClassName title={title}/></h2>
+      {status&&<span className="enrollment-status" data-state={tone} role="status">{status}</span>}
+    </div>
+    <EnrollmentDetailFields fields={[
+      [t(['授课教师','Teacher','Pengajar']),enrollmentTeacherLabel(teacherType,language)],
+      [t(['首课时间','First class','Pertemuan pertama']),firstDate&&<time dateTime={firstDate.toISOString()}>
+        {enrollmentDateFormatter(language,'dateTime').format(firstDate)} WIB
+      </time>],
+      [t(['每周课表','Weekly schedule','Jadwal mingguan']),schedule],
+    ]}/>
+    {children}
+  </header>;
+}
+
+export function EnrollmentListRecord({category,title,status,tone,children,primary}:{
+  category:string;title:ReactNode;status:string;tone:StatusTone;children?:ReactNode;primary?:ReactNode;
 }) {
   return <article className="enrollment-record enrollment-list-card">
     <header>
       <small>{category}</small>
       <span className="enrollment-status" data-state={tone}>{status}</span>
     </header>
-    <h3 className="enrollment-class-heading"><EnrollmentClassName title={title}/></h3>
+    <h3 className="enrollment-class-heading">{title}</h3>
     {children}
-    <EnrollmentRecordActions primary={primary} secondary={secondary}/>
+    {primary&&<EnrollmentRecordActions primary={primary}/>}
   </article>;
 }
 
-export function EnrollmentOrderInformation({order,language}: {order:EnrollmentOrder;language:InterestLanguage}) {
+export function EnrollmentOrderInformation({order,language,identity}: {order:EnrollmentOrder;language:InterestLanguage;identity?:ReactNode}) {
   const t=(copy:readonly [string,string,string])=>enrollmentCopy(language,copy);
-  return <article className="enrollment-record">
-    <h2>{t(['报名信息','Enrollment information','Informasi pendaftaran'])}</h2>
-    <dl className="enrollment-result-amounts enrollment-order-metadata">
-      {order.learnerName&&<div><dt>{t(['学员姓名','Learner name','Nama siswa'])}</dt><dd>{order.learnerName}</dd></div>}
-      <div><dt>{t(['报名编号','Order number','Nomor pendaftaran'])}</dt><dd>{order.id}</dd></div>
-    </dl>
-  </article>;
+  return <section className="enrollment-detail-section">
+    <h2 className="enrollment-record-section-title">{t(['报名信息','Enrollment information','Informasi pendaftaran'])}</h2>
+    <EnrollmentDetailFields fields={[
+      [t(['学员姓名','Learner name','Nama siswa']),order.learnerName],
+      [t(['报名编号','Order number','Nomor pendaftaran']),order.id],
+    ]}/>
+    {identity}
+  </section>;
 }

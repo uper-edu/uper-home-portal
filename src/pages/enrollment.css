@@ -203,8 +203,33 @@
 .enrollment-course details:not([open]) summary svg:last-child,
 .enrollment-course details[open] summary svg:first-of-type { display: none; }
 .enrollment-course details p { margin: -2px 0 12px; color: var(--enrollment-muted); white-space: pre-wrap; }
-.enrollment-detail-actions { display: grid; gap: 8px; margin-top: 14px; }
-.enrollment-detail-actions .enrollment-quiet { justify-content: center; font-size: 13px; min-height: 24px; }
+.enrollment-detail-actions { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-block: 8px; }
+.enrollment-detail-actions .enrollment-quiet { min-height: 44px; }
+.enrollment-detail-cancel { align-self: flex-start; min-height: 44px; }
+.enrollment-price-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--enrollment-border);
+  padding-block: 10px;
+}
+.enrollment-price-actions > .enrollment-primary {
+  max-width: min(49vw, 230px);
+  min-width: 0;
+  min-height: 44px;
+  text-align: center;
+}
+.enrollment-mine[data-record-detail="true"] .enrollment-price-actions { margin-block-start: auto; }
+.enrollment-price-actions-summary {
+  min-width: 0;
+  color: var(--enrollment-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.enrollment-price-actions-summary dd { margin: 0; }
+.enrollment-price-actions-summary .enrollment-main-amount { color: var(--enrollment-ink); }
+.enrollment-price-actions-standard { display: flex; flex-wrap: wrap; gap: 0 5px; }
 .enrollment-payment, .enrollment-apply-layout { max-width: 664px; }
 .enrollment-payment-content { display: grid; gap: 10px; }
 .enrollment-payment-summary, .enrollment-payment-section {
@@ -285,14 +310,15 @@
 .enrollment-payment-actions p { margin-bottom: 7px; text-align: center; color: var(--enrollment-muted); font-size: 12px; }
 
 @media (max-width: 767px) {
-  .enrollment-detail:has(.enrollment-detail-actions .enrollment-primary) { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
-  .enrollment-detail-actions:has(.enrollment-primary) {
+  .enrollment-screen:has(.enrollment-price-actions) {
+    padding-block-end: calc(116px + env(safe-area-inset-bottom, 0px));
+  }
+  .enrollment-price-actions {
     position: fixed;
     z-index: 45;
     inset: auto 0 0;
+    padding: 8px 16px calc(10px + env(safe-area-inset-bottom, 0px));
     background: #fff;
-    padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--enrollment-border);
   }
   .enrollment-payment { padding-bottom: calc(36px + env(safe-area-inset-bottom, 0px)); }
   .enrollment-payment:has(.enrollment-payment-actions) { padding-bottom: calc(115px + env(safe-area-inset-bottom, 0px)); }
@@ -351,9 +377,9 @@
   .enrollment-detail-aside { grid-column: 2; grid-row: 1; position: sticky; top: 88px; }
   .enrollment-course { grid-column: 1; grid-row: 1; }
   .enrollment-detail-aside { border: 1px solid var(--enrollment-border); border-radius: 11px; overflow: clip; }
-  .enrollment-detail-aside .enrollment-class-card { border: 0; padding-bottom: 13px; }
+  .enrollment-detail-aside .enrollment-class-detail { padding: 16px 19px 12px; }
+  .enrollment-detail-aside .enrollment-price-actions { padding: 12px 19px; }
   .enrollment-detail-actions { padding: 0 19px 14px; margin-top: 0; }
-  .enrollment-detail-actions .enrollment-primary { grid-row: 1; }
   .enrollment-course summary { font-size: 16px; }
   .enrollment-payment-content, .enrollment-payment-form { gap: 12px; }
   .enrollment-payment-deadline { padding: 10px 13px; }
@@ -558,6 +584,21 @@
 .enrollment-record-actions .enrollment-order-cancel { color: var(--enrollment-muted); }
 .enrollment-interest-detail { display: grid; gap: 12px; }
 .enrollment-history-title { margin-top: 8px; }
+.enrollment-history > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding-block: 6px;
+  border-top: 1px solid var(--enrollment-border);
+  cursor: pointer;
+  list-style: none;
+}
+.enrollment-history > summary::-webkit-details-marker { display: none; }
+.enrollment-history > summary svg { color: var(--enrollment-muted); flex: none; }
+.enrollment-history[open] > summary svg { transform: rotate(180deg); }
+.enrollment-history[open] > .enrollment-records { margin-top: 4px; }
 .enrollment-mine-login { padding: 14px; border: 1px solid var(--enrollment-border); border-radius: 10px; }
 .enrollment-mine-login h2 { font-weight: 700; }
 .enrollment-mine-login p { color: var(--enrollment-muted); }
@@ -633,24 +674,80 @@
 }
 .enrollment-mine[data-record-detail="true"] .enrollment-record-actions { margin-block-start: auto; }
 .enrollment-mine[data-record-detail="true"] .enrollment-email-disclosure { margin: 0; }
-.enrollment-record-summary { border-radius: 14px; padding: clamp(14px, 4vw, 22px); gap: 8px; }
-.enrollment-record-summary header { align-items: baseline; flex-wrap: wrap; gap: 6px 10px; }
-.enrollment-record-summary header h2 { flex: 0 0 100%; min-width: 0; }
-.enrollment-record-summary header .enrollment-status { flex: none; }
-.enrollment-order-payment-summary {
+.enrollment-record-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
-  gap: 12px 18px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--enrollment-wash);
+  justify-items: start;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.enrollment-order-payment-summary dt { color: var(--enrollment-muted); font-size: 12px; }
-.enrollment-order-payment-summary dd { margin-top: 3px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.enrollment-order-metadata dt { flex-shrink: 0; }
-.enrollment-order-metadata dd { min-width: 0; text-align: end; }
+.enrollment-record-summary .enrollment-detail-fields { width: 100%; }
+.enrollment-detail-fields { min-width: 0; font-size: 14px; }
+.enrollment-detail-fields > div, .enrollment-detail-section .enrollment-result-amounts > div {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 5px 12px;
+  padding-block: 7px;
+  overflow-wrap: anywhere;
+}
+.enrollment-detail-fields > div + div { border-top: 1px solid var(--enrollment-border); }
+.enrollment-detail-fields > div:has(.enrollment-main-amount) { align-items: baseline; }
+.enrollment-detail-fields dt { color: var(--enrollment-muted); font-weight: 400; }
+.enrollment-detail-fields dd { min-width: 0; margin: 0; color: var(--enrollment-ink); font-weight: 400; }
+.enrollment-class-card .enrollment-teacher { color: var(--enrollment-ink); font-weight: 650; }
+.enrollment-detail-section {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--enrollment-border);
+  overflow-wrap: anywhere;
+}
+.enrollment-detail-section > p, .enrollment-detail-heading > p {
+  color: var(--enrollment-muted);
+  font-size: 14px;
+}
+.enrollment-class-detail { display: grid; gap: 8px; }
+.enrollment-detail-heading {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  width: 100%;
+}
+.enrollment-detail-heading > h2 { flex: 1 1 170px; min-width: 0; }
+.enrollment-detail-heading > .enrollment-status { max-width: 100%; flex-shrink: 0; }
+.enrollment-record-title-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.enrollment-record-title-link:hover, .enrollment-record-title-link:focus-visible { color: var(--enrollment-accent); }
+.enrollment-record-title-link svg { flex: none; align-self: center; color: var(--enrollment-accent); }
+.enrollment-detail-section .enrollment-email-disclosure {
+  border: 0;
+  border-top: 1px solid var(--enrollment-border);
+  border-radius: 0;
+  background: none;
+}
+.enrollment-detail-section .enrollment-email-disclosure > summary { padding-inline: 0; min-height: 44px; }
+.enrollment-detail-section .enrollment-email-disclosure > .enrollment-email-disclosure-body { padding-inline: 0; }
+.enrollment-class-detail .enrollment-detail-section { padding-bottom: 4px; }
+
+.enrollment-catalog-facts, .enrollment-record-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 3px;
+}
+.enrollment-catalog-facts { justify-content: space-between; }
+.enrollment-catalog .enrollment-class-card .enrollment-primary { border-radius: 10px; }
+.enrollment-record-next strong { color: var(--enrollment-ink); }
 .enrollment-order-result-shell { display: grid; gap: 12px; }
 @media (max-width: 767px) {
+  .enrollment-record-secondary:has(.enrollment-proof-follow-up) { width: 100%; }
+  .enrollment-proof-follow-up { width: 100%; justify-content: center; }
   .enrollment-mine[data-record-detail="true"] .enrollment-record-primary { flex: 1 1 auto; }
   .enrollment-mine[data-record-detail="true"] .enrollment-record-primary > :is(a,button) { width: 100%; }
 }
@@ -780,19 +877,18 @@
   font-size: var(--enrollment-section-size);
   font-weight: 700;
 }
-.enrollment-screen :is(.enrollment-record p, .enrollment-class-card p, .enrollment-subtitle, .enrollment-learner-identity .enrollment-identity-info > strong, .enrollment-payment-summary p, .enrollment-payment-section > p, .enrollment-aftercare-options dd, .enrollment-payment-deadline, .enrollment-order-metadata dd, .enrollment-order-reference) {
+.enrollment-screen :is(.enrollment-record p, .enrollment-class-card p, .enrollment-subtitle, .enrollment-learner-identity .enrollment-identity-info > strong, .enrollment-payment-summary p, .enrollment-payment-section > p, .enrollment-aftercare-options dd, .enrollment-payment-deadline, .enrollment-order-reference) {
   font-size: 14px;
   font-weight: 400;
 }
-.enrollment-screen :is(.enrollment-order-payment-summary dt, .enrollment-result-amounts dt, .enrollment-field, .enrollment-identity-label, .enrollment-proof-transfer label, .enrollment-bank dt, .enrollment-payment-amount small, .enrollment-payment-test-note, .enrollment-payment-actions p, .enrollment-code-feedback, .enrollment-proof-transfer p, .enrollment-file span, .enrollment-record header small, .enrollment-prices small, .enrollment-tuition) {
+.enrollment-screen :is(.enrollment-result-amounts dt, .enrollment-field, .enrollment-identity-label, .enrollment-proof-transfer label, .enrollment-bank dt, .enrollment-payment-amount small, .enrollment-payment-test-note, .enrollment-payment-actions p, .enrollment-code-feedback, .enrollment-proof-transfer p, .enrollment-file span, .enrollment-record header small, .enrollment-prices small, .enrollment-tuition) {
   font-size: var(--enrollment-label-size);
   font-weight: 400;
 }
-.enrollment-screen :is(.enrollment-payment-deadline time, .enrollment-result-amounts:not(.enrollment-order-metadata) dd:not(.enrollment-main-amount), .enrollment-order-payment-summary dd:not(.enrollment-main-amount)) {
+.enrollment-screen :is(.enrollment-payment-deadline time, .enrollment-result-amounts dd:not(.enrollment-main-amount)) {
   font-size: 14px;
   font-weight: 650;
 }
-.enrollment-screen .enrollment-order-metadata dd { font-weight: 400; }
 .enrollment-screen .enrollment-payment-deadline time span { font-weight: 400; }
 .enrollment-screen :is(.enrollment-main-amount, .enrollment-prices strong, .enrollment-payment-amount strong, .enrollment-tuition strong) {
   font-size: var(--enrollment-amount-size);

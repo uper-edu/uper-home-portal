@@ -12,15 +12,15 @@ import {enrollmentCodeRequestErrors,enrollmentReadinessMessage} from '../utils/e
 import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import type {EnrollmentIntakeTools} from './EnrollmentIntake';
-import { enrollmentCopy, enrollmentClassTitle, enrollmentScheduleLabel } from '../utils/enrollmentCatalog';
+import { enrollmentCopy, enrollmentClassTitle, enrollmentScheduleLabel, enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof, enrollmentStatuses } from '../utils/enrollmentOrderStatus';
 import {enrollmentProofUploadTimeout,prepareEnrollmentProofFile} from '../utils/enrollmentProofFile';
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {EnrollmentEmailIdentity,maskEnrollmentEmail} from './EnrollmentEmailIdentity';
 import {enrollmentOrderReturnParam,EnrollmentJourneyLink,useEnrollmentJourneyState,useEnrollmentRecordReturn} from './EnrollmentJourneyLink';
-import {EnrollmentListRecord,EnrollmentOrderInformation,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
+import {EnrollmentDetailFields,EnrollmentListRecord,EnrollmentOrderInformation,EnrollmentPriceActions,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
 import {promotionJourneyUrl} from '../utils/promotionNavigation';
 import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
 import { formatCurrency } from '../utils/currency';
@@ -99,7 +99,12 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         document.getElementById(recordReturn.focus.replace(/-(?:pay|invite|balance|apply|matches)$/,''));
       const inside=entry&&listContent.current.contains(entry);
       const target=inside?entry:document.getElementById('enrollment-mine-heading');
-      if(inside)window.scrollTo({top:recordReturn.scrollY,behavior:'instant'});
+      if(inside){
+        const history=entry.closest<HTMLDetailsElement>('details.enrollment-history');
+        if(history)history.open=true;
+        window.scrollTo({top:recordReturn.scrollY,behavior:'instant'});
+        if(history)entry.scrollIntoView({block:'nearest',behavior:'instant'});
+      }
       target?.focus({preventScroll:true});
       restoredListKey.current=locationKey;
     });
@@ -1217,6 +1222,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     next.set('order', id);
     return '/enrollment/payment?' + next.toString();
   };
+  const paymentBar=mine&&order?.status==='awaiting_payment'&&!order.restored;
   const canUpload = order && order.status!=='paid_cancelled' && allowsEnrollmentProof(order.status,order.closureReason) && !order.restored;
   const cancelable=!payment&&order?.status==='awaiting_payment'&&order.received===0;
   const openCancellation=()=>{if(cancelable){setError('');cancelDialog.current?.showModal();}};
@@ -1463,12 +1469,14 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     return '/enrollment/mine?'+query.toString();
   }
   const paymentLabel=t(['转账与凭证','Transfer & proof','Transfer dan bukti']);
-  const viewDetailsLabel=t(['查看详情','View details','Lihat detail']);
-  function recordEntry(entry:string,to:string,label:string,primary=false) {
+  function recordEntry(entry:string,to:string,label:ReactNode,primary=false) {
     return <EnrollmentJourneyLink recordEntry={'enrollment-entry-'+entry} to={to} onClick={preloadRecordDestination}
-      className={primary?'enrollment-primary':'enrollment-outline'}>
+      className={primary?'enrollment-primary':'enrollment-record-title-link'}>
       {label}
     </EnrollmentJourneyLink>;
+  }
+  function recordTitle(entry:string,to:string,title:string) {
+    return recordEntry(entry,to,<><EnrollmentClassName title={title}/><ChevronRight size={15} aria-hidden="true"/></>);
   }
   const orderIsActive = (row: OrderSummary) => row.restored || !['expired','ended','refunded'].includes(row.status);
   const showRecordList=verified&&!checkingRecords&&!loadingOrder&&!order&&!payment&&!record&&!classId;
@@ -1483,6 +1491,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const orderCards = (showRecordList&&(tab==='all'||tab==='orders')?orders??[]:[]).map(row => {
     const course = recordClasses.get(row.classId);
     const schedule = enrollmentScheduleLabel(course,language);
+    const teacher = enrollmentTeacherLabel(course?.teacherType,language);
     const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(row.closureReason==='learner_cancelled'?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:enrollmentStatuses[row.status]);
     const active = orderIsActive(row);
     const payable = row.status==='awaiting_payment'&&!row.classCancelled;
@@ -1494,16 +1503,16 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
           ? recordEntry(key+'-balance',orderPath(row.id),t(['查看补款','View balance','Lihat sisa tagihan']),true)
           : undefined;
     return {key,active,updatedAt:row.updatedAt,needsAction:active&&!!(row.invitation||row.needsPayment),card:
-      <EnrollmentListRecord category={t(['报名申请','Application','Pendaftaran'])} title={classTitle(row.level,row.firstLesson,row.classId)}
-        status={status} tone={!active?'full':row.status==='paid'||row.restored?'confirmed':'pending'} primary={primary}
-        secondary={(!primary||row.status!=='partial'||row.invitation)&&recordEntry(key,orderPath(row.id),viewDetailsLabel)}>
+      <EnrollmentListRecord category={t(['报名申请','Application','Pendaftaran'])} title={recordTitle(key,orderPath(row.id),classTitle(row.level,row.firstLesson,row.classId))}
+        status={status} tone={!active?'full':row.status==='paid'||row.restored?'confirmed':'pending'} primary={primary}>
         {row.invitation&&<p>{t(['待答复转班邀请','Transfer invitation awaiting reply','Undangan pindah kelas menunggu jawaban'])} · {paymentDeadline(row.invitation.deadline)}</p>}
-        {payable&&<p>{formatCurrency(row.price,language)} · {paymentDeadline(row.deadline)}</p>}
+        {payable&&<p className="enrollment-record-next"><strong>{formatCurrency(Math.max(0,row.price-row.received),language)}</strong>{paymentDeadline(row.deadline)&&<time dateTime={row.deadline}>{paymentDeadline(row.deadline)}</time>}</p>}
         {row.status==='partial'&&row.needsPayment&&<p>{t(['还需补款','Balance due','Sisa tagihan'])} · {formatCurrency(Math.max(0,row.price-row.received),language)}</p>}
         {row.classCancelled&&row.status==='awaiting_payment'&&<p>{t(['原班已停止收款','Payment for the original class is closed','Pembayaran untuk kelas asal ditutup'])}</p>}
         {row.status==='expired'&&!row.restored&&<p>{t(['付款凭证未按时提交','Proof was not submitted by the deadline','Bukti tidak dikirim sebelum batas waktu'])}</p>}
+        {row.status==='proof_review'&&<p>{t(['凭证已提交，等待财务核实。','Proof submitted. Finance is reviewing it.','Bukti sudah dikirim dan sedang diperiksa tim keuangan.'])}</p>}
         {row.status==='paid'&&schedule&&<p>{[course?.opened&&t(['已确认开班','Class confirmed','Kelas dikonfirmasi']),schedule].filter(Boolean).join(' · ')}</p>}
-        {row.learnerName&&<p>{row.learnerName}</p>}
+        {(row.learnerName||teacher)&&<p>{[row.learnerName,teacher].filter(Boolean).join(' · ')}</p>}
       </EnrollmentListRecord>,
     };
   });
@@ -1538,9 +1547,9 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const related = new URLSearchParams(mineParams);
     if (row.orderId) related.set('order',row.orderId);
     return <div className="enrollment-interest-detail">
-      <EnrollmentRecordSummary title={classTitle(row.level,row.firstLesson,row.classId)} schedule={schedule}
+      <EnrollmentRecordSummary language={language} title={classTitle(row.level,row.firstLesson,row.classId)} schedule={schedule} teacherType={course?.teacherType} firstLesson={course?.firstLesson}
         status={t(waitlistStates[row.state])} tone={available?'confirmed':waiting?'pending':'full'}>
-        {row.learnerName&&<p>{row.learnerName}</p>}
+        <EnrollmentDetailFields fields={[[t(['学员姓名','Learner name','Nama siswa']),row.learnerName]]}/>
       </EnrollmentRecordSummary>
       {waiting && <p className="enrollment-journey-note">{t(available
         ? ['本班有空位，可申请。席位以提交时为准。','A seat is available. Availability is checked when you apply.','Ada kursi. Ketersediaan diperiksa saat Anda mendaftar.']
@@ -1562,8 +1571,8 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   function renderDemandDetail(row: DemandItem) {
     const active = row.state==='active';
     return <div className="enrollment-interest-detail">
-      <EnrollmentRecordSummary title={demandTitle(row)} status={demandStatus(row)} tone={!active?'full':row.matches.length?'confirmed':'pending'}>
-        {row.criteria.notes&&<p>{row.criteria.notes}</p>}
+      <EnrollmentRecordSummary language={language} title={demandTitle(row)} status={demandStatus(row)} tone={!active?'full':row.matches.length?'confirmed':'pending'}>
+        <EnrollmentDetailFields fields={[[t(['补充说明','Notes','Catatan']),row.criteria.notes]]}/>
       </EnrollmentRecordSummary>
       {row.state!=='withdrawn' ? <>
         {row.matches.map(match=>{
@@ -1602,10 +1611,9 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const available=waiting&&row.available;
     const key='waitlist-'+row.id;
     return {key,active:waiting,updatedAt:row.updatedAt,needsAction:available,card:
-      <EnrollmentListRecord category={t(['候补','Waitlist','Daftar tunggu'])} title={classTitle(row.level,row.firstLesson,row.classId)}
+      <EnrollmentListRecord category={t(['候补','Waitlist','Daftar tunggu'])} title={recordTitle(key,recordPath('waitlist',row.id),classTitle(row.level,row.firstLesson,row.classId))}
         status={available?t(['有空位','Seats available','Kursi tersedia']):t(waitlistStates[row.state])}
         tone={available?'confirmed':waiting?'pending':'full'}
-        secondary={recordEntry(key,recordPath('waitlist',row.id),viewDetailsLabel)}
         primary={available&&recordEntry(key+'-apply',classFromRecord(row.classId,'waitlist',row.id),applyText,true)}>
         {waiting&&!available&&<p>{t(['暂无空位','No seats available','Belum ada kursi'])}</p>}
         {row.learnerName&&<p>{row.learnerName}</p>}
@@ -1616,11 +1624,12 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const matched=row.state==='active'&&row.matches.length>0;
     const key='demand-'+row.id;
     return {key,active:row.state==='active',updatedAt:row.updatedAt,needsAction:matched,card:
-      <EnrollmentListRecord category={t(['选课需求','Course preferences','Preferensi kursus'])} title={demandTitle(row)}
+      <EnrollmentListRecord category={t(['选课需求','Course preferences','Preferensi kursus'])} title={recordTitle(key,recordPath('demands',row.id),demandTitle(row))}
         status={demandStatus(row)} tone={row.state==='withdrawn'?'full':matched?'confirmed':'pending'}
-        secondary={!matched&&recordEntry(key,recordPath('demands',row.id),viewDetailsLabel)}
         primary={matched&&recordEntry(key+'-matches',recordPath('demands',row.id),
-          t(['查看匹配班次','View matching classes','Lihat kelas yang cocok']),true)}/>,
+          t(['查看匹配班次','View matching classes','Lihat kelas yang cocok']),true)}>
+        {matched&&<p>{t([row.matches.length+' 个匹配班次',row.matches.length===1?'1 matching class':row.matches.length+' matching classes',row.matches.length+' kelas yang cocok'])}</p>}
+      </EnrollmentListRecord>,
     };
   });
   function assistancePath(id:string) {
@@ -1632,7 +1641,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const key='assistance-'+row.id;
     return {key,active:row.active,updatedAt:row.createdAt,needsAction:row.active,card:
       <EnrollmentListRecord category={t(['销售协助报名','Advisor-assisted application','Pendaftaran dibantu tim UPER'])}
-        title={enrollmentClassTitle(row.quote,language)}
+        title={<EnrollmentClassName title={enrollmentClassTitle(row.quote,language)}/>}
         status={row.active?t(['待学员确认','Awaiting your confirmation','Menunggu konfirmasi kamu'])
           :t(['确认链接已失效','Confirmation link expired','Tautan konfirmasi kedaluwarsa'])}
         tone={row.active?'pending':'full'}
@@ -1699,6 +1708,8 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const compactEmailIdentity=<EnrollmentEmailIdentity key={'enrollment-email:'+recordsEmail.current} email={recordsEmail.current} language={language}>
     {emailIdentityActions}
   </EnrollmentEmailIdentity>;
+  const detailIdentity=mine&&order&&!payment&&!checkingRecords&&!loadingOrder&&!waitingForAftercare
+    &&showEmailIdentity?compactEmailIdentity:undefined;
   const recordsReadFailed=error==='enrollment_records_read_failed' && mine && !orderId;
   const interestsNotice=<div className="enrollment-journey-note" role="status">
     <p>{t(['暂时无法更新候补和选课需求。','Waitlist and course preferences could not be refreshed.','Daftar tunggu dan preferensi kursus belum dapat diperbarui.'])}</p>
@@ -1733,7 +1744,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       {recordsReadFailed && <button type="button" className="enrollment-quiet" disabled={busy}
         onClick={()=>void retryRecordsRead()}>{t(['重试读取记录','Retry loading records','Coba muat ulang catatan'])}</button>}
     </p>}
-    {showEmailIdentity&&compactEmailIdentity}
+    {showEmailIdentity&&!detailIdentity&&compactEmailIdentity}
     <dialog key={orderId} className="enrollment-cancel-dialog" ref={cancelDialog} aria-labelledby="enrollment-cancel-title" onCancel={event=>{if(busy)event.preventDefault();}}>
       <h2 id="enrollment-cancel-title">{t(['取消这笔报名？','Cancel this enrollment?','Batalkan pendaftaran ini?'])}</h2>
       <p>{t(['取消后，付款入口会关闭，席位会释放。如果你已经转账，请先提交凭证。','Canceling closes the payment link and releases your seat. If you already transferred the money, submit the proof first.','Pembatalan menutup pembayaran dan melepas kursi. Jika sudah transfer, kirim bukti terlebih dahulu.'])}</p>
@@ -1773,9 +1784,9 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
           {t(['重试读取售后详情','Retry loading aftercare','Coba muat ulang detail layanan'])}
         </button>
       </p>}
-      {waitingForAftercare ? <p>{status}</p> : showAftercare ? orderDetailsView(<EnrollmentOrderAftercare order={order} details={aftercare} catalog={recordClasses} search={params}
+      {waitingForAftercare ? <p>{status}</p> : showAftercare ? orderDetailsView(<EnrollmentOrderAftercare identity={detailIdentity} order={order} details={aftercare} catalog={recordClasses} search={params}
         language={language} busy={busy} searchBase={mineParams} proofPath={canUpload ? '/enrollment/payment?'+proofParams.toString() : undefined}
-        onCancel={cancelable?openCancellation:undefined} onTransfer={transfer} onEnablePriority={enablePriority}/>, 'aftercare') : showOrderResult ? orderDetailsView(<EnrollmentOrderResult order={order} course={resultCourse} classInfo={aftercare?.currentClass}
+        onCancel={cancelable?openCancellation:undefined} onTransfer={transfer} onEnablePriority={enablePriority}/>, 'aftercare') : showOrderResult ? orderDetailsView(<EnrollmentOrderResult identity={detailIdentity} order={order} course={resultCourse} classInfo={aftercare?.currentClass}
         classState={aftercare?.originalClassState} language={language} busy={busy}
         refundPath={canConsultRefund ? '/enrollment/mine?'+refundParams.toString() : undefined}
         balancePath={order.status==='partial'&&order.bank&&!classCancelled ? '/enrollment/payment?'+proofParams.toString() : undefined}
@@ -1794,21 +1805,25 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
           upload={transfer=>void upload(transfer)} existingTransferOnly={existingTransferOnly}
           submittingProof={submittingProof} proofUploadFailed={rejectedProof} proofFeedback={proofFeedback}/>
       </div> : <>
-        <EnrollmentRecordSummary title={(summaryClass&&enrollmentClassTitle(summaryClass,language))||t(['班次报名','Class application','Pendaftaran kelas'])}
-          status={status} schedule={summarySchedule}>
-          <dl className="enrollment-order-payment-summary">
-            <div><dt>{t(['应付金额','Amount due','Jumlah tagihan'])}</dt><dd className="enrollment-main-amount">{formatCurrency(order.price,language)}</dd></div>
-            {order.status==='awaiting_payment'&&Number.isFinite(Date.parse(order.deadline))&&<div>
-              <dt>{t(['付款截止','Payment deadline','Batas pembayaran'])}</dt>
-              <dd><time dateTime={order.deadline}>{enrollmentDateFormatter(language,'dateTime').format(new Date(order.deadline))} WIB</time></dd>
-            </div>}
-          </dl>
-        </EnrollmentRecordSummary>
-        <EnrollmentOrderInformation order={order} language={language}/>
-        <EnrollmentRecordActions primary={canUpload&&<EnrollmentJourneyLink className="enrollment-primary" stepEntry="enrollment-order-payment" to={paymentPath(order.id)}>{paymentLabel}</EnrollmentJourneyLink>}
-          secondary={cancelable&&<button type="button" className="enrollment-outline enrollment-order-cancel" disabled={busy} onClick={openCancellation}>
-            {t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}
-          </button>}/>
+        <EnrollmentRecordSummary language={language} teacherType={summaryClass?.teacherType} firstLesson={summaryClass?.firstLesson} title={(summaryClass&&enrollmentClassTitle(summaryClass,language))||t(['班次报名','Class application','Pendaftaran kelas'])}
+          status={status} schedule={summarySchedule}/>
+        <section className="enrollment-detail-section" aria-label={t(['付款信息','Payment information','Informasi pembayaran'])}>
+          <EnrollmentDetailFields fields={[
+            [t(['待付金额','Amount due','Jumlah tagihan']),!paymentBar&&<span className="enrollment-main-amount">{formatCurrency(Math.max(0,order.price-order.received),language)}</span>],
+            [t(['付款截止','Payment deadline','Batas pembayaran']),order.status==='awaiting_payment'&&Number.isFinite(Date.parse(order.deadline))&&
+              <time dateTime={order.deadline}>{enrollmentDateFormatter(language,'dateTime').format(new Date(order.deadline))} WIB</time>],
+          ]}/>
+        </section>
+        <EnrollmentOrderInformation order={order} language={language} identity={detailIdentity}/>
+        {cancelable&&<button type="button" className="enrollment-quiet enrollment-order-cancel enrollment-detail-cancel" disabled={busy} onClick={openCancellation}>
+          {t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}
+        </button>}
+        {canUpload&&(paymentBar
+          ? <EnrollmentPriceActions label={t(['待付金额','Amount due','Jumlah tagihan'])}
+              amount={Math.max(0,order.price-order.received)} language={language}>
+              <EnrollmentJourneyLink className="enrollment-primary" stepEntry="enrollment-order-payment" to={paymentPath(order.id)}>{paymentLabel}</EnrollmentJourneyLink>
+            </EnrollmentPriceActions>
+          : <EnrollmentRecordActions primary={<EnrollmentJourneyLink className="enrollment-primary" stepEntry="enrollment-order-payment" to={paymentPath(order.id)}>{paymentLabel}</EnrollmentJourneyLink>}/>)}
       </>}
       {!showAftercare && !showOrderResult && canConsultRefund && <EnrollmentJourneyLink className="enrollment-quiet" to={'/enrollment/mine?'+refundParams.toString()}>
         {t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}
@@ -1859,13 +1874,29 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       {([
         [actionableRecords,['需要你处理','Action needed','Perlu tindakan']],
         [activeRecords,['进行中','In progress','Sedang berlangsung']],
-        [pastRecords,['历史记录','History','Riwayat']],
       ] as const).map(([group,label])=>!!group.length&&<section className="enrollment-records" key={label[1]}>
         <h2 className="enrollment-history-title">{t(label)}</h2>
         {group.map(item=><div key={item.key}>{item.card}</div>)}
       </section>)}
+      {!!pastRecords.length&&<details key={tab} className="enrollment-history">
+        <summary className="enrollment-history-title">
+          {t(['历史记录','History','Riwayat'])}
+          <ChevronDown size={16} aria-hidden="true"/>
+        </summary>
+        <div className="enrollment-records">
+          {pastRecords.map(item=><div key={item.key}>{item.card}</div>)}
+        </div>
+      </details>}
       {!!orders&&(tab==='orders'||!!interests&&!interestsReadFailed)&&!records.length &&
-        <p className="enrollment-record">{t(['该类别暂无记录。','No records in this category.','Belum ada catatan dalam kategori ini.'])}</p>}
+        <p className="enrollment-record">{t(tab==='waitlist' ? [
+          '你还没有候补记录。如果心仪的班次已满，可以在班次详情加入候补。有空位时，我们会通知你申请。',
+          'You haven’t joined a waitlist yet. If a class is full, join its waitlist from the class details. We’ll let you know when a seat opens so you can apply.',
+          'Kamu belum masuk daftar tunggu. Jika kelas sudah penuh, kamu bisa masuk daftar tunggu dari halaman detail kelas. Kami akan memberi tahu saat ada kursi kosong agar kamu bisa mendaftar.',
+        ] : tab==='demands' ? [
+          '你还没有登记选课需求。如果找不到合适的班次，可以登记想学的级别、上课时段和班型。有符合条件的新班次时，我们会通知你。',
+          'You haven’t saved any course preferences yet. If no class suits you, tell us your preferred level, schedule and class type. We’ll let you know when a matching class becomes available.',
+          'Kamu belum menyimpan preferensi kursus. Jika belum menemukan kelas yang cocok, beri tahu kami level, jadwal, dan jenis kelas yang kamu inginkan. Kami akan memberi tahu saat ada kelas yang sesuai.',
+        ] : ['该类别暂无记录。','No records in this category.','Belum ada catatan dalam kategori ini.'])}</p>}
     </div> : joined ? <><p role="status">{t(['候补已登记。','You joined the waitlist.','Anda masuk daftar tunggu.'])}</p>
       <EnrollmentJourneyLink to={mineLink+'&tab=waitlist'}>{t(['查看我的候补','View my waitlist','Lihat daftar tunggu saya'])}</EnrollmentJourneyLink></>
     : hasNoSeat ? <form onSubmit={event=>{event.preventDefault();void join();}}>

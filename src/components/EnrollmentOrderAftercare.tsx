@@ -4,7 +4,7 @@ import { ArrowRight, Check, Clock3, Copy as CopyIcon } from 'lucide-react';
 import {EnrollmentOrderInformation,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
 import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import { formatCurrency } from '../utils/currency';
-import {enrollmentTeacherLabel,enrollmentClassTitle,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {enrollmentClassTitle,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import { enrollmentSupportPath } from './EnrollmentSupport';
@@ -14,9 +14,10 @@ import type { AftercareCourse as Course, EnrollmentAftercare } from '../utils/en
 type Copy = readonly [string, string, string];
 
 export function EnrollmentOrderAftercare({
-  order, details, catalog, search, language, searchBase, proofPath, busy, onTransfer, onEnablePriority, onCancel,
+  order, identity, details, catalog, search, language, searchBase, proofPath, busy, onTransfer, onEnablePriority, onCancel,
 }: {
   order: EnrollmentOrder;
+  identity?: React.ReactNode;
   details?: EnrollmentAftercare;
   catalog: ReadonlyMap<string,PublicEnrollmentClass>;
   search: URLSearchParams;
@@ -81,14 +82,13 @@ export function EnrollmentOrderAftercare({
   }
 
   const classCard = (value?: Course, label?: string, isOriginal = false, status?: string, tone:'pending'|'confirmed'|'full'='full') =>
-    <EnrollmentRecordSummary title={courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}
+    <EnrollmentRecordSummary language={language} teacherType={value?.teacherType??course?.teacherType} firstLesson={value?.firstLesson} title={courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}
       schedule={enrollmentScheduleLabel(value,language)} status={status??(isOriginal&&closed?originalClosed:undefined)} tone={tone}>
       {label&&<p>{label}</p>}
-      {value&&<p>{[enrollmentTeacherLabel(value.teacherType??course?.teacherType,language),value.firstLesson.replace('T',' ')+' WIB'].filter(Boolean).join(' · ')}</p>}
     </EnrollmentRecordSummary>;
   const actions = (primary?: React.ReactNode, secondary?: React.ReactNode) =>
     <>
-      <EnrollmentOrderInformation order={order} language={language}/>
+      <EnrollmentOrderInformation order={order} language={language} identity={identity}/>
       <EnrollmentRecordActions primary={primary} secondary={<>
         {secondary}
         {onCancel&&<button type="button" className="enrollment-outline enrollment-order-cancel" disabled={busy} onClick={onCancel}>
@@ -112,7 +112,7 @@ export function EnrollmentOrderAftercare({
           : ['退款处理中','Refund in progress','Pengembalian dana sedang diproses']);
     body = <>
       {classCard(course,t(['原报名','Original enrollment','Pendaftaran asal']),true,refundStatus,complete?'confirmed':'pending')}
-      <article className="enrollment-record">
+      <article className="enrollment-detail-section">
         <h2>{t(['退款进度','Refund progress','Progres pengembalian dana'])}</h2>
         {!complete&&returned>0&&<p>{t(['银行已退回，财务正在处理。','The bank returned the refund. Finance is handling it.','Bank mengembalikan dana. Tim keuangan sedang menanganinya.'])}</p>}
         <p>{t(['报名已结束，相关席位已释放。','Enrollment has ended and its seats were released.','Pendaftaran telah berakhir dan kursi sudah dilepas.'])}</p>
@@ -135,12 +135,12 @@ export function EnrollmentOrderAftercare({
     heading = requestRefund;
     body = <>
       {classCard(course,undefined,true)}
-      <article className="enrollment-record">
+      <article className="enrollment-detail-section">
         <h2>{t(['退款金额与方式','Refund amount and method','Jumlah dan metode pengembalian'])}</h2>
         {typeof details?.refund.maximum==='number' && <strong className="enrollment-main-amount">{currency(details.refund.maximum)}</strong>}
         <p>{t(['客服核实后确认金额，款项按原付款渠道退回，无需提供新的收款账户。','Support confirms the amount after review. Funds go to the original payment method, so no new account is needed.','Layanan pelanggan mengonfirmasi jumlah setelah pemeriksaan. Dana kembali ke metode pembayaran awal tanpa rekening baru.'])}</p>
       </article>
-      <article className="enrollment-record">
+      <article className="enrollment-detail-section">
         <h2>{t(['正式受理后','After support accepts the request','Setelah permintaan diterima'])}</h2>
         <p>{t(['客服登记后，报名和转班等待结束，已保留的席位释放。','When support records the request, enrollment and transfer waiting end and any seat on hold is released.','Setelah tim mencatat pengajuan, pendaftaran dan penantian pindah kelas berakhir, dan kursi yang ditahan dilepas.'])}</p>
         <p>{t(['联系时请提供报名编号','Have your order number ready','Siapkan nomor pendaftaran'])} · {order.id}</p>
@@ -192,7 +192,7 @@ export function EnrollmentOrderAftercare({
       ])}</p>
       {classCard(course,t(['原班','Original class','Kelas asal']),true)}
       {classCard(invitation,t(['目标班','New class','Kelas baru']))}
-      <article className="enrollment-record">
+      <article className="enrollment-detail-section">
         <h2>{t(['已付学费','Tuition paid','Biaya yang telah dibayar'])}</h2>
         <p>{currency(order.received)} · {t(['转入目标班，无需再付款。','Applied to the new class. No additional payment is needed.','Dialihkan ke kelas baru. Tidak perlu membayar lagi.'])}</p>
         <p>{t(['超过答复时间，目标班席位将释放。','The held seat is released after the reply deadline.','Kursi dilepas setelah batas waktu jawaban.'])}</p>
@@ -234,7 +234,7 @@ export function EnrollmentOrderAftercare({
     body = <>
       {classCard(course,t(['原班','Original class','Kelas asal']),true)}
       {classCard(target,t(['目标班','New class','Kelas baru']))}
-      <article className="enrollment-record">
+      <article className="enrollment-detail-section">
         <h2>{t(['已付学费','Tuition paid','Biaya yang telah dibayar'])}</h2>
         <p>{currency(order.received)} · {t(['转入目标班，无需再付款。','Applied to the new class. No additional payment is needed.','Dialihkan ke kelas baru. Tidak perlu membayar lagi.'])}</p>
         <p>{t(['提交确认时会核对目标班的实际空位。','Availability is checked when you confirm.','Ketersediaan kursi diperiksa saat Anda mengonfirmasi.'])}</p>
@@ -245,7 +245,7 @@ export function EnrollmentOrderAftercare({
   } else if (order.status==='ended') {
     body = <>
       {classCard(course,undefined,false,t(learnerCancelled?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:['报名已结束','Enrollment ended','Pendaftaran telah berakhir']))}
-      <article className="enrollment-record">
+      <article className="enrollment-detail-section">
         <p>{t(['席位已释放，付款入口已关闭。','Your seat has been released and the payment link is closed.','Kursi telah dilepas dan tautan pembayaran ditutup.'])}</p>
         <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received)}</p>
       </article>
@@ -263,7 +263,7 @@ export function EnrollmentOrderAftercare({
       {lateProofSubmitted&&<p className="enrollment-result-state" role="status">
         {t(['已收凭证，等待核实到账。','Proof received. Awaiting payment verification.','Bukti diterima dan menunggu verifikasi pembayaran.'])}
       </p>}
-      <article className="enrollment-record">
+      <article className="enrollment-detail-section">
         <h2>{t(order.received>0||order.creditOut?['收款状态','Payment status','Status pembayaran']:lateProofSubmitted?['下一步','What happens next','Langkah berikutnya']:['已经转账？','Already transferred?','Sudah transfer?'])}</h2>
         {order.received>0||order.creditOut ? <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received+(order.creditOut??0))}</p>
           : lateProofSubmitted ? <p>{t([
@@ -288,7 +288,7 @@ export function EnrollmentOrderAftercare({
     body = <>
       {classCard(course,undefined,false,t(['转班成功','Transfer complete','Pindah kelas berhasil']),'confirmed')}
       {course?.opened===true&&<p>{t(['已确认开班','Class opening confirmed','Pembukaan kelas dikonfirmasi'])}</p>}
-      <article className="enrollment-record">
+      <article className="enrollment-detail-section">
         <h2>{t(['学费','Tuition','Biaya kelas'])}</h2>
         <p>{t([
           '原报名已核实到账 '+currency(order.received)+'，已用于本班。无需再次转账。',
@@ -312,7 +312,7 @@ export function EnrollmentOrderAftercare({
     const replyBy = replyDate && Number.isFinite(replyDate.valueOf()) ? dateFormat.format(replyDate)+' '+timeFormat.format(replyDate)+' WIB' : '';
     body = <>
       {classCard(course,undefined,closed)}
-      <article className="enrollment-record">
+      <article className="enrollment-detail-section">
         <h2>{t(showTransfers?['收款进度','Payment progress','Status pembayaran']:['收款状态','Payment status','Status pembayaran'])}</h2>
         {showTransfers ? <dl className="enrollment-result-amounts">
           <div><dt>{t(['应付','Amount due','Jumlah tagihan'])}</dt><dd>{currency(order.price)}</dd></div>
@@ -331,7 +331,7 @@ export function EnrollmentOrderAftercare({
         {replyBy ? t(['目标班已为你留位 · '+replyBy+' 前答复','Seat held in the new class · Reply by '+replyBy,'Kursi ditahan di kelas baru · Jawab sebelum '+replyBy])
           : t(['目标班已为你留位','A seat is held in the new class','Kursi ditahan di kelas baru'])}
       </p>}
-      {showTransfers&&<article className="enrollment-record">
+      {showTransfers&&<article className="enrollment-detail-section">
         <h2>{t(['接下来的安排','Your options','Pilihan Anda'])}</h2>
         <dl className="enrollment-aftercare-options">
           <div><dt>{t(['换一个班','Choose another class','Pilih kelas lain'])}</dt>
