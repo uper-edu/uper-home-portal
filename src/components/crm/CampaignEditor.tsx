@@ -5,7 +5,7 @@ import {AdminEditor} from '../admin/AdminEditor';
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {AdminField,AdminFieldLabel} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
-import { CrmDiscardDialog } from "./CrmDetailWorkspace";
+import { AdminDiscardDialog } from "../admin/AdminDiscardDialog";
 import React, { useEffect, useRef, useState } from "react";
 import type { CrmCampaignRecord } from "../../types/crmCampaign";
 import {
@@ -599,7 +599,7 @@ export function CampaignEditor({
             </fieldset>
       </AdminEditor>
       {confirmClose && (
-        <CrmDiscardDialog
+        <AdminDiscardDialog
           lang={lang}
           isLight={isLight}
           title={unknown ? u("Save outcome unknown") : u("Unsaved changes")}

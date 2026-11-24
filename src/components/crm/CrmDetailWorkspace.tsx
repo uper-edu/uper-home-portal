@@ -1,10 +1,8 @@
-import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminRecordHeader,type AdminBackTarget} from '../admin/AdminRecordHeader';
 import {AdminFormFeedback} from '../AdminFormLayout';
 import {recordScrollMode} from '../adminScroll';
 import { campaignUi, type CampaignUiLanguage } from "../../utils/campaignI18n";
-import React, { useEffect, useRef, type ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import React, { useEffect, type ReactNode } from "react";
 
 export function CrmDetailHeader({
   title,
@@ -50,98 +48,6 @@ export function CrmDetailHeader({
     </>
   );
 }
-export interface CrmDetailTab {
-  id: string;
-  label: string;
-  icon?: LucideIcon;
-}
-export function CrmDetailTabs({
-  id,
-  value,
-  tabs,
-  label,
-  contentId,
-  disabled=false,
-  onChange,
-}: {
-  id: string;
-  value: string;
-  tabs: CrmDetailTab[];
-  label: string;
-  contentId: string;
-  disabled?: boolean;
-  onChange: (value: string, keyboard: boolean) => void;
-}) {
-  const pendingFocus = useRef<string | null>(null);
-  useEffect(() => {
-    if (pendingFocus.current === value) {
-      document
-        .getElementById(`${id}-tab-${value}`)
-        ?.focus({ preventScroll: true });
-      pendingFocus.current = null;
-    }
-  }, [value, id]);
-  return (
-    <div className="crm-content-tabs crm-detail-tabs" role="tablist" aria-label={label}>
-      {tabs.map((tab, i) => {
-        const Icon = tab.icon;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            id={`${id}-tab-${tab.id}`}
-            className="crm-content-tab"
-            role="tab"
-            aria-selected={value === tab.id}
-            aria-controls={contentId}
-            disabled={disabled}
-            tabIndex={value === tab.id ? 0 : -1}
-            onClick={() => {
-              pendingFocus.current = null;
-              onChange(tab.id, false);
-            }}
-            onKeyDown={(e) => {
-              const next =
-                e.key === "ArrowRight"
-                  ? tabs[(i + 1) % tabs.length]
-                  : e.key === "ArrowLeft"
-                    ? tabs[(i + tabs.length - 1) % tabs.length]
-                    : e.key === "Home"
-                      ? tabs[0]
-                      : e.key === "End"
-                        ? tabs[tabs.length - 1]
-                        : undefined;
-              if (next) {
-                e.preventDefault();
-                pendingFocus.current = next.id;
-                if (next.id === value) e.currentTarget.focus();
-                else onChange(next.id, true);
-              }
-            }}
-          >
-            {Icon&&<Icon size={17} aria-hidden="true" />}
-            <span>{tab.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-export function CrmContentNav({label,items,onNavigate}:{
-  label:string;
-  items:{href:string;label:string;current:boolean}[];
-  onNavigate:(href:string)=>void;
-}) {
-  return <nav className="crm-content-tabs" aria-label={label}>
-    {items.map(item=><a key={item.href} className="crm-content-tab" href={item.href}
-      aria-current={item.current?'page':undefined} onClick={event=>{
-        if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
-        event.preventDefault();
-        if(!item.current)onNavigate(item.href);
-      }}>{item.label}</a>)}
-  </nav>;
-}
-
 export function CrmSaveFeedback({
   state,
   children,
@@ -159,36 +65,6 @@ export function CrmSaveFeedback({
     unknown: "Save outcome unknown. Check the result before submitting again.",
   }[state];
   return <AdminFormFeedback state={state} lang={lang} className="crm-save-feedback">{children || campaignUi(lang)(text)}</AdminFormFeedback>;
-}
-export function CrmDiscardDialog({
-  onKeep,
-  onDiscard,
-  isLight,
-  title = "Unsaved changes",
-  description = "Keep editing, or discard your unsaved changes and continue. Saved records stay unchanged.",
-  keepLabel = "Keep editing",
-  discardLabel = "Discard and continue",
-  lang = "en",
-  tone = "default",
-  announceDescription = false,
-  busy = false,
-}: {
-  onKeep: () => void;
-  onDiscard?: () => void;
-  isLight: boolean;
-  lang?: CampaignUiLanguage;
-  title?: string;
-  description?: string;
-  keepLabel?: string;
-  discardLabel?: string;
-  tone?: "default" | "danger";
-  announceDescription?: boolean;
-  busy?: boolean;
-}) {
-  const u=campaignUi(lang);
-  return <AdminConfirmation light={isLight} danger={tone==='danger'} busy={busy} announceDescription={announceDescription}
-    title={u(title)} description={u(description)} cancelLabel={u(keepLabel)} confirmLabel={u(discardLabel)}
-    onCancel={onKeep} onConfirm={onDiscard}/>;
 }
 export function useCrmShellHeight(selector="[data-crm-header]") {
   const [height, setHeight] = React.useState(120);

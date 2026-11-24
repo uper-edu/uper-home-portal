@@ -10,7 +10,8 @@ import {
 import React, { useEffect, useRef, useState } from "react";
 import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { ChevronDown, ClipboardCheck, History } from "lucide-react";
-import { CrmDetailTabs, CrmSaveFeedback } from "./CrmDetailWorkspace";
+import { CrmSaveFeedback } from "./CrmDetailWorkspace";
+import { AdminDetailTabs } from "../admin/AdminDetailTabs";
 import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { CampaignSourceEvidence } from "./CampaignSourceEvidence";
 import { isPromotionReviewPending, promotionReviewActions } from "../../utils/promotionReviewActions";
@@ -122,7 +123,7 @@ export function CrmPromotionReviews({
   return (
     <section aria-label={u("Promotion exception list")} className="campaign-review-workspace">
       <div className="campaign-review-toolbar">
-        <CrmDetailTabs
+        <AdminDetailTabs
           id="promotion-exceptions"
           value={history ? "history" : "pending"}
           tabs={[

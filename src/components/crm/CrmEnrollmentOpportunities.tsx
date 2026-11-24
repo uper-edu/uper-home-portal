@@ -30,7 +30,8 @@ import { AdminField, AdminFieldLabel, AdminForm, AdminRequiredNote } from '../Ad
 import { AdminFormActions, AdminFormFeedback, AdminSavedReadError } from '../AdminFormLayout';
 import { describeFollowUpTask } from '../../utils/crmFollowUp';
 import { CrmSimpleWorkflow } from './CrmSimpleWorkflow';
-import { CrmDiscardDialog, CrmSaveFeedback, useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
+import { CrmSaveFeedback, useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import { opportunityFilterDefaults as filterDefaults,opportunityListPath,type OpportunityFilters as Filters } from '../../utils/crmEnrollmentOpportunityRoute';
 import { contactEmailText, validContactEmail } from '../../utils/contactEmail';
 import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
@@ -504,7 +505,7 @@ function EnrollmentEmailChange({path,row,lang,isLight,onClose,onSaved}:{
         </AdminFormActions>
       </AdminForm>
     </CrmOperationLayer>
-    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={onClose}/>}
+    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={onClose}/>}
   </>;
 }
 
@@ -579,7 +580,7 @@ function EnrollmentOpportunityLink({leadId,row,lang,isLight,onClose,onSaved}:{
         </AdminFormActions>
       </AdminForm>
     </CrmOperationLayer>
-    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={onClose}/>}
+    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={onClose}/>}
   </>;
 }
 
@@ -1107,7 +1108,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
           await readSavedProgress();
         }}/>
     </CrmOperationLayer>}
-    {confirmDiscard&&<CrmDiscardDialog lang={lang} isLight={isLight}
+    {confirmDiscard&&<AdminDiscardDialog lang={lang} isLight={isLight}
       title={t(lang,['修改尚未保存','Unsaved changes','Perubahan belum disimpan'])}
       description={t(lang,['可以继续编辑，或放弃未保存的修改后继续。','Keep editing or discard your unsaved changes.','Lanjutkan mengedit atau abaikan perubahan yang belum disimpan.'])}
       keepLabel={t(lang,['继续编辑','Keep editing','Lanjutkan mengedit'])}

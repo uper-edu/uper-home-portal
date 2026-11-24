@@ -13,7 +13,8 @@ import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
 import {CrmOrderOperationFeedback,useCrmOrderOperation} from './CrmOrderOperation';
 import { AdminFormActions,AdminFormFeedback,AdminSavedReadError } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
-import { CrmDiscardDialog, useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
+import { useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import { AdminPageAction } from '../admin/AdminPageAction';
 import { CrmDetailActions, CrmRecordFilters, CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordTitle } from './CrmRecordWorkspace';
 import { AdminSingleSelect } from '../admin/AdminSingleSelect';
@@ -493,7 +494,7 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
         <button type="submit" className="crm-work-button" data-primary disabled={busy||!!aftercareOperation.pending||(editor.mode==='invite'&&!targetId)}>{t('确认保存','Confirm and save','Konfirmasi dan simpan')}</button>
       </AdminFormActions></AdminForm>
     </CrmOperationLayer>}
-    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{aftercareOperation.clear();setEditor(undefined);setDiscard(false);setDirty(false);}}/>}
+    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{aftercareOperation.clear();setEditor(undefined);setDiscard(false);setDirty(false);}}/>}
   </section>;
 }
 

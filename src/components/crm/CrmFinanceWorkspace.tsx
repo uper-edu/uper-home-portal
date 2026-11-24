@@ -7,7 +7,7 @@ import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {CrmPayments} from './CrmPayments';
 import {CrmPaymentStatus} from './CrmPaymentStatus';
 import {paymentRemainingTone,paymentWorkspaceLabel} from '../../utils/crmPaymentPresentation';
-import {CrmDiscardDialog} from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {canVerifyPayments,paymentListFilters,paymentListNextAction,type PaymentListFilters,type PaymentListRow} from '../../utils/crmPaymentWorklist';
 type Selection={leadId:string;projectId?:string;entryId?:string;customer:string;action:string};
@@ -69,6 +69,6 @@ export function CrmFinanceWorkspace({employee,lang,isLight,refreshVersion,onRefr
    busy={updating} onPageChange={page=>change({page})}/>}
  {selection&&selectionScope.current===scopeKey&&<CrmPayments key={selection.leadId+':'+(selection.entryId||selection.projectId)+':'+selection.action} lead={{id:selection.leadId,fullName:selection.customer}} actorId={employee.id} lang={lang} isLight={isLight} focusEntryId={selection.entryId} focusProjectId={selection.projectId} initialAction={selection.action} verificationOnly onDetailShown={()=>{if(selection.action!=='view')write(current.current.filters,{...selection,action:'view'});}} onOpenRelated={(entryId:string,projectId?:string)=>{const next={...selection,entryId,projectId,action:'view'};write(filters,next,true);setSelection(next);setDirty(false);}} onClose={close} onDirty={setDirty} onBusy={setBusy} onSaved={()=>{setRefresh(v=>v+1);onQueueChanged();}}/>}
  </>}
- {pending&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setPending(null)} onDiscard={()=>{const action=pending;setPending(null);setDirty(false);action();}}/>}
+ {pending&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setPending(null)} onDiscard={()=>{const action=pending;setPending(null);setDirty(false);action();}}/>}
  </section>;
 }

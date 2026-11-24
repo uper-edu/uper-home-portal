@@ -11,7 +11,7 @@ import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} f
 import {AdminFormGuide} from '../AdminFormGuide';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
-import {CrmDiscardDialog} from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {AdminFormGrid,AdminFormSection,AdminFormFeedback,AdminSavedReadError} from '../AdminFormLayout';
 import {AdminStatus} from '../AdminStatus';
 import {AdminField} from '../AdminForm';
@@ -1441,7 +1441,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
               </fieldset>
         </AdminEditor>
       )}
-      {discardDraft&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardDraft(false)} onDiscard={()=>{setDiscardDraft(false);setIsModalOpen(false);}}/>}
+      {discardDraft&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardDraft(false)} onDiscard={()=>{setDiscardDraft(false);setIsModalOpen(false);}}/>}
       {deleteConfirmTarget&&<AdminConfirmation light={isLight} busy={isDeleting} danger closeOnBackdrop
         title={t('Confirm Item Deletion','确认删除内容条目')}
         description={t('This permanently removes the item from the website.','删除后，这项内容将从官网下架，且无法撤销。')}

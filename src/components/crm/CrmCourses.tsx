@@ -17,7 +17,9 @@ import {useEffect,useId,useRef,useState} from 'react';
 import {AdminField} from '../AdminForm';
 import {AdminSavedReadError,AdminStaticField,AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
 import {AdminEditor} from '../admin/AdminEditor';
-import {CrmDetailTabs,CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
+import { CrmSaveFeedback } from './CrmDetailWorkspace';
+import { AdminDetailTabs } from '../admin/AdminDetailTabs';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {courseError} from '../../utils/crmCoursePricing';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:CrmLanguage;isLight:boolean;onDraftChange:(dirty:boolean)=>void;onCreateTemplate:(courseId:string)=>void}){
@@ -244,7 +246,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
     </AdminFormGrid>
   </AdminFormSection>
   <AdminFormSection variant="subgroup" title={t('Teaching content','Materi pembelajaran','教学内容')}>
-    <CrmDetailTabs id={contentTabsId} value={contentLanguage} label={contentLanguageLabel} contentId={contentPanelId}
+    <AdminDetailTabs id={contentTabsId} value={contentLanguage} label={contentLanguageLabel} contentId={contentPanelId}
       disabled={busy||unknown} tabs={[
         {id:'en',label:'English'},{id:'id',label:'Bahasa Indonesia'},{id:'zh',label:'中文'},
       ]} onChange={value=>{
@@ -295,6 +297,6 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
    onCancel={cancelDelete} onConfirm={()=>void confirmDelete()}>
    {deleteError&&<p role="alert">{deleteError}</p>}
  </AdminConfirmation>}
- {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{setDiscard(false);setForm(null);setDirty(false);setError('');}}/>}
+ {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{setDiscard(false);setForm(null);setDirty(false);setError('');}}/>}
  </div>;
 }

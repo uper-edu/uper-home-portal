@@ -15,7 +15,8 @@ import {AdminDetailActions,AdminRecordTitle} from './admin/AdminRecordWorkspace'
 import {AdminPageAction} from './admin/AdminPageAction';
 import {AdminPageHeader} from './admin/AdminPageHeader';
 import {AdminTopicHeader} from './admin/AdminTopicHeader';
-import {CrmContentNav,CrmDiscardDialog} from './crm/CrmDetailWorkspace';
+import { AdminContentNav } from './admin/AdminContentNav';
+import { AdminDiscardDialog } from './admin/AdminDiscardDialog';
 import {AdminSingleSelect} from './admin/AdminSingleSelect';
 import {AdminStatus} from './AdminStatus';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
@@ -435,7 +436,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
           label={busy?t('正在保存…','Saving…','Menyimpan…'):t('保存发信设置','Save email settings','Simpan pengaturan email')}
           disabled={!choiceDirty||!settingsPoolAvailable||settingsConflict||loading&&!busy||!!failure} onClick={()=>void saveChoice()}/>}
     </>}/>}
-    {admin&&!isDetail&&allowed&&failure!=='denied'&&<CrmContentNav label={heading} items={[
+    {admin&&!isDetail&&allowed&&failure!=='denied'&&<AdminContentNav label={heading} items={[
       {href:accountListHref,label:t('发件账号','Sending accounts','Akun pengirim'),current:view==='accounts'},
       {href:poolListHref,label:t('发信池','Sending pool','Pool pengiriman'),current:view==='pool'},
     ]} onNavigate={onNavigate}/>}
@@ -812,7 +813,7 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
         </AdminFormSection>
       </>}
       </fieldset>
-      {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={close}/>}
+      {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={close}/>}
     </AdminEditor>}
   </section>;
 }

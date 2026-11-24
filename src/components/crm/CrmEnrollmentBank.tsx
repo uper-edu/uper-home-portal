@@ -2,7 +2,8 @@ import {useEffect,useState} from 'react';
 import {Pencil} from 'lucide-react';
 import {AdminField} from '../AdminForm';
 import {AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
-import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
+import { CrmSaveFeedback } from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {AdminPageAction} from '../admin/AdminPageAction';
 import {AdminEditor} from '../admin/AdminEditor';
 import {enrollmentBankFields,enrollmentBankPlaceholder,hasConfiguredEnrollmentBank,type EnrollmentBank} from '../../utils/enrollmentBank';
@@ -140,7 +141,7 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
             fields={fields.map(key=>[t(labels[key]),original[key]||'—'])}/>}
         </div>
     </AdminEditor>}
-    {active&&discard&&<CrmDiscardDialog lang={lang} isLight={isLight}
+    {active&&discard&&<AdminDiscardDialog lang={lang} isLight={isLight}
       onKeep={()=>setDiscard(false)} onDiscard={()=>{setDraft(undefined);setDiscard(false);}}/>}
   </>;
 }

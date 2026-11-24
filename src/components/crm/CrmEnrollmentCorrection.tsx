@@ -2,7 +2,8 @@ import {createContext,useContext,useEffect,useState} from 'react';
 import {AdminField,AdminRequiredNote} from '../AdminForm';
 import {AdminFormActions} from '../AdminFormLayout';
 import {CrmOperationLayer} from './CrmOperationLayer';
-import {CrmSaveFeedback,CrmDiscardDialog} from './CrmDetailWorkspace';
+import { CrmSaveFeedback } from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {useCrmUiText} from './CrmUiLanguage';
 import {salesProgressStages,isEnrolledStage} from '../../utils/crmSalesProgress';
@@ -41,6 +42,6 @@ export function CrmEnrollmentCorrectionForm({lead,factId,lang,isLight,suspended,
  </>}
  {error&&<CrmSaveFeedback state={unknown?'unknown':'error'} lang={lang}>{ui(error)}{!unknown&&<button className="crm-work-link" onClick={()=>{setContext(null);setRequest(null);setRetry(n=>n+1)}}>{ui('核对最新版本，保留输入')}</button>}</CrmSaveFeedback>}
  </div><AdminFormActions className="crm-editor-actions"><button className="crm-work-button crm-editor-primary" disabled={busy||suspended||!unknown&&(!target||target.voided||!reason.trim()||needsStage&&!stage)} onClick={()=>void save()}>{ui(busy?'正在保存…':unknown?'查询保存结果':'确认作废误记')}</button><button className="crm-work-button" disabled={busy||unknown||suspended} onClick={close}>{ui('取消')}</button></AdminFormActions>
- {discard&&<CrmDiscardDialog {...{isLight}} title={ui('放弃未保存的纠错？')} description={ui('原记录和已保存内容不受影响。')} keepLabel={ui('继续编辑')} discardLabel={ui('放弃修改')} onKeep={()=>setDiscard(false)} onDiscard={()=>{onDirty?.(false);onCancel()}}/>}
+ {discard&&<AdminDiscardDialog {...{isLight}} title={ui('放弃未保存的纠错？')} description={ui('原记录和已保存内容不受影响。')} keepLabel={ui('继续编辑')} discardLabel={ui('放弃修改')} onKeep={()=>setDiscard(false)} onDiscard={()=>{onDirty?.(false);onCancel()}}/>}
  </div></CrmOperationLayer>;
 }

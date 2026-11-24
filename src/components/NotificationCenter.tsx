@@ -16,7 +16,7 @@ import {dailyDigestPreview} from '../utils/larkDailyDigest';
 import {larkNotificationSample} from '../utils/larkNotificationSamples';
 import {standardLarkKinds,type LarkKind,larkNotificationPreview} from '../utils/larkNotificationPresentation';
 import {AdminFormFeedback,AdminSavedReadError,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
-import {CrmDiscardDialog} from './crm/CrmDetailWorkspace';
+import { AdminDiscardDialog } from './admin/AdminDiscardDialog';
 import { LarkChannelTestControls, type LarkChannelTest } from "./crm/LarkChannelTestControls";
 import {crmFormText} from '../utils/crmFormLanguage';
 import {isSalesProgressStage,progressLabel} from '../utils/crmSalesProgress';
@@ -902,9 +902,9 @@ export default function NotificationCenter({
           </span>
         </button>
       </div>
-      {discardEditor&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardEditor(null)} onDiscard={()=>{const run=discardEditor.run;setDiscardEditor(null);run();}}/>}
+      {discardEditor&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardEditor(null)} onDiscard={()=>{const run=discardEditor.run;setDiscardEditor(null);run();}}/>}
       {channelToDelete && (
-        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
+        <AdminDiscardDialog lang={lang} isLight={isLight} tone="danger"
           title={t("删除通知渠道？", "Delete notification channel?")}
           description={t("将删除 {name} 的连接设置。历史发送记录仍可查看。", "Connection settings for {name} will be deleted. Past delivery records remain available.").replace("{name}", () => channelToDelete.name)}
           keepLabel={t("取消", "Cancel")}
@@ -915,7 +915,7 @@ export default function NotificationCenter({
       )}
       {channelDeleteError && <p role="alert" className="notification-channel-delete-error" data-unknown={channelDeleteError.startsWith("Deletion outcome")}>{crmError(channelDeleteError, lang)}</p>}
       {ruleToDelete && (
-        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
+        <AdminDiscardDialog lang={lang} isLight={isLight} tone="danger"
           title={t("删除通知策略？", "Delete notification policy?")}
           description={t(
             "删除「{name}」后，后续事件将不再使用此策略。已排队的通知仍按原计划处理，发送记录和变更历史仍可查看。",
@@ -937,7 +937,7 @@ export default function NotificationCenter({
         cancelLabel={cancelText('取消','Cancel','Batal')} confirmLabel={cancelText('确认启用','Enable','Aktifkan')}
         onCancel={()=>setConfirmEnable(false)} onConfirm={()=>void save(true)}/>}
       {confirmWebhookClear && (
-        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger"
+        <AdminDiscardDialog lang={lang} isLight={isLight} tone="danger"
           title={t("清除群机器人地址？", "Clear the group bot address?")}
           description={t("保存后，此渠道将无法向 Lark 群发送通知。", "After saving, this channel will stop sending to the Lark group.")}
           keepLabel={t("取消", "Cancel")}

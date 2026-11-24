@@ -4,7 +4,7 @@ import {AdminListTable,AdminListState,AdminListPagination} from '../admin/AdminL
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
 import {useAdminRecordSidebarLayout} from '../admin/AdminRecordWorkspace';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
-import {CrmContentNav} from './CrmDetailWorkspace';
+import { AdminContentNav } from '../admin/AdminContentNav';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import type { EnrollmentClosureReason } from '../../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
@@ -336,7 +336,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
           onClick={()=>onNavigate(enrollmentSettingsPath('courses',{returnTo:(aftercare?aftercarePath:list)+classFilterQuery}))}/>}
         {canRefresh&&<AdminRefreshAction label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
     </>}/>}
-    {!id&&allowed&&canSupport&&<CrmContentNav label={title} onNavigate={onNavigate} items={[
+    {!id&&allowed&&canSupport&&<AdminContentNav label={title} onNavigate={onNavigate} items={[
       {href:list+classFilterQuery,label:t(['班次','Classes','Kelas']),current:!aftercare},
       {href:aftercarePath+classFilterQuery,label:t(['售后服务','After-sales support','Layanan purnajual']),current:aftercare},
     ]}/>}

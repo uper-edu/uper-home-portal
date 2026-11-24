@@ -1,6 +1,6 @@
 # 规范与组件
 主题型：运营/文档/CMS分类，256px目录，1024px以下临时目录，正文自然滚动。记录型：Lead/Campaign详情，320px列表，1120px以下单视图，保留筛选和位置。集合型：首页/用户/角色/审计，默认不加左栏；CMS可组合。
-复用AdminHeader、CrmDetailHeader、CrmDetailTabs、CrmSaveFeedback、CrmDiscardDialog、AdminPageAction、AdminDisclosure。AdminTopicFrame仅布局，不发请求不判断权限；目录关闭不卸载表单。动态测量页头，鼠标选主题不夺焦点或强制顶端对齐；标题被遮挡才最小滚动，键盘选中可聚焦标题，窄屏收起目录后确保标题可见，返回恢复位置。
+复用AdminHeader、CrmDetailHeader、AdminDetailTabs、AdminContentNav、CrmSaveFeedback、AdminDiscardDialog、AdminPageAction、AdminDisclosure。AdminTopicFrame仅布局，不发请求不判断权限；目录关闭不卸载表单。动态测量页头，鼠标选主题不夺焦点或强制顶端对齐；标题被遮挡才最小滚动，键盘选中可聚焦标题，窄屏收起目录后确保标题可见，返回恢复位置。
 正文14px辅助12–13px；间距4/8/12/16/24/32；容器圆角14px控件10px；操作40px触控44px。颜色执行[全局颜色与状态规范](../../../../docs/design/admin-color-system.md)：青绿操作与选中，焦点独立轮廓；红色明确失败／原规则逾期，琥珀待确认／未知，蓝色信息。不得自行以今天到期新增预警。图示默认折叠，配置先于辅助说明。保存条不遮末尾字段。
 
 目录自身滚动位置保留；禁止对每次选择无条件调用scrollIntoView。页面采用统一动态页头高度，避免滚动锚定造成布局跳动。全局策略预设在“更多操作”；日历/SLA模拟和决策图在对应主题的规则解释中；通知主题不显示全局策略工具，不改变保存事务。

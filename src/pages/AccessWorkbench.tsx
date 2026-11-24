@@ -9,7 +9,8 @@ import {AdminConfirmation} from '../components/admin/AdminConfirmation';
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
 import {AdminEditor} from '../components/admin/AdminEditor';
 import {AdminSearchField} from '../components/admin/AdminSearchField';
-import {CrmContentNav,CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
+import { AdminContentNav } from '../components/admin/AdminContentNav';
+import { AdminDiscardDialog } from '../components/admin/AdminDiscardDialog';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
 import {AdminFormSection,AdminFormFeedback,AdminFormGrid,AdminSavedReadError} from '../components/AdminFormLayout';
 import {isAiAdministrator} from '../utils/aiServicePolicy';
@@ -765,7 +766,7 @@ export function AccessWorkspace({
             proceedNavigation(recordHref('users'));
           })}
           onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>
-        {discarding&&!user&&!role&&<CrmDiscardDialog lang={lang} isLight={isLight}
+        {discarding&&!user&&!role&&<AdminDiscardDialog lang={lang} isLight={isLight}
           onKeep={()=>{pendingNavigation.current=undefined;setDiscarding(false);}}
           onDiscard={()=>{
             const action=pendingNavigation.current;
@@ -812,7 +813,7 @@ export function AccessWorkspace({
             {notice && !user && !role && (
               <AdminFormFeedback state="saved" lang={lang} placement="floating">{notice}</AdminFormFeedback>
             )}
-            {isAccessTab(tab)&&<CrmContentNav label={accessTitle}
+            {isAccessTab(tab)&&<AdminContentNav label={accessTitle}
               items={accessNav.map(([id,label])=>({href:recordHref(id),label,current:tab===id}))}
               onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}/>}
             {!recoveryView && !recordTab && !data && !err && (
@@ -972,7 +973,7 @@ export function AccessWorkspace({
               </button>
           </>}
         >
-            {discarding && <CrmDiscardDialog lang={lang} isLight={isLight}
+            {discarding && <AdminDiscardDialog lang={lang} isLight={isLight}
               title={t("Unsaved changes", "Perubahan belum disimpan", "修改尚未保存")}
               description={t("Keep editing, or discard your unsaved changes and close. Saved records stay unchanged.", "Lanjutkan mengedit atau buang perubahan yang belum disimpan dan tutup. Data tersimpan tidak berubah.", "可以继续编辑，或放弃未保存的修改并关闭；已保存记录保持不变。")}
               keepLabel={t("Keep editing", "Lanjutkan mengedit", "继续编辑")}

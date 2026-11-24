@@ -22,7 +22,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { AdminField, AdminFieldLabel, AdminForm, AdminRequiredNote } from '../AdminForm';
 import { AdminStaticField, AdminFormActions, AdminFormFeedback, AdminSavedReadError, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
-import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
+import { CrmSaveFeedback } from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import { AdminSingleSelect, type AdminSelectChoice } from '../admin/AdminSingleSelect';
 import { enrollmentAutofillStart,enrollmentScheduleErrors,enrollmentSessionStart,enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant,enrollmentLevels,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentScheduleReviewField,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
@@ -756,7 +757,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
         </AdminFormActions>
       </AdminForm>
     </CrmOperationLayer>}
-    {discard && <CrmDiscardDialog lang={lang} isLight={isLight} onKeep={() => setDiscard(false)} onDiscard={() => {
+    {discard && <AdminDiscardDialog lang={lang} isLight={isLight} onKeep={() => setDiscard(false)} onDiscard={() => {
       setDiscard(false); setDirty(false); setDraft(undefined); setInsertion(undefined); setError('');
     }}/>}
     {confirmDates&&draft?.publishedDates&&<AdminConfirmation light={isLight}
@@ -778,7 +779,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       onCancel={()=>{if(!deletingInFlight.current)setDeleting(undefined);}} onConfirm={()=>void deleteClass()}>
       {deleteError&&<p role="alert">{deleteError}</p>}
     </AdminConfirmation>}
-    {closing&&<CrmDiscardDialog lang={lang} isLight={isLight}
+    {closing&&<AdminDiscardDialog lang={lang} isLight={isLight}
       title={t(['Cancel this class?','Batalkan kelas ini?','取消这个班次？'])}
       description={t(['Stops new applications and payments. Existing payment records stay available.','Pendaftaran dan pembayaran baru dihentikan. Riwayat pembayaran tetap tersedia.','关闭新报名和转账入口，保留已有付款记录。'])}
       keepLabel={t(['Keep class','Pertahankan kelas','保留班次'])} discardLabel={t(['Cancel class','Batalkan kelas','取消班次'])}

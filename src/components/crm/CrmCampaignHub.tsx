@@ -17,12 +17,9 @@ import {
   sourceReviewState,
 } from "../../utils/campaignSourceNavigation";
 import { campaignCollectionLabel } from "../../utils/campaignPresentation";
-import {
-  CrmDetailTabs,
-  CrmDiscardDialog,
-  useCrmShellHeight,
-  useRecordScrollMode,
-} from "./CrmDetailWorkspace";
+import { useCrmShellHeight, useRecordScrollMode } from "./CrmDetailWorkspace";
+import { AdminDetailTabs } from "../admin/AdminDetailTabs";
+import { AdminDiscardDialog } from "../admin/AdminDiscardDialog";
 import { CampaignOverview } from "./CampaignOverview";
 import {
   CampaignCards,
@@ -820,7 +817,7 @@ export function CrmCampaignHub({
                       onClick={()=>setPromotionFormCampaignId(activeDetailCampaign.id)}/>}/>}/>
                 {canManageCampaigns && !organicDetail && !presetDetail &&
                   campaignDeleteTarget?.id === activeDetailCampaign.id && (
-                    <CrmDiscardDialog
+                    <AdminDiscardDialog
                       lang={lang}
                       isLight={isLight}
                       tone="danger"
@@ -837,7 +834,7 @@ export function CrmCampaignHub({
                     />
                   )}
                 {awaitingSavedRead&&campaignError&&<AdminSavedReadError lang={lang} busy={isLoading} onRetry={()=>void fetchCampaigns(false)}/>}
-                <CrmDetailTabs
+                <AdminDetailTabs
                   id="crm-campaign"
                   contentId="crm-campaign-content"
                   label={u("Campaign sections")}
@@ -1142,7 +1139,7 @@ export function CrmCampaignHub({
         </div>
       )}
       {pendingLeave && (
-        <CrmDiscardDialog
+        <AdminDiscardDialog
           lang={lang}
           isLight={isLight}
           onKeep={() => setPendingLeave(null)}

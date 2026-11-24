@@ -9,7 +9,8 @@ import {AdminFormFeedback,AdminFormGrid} from '../AdminFormLayout';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminField} from '../AdminForm';
 import { campaignUi, campaignUiError } from "../../utils/campaignI18n";
-import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
+import { CrmSaveFeedback } from "./CrmDetailWorkspace";
+import { AdminDiscardDialog } from "../admin/AdminDiscardDialog";
 import { useEffect, useRef, useState } from "react";
 import type {
   CampaignPromotionLink,
@@ -562,7 +563,7 @@ export function CampaignPromotionLinks({
           } : undefined} />
       ))}
       {deleteTarget && (
-        <CrmDiscardDialog lang={lang} isLight={isLight} tone="danger" busy={deleteBusy} announceDescription
+        <AdminDiscardDialog lang={lang} isLight={isLight} tone="danger" busy={deleteBusy} announceDescription
           title={u("Delete {name}?", {name:deleteTarget.name})}
           description={deleteError ? campaignUiError(lang,deleteError) : u("Shared short links and QR codes will stop working after deletion.")}
           keepLabel={deleteError ? u("Close") : u("Cancel")}
@@ -578,7 +579,7 @@ export function CampaignPromotionLinks({
         )}
       </p>
       {confirmCancel && (
-        <CrmDiscardDialog
+        <AdminDiscardDialog
           lang={lang}
           isLight={isLight}
           title={unknown ? u("Save outcome unknown") : u("Unsaved changes")}

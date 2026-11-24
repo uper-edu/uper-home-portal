@@ -9,7 +9,8 @@ import {AdminField,AdminRequiredNote} from '../AdminForm';
 import {useEffect,useState} from 'react';
 import {AdminSingleSelect}from'../admin/AdminSingleSelect';
 import {AdminDisclosure}from'../admin/AdminDisclosure';
-import {CrmSaveFeedback,CrmDiscardDialog}from'./CrmDetailWorkspace';
+import { CrmSaveFeedback } from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {contactCorrectionOptions,linkedAmendments}from'../../utils/crmRecordAmendments';
 export function CrmRecordAmendmentForm({target,lead,timezone,isLight,onSaved,onCancel,onDirty,onBusy,suspended}:any){
  const lang=useCrmUiLanguage(); const ui=useCrmUiText();
@@ -39,6 +40,6 @@ export function CrmRecordAmendmentForm({target,lead,timezone,isLight,onSaved,onC
  {error&&!unknown&&<button className="crm-work-link" disabled={busy||suspended} onClick={async()=>{try{const r=await fetch(`/api/crm/leads/${lead.id}`);const d=await r.json();if(!r.ok)throw Error();const p=d.lead||d;setLatest(linkedAmendments(p,target.eventId));setRevision(linkedAmendments(p,target.eventId).length);setRequest(null);setError('版本已更新，草稿保留。请查看原记录的新修正，再明确保存。');}catch{setError('最新记录暂不可用，输入保留。');}}}>{ui("核对最新版本，保留输入")}</button>}
  {latest.length>0&&<AdminDisclosure heading={ui("核对最新已保存的补充／修正")}>{latest.map((a:any)=><div key={a.id}><p>{a.recordedAt} · {a.staffName||a.actor}</p><p>{a.text}</p>{a.reason&&<p>{ui("原因：")}{a.reason}</p>}</div>)}</AdminDisclosure>}
  </div><AdminFormActions className="crm-trust-actions crm-editor-actions"><button className="crm-work-button crm-editor-primary" disabled={busy||suspended||(!unknown&&(!text.trim()||kind==='correction'&&!reason.trim()))} onClick={()=>void save(unknown)}>{busy ? ui("正在保存…") : unknown ? ui("查询保存结果") : ui("保存补充／修正")}</button><button className="crm-work-link" disabled={busy||unknown||suspended} onClick={()=>dirty?setConfirm(true):(onDirty?.(false),onCancel())}>{ui("取消")}</button></AdminFormActions>
- {confirm&&<CrmDiscardDialog isLight={isLight} title={ui("放弃未保存的补充／修正？")} description={ui("原记录和已保存内容不受影响。")} keepLabel={ui("继续编辑")} discardLabel={ui("放弃修改")} onKeep={()=>setConfirm(false)} onDiscard={()=>{onDirty?.(false);onCancel();}}/>}
+ {confirm&&<AdminDiscardDialog isLight={isLight} title={ui("放弃未保存的补充／修正？")} description={ui("原记录和已保存内容不受影响。")} keepLabel={ui("继续编辑")} discardLabel={ui("放弃修改")} onKeep={()=>setConfirm(false)} onDiscard={()=>{onDirty?.(false);onCancel();}}/>}
  </div></CrmOperationLayer>;
 }

@@ -7,7 +7,7 @@ import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentL
 import { lazy, Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { AdminSingleSelect } from '../admin/AdminSingleSelect';
 import { CrmOperationLayer } from './CrmOperationLayer';
-import { CrmDiscardDialog } from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import { interestOption } from '../../utils/enrollmentInterestCopy';
 import {enrollmentCopy} from '../../utils/enrollmentCatalog';
 import {enrollmentStatuses} from '../../utils/enrollmentOrderStatus';
@@ -390,6 +390,6 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
     </article>}
     </div>
     </CrmOperationLayer>}
-    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(undefined)} onDiscard={()=>closeOrder(discard.destination)}/>}
+    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(undefined)} onDiscard={()=>closeOrder(discard.destination)}/>}
   </section>;
 }

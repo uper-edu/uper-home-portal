@@ -7,7 +7,7 @@ import {AdminFormActions,AdminFormFeedback,AdminFormGrid,type AdminFeedbackState
 import {enrollmentCopy,type PublicEnrollmentClass} from '../../utils/enrollmentCatalog';
 import {enrollmentPost} from '../../services/enrollmentSession';
 import {CrmOperationLayer} from './CrmOperationLayer';
-import {CrmDiscardDialog} from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {interestOption} from '../../utils/enrollmentInterestCopy';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
@@ -177,6 +177,6 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
         </AdminFormActions>
       </AdminForm>}
     </CrmOperationLayer>
-    {discard&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={onClose}/>}
+    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={onClose}/>}
   </>;
 }

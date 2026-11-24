@@ -2,7 +2,8 @@ import {CrmFormSection} from './CrmFormLayout';
 import {AdminFormActions} from '../AdminFormLayout';
 import {AdminField} from '../AdminForm';
 import { campaignUi } from "../../utils/campaignI18n";
-import { CrmSaveFeedback, CrmDiscardDialog } from "./CrmDetailWorkspace";
+import { CrmSaveFeedback } from "./CrmDetailWorkspace";
+import { AdminDiscardDialog } from "../admin/AdminDiscardDialog";
 import React, { useRef, useState, useEffect } from "react";
 import type { CrmCampaignRecord } from "../../types/crmCampaign";
 import {
@@ -312,7 +313,7 @@ export function CampaignMaterials({
         </CrmSaveFeedback>
       )}
       {confirmReplace && (
-        <CrmDiscardDialog
+        <AdminDiscardDialog
           lang={lang}
           isLight={isLight}
           title={u("Replace this draft?")}

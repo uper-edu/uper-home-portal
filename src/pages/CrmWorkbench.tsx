@@ -61,7 +61,10 @@ import { AdminPageHeader } from '../components/admin/AdminPageHeader';
 import { AdminPageAction } from "../components/admin/AdminPageAction";
 import {leadDetailTab,leadDetailUrl} from "../utils/crmDetailNavigation";
 import {CrmDetailActions,CrmRecordTitle} from "../components/crm/CrmRecordWorkspace";
-import {CrmContentNav,CrmDetailTabs,CrmSaveFeedback,CrmDiscardDialog} from "../components/crm/CrmDetailWorkspace";
+import { CrmSaveFeedback } from "../components/crm/CrmDetailWorkspace";
+import { AdminContentNav } from "../components/admin/AdminContentNav";
+import { AdminDetailTabs } from "../components/admin/AdminDetailTabs";
+import { AdminDiscardDialog } from "../components/admin/AdminDiscardDialog";
 import {CrmFollowupContext} from "../components/crm/CrmFollowupContext";
 import { AdminDisclosure } from "../components/admin/AdminDisclosure";
 import {CrmTrustPanel} from "../components/crm/CrmTrustPanel";
@@ -1269,7 +1272,7 @@ function CrmWorkspace({
 
         {!ownerOpen&&!paymentOpen&&(hasDraft||isSubmittingLog)&&<CrmSaveFeedback lang={lang} state={isSubmittingLog?"saving":"dirty"}/>}
         <div className="crm-panel-next"><CrmNextTaskSummary hideFirstContact hideContactNotice lead={selectedLead} lang={lang} timezone={filterTimezone} onOpen={()=>openTaskList()}/></div>
-        <CrmDetailTabs id="crm-customer" contentId="crm-customer-content" label={t("Customer details","客户详情")} value={activeDrawerTab==="playbook"?"activities":activeDrawerTab} onChange={(tab,keyboard)=>changeCustomerTab(tab as CustomerTab,keyboard)} tabs={[
+        <AdminDetailTabs id="crm-customer" contentId="crm-customer-content" label={t("Customer details","客户详情")} value={activeDrawerTab==="playbook"?"activities":activeDrawerTab} onChange={(tab,keyboard)=>changeCustomerTab(tab as CustomerTab,keyboard)} tabs={[
           {id:"activities",label:t("Follow-up","跟进"),icon:ListChecks},
           {id:"profile",label:t("Profile","客户资料"),icon:UserRound},
           {id:"assessment",label:t("Assessment","测评"),icon:ClipboardCheck},
@@ -1438,7 +1441,7 @@ function CrmWorkspace({
     >
       <PageMetadata lang={lang} options={{module:crmModule === "leads" && leadAnalysis ? "analysis" : crmModule}}/>
       {identitySelection&&<CrmIdentityComparison key={identitySelection.leadId} {...identitySelection} employee={employee} employees={employees} lang={lang} isLight={isLight} timezone={filterTimezone} onClose={closeIdentityReview} onDirty={setIdentityDirty} onBusy={setIsSubmittingLog} onCandidate={(candidateId:string)=>{const selection={...identitySelection,candidateId};setIdentitySelection(selection);const url=identityUrl(window.location.href,selection);window.history.replaceState({},"",url);lastWorkspaceUrl.current=url;}} onChanged={async()=>{refreshIdentityQueue();setDetailRefreshVersion(v=>v+1);void fetchLeads(true);if(selectedLead){const r=await fetch(`/api/crm/leads/${encodeURIComponent(selectedLead.id)}`);if(r.ok){const d=await r.json();setSelectedLead((v:any)=>identityReviewedDetail(v,selectedLead.id,d,employee.id));}}}}/>}
-      {pendingNavigation&&<CrmDiscardDialog isLight={isLight} title={t("Unsaved changes","修改尚未保存")} description={t("Keep editing, or discard your unsaved changes and continue. Saved records stay unchanged.","可以继续编辑，或放弃未保存的修改后继续；已保存记录保持不变。")} keepLabel={t("Keep editing","继续编辑")} discardLabel={t("Discard and continue","放弃并继续")} onKeep={resumeDraft} onDiscard={()=>{const action=pendingNavigation;setPendingNavigation(null);clearDraft();action();}}/>}
+      {pendingNavigation&&<AdminDiscardDialog isLight={isLight} title={t("Unsaved changes","修改尚未保存")} description={t("Keep editing, or discard your unsaved changes and continue. Saved records stay unchanged.","可以继续编辑，或放弃未保存的修改后继续；已保存记录保持不变。")} keepLabel={t("Keep editing","继续编辑")} discardLabel={t("Discard and continue","放弃并继续")} onKeep={resumeDraft} onDiscard={()=>{const action=pendingNavigation;setPendingNavigation(null);clearDraft();action();}}/>}
       {/* Top Apple-Style / Dark Navigation Bar - Stable 2-Row Architecture */}
       <a className="admin-skip-link" href="#crm-main">{lang==='zh'?'跳到工作区':lang==='id'?'Lewati ke ruang kerja':'Skip to workspace'}</a>
       <AdminHeader workspace="crm" employee={employee} lang={lang} setLang={setLang} isLight={isLight} toggleTheme={toggleTheme}
@@ -1487,7 +1490,7 @@ function CrmWorkspace({
               ?adminText(lang,'Review transfer proofs and verify payments for enrollment orders.','Periksa bukti transfer dan verifikasi pembayaran pesanan pendaftaran.','查看报名订单的转账凭证，核实实际到账。')
               :adminText(lang,'Review receipts and refunds for historical customer payments.','Periksa penerimaan dan pengembalian dana pembayaran pelanggan terdahulu.','查询历史客户款项，核对收款和退款记录。')}
               actions={canFinance&&<AdminRefreshAction label={t('Refresh','刷新')} loading={financeLoading} onClick={()=>{setFinanceRefresh(v=>v+1);paymentQueue.refresh();}}/>}/>
-            {canFinance&&<CrmContentNav label={adminText(lang,'Finance workspace','Ruang kerja keuangan','财务工作区')} onNavigate={changeContentPage} items={[
+            {canFinance&&<AdminContentNav label={adminText(lang,'Finance workspace','Ruang kerja keuangan','财务工作区')} onNavigate={changeContentPage} items={[
               {href:'/crm?tab=payments&paymentView=enrollment',label:paymentWorkspaceLabel('enrollment',lang),current:enrollmentPaymentView},
               {href:'/crm?tab=payments',label:paymentWorkspaceLabel('historical',lang),current:!enrollmentPaymentView},
             ]}/>}
