@@ -255,6 +255,7 @@
 .enrollment-price-actions-summary dd { margin: 0; }
 .enrollment-price-actions-summary .enrollment-main-amount { color: var(--enrollment-ink); }
 .enrollment-price-actions-standard { display: flex; flex-wrap: wrap; gap: 0 5px; }
+.enrollment-price-saving { color: #08654e; display: block; font-size: 12px; font-weight: 650; line-height: 1.4; }
 .enrollment-payment, .enrollment-apply-layout { max-width: 664px; }
 .enrollment-payment-content { display: grid; gap: 10px; }
 .enrollment-payment-summary, .enrollment-payment-section {
@@ -743,8 +744,8 @@
   max-width: 100%;
   padding: 2px 7px;
   border-radius: 5px;
-  background: #eaf0fc;
-  color: #284982;
+  background: var(--enrollment-state-bg);
+  color: var(--enrollment-state-ink);
   font-size: 12px;
   font-weight: 650;
   line-height: 1.4;
@@ -815,12 +816,13 @@
   gap: 8px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #faf0dc;
-  color: #744909;
+  background: var(--enrollment-state-bg, #faf0dc);
+  color: var(--enrollment-state-ink, #744909);
   font-weight: 650;
 }
 .enrollment-result-state svg { flex: none; }
-.enrollment-result-state[data-paid="true"] { background: #e8f5ed; color: #08654e; }
+.enrollment-cancel-actions .enrollment-primary:not(:disabled) { background: #9b2b25; }
+.enrollment-cancel-actions .enrollment-primary:not(:disabled):hover { background: #7c231f; }
 .enrollment-result-amounts > div { display: flex; justify-content: space-between; gap: 8px; padding-block: 6px; }
 .enrollment-result-amounts > div + div { border-top: 1px solid var(--enrollment-border); }
 .enrollment-result-amounts dt { color: var(--enrollment-muted); }

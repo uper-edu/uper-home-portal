@@ -4,7 +4,7 @@ import { enrollmentCopy,enrollmentClassTitle,enrollmentFixedLessonDuration,enrol
 import {EnrollmentCourseOverview} from '../components/EnrollmentCourseOverview';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
 import {EnrollmentTeacherLabel} from '../components/EnrollmentTeacherLabel';
-import {EnrollmentPriceActions} from '../components/EnrollmentRecordLayout';
+import {EnrollmentPriceActions,EnrollmentPriceSaving} from '../components/EnrollmentRecordLayout';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, MessageCircle, Minus, Plus } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -747,6 +747,7 @@ export default function Enrollment() {
                 <span className="sr-only">{enrollmentCopy(language,['标准价','Standard price','Harga standar'])}{' '}</span>
                 <del className="enrollment-reference-price">{formatCurrency(item.standardPrice*item.lessons,language)}</del>
               </small>}
+              <EnrollmentPriceSaving amount={item.price*item.lessons} standardPrice={item.standardPrice*item.lessons} language={language}/>
             </div>
             <Link className="enrollment-primary" to={to} state={chatReturnState} onClick={onClick}>{t('appointmentAction')}</Link>
           </div>
