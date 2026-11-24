@@ -6,6 +6,7 @@ import { enrollmentFixedLessonDuration,enrollmentInstant,enrollmentPrivateLesson
 import {formatCurrency} from '../utils/currency';
 import type {PublicEnrollmentAppointment} from '../services/enrollmentClassDetails';
 import {EnrollmentClassName} from './EnrollmentClassName';
+import {EnrollmentTeacherLabel} from './EnrollmentTeacherLabel';
 import {EnrollmentCourseOverview} from './EnrollmentCourseOverview';
 import {EnrollmentDetailFields,EnrollmentPriceActions} from './EnrollmentRecordLayout';
 import {PublicSingleSelect} from './PublicSingleSelect';
@@ -148,7 +149,7 @@ export function EnrollmentSupport({topic,language,level,appointment:selection,ap
           <section className="enrollment-detail-section">
             <h3 className="enrollment-record-section-title">{t(['课程信息','Course information','Informasi kursus'])}</h3>
             <EnrollmentDetailFields fields={[
-              [t(['授课教师','Teacher','Pengajar']),enrollmentTeacherLabel(selection.teacherType,language)],
+              [t(['授课教师','Teacher','Pengajar']),<EnrollmentTeacherLabel teacherType={selection.teacherType} language={language}/>],
               [t(['上课时间','Schedule','Jadwal']),t(['与顾问确认','Confirm with an advisor','Dikonfirmasi bersama konsultan'])],
               [t(['课时安排','Lesson duration','Durasi pelajaran']),enrollmentFixedLessonDuration(selection.lessons,selection.minutes,language)],
               [t(['每节价格','Price per lesson','Harga per sesi']),formatCurrency(selection.price,language)],

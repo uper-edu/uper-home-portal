@@ -730,6 +730,18 @@
 .enrollment-detail-fields dt { color: var(--enrollment-muted); font-weight: 400; }
 .enrollment-detail-fields dd { min-width: 0; margin: 0; color: var(--enrollment-ink); font-weight: 400; }
 .enrollment-class-card .enrollment-teacher { color: var(--enrollment-ink); font-weight: 650; }
+.enrollment-teacher-detail { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.enrollment-teacher-foreign {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: #eaf0fc;
+  color: #284982;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
 .enrollment-detail-section {
   display: grid;
   gap: 6px;

@@ -1,4 +1,5 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
+import {EnrollmentTeacherLabel} from './EnrollmentTeacherLabel';
 import {EnrollmentDetailFields} from './EnrollmentRecordLayout';
 import {Link} from 'react-router-dom';
 import type {MouseEventHandler} from 'react';
@@ -66,7 +67,10 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
      local:t('印尼教师','Indonesian teacher','Pengajar Indonesia'),
      foreign:t('中国外教','Teacher from China','Pengajar dari Tiongkok'),
    }[row.teacherType];
-   const teacherDetails=teacherName&&teacherOrigin
+   const teacherDetails=row.teacherType==='foreign'&&teacherOrigin
+     ? <span className="enrollment-teacher-detail">{teacherName&&<span>{teacherName}</span>}<EnrollmentTeacherLabel
+         teacherType={row.teacherType} language={language} label={teacherOrigin}/></span>
+     : teacherName&&teacherOrigin
      ? t(`${teacherName}（${teacherOrigin}）`,`${teacherName} (${teacherOrigin})`,`${teacherName} (${teacherOrigin})`)
      : teacherName||teacherOrigin;
    return <div className="enrollment-class-detail">
@@ -111,7 +115,7 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
      t('每节 '+row.minutes+' 分钟',row.minutes+' min each',row.minutes+' menit per jam pelajaran'),
    ].filter(Boolean).join(' · ')}</p>}
    {!chatPresentation&&<>
-     {teacher&&<p className="enrollment-teacher">{teacher}</p>}
+     {teacher&&<p className="enrollment-teacher"><EnrollmentTeacherLabel teacherType={row.teacherType} language={language} label={teacher}/></p>}
      <p className="enrollment-schedule">{schedule}</p>
      <div className="enrollment-catalog-facts"><p>{dateLabel}</p><span className="enrollment-status" data-state={publicTone}>{publicStatus}</span></div>
      <p>{[size,lessonCount,duration].filter(Boolean).join(' · ')}</p>

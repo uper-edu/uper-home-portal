@@ -1,8 +1,9 @@
 import {EnrollmentClassName} from '../components/EnrollmentClassName';
 import {enrollmentReadinessMessage} from '../utils/enrollmentReadinessCopy';
-import { enrollmentCopy,enrollmentClassTitle,enrollmentFixedLessonDuration,enrollmentPrivateLessonTitle,enrollmentScheduleLabel,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
+import { enrollmentCopy,enrollmentClassTitle,enrollmentFixedLessonDuration,enrollmentPrivateLessonTitle,enrollmentScheduleLabel } from '../utils/enrollmentCatalog';
 import {EnrollmentCourseOverview} from '../components/EnrollmentCourseOverview';
 import {EnrollmentClassPreview} from '../components/EnrollmentClassPreview';
+import {EnrollmentTeacherLabel} from '../components/EnrollmentTeacherLabel';
 import {EnrollmentPriceActions} from '../components/EnrollmentRecordLayout';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronRight, MessageCircle, Minus, Plus } from 'lucide-react';
@@ -731,7 +732,7 @@ export default function Enrollment() {
           <h2><Link id={`appointment:${item.id}`} to={to} state={chatReturnState} onClick={onClick}>
             <EnrollmentClassName title={enrollmentPrivateLessonTitle(item.level,language)}/><ChevronRight size={15} aria-hidden="true"/>
           </Link></h2>
-          <p className="enrollment-teacher">{enrollmentTeacherLabel(item.teacherType,language)}</p>
+          <p className="enrollment-teacher"><EnrollmentTeacherLabel teacherType={item.teacherType} language={language}/></p>
           <p className="enrollment-schedule">{t('appointment')}</p>
           <p>{enrollmentFixedLessonDuration(item.lessons,item.minutes,language)}</p>
           <div className="enrollment-class-bottom">
