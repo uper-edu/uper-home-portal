@@ -573,14 +573,16 @@ export default function Enrollment() {
   }
 
   const classHasIntakeAction=!!selected&&!!canApplyToClass&&selected.price>0;
-  const classConsultation=selected&&!previewToken&&!fromChat&&<Link data-enrollment-consult="class"
-    className="enrollment-quiet enrollment-consult-action" to={chatPath}
-    onClick={event=>startConsultation(event,selected)}><MessageCircle size={16} aria-hidden="true"/>{t('consultClass')}</Link>;
 
   if (classId) return <section className="enrollment-screen enrollment-detail">
     {backChat}
     <Link className="enrollment-back" to={application ? detailsPath(classId) : matchPath ?? listPath} state={matchPath?journeyState:chatReturnState} onClick={prepareEnrollmentNavigation}><ArrowLeft size={15} aria-hidden="true"/>{t(application ? 'backDetail' : matchPath ? 'backMatch' : 'back')}</Link>
-    <h1>{t(application && selected ? selected.availability === 'full' ? 'join' : 'apply' : 'details')}</h1>
+    <header className="enrollment-title-row enrollment-detail-title">
+      <h1>{t(application && selected ? selected.availability === 'full' ? 'join' : 'apply' : 'details')}</h1>
+      {selected&&!application&&!previewToken&&!fromChat&&<Link data-enrollment-consult="class"
+        className="enrollment-quiet enrollment-consult-action" to={chatPath}
+        onClick={event=>startConsultation(event,selected)}><MessageCircle size={16} aria-hidden="true"/>{t('consultClass')}</Link>}
+    </header>
     {failed ? catalogFailure
       : !classes ? <>{classPreview&&<h2 className="enrollment-class-heading"><EnrollmentClassName title={enrollmentClassTitle(classPreview,language)}/></h2>}<p role="status">{t('loading')}</p></>
       : !selected ? <><p>{t('unavailable')}</p>
@@ -598,11 +600,8 @@ export default function Enrollment() {
           {classHasIntakeAction && <EnrollmentPriceActions hideLabel
             label={enrollmentCopy(language,['课程总价','Total tuition','Total biaya'])}
             amount={selected.price} standardPrice={selected.standardPrice} language={language}>
-            <div className="enrollment-class-main-actions">
-              {classConsultation}
-              <Link className="enrollment-primary" to={detailsPath(selected.id, true)}
-                state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>
-            </div>
+            <Link className="enrollment-primary" to={detailsPath(selected.id, true)}
+              state={chatReturnState} onClick={prepareEnrollmentNavigation}>{t(selected.availability === 'full' ? 'join' : 'apply')}</Link>
           </EnrollmentPriceActions>}
         </aside>
         <section className="enrollment-course">
@@ -623,7 +622,6 @@ export default function Enrollment() {
           <Link className="enrollment-course-policy" to={detailsPath(selected.id)+'&view=rules'} state={chatReturnState}>
             {t('rules')}<ChevronRight size={16} aria-hidden="true"/>
           </Link>
-          {!classHasIntakeAction&&classConsultation}
         </section>
 
       </div>}

@@ -100,6 +100,9 @@
 .enrollment-screen :focus-visible { outline: 2px solid var(--enrollment-accent); outline-offset: 3px; }
 .enrollment-title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; margin-bottom: 13px; }
 .enrollment-title-row h1 { margin: 0; }
+.enrollment-detail-title { column-gap: 8px; }
+.enrollment-detail-title .enrollment-consult-action { min-height: 44px; margin-inline-start: auto; }
+.enrollment-detail-title .enrollment-consult-action svg { flex: none; }
 .enrollment-title-actions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; }
 .enrollment-title-actions .enrollment-outline { font-size: 13px; border-color: var(--enrollment-accent); border-radius: 999px; }
 .enrollment-subtitle { margin: 4px 0 0; color: var(--enrollment-muted); font-size: 13px; }
@@ -215,15 +218,6 @@
   font-weight: 650;
 }
 .enrollment-course-policy svg { flex: none; }
-.enrollment-class-main-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-}
-.enrollment-class-main-actions > a { min-height: 44px; min-width: 0; text-align: center; }
-.enrollment-class-main-actions .enrollment-consult-action { justify-content: center; padding-inline: 0; }
 .enrollment-detail-cancel { align-self: flex-start; min-height: 44px; }
 .enrollment-price-actions {
   display: grid;
@@ -339,10 +333,6 @@
     padding: 8px 16px calc(10px + env(safe-area-inset-bottom, 0px));
     background: #fff;
   }
-  .enrollment-detail:has(.enrollment-class-main-actions) {
-    padding-block-end: calc(144px + env(safe-area-inset-bottom, 0px));
-  }
-  .enrollment-class-main-actions { flex-direction: column; align-items: stretch; gap: 0; }
   .enrollment-payment { padding-bottom: calc(36px + env(safe-area-inset-bottom, 0px)); }
   .enrollment-payment:has(.enrollment-payment-actions) { padding-bottom: calc(115px + env(safe-area-inset-bottom, 0px)); }
 }
