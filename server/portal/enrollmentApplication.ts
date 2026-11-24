@@ -33,7 +33,8 @@ import { applyEnrollmentPaymentCredits, lockEnrollmentFunds, updateEnrollmentPay
 import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
 import { enrollmentAssistanceLink, enrollmentEmailWhatsAppDestination, enrollmentEmailWhatsAppPath, renderEnrollmentEmail } from './enrollmentEmail.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
-import { hasConfiguredEnrollmentBank,mountEnrollmentBank,readEnrollmentBank } from './enrollmentBank.ts';
+import { hasConfiguredEnrollmentBank,mountEnrollmentBank,readEnrollmentBank,readEnrollmentReceivingAccounts } from './enrollmentBank.ts';
+import {enrollmentReceivingAccountMaxLength} from '../../src/utils/enrollmentBank.ts';
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
@@ -803,6 +804,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
         OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR latest_proof.id IS NOT NULL)
       ORDER BY o.created_at DESC LIMIT 150`,[orderId])).rows;
+      const receivingAccounts=orderId&&rows.length?await readEnrollmentReceivingAccounts(c,rows[0].data.bank):undefined;
       const proofs=orderId&&rows[0]?.proof_id?(await c.query(`SELECT id,mime,
         DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS submittedAt,transfer_details AS transfer
         FROM enrollment_proofs WHERE order_id=:p1 ORDER BY created_at DESC,id DESC`,[orderId])).rows:[];
@@ -832,7 +834,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         }
       }
       return rows.map(row=>({...view(row,row.class_state),name:row.data.name,opened:Number(row.opened)===1,
-        proofId:row.proof_id,proofMime:row.proof_mime,proofs,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[],
+        proofId:row.proof_id,proofMime:row.proof_mime,proofs,receivingAccounts,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[],
         level:row.level,format:row.format,period:row.period,firstLessonAt:row.firstLessonAt}));
     });
     r.set('Cache-Control', 'no-store').json({ orders });
@@ -861,7 +863,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const id = String(q.params.id);
     const result = await measureEnrollmentPhase(r,'transaction',()=>moneyTx((c: Client) => operation(c, actor.id, q.body,
       { leadId: 'enrollment:' + id, kind: 'enrollment.receipt', authorize: () => financeActor(q) }, async () => {
-      if(typeof receivingAccount!=='string'||!receivingAccount.trim()||receivingAccount.trim().length>160)
+      if(typeof receivingAccount!=='string'||!receivingAccount.trim()||receivingAccount.trim().length>enrollmentReceivingAccountMaxLength)
         invalid('enrollment_receiving_account_required');
       const { order, cohort } = await lockOrder(c, id);
       if(['refunding','refunded'].includes(order.state)) invalid('enrollment_refund_in_progress',409);

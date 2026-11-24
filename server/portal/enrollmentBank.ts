@@ -1,5 +1,5 @@
 import type { Express,Request,Response } from 'express';
-import { enrollmentBankFields,enrollmentBankPlaceholder,parseEnrollmentBank,type EnrollmentBank } from '../../src/utils/enrollmentBank.ts';
+import { enrollmentBankFields,enrollmentBankPlaceholder,enrollmentReceivingAccountMaxLength,hasConfiguredEnrollmentBank,hasEnrollmentBankPlaceholder,parseEnrollmentBank,type EnrollmentBank,type EnrollmentReceivingAccount } from '../../src/utils/enrollmentBank.ts';
 export {hasConfiguredEnrollmentBank} from '../../src/utils/enrollmentBank.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { invalid,operation } from './trustWorkflow.ts';
@@ -17,6 +17,30 @@ export async function readEnrollmentBank(c:Client):Promise<{bank:EnrollmentBank;
   const bank=parseEnrollmentBank(row.value?.bank);
   if(!bank||!Number.isSafeInteger(row.value?.revision)||row.value.revision<0)invalid('enrollment_bank_unavailable',503);
   return {bank,revision:row.value.revision};
+}
+
+export async function readEnrollmentReceivingAccounts(c:Client,orderBank:unknown):Promise<EnrollmentReceivingAccount[]> {
+  const settings=await readEnrollmentBank(c).catch((error:unknown)=>{
+    if(error instanceof Error&&error.message==='enrollment_bank_unavailable')return undefined;
+    throw error;
+  });
+  const current=settings&&hasConfiguredEnrollmentBank(settings)?settings.bank:undefined;
+  const original=parseEnrollmentBank(orderBank);
+  const seen=new Set<string>();
+  const options:EnrollmentReceivingAccount[]=[];
+  for(const [source,bank] of [['current',current],['order',original]] as const){
+    if(!bank||hasEnrollmentBankPlaceholder(bank))continue;
+    const accountNumber=bank.accountNumber.replace(/\s+/gu,'');
+    const key=JSON.stringify([bank.name.replace(/\s+/gu,' ').toLowerCase(),accountNumber.replace(/-/gu,'')]);
+    if(seen.has(key))continue;
+    seen.add(key);
+    const suffix=' · '+bank.accountNumber;
+    options.push({
+      source,bankName:bank.name,accountName:bank.accountName,accountSuffix:accountNumber.slice(-4),
+      receiptAccount:bank.name.slice(0,enrollmentReceivingAccountMaxLength-suffix.length).trimEnd()+suffix,
+    });
+  }
+  return options;
 }
 
 export function mountEnrollmentBank(app:Express,{wrap,transact,authorize}:{

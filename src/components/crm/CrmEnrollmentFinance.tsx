@@ -19,6 +19,7 @@ import { enrollmentRosterReturnPath } from '../../utils/crmEnrollmentManagement'
 import { enrollmentOpportunityReturnPath } from '../../utils/crmEnrollmentOpportunityRoute';
 import { formatCrmEventTime,validateLocalInstant,viewerTimeZone } from '../../utils/crmOperatingTime';
 import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
+import {enrollmentReceivingAccountMaxLength,type EnrollmentReceivingAccount} from '../../utils/enrollmentBank';
 import { AdminSavedReadError } from '../AdminFormLayout';
 import { CrmDisclosure } from './CrmDisclosure';
 import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
@@ -28,7 +29,7 @@ type PaymentCredit = {id:string;orderId:string;direction:'in'|'out';reference:st
 type WorkOrder = { id:string; name:string; price:number; received:number; status:string; level:string; format:string; period:string; firstLessonAt:string; hasProof:boolean; proofAt?:string; reviewDueAt?:string };
 type Worklist = { orders:WorkOrder[]; total:number; page:number; pageSize:number };
 type FinanceProof = {id:string;mime?:string;submittedAt?:string;transfer?:{amount?:number;reference?:string}|null};
-type RecordRow = Omit<WorkOrder,'hasProof'> & { opened: boolean; proofs?:FinanceProof[]; proofId?: string; proofMime?: string; firstReviewDueAt?:string; receipts:Receipt[]; credits:PaymentCredit[] };
+type RecordRow = Omit<WorkOrder,'hasProof'> & { opened: boolean; proofs?:FinanceProof[]; proofId?: string; proofMime?: string; firstReviewDueAt?:string; receipts:Receipt[]; credits:PaymentCredit[]; receivingAccounts?:EnrollmentReceivingAccount[] };
 const endpoint = '/api/crm/enrollment/finance';
 const PdfPreview = lazy(() => import('../PdfPreview'));
 
@@ -106,6 +107,9 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
   const receiptHeading=useRef<HTMLHeadingElement>(null);
   const receiptError=useRef<HTMLParagraphElement>(null);
   const receiptFormId=useId();
+  const receivingAccountId=useId();
+  const [receivingAccountChoice,setReceivingAccountChoice]=useState('');
+  const [manualReceivingAccount,setManualReceivingAccount]=useState('');
   const cancelReceipt=()=>{
     receiptOperation.clear();setSelected(undefined);setDirty(false);setDetailError('');
     requestAnimationFrame(()=>receiptTrigger.current?.focus({preventScroll:true}));
@@ -214,6 +218,17 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
   const statusLabel=(state:string)=>enrollmentStatuses[state]?enrollmentCopy(lang,enrollmentStatuses[state]):
     state==='recovered'?t('已恢复报名','Enrollment restored','Pendaftaran dipulihkan'):state;
   const row=details?.id===orderId?details?.row:undefined;
+  const receivingAccountLabel=t('实际收款账户','Actual receiving account','Rekening penerima aktual');
+  const receivingAccountOptions=(row?.receivingAccounts??[]).map(account=>({
+    value:account.source+':'+account.receiptAccount,
+    label:[account.bankName,account.accountName,'•••• '+account.accountSuffix].join(' · '),
+    description:account.source==='current'
+      ?t('当前配置账户','Current configured account','Rekening yang dikonfigurasi saat ini')
+      :t('订单原收款账户','Original order account','Rekening awal pesanan'),
+    receiptAccount:account.receiptAccount,
+  }));
+  const selectedReceivingAccount=receivingAccountOptions.find(option=>option.value===receivingAccountChoice);
+  const useManualAccount=receivingAccountChoice==='other';
   const recoveringReceipt=Boolean(row&&receiptOperation.pending?.restored&&receiptOperation.pending.request.orderId===row.id);
   const refunding=Boolean(row&&['refunding','refunded'].includes(row.status));
   const showReceiptActions=!!row&&!refunding&&!recoveringReceipt;
@@ -231,7 +246,8 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
       {t('保存到账','Save receipt','Simpan penerimaan')}
     </button>
   </>:<button type="button" ref={receiptTrigger} className="crm-work-button" data-primary disabled={savedDetailRead===orderId} onClick={()=>{
-    setSelected(row.id);setRequestId(crypto.randomUUID());setDetailError('');setSavedDetailRead(null);
+    setSelected(row.id);setReceivingAccountChoice('');setManualReceivingAccount('');
+    setRequestId(crypto.randomUUID());setDetailError('');setSavedDetailRead(null);
   }}>{recordReceiptLabel}</button>);
   const hasResults=Boolean(list?.orders.length);
   return <section className="crm-finance-workspace" aria-label={paymentWorkspaceLabel('enrollment',lang)}>
@@ -319,13 +335,21 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
           onResume={refunding?undefined:()=>{
             const originalRequestId=receiptOperation.resume();
             if(!originalRequestId)return;
-            setSelected(row.id);setRequestId(originalRequestId);setDetailError('');
+            setSelected(row.id);setReceivingAccountChoice('');setManualReceivingAccount('');
+            setRequestId(originalRequestId);setDetailError('');
           }}/> :
       refunding ? <CrmEnrollmentRefund id={row.id} lang={lang} isLight={isLight} onUpdate={afterWrite} onBusyChange={setRefundBusy} onDraftChange={()=>setDirty(true)}/> :
       editingReceipt&&<AdminForm id={receiptFormId} lang={lang} className="crm-form-layout crm-enrollment-receipt-form" onSubmit={async (event:React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (busy||receiptOperation.pending) return;
         const form = new FormData(event.currentTarget);
+        const receivingAccount=useManualAccount?manualReceivingAccount.trim():selectedReceivingAccount?.receiptAccount;
+        if(!receivingAccount){
+          setDetailError(useManualAccount
+            ?t('请填写实际收款账户。','Enter the actual receiving account.','Isi rekening penerima aktual.')
+            :t('请选择实际收款账户。','Select the actual receiving account.','Pilih rekening penerima aktual.'));
+          return;
+        }
         const localTime=String(form.get('time'));
         const instant=new Date(localTime);
         try{
@@ -336,7 +360,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
         }
         setDetailError('');setDirty(true);
         await receiptOutcome(receiptOperation.submit('receipts',row.id,{amount:Number(form.get('amount')),reference:form.get('reference'),
-          receivingAccount:form.get('receivingAccount'),transferredAt:instant.toISOString(),requestId}));
+          receivingAccount,transferredAt:instant.toISOString(),requestId}));
       }}>
         <h3 ref={receiptHeading} tabIndex={-1} data-admin-form-title>{recordReceiptLabel} <AdminRequiredNote lang={lang} inline/></h3>
         {detailError&&<p ref={receiptError} tabIndex={-1} role="alert">{detailError}</p>}
@@ -344,10 +368,20 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
           onCheck={()=>void receiptOutcome(receiptOperation.check())} onRetry={()=>void receiptOutcome(receiptOperation.retry())}/>
         <fieldset data-admin-stack disabled={busy||!!receiptOperation.pending}>
         <AdminField>{t('银行流水号','Bank reference','Nomor referensi bank')}<input className="admin-text-input" name="reference" maxLength={120} required/></AdminField>
-        <AdminField>{t('实际收款账户','Actual receiving account','Rekening penerima aktual')}
-          <input className="admin-text-input" name="receivingAccount" maxLength={160} required autoComplete="off"/>
-          <p>{t('按收款系统中的实际入账账户填写。','Enter the account credited in the payment system.','Isi rekening yang menerima dana di sistem pembayaran.')}</p>
+        <AdminField as="div" htmlFor={receivingAccountId} required>
+          <label>{receivingAccountLabel}</label>
+          <CrmSingleSelect controlId={receivingAccountId} lang={lang} isLight={isLight} required disabled={busy||!!receiptOperation.pending}
+            label={receivingAccountLabel} emptyLabel={t('选择收款账户','Select a receiving account','Pilih rekening penerima')}
+            value={useManualAccount?'other':selectedReceivingAccount?.value??''}
+            onChange={value=>{setReceivingAccountChoice(value);setDirty(true);setDetailError('');}}
+            options={[...receivingAccountOptions,{value:'other',
+              label:t('其他账户（手工填写）','Other account (enter manually)','Rekening lain (isi manual)')}]}/>
+          <p>{t('按收款系统中的实际入账账户选择。','Select the account credited in the payment system.','Pilih rekening yang menerima dana di sistem pembayaran.')}</p>
         </AdminField>
+        {useManualAccount&&<AdminField>{t('手工填写收款账户','Enter receiving account','Isi rekening penerima')}
+          <input className="admin-text-input" maxLength={enrollmentReceivingAccountMaxLength} required autoComplete="off"
+            value={manualReceivingAccount} onChange={event=>setManualReceivingAccount(event.currentTarget.value)}/>
+        </AdminField>}
         <AdminField>{t('实收金额（Rp）','Verified amount (Rp)','Nominal terverifikasi (Rp)')}<input className="admin-text-input" name="amount" type="number" min="1" step="1" required/></AdminField>
         <AdminDateField name="time" lang={lang} withTime required onChange={()=>setDirty(true)}
           label={t('实际到账时间','Actual receipt time','Waktu dana diterima')}/>

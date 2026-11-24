@@ -406,10 +406,15 @@ test('finance order details keep each learner declaration with its own proof',as
     ];
     const order={id:'fixture-order',state:'proof_review',class_state:'published',data:{name:'Fixture'},
       price:200000,received:0,payment_due_at:'2027-01-03 00:00:00',proof_id:'new-pdf',proof_mime:'application/pdf'};
+    const original={name:'Original Bank',accountName:'UPER Original',accountNumber:'12345678'};
+    const current={name:'Current Bank',accountName:'UPER Current',accountNumber:'87654321'};
+    let configured:unknown={bank:current,revision:1};
+    let orderBank:unknown=original;
     const reads:string[]=[];
     const client={transactionIsolation:'READ COMMITTED',query:async(sql:string,args:unknown[])=>{
       reads.push(sql);
-      if(sql.includes('SELECT o.*,e.state'))return {rows:[order]};
+      if(sql.includes('SELECT o.*,e.state'))return {rows:[{...order,data:{...order.data,bank:orderBank}}]};
+      if(sql.includes("id='enrollment_bank'"))return {rows:configured?[{value:configured}]:[]};
       if(sql.includes('transfer_details AS transfer')){
         assert.deepEqual(args,['fixture-order']);
         assert.match(sql,/ORDER BY created_at DESC,id DESC/);
@@ -426,6 +431,20 @@ test('finance order details keep each learner declaration with its own proof',as
     assert.deepEqual(payload.orders[0].proofs,proofRows);
     assert.equal(payload.orders[0].received,0);
     assert.equal(reads.filter(sql=>sql.includes('transfer_details AS transfer')).length,1);
+    assert.deepEqual(payload.orders[0].receivingAccounts,[
+      {source:'current',bankName:current.name,accountName:current.accountName,accountSuffix:'4321',receiptAccount:'Current Bank · 87654321'},
+      {source:'order',bankName:original.name,accountName:original.accountName,accountSuffix:'5678',receiptAccount:'Original Bank · 12345678'},
+    ]);
+    orderBank={...current,name:'CURRENT BANK',accountNumber:'8765-4321'};
+    await operationContext.run(client,()=>read(request,response));
+    assert.deepEqual(payload.orders[0].receivingAccounts.map((account:{source:string})=>account.source),['current']);
+    configured=undefined;
+    orderBank=original;
+    await operationContext.run(client,()=>read(request,response));
+    assert.deepEqual(payload.orders[0].receivingAccounts.map((account:{source:string})=>account.source),['order']);
+    orderBank=undefined;
+    await operationContext.run(client,()=>read(request,response));
+    assert.deepEqual(payload.orders[0].receivingAccounts,[]);
     scope='own';
     const priorReads=reads.length;
     await assert.rejects(operationContext.run(client,()=>read(request,response)),{status:403});
