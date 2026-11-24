@@ -1,12 +1,16 @@
 import type { Express, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { demandMatches, enrollmentPhone, parseDemand } from '../../src/utils/enrollmentInterests.ts';
+import { demandMatches, enrollmentPhone, parseDemand,type PrivateLessonRegistration } from '../../src/utils/enrollmentInterests.ts';
 import { enrollmentLearnerNameKey } from '../../src/utils/enrollmentOrderStatus.ts';
-import { invalid } from './trustWorkflow.ts';
+import { invalid,operation,normalizeContactPhone } from './trustWorkflow.ts';
+import { createHash } from 'node:crypto';
+import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
+import { readPublicEnrollmentAppointments } from './enrollmentCatalog.ts';
 import { recordEnrollmentCustomer } from './enrollmentCrm.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { activeLearnerOrder, learnerWaitlist } from './enrollmentLearners.ts';
 import { interestNotice } from './enrollmentNotices.ts';
+import { readEnrollmentSessionDigest } from './enrollmentVisitorSession.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> };
 type Handler = (q: Request, r: Response) => Promise<unknown>;
@@ -101,12 +105,13 @@ export async function matchPublishedEnrollmentClass(c: Client, classId: string) 
   }
 }
 
-export function startEnrollmentVacancySimulation(transact:Context['transact'],lockClass:Context['lockClass']) {
+export function startEnrollmentVacancySimulation(transact:Context['transact'],lockClass:Context['lockClass'],enabled=async()=>true) {
   let busy=false;
   const tick=async()=>{
     if (busy) return;
     busy=true;
     try {
+      if(!await enabled())return;
       const candidates=await transact(async c=>(await c.query(`SELECT e.id AS class_id FROM enrollment_classes e
         LEFT JOIN enrollment_vacancy_cycles v ON v.class_id=e.id
         WHERE (e.state='published' AND EXISTS (
@@ -161,7 +166,12 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       await expireSeats(c,id);
       const seats=await takenSeats(c,id);
       if (!allowsEnrollment(cohort)) invalid('enrollment_class_unavailable',409);
-      if (seats<cohort.data.capacity) invalid('enrollment_seat_available',409);
+      if (seats<cohort.data.capacity) {
+        // A lost response can be retried after a seat opens. Confirm the existing entry first.
+        const prior=await learnerWaitlist(c,id,email,name);
+        if (prior && !await activeLearnerOrder(c,id,email,name)) return { id:prior.id };
+        invalid('enrollment_seat_available',409);
+      }
       await reconcileWaitlist(c,cohort,seats);
       const own=await activeLearnerOrder(c,id,email,name);
       if (own) invalid('enrollment_already_has_seat',409);
@@ -190,6 +200,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
   });
 
   app.get(base+'/interests',wrap(async(q,r)=>{
+    if(!readEnrollmentSessionDigest(q.headers.cookie))invalid('enrollment_verification_required',401);
     const data=await transact(async c=>{
       const email=await session(c,q);
       const {rows:waiting}=await c.query('SELECT id,class_id,state,order_id,learner_name FROM enrollment_waitlist WHERE email=:p1 ORDER BY created_at DESC,id DESC',[email]);
@@ -212,24 +223,32 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       for(const demand of demands){
         const matched=demand.state==='active'?candidates.filter(cohort=>demandMatches(demand.criteria,cohort.data)):[];
         for (const match of matched) await recordDemandMatch(c,demand,match);
-        enriched.push({id:demand.id,criteria:demand.criteria,state:demand.state,revision:demand.revision,updatedAt:demand.updatedAt,
+        const {appointment,...criteria}=demand.criteria;
+        const publicAppointment=appointment && Object.fromEntries(Object.entries(appointment).filter(([key])=>key!=='learnerKey'));
+        enriched.push({id:demand.id,criteria,state:demand.state,revision:demand.revision,updatedAt:demand.updatedAt,appointment:publicAppointment,
           matches:matched.map(v=>({id:v.id,level:v.data.level,firstLesson:v.data.firstLesson}))});
       }
-      const interestIds=[...waiting,...demands].map(row=>row.id);
-      const activity=interestIds.length?(await c.query(`SELECT interest_id,
-        DATE_FORMAT(MAX(created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt FROM enrollment_interest_events
-        WHERE JSON_CONTAINS(:p1,JSON_QUOTE(interest_id)) GROUP BY interest_id`,[JSON.stringify(interestIds)])).rows:[];
-      const latestActivity=new Map(activity.map(row=>[row.interest_id,row.updatedAt]));
-      const mostRecent=(row:{id:string;updatedAt:string})=>[row.updatedAt,latestActivity.get(row.id)].filter(Boolean).sort().at(-1);
+      const activity=waiting.length||demands.length?(await c.query(`SELECT e.kind,e.interest_id,
+        DATE_FORMAT(MAX(e.created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt
+        FROM enrollment_waitlist w JOIN enrollment_interest_events e ON e.kind='vacancy' AND e.interest_id=w.id
+        WHERE w.email=:p1 GROUP BY e.kind,e.interest_id
+        UNION ALL
+        SELECT e.kind,e.interest_id,DATE_FORMAT(MAX(e.created_at),'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt
+        FROM enrollment_demands d JOIN enrollment_interest_events e ON e.kind='match' AND e.interest_id=d.id
+        WHERE d.email=:p1 GROUP BY e.kind,e.interest_id`,[email])).rows:[];
+      const latestActivity=new Map(activity.map(row=>[row.kind+':'+row.interest_id,row.updatedAt]));
+      const mostRecent=(row:{id:string;updatedAt:string},kind:'vacancy'|'match')=>
+        [row.updatedAt,latestActivity.get(kind+':'+row.id)].filter(Boolean).sort().at(-1);
       return {
+        verifiedEmail:email,
         waitlist:waiting.map(w=>{
           const current=availability.get(w.class_id);
           const latest=latestWaitlist.get(w.id) ?? w;
           const state=latest.state;
-          return {id:w.id,classId:w.class_id,learnerName:w.learner_name,state,orderId:latest.order_id,available:state==='waiting'&&current?.available,updatedAt:mostRecent(latest),
+          return {id:w.id,classId:w.class_id,learnerName:w.learner_name,state,orderId:latest.order_id,available:state==='waiting'&&current?.available,updatedAt:mostRecent(latest,'vacancy'),
             level:current?.cohort.data.level,firstLesson:current?.cohort.data.firstLesson};
         }),
-        demands:enriched.map(row=>({...row,updatedAt:mostRecent(row)})),
+        demands:enriched.map(row=>({...row,updatedAt:mostRecent(row,'match')})),
       };
     });
     send(r,data);
@@ -244,6 +263,43 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
     }
     const saved=await transact(async c=>{
       const email=await session(c,q);
+      if(q.body?.appointmentId!==undefined){
+        const {appointmentId,forAnother}=q.body;
+        if(typeof appointmentId!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(appointmentId)||revision!==0||!name||
+          typeof forAnother!=='boolean'||criteria.format!=='one-on-one')invalid('enrollment_invalid_demand');
+        await lockEnrollmentEmail(c,email);
+        const actor='enrollment:'+createHash('sha256').update(email).digest('hex');
+        const saved=await operation(c,actor,{requestId:id,appointmentId,criteria,name,forAnother},{leadId:actor,kind:'enrollment.private_lesson'},async()=>{
+          const learnerKey=forAnother?'delegate:'+enrollmentLearnerNameKey(name)+':'+normalizeContactPhone(criteria.phone):'self';
+          const [candidate]=(await c.query("SELECT id FROM enrollment_demands WHERE email=:p1 AND state='active' AND criteria->>'$.appointment.templateId'=:p2 AND CAST(criteria->>'$.appointment.learnerKey' AS BINARY)=CAST(:p3 AS BINARY) LIMIT 1",[email,appointmentId,learnerKey])).rows;
+          // Lock by primary key, as withdrawal and staff confirmation do. Locking
+          // through the email index can deadlock with a withdrawal updating that index.
+          const prior=candidate&&(await c.query('SELECT revision,state,criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE',[candidate.id,email])).rows[0];
+          if(prior?.state==='active'){
+            const {lessons,minutes,total}=prior.criteria.appointment;
+            return {id:candidate.id,revision:Number(prior.revision),reused:true,quote:{lessons,minutes,total}};
+          }
+          const [offer]=await readPublicEnrollmentAppointments(c,appointmentId);
+          if(!offer||offer.level!==criteria.level)invalid('enrollment_appointment_unavailable',409);
+          const appointment:PrivateLessonRegistration={templateId:offer.id,learnerKey,learnerName:name,
+            lessons:offer.lessons,minutes:offer.minutes,total:offer.price*offer.lessons};
+          await c.query("INSERT INTO enrollment_demands(id,email,revision,state,criteria,updated_at) VALUES(:p1,:p2,1,'active',:p3,UTC_TIMESTAMP(6))",
+            [id,email,{...criteria,appointment}]);
+          await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,name,level:criteria.level});
+          await recordEnrollmentAttribution(c,'demand',id,q.body.source);
+          return {id,revision:1,quote:{lessons:appointment.lessons,minutes:appointment.minutes,total:appointment.total}};
+        });
+        // Receipts written before quote snapshots were returned can still use the original registration.
+        if(!saved.quote){
+          const [record]=(await c.query('SELECT state,criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE',[saved.id,email])).rows;
+          const original=record?.criteria?.appointment;
+          if(original?.templateId===appointmentId){
+            const {lessons,minutes,total}=original;
+            return {...saved,quote:{lessons,minutes,total}};
+          }
+        }
+        return saved;
+      }
       const level=['unsure','other'].includes(criteria.level)?undefined:criteria.level;
       const existing=(await c.query('SELECT email,revision,state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE',[id])).rows[0];
       if (!existing) {
@@ -256,25 +312,31 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
         return 1;
       }
       if(existing.email!==email) invalid('enrollment_interest_not_found',404);
-      if(existing.state!=='active') invalid('enrollment_demand_conflict',409);
+      const appointment=existing.criteria.appointment;
+      if(existing.state!=='active'||appointment&&(appointment.confirmation||
+        criteria.level!==existing.criteria.level||criteria.format!==existing.criteria.format||criteria.phone!==existing.criteria.phone)) {
+        invalid('enrollment_demand_conflict',409);
+      }
       if(Number(existing.revision)!==revision){
         const same=Object.entries(criteria!).every(([key,value])=>existing.criteria[key]===value);
         if(Number(existing.revision)===revision+1 && same) return Number(existing.revision);
         invalid('enrollment_demand_conflict',409);
       }
-      await c.query('UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2',[criteria,id]);
-      await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,level});
+      await c.query('UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2',
+        [appointment?{...criteria,appointment}:criteria,id]);
+      if(!appointment)await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,level});
       return revision+1;
     });
-    send(r,{id,revision:saved});
+    send(r,typeof saved==='number'?{id,revision:saved}:{id:saved.id,revision:saved.revision,reused:saved.reused,quote:saved.quote});
   });
 
   post(base+'/demands/:id/withdraw',async(q,r)=>{
     await transact(async c=>{
       const email=await session(c,q);
-      const row=(await c.query('SELECT state FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE',[q.params.id,email])).rows[0];
+      const row=(await c.query('SELECT state,criteria FROM enrollment_demands WHERE id=:p1 AND email=:p2 FOR UPDATE',[q.params.id,email])).rows[0];
       if(!row) invalid('enrollment_interest_not_found',404);
       if(row.state==='withdrawn') return;
+      if(row.criteria?.appointment?.confirmation)invalid('enrollment_demand_conflict',409);
       await c.query("UPDATE enrollment_demands SET state='withdrawn',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",[q.params.id]);
     });
     send(r,{ok:true});

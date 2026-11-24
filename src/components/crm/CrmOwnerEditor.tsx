@@ -13,7 +13,7 @@ export function CrmOwnerEditor({lead,directory,lang,isLight,onDirty,onBusy,onSav
  const command=useRef<any>(null),checking=state==='checking',busy=state==='saving'||checking,unknown=state==='unknown'||checking;
  const name=(id:string)=>directory.find((e:any)=>e.id===id)?.displayName||id||t('未分配','Unassigned','Belum ditugaskan');
  const input=(next:string,why:string)=>{setOwner(next);setReason(why);setState('');setError('');command.current=null;onDirty(Boolean(next||why));};
- const saved=(receipt:any,profile?:any)=>{if(receipt?.requestId===command.current?.ownerChangeRequestId&&profile?.id===lead.id&&receipt.after===profile.owner)trackReceipt('crm_owner_changed',receipt.requestId,{operation:'owner'});setState('saved');onDirty(false);onSaved(profile||{...lead,owner:receipt.after,ownerChangedAt:receipt.changedAt});};
+ const saved=(receipt:any,profile?:any)=>{if(receipt?.requestId===command.current?.ownerChangeRequestId&&profile?.id===lead.id&&receipt.after===profile.owner)trackReceipt('crm_owner_changed',receipt.requestId,{operation:'owner'});onDirty(false);onSaved(profile||{...lead,owner:receipt.after,ownerChangedAt:receipt.changedAt});};
  const save=async()=>{
   if(busy||unknown)return;
   if(!owner||owner===lead.owner){setError(t('请选择不同的接收销售','Choose a different salesperson','Pilih staf penjualan lain'));return;}
@@ -25,7 +25,7 @@ export function CrmOwnerEditor({lead,directory,lang,isLight,onDirty,onBusy,onSav
     setError(t('保存结果待核对，请先查询结果，勿重复提交。','Check the save result before submitting again.','Periksa hasil sebelum mengirim ulang.'));
   };
   try{
-    const r=await fetch(`/api/crm/leads/${lead.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const r=await fetch(`/api/crm/leads/${lead.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
     if(r.status>=500){unconfirmed();return;}
     const d=await r.json();
     if(!r.ok){
@@ -42,7 +42,7 @@ export function CrmOwnerEditor({lead,directory,lang,isLight,onDirty,onBusy,onSav
   setState('checking');onBusy(true);
   try{
     const requestId=command.current.ownerChangeRequestId;
-    const r=await fetch(`/api/crm/leads/${lead.id}/owner-result/${requestId}`,{cache:'no-store'});
+    const r=await fetch(`/api/crm/leads/${lead.id}/owner-result/${requestId}`,{cache:'no-store',signal:AbortSignal.timeout(15000)});
     if(r.status===404){
       setState('not_found');
       setError(t('暂未查到原操作，输入已保留。可继续查询或重试原请求。','No result yet. Your input is retained. Check again or retry the original request.','Hasil belum ditemukan. Isian tersimpan. Periksa lagi atau ulangi permintaan awal.'));
@@ -64,6 +64,6 @@ export function CrmOwnerEditor({lead,directory,lang,isLight,onDirty,onBusy,onSav
  <AdminField required={Boolean(lead.owner)}>{t(lead.owner?'交接说明':'分配说明',lead.owner?'Handover note':'Assignment note',lead.owner?'Catatan serah terima':'Catatan penugasan')}<textarea aria-label={t(lead.owner?'交接说明':'分配说明',lead.owner?'Handover note':'Assignment note',lead.owner?'Catatan serah terima':'Catatan penugasan')} aria-required={Boolean(lead.owner)} maxLength={2000} value={reason} disabled={busy||unknown||state==='not_found'} onChange={e=>input(owner,e.target.value)}/></AdminField>
  {owner&&<p>{name(lead.owner)} → {name(owner)}</p>}
  </CrmFormSection>
- {error&&<CrmSaveFeedback lang={lang} state={unknown||state==='not_found'?'unknown':'error'}>{ui(error)}</CrmSaveFeedback>}{state==='saved'&&<CrmSaveFeedback lang={lang} state="saved"/>}
+ {error&&<CrmSaveFeedback lang={lang} state={unknown||state==='not_found'?'unknown':'error'}>{ui(error)}</CrmSaveFeedback>}
  </div><AdminFormActions className="crm-editor-actions">{(unknown||state==='not_found')&&<button type="button" className="crm-work-button" disabled={checking} onClick={query}>{t('查询保存结果','Check save result','Periksa hasil simpan')}</button>}{!unknown&&<button type="button" className="crm-work-button" data-primary disabled={busy||!owner||Boolean(lead.owner&&!reason.trim())} onClick={save}>{state==='not_found'?t('重试原请求','Retry original request','Ulangi permintaan awal'):t(lead.owner?'确认更换':'确认分配',lead.owner?'Confirm owner change':'Confirm assignment',lead.owner?'Konfirmasi perubahan penanggung jawab':'Konfirmasi penugasan')}</button>}</AdminFormActions></div>;
 }

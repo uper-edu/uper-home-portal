@@ -17,12 +17,30 @@ export function approvedLocalEnrollmentSocketOrWindows(
   }
 }
 
-export function enrollmentSimulation(env: Record<string, string | undefined> = process.env, platform = process.platform) {
+export function isLocalEnrollmentRuntime(
+  env: Record<string, string | undefined> = process.env,
+  platform = process.platform,
+) {
+  return env.PORTAL_ENV === 'dev' && env.TRIAL_DATASET === 'local-crm' &&
+    env.PORTAL_DEPLOYMENT !== 'remote-dev' && env.PORTAL_LOCAL_CUTOVER === 'true' &&
+    approvedLocalEnrollmentSocketOrWindows(env, platform);
+}
+
+function isIsolatedTestMailbox(env: Record<string, string | undefined>) {
+  if (env.PORTAL_ENV !== 'test' || env.PORTAL_DEPLOYMENT !== 'company-trial' ||
+      env.TRIAL_DATASET !== 'synthetic') return false;
+  const database = env.PORTAL_ENROLLMENT_SIMULATION_DATABASE;
+  const url = URL.parse(env.MYSQL_TRIAL_URL ?? '');
+  return Boolean(database && /^uper_trial_[a-z0-9_]+$/.test(database) &&
+    url?.protocol === 'mysql:' && url.pathname === '/' + database);
+}
+
+export function enrollmentSimulation(
+  env: Record<string, string | undefined> = process.env,
+  platform = process.platform,
+) {
   const directory = env.PORTAL_ENROLLMENT_SIMULATION_MAILBOX;
-  if (env.PORTAL_ENV !== 'dev' || env.TRIAL_DATASET !== 'local-crm' ||
-      env.PORTAL_DEPLOYMENT === 'remote-dev' || env.PORTAL_LOCAL_CUTOVER !== 'true' ||
-      !approvedLocalEnrollmentSocketOrWindows(env, platform) ||
-      env.PORTAL_WORKER_ENABLED !== 'false' || env.PORTAL_GA_API_SECRET ||
+  if ((!isLocalEnrollmentRuntime(env, platform) && !isIsolatedTestMailbox(env)) ||
       !directory || !isAbsolute(directory)) return null;
   type Message={subject:string;html:string;text:string;language:string};
   async function deliver(id:string,email:string,message:Message,code?:string){

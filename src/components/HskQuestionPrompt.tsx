@@ -28,7 +28,7 @@ export function HskQuestionPrompt({
     );
   const parts = text.split(/\n\s*\n(?=★)/u);
   const passage = parts.slice(0, -1).join("\n\n");
-  const prompt = parts.length > 1 ? parts.at(-1)!.replace(/^★\s*/u, "") : text;
+  const prompt = parts.length > 1 ? parts[parts.length - 1].replace(/^★\s*/u, "") : text;
   return (
     <div className="space-y-3" data-hsk-passage>
       {passage && (

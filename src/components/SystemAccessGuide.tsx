@@ -1,5 +1,5 @@
 import {useEffect,type CSSProperties} from 'react';
-import {CrmPageIdentity} from './crm/CrmPageIdentity';
+import {AdminPageHeader} from './admin/AdminPageHeader';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminRowAction} from './admin/AdminListControl';
 import {AdminFormGuide} from './AdminFormGuide';
@@ -28,13 +28,13 @@ const chapters=[
      'Otorisasi akun Lark perusahaan dan konfirmasi identitas yang ditampilkan. Notifikasi opsional yang tersedia dapat diatur setelah terhubung.',
      '授权公司 Lark 账号并核对显示的身份，确认绑定后可设置已开放的可选通知。'],
   ]},
-  {id:'ai',title:['AI services','Layanan AI','AI 服务'],steps:[
-    ['Authorized AI administrators can open AI services and review the active primary and fallback models.',
-     'Administrator AI yang berwenang dapat membuka Layanan AI dan melihat model utama serta cadangan yang aktif.',
-     '有 AI 服务管理权限时，进入「AI服务配置」，核对当前生效的主模型和备用模型。'],
-    ['Choose the models and test them before saving. If the outcome is unclear, query the current result before trying again.',
-     'Pilih dan uji model sebelum menyimpan. Jika hasil belum jelas, periksa hasil terkini sebelum mencoba lagi.',
-     '选择模型后先测试再保存。结果未确认时，先点「查询当前结果」，再决定是否重试。'],
+  {id:'ai',title:['AI model services','Layanan model AI','AI 模型服务'],steps:[
+    ['Open Integrations → AI model services to edit the active primary and fallback models and check provider credentials.',
+     'Buka Integrasi → Layanan model AI untuk mengubah model utama dan cadangan aktif serta memeriksa kredensial penyedia.',
+     '打开「集成配置 → AI 模型服务」，可调整生效的主备模型，并核对供应商凭证状态。'],
+    ['Use Test & save to apply changes after both models pass. If the outcome is unclear, select Check result before trying again.',
+     'Pilih Uji & simpan untuk menerapkan perubahan setelah kedua model lulus. Jika hasil belum jelas, pilih Periksa hasil sebelum mencoba lagi.',
+     '修改后点「测试并保存」，主备都通过才生效。结果未确认时，先点「核对本次结果」。'],
   ]},
   {id:'environment',title:['Version and test environment','Versi dan lingkungan uji','版本与测试环境'],steps:[
     ['Open Version and environment from your account menu to check the build and source commit.',
@@ -48,9 +48,7 @@ const chapters=[
     ['If another authorized administrator can sign in, use the normal credential reset procedure first.',
      'Jika administrator berwenang lain masih dapat masuk, gunakan prosedur reset kredensial biasa terlebih dahulu.',
      '如果其他有权管理员还能登录，优先通过用户详情的账号管理操作重置密码。'],
-    ['A full system administrator can open Users & access → More actions → Administrator recovery to issue authorization or check a result by operation ID.',
-     'Administrator sistem dengan izin lengkap dapat membuka Pengguna & akses → Tindakan lain → Pemulihan administrator untuk menerbitkan izin atau memeriksa hasil dengan ID operasi.',
-     '完整系统管理员可从「用户与权限 → 更多操作 → 管理员恢复」签发授权，或凭操作 ID 查询结果。'],
+
     ['If business access is locked after a restore, follow the security review link at the top of System Management and complete the required account checks before release.',
      'Jika akses bisnis dikunci setelah pemulihan, buka tinjauan keamanan dari bagian atas Manajemen Sistem dan selesaikan pemeriksaan akun sebelum membuka akses.',
      '恢复后业务访问被锁定时，从系统管理顶部进入安全复核，完成账号核对并满足放行条件后再解除限制。'],
@@ -66,8 +64,8 @@ const references=[
   [continuity],
 ];
 
-export function SystemAccessGuide({lang,canAudit,canAi,canTest,canRecover,shellHeight,onNavigate}:{
-  lang:CrmLanguage;canAudit:boolean;canAi:boolean;canTest:boolean;canRecover:boolean;shellHeight:number;onNavigate:(href:string)=>void;
+export function SystemAccessGuide({lang,canAudit,canAi,canTest,shellHeight,onNavigate}:{
+  lang:CrmLanguage;canAudit:boolean;canAi:boolean;canTest:boolean;shellHeight:number;onNavigate:(href:string)=>void;
 }){
   useEffect(()=>{
     const id=window.location.hash.slice(1);
@@ -82,11 +80,13 @@ export function SystemAccessGuide({lang,canAudit,canAi,canTest,canRecover,shellH
   }}>{label[col]}</AdminRowAction>;
   const links=[
     <>{link('users',['Users','Pengguna','用户'])}{link('roles',['Roles','Peran','角色'])}{canAudit&&link('audit',['Change audit','Audit perubahan','变更审计'])}</>,
-    null,canAi&&link('ai',['AI services','Layanan AI','AI服务配置']),
+    null,canAi&&link('credentials&credentialTopic=llm',['AI model services','Layanan model AI','AI 模型服务']),
     canTest&&link('test',['Test environment & accounts','Lingkungan uji & akun','测试环境和账号']),
-    canRecover&&link('recovery',['Administrator recovery','Pemulihan administrator','管理员恢复']),
   ];
-  return <article className="system-access-guide" style={{"--system-guide-header":shellHeight+"px"} as CSSProperties}>
+  return <><AdminPageHeader title={['System management guide','Panduan manajemen sistem','系统管理使用指南'][col]}
+    subtitle={['Find the steps and permissions for account management, integrations and recovery.',
+      'Temukan langkah dan izin untuk mengelola akun, integrasi, dan pemulihan.','按任务查找账号管理、集成配置和管理员恢复的步骤与所需权限。'][col]}/>
+  <article className="system-access-guide" style={{"--system-guide-header":shellHeight+"px"} as CSSProperties}>
     <nav className="access-card system-guide-contents" aria-label={['On this page','Di halaman ini','本页目录'][col]}>
       <h2>{['On this page','Di halaman ini','本页目录'][col]}</h2>
       <ol>{chapters.map(chapter=><li key={chapter.id}>
@@ -103,9 +103,6 @@ export function SystemAccessGuide({lang,canAudit,canAi,canTest,canRecover,shellH
       </li>)}</ol>
     </nav>
     <div className="system-guide-body">
-      <header className="admin-page-toolbar">
-        <CrmPageIdentity title={['System management guide','Panduan manajemen sistem','系统管理使用指南'][col]}/>
-      </header>
     {chapters.map((chapter,index)=><section className="access-card system-guide-chapter" key={chapter.id}
       id={'guide-'+chapter.id} tabIndex={-1} aria-labelledby={'guide-title-'+chapter.id}>
       <h2 id={'guide-title-'+chapter.id}>{chapter.title[col]}</h2>
@@ -121,5 +118,5 @@ export function SystemAccessGuide({lang,canAudit,canAi,canTest,canRecover,shellH
       </AdminDisclosure>)}
     </section>)}
     </div>
-  </article>;
+  </article></>;
 }

@@ -13,14 +13,15 @@ import { validMutationOrigin } from './accessTransport.ts';
 import { assignNewLead } from './autoAssignment.ts';
 import { canonicalIdentity, lockIdentityRegistry } from './identityConsolidation.ts';
 import { discoverIdentity, identityControls, pendingIdentity } from './identityReview.ts';
-import { fact, invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
+import { contactPhoneLookupDigits, fact, invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 import { opportunitySourceKind, type OpportunitySourceRef } from '../../src/utils/crmOpportunitySources.ts';
 import { salesProgressContext } from './salesProgress.ts';
 import { enrollmentOpportunityLevels } from '../../src/utils/enrollmentCatalog.ts';
 import { latestAssistanceMail } from './enrollmentNotices.ts';
+import { lockPurchaseIntentSuggestion, purchaseIntentReviewable, readOpportunityChatEvidence, recordPurchaseIntentReview } from './purchaseIntentSuggestions.ts';
 
-type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[]}> };
+type Client = { query: (sql: string, params?: unknown[]) => Promise<{rows: any[];rowCount?:number}> };
 type RecordKind = 'order' | 'waitlist' | 'demand';
 type Submission = { kind: RecordKind; id: string; email: string; phone: string; name?: string; level?: string; emailVerified?: boolean };
 
@@ -39,7 +40,7 @@ async function identityForSubmission(c: Client, { email, phone, name, emailVerif
   const normalized = normalizeContactPhone(phone);
   const anchors = emailVerified ? (await c.query(`SELECT id,profile FROM portal_leads
     WHERE LOWER(profile->>'$.email')=:p1 AND profile->>'$.enrollmentEmailVerified'='true'`, [email])).rows : [];
-  const compatible = anchors.filter(row => normalizeContactPhone(row.profile.whatsapp) === normalized &&
+  const compatible = anchors.filter(row => normalized && normalizeContactPhone(row.profile.whatsapp) === normalized &&
     (!name || enrollmentLearnerNameKey(name) === enrollmentLearnerNameKey(row.profile.fullName)));
   // An identical registration already held for review may add facts to that same submission.
   const roots = new Map();
@@ -50,8 +51,9 @@ async function identityForSubmission(c: Client, { email, phone, name, emailVerif
   if (roots.size === 1 && (name || anchors.length === 1)) {
     const root = [...roots.values()][0];
     const aliases = (await c.query(`SELECT id,profile FROM portal_leads
-      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)`,
-    [email,normalized,normalized.startsWith('62')?'0'+normalized.slice(2):normalized,'00'+normalized])).rows;
+      WHERE LOWER(profile->>'$.email')=:p1 OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','')
+        IN (SELECT phone FROM JSON_TABLE(:p2,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)`,
+    [email,JSON.stringify(contactPhoneLookupDigits(phone))])).rows;
     const otherMatches = aliases.filter(row => row.id !== root.id && row.profile.identityMergedInto !== root.id);
     if (!otherMatches.length || root.profile.identityLifecycle === 'pending') return root;
     // Respect human decisions on a previously confirmed group with shared contacts.
@@ -106,7 +108,7 @@ const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.
     CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
       AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'
       ELSE COALESCE(o.state,w.state,d.state) END AS state,
-    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name) AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,
+    o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name,d.criteria->>'$.appointment.learnerName') AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,
     CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (
       SELECT 1 FROM enrollment_receipts v WHERE v.order_id=o.id
         AND v.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')
@@ -131,7 +133,10 @@ function displayRecord(row: any) {
     class:row.class_data ? {id:row.class_id,level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,
-    attribution:row.attribution?{entry:row.attribution.entry,via:row.attribution.via,source:row.attribution.source,campaign:row.attribution.campaign,verified:row.attribution.verified}:null,
+    ...(row.criteria?.appointment&&{appointment:{confirmation:row.criteria.appointment.confirmation??null}}),
+    attribution:row.attribution?{entry:row.attribution.entry,via:row.attribution.via,source:row.attribution.source,campaign:row.attribution.campaign,
+      campaignId:row.attribution.campaignId,promotionId:row.attribution.promotionId,
+      promotionName:row.attribution.promotionName,verified:row.attribution.verified}:null,
     latestNotice:row.latest_notice,
   };
 }
@@ -139,6 +144,44 @@ function displayRecord(row: any) {
 function recordOpportunityLevel(row:any):string|undefined {
   const level=row.class_data?.level??row.criteria?.level;
   if(enrollmentOpportunityLevels.includes(level))return level;
+}
+
+async function attachUnassignedEnrollmentRecord(c:Client,customerId:string,actor:string,row:{kind:RecordKind;record_id:string},opportunityId:string,via?:'identity_review'|'purchase_intent'){
+  const changed=await c.query(`UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3
+    AND opportunity_id IS NULL`,[opportunityId,row.kind,row.record_id]);
+  if(changed.rowCount!==1)invalid('enrollment_opportunity_already_linked',409);
+  await c.query('UPDATE enrollment_opportunities SET revision=revision+1 WHERE id=:p1',[opportunityId]);
+  await fact(c,customerId,'enrollment.opportunity.linked',actor,{opportunityId,recordId:row.record_id,kind:row.kind,...(via?{via}:{})});
+}
+
+/** Call from a transaction holding the identity registry lock. */
+async function reconcileEnrollmentRecords(c:Client,customerId:string,actor:string,intentLevel?:string){
+  const customer=await canonicalIdentity(c,customerId);
+  if(!customer||customer.profile.identityLifecycle==='pending')return;
+  const rows=(await c.query(courseRecords+` JOIN portal_leads l ON l.id=r.lead_id
+    WHERE (l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1) AND r.opportunity_id IS NULL
+    ORDER BY r.created_at,r.record_id`,[customer.id])).rows;
+  const byLevel=new Map<string,typeof rows>();
+  for(const row of rows){
+    const level=recordOpportunityLevel(row);
+    if(!level||!row.state||intentLevel&&(level!==intentLevel||row.kind!=='order'))continue;
+    const group=byLevel.get(level)??[];
+    group.push(row);
+    byLevel.set(level,group);
+  }
+  for(const [level,unlinked] of byLevel){
+    const candidates=await activeOpportunityCandidates(c,customer,level);
+    if(candidates.length!==1)continue;
+    const [{id}]=candidates;
+    const prior=await recordsForOpportunity(c,id);
+    // Several standalone orders can represent separate purchases at one level.
+    if([...prior,...unlinked].filter(row=>row.kind==='order').length>1)continue;
+    for(const row of unlinked)await attachUnassignedEnrollmentRecord(c,customer.id,actor,row,id,intentLevel?'purchase_intent':'identity_review');
+  }
+}
+
+export async function reconcileEnrollmentAfterIdentityReview(c:Client,customerId:string,actor:string){
+  await reconcileEnrollmentRecords(c,customerId,actor);
 }
 
 function projectOpportunity(row: any, records: ReturnType<typeof displayRecord>[], profile: any) {
@@ -160,6 +203,10 @@ const isOpenOpportunity=(row:ReturnType<typeof projectOpportunity>)=>
   !['enrolled','closed'].includes(row.state)&&row.salesStage!=='progress:closed';
 const canProgress=(actor:Employee,profile:any)=>profile.identityLifecycle!=='pending'&&permittedRecord(actor,profile,'crm.followup');
 
+function canAssistOpportunity(row:ReturnType<typeof projectOpportunity>){
+  return isOpenOpportunity(row)&&!row.records.some(record=>record.kind==='order'&&!['ended','expired'].includes(record.state));
+}
+
 export async function assistedEnrollmentOpportunity(c:Client,id:string,actor?:Employee) {
   const row=(await c.query('SELECT * FROM enrollment_opportunities WHERE id=:p1 FOR UPDATE',[id])).rows[0];
   const customer=row&&await canonicalIdentity(c,row.lead_id);
@@ -168,8 +215,7 @@ export async function assistedEnrollmentOpportunity(c:Client,id:string,actor?:Em
   if(customer.profile.identityLifecycle==='pending'||(await pendingIdentity(c,customer.id)).length)
     invalid('enrollment_assistance_identity',409);
   const records=await recordsForOpportunity(c,id);
-  if(!isOpenOpportunity(projectOpportunity(row,records,customer.profile))
-    ||records.some(record=>record.kind==='order'&&!['ended','expired'].includes(record.state)))
+  if(!canAssistOpportunity(projectOpportunity(row,records,customer.profile)))
     invalid('enrollment_assistance_existing_order',409);
   return {customer,level:String(row.level)};
 }
@@ -178,10 +224,11 @@ export async function validateAssistedContacts(c:Client,customer:{id:string;prof
   const profile=customer.profile, digits=normalizeContactPhone(phone);
   if(enrollmentLearnerNameKey(name)!==enrollmentLearnerNameKey(profile.fullName??'')
     ||profile.email&&String(profile.email).trim().toLowerCase()!==email
-    ||profile.whatsapp&&normalizeContactPhone(profile.whatsapp)!==digits) invalid('enrollment_assistance_identity',409);
+    ||profile.whatsapp&&(!digits||normalizeContactPhone(profile.whatsapp)!==digits)) invalid('enrollment_assistance_identity',409);
   const matches=(await c.query(`SELECT id,profile FROM portal_leads WHERE LOWER(profile->>'$.email')=:p1
-    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','') IN (:p2,:p3,:p4)`,
-    [email,digits,digits.startsWith('62')?'0'+digits.slice(2):digits,'00'+digits])).rows;
+    OR REGEXP_REPLACE(profile->>'$.whatsapp','[^0-9]','')
+      IN (SELECT phone FROM JSON_TABLE(:p2,'$[*]' COLUMNS(phone VARCHAR(40) PATH '$')) AS contact_phones)`,
+    [email,JSON.stringify(contactPhoneLookupDigits(phone))])).rows;
   if(matches.some(match=>match.id!==customer.id&&match.profile.identityMergedInto!==customer.id))
     invalid('enrollment_assistance_identity',409);
 }
@@ -205,7 +252,7 @@ const canChangeEnrollmentEmail = async (c:Client, actor:Employee, customer:{id:s
   actor.permissions.includes('crm.write') && canReviewIdentityRole(actor,await identityControls(c)) &&
   permittedRecord(actor,customer.profile,'crm.write') && canProgress(actor,customer.profile) &&
   !(await pendingIdentity(c,customer.id)).length;
-type OpportunityProfile={id:string;enrollmentOpportunitySummary?:{count:number;only?:{id:string;level:string;stage:string}}};
+type OpportunityProfile={id:string;enrollmentOpportunitySummary?:{count:number;hasEnrollment?:true;only?:{id:string;level:string;stage:string}}};
 
 function opportunityAgreement(profile:any,id:string) {
   const sources=new Set((profile.followUpLogs??[]).filter((log:any)=>log.result?.opportunity?.id===id)
@@ -272,6 +319,7 @@ export async function attachEnrollmentOpportunitySummaries(c:Client,profiles:Opp
     const summary=summaries.get(row.customer_id);
     if(!summary)continue;
     const opportunity=projectOpportunity(row,records.get(row.id)??[],{id:row.customer_id});
+    if(opportunity.state==='enrolled')summary.hasEnrollment=true;
     if(!isOpenOpportunity(opportunity))continue;
     summary.count++;
     if(summary.count===1) summary.only={id:opportunity.id,level:opportunity.level,stage:opportunity.salesStage};
@@ -311,10 +359,11 @@ export async function linkEnrollmentOpportunity(c:Client,leadId:string,link:any)
   return {id:row.id,revision:current.revision+1,stage:link.stage??current.salesStage,...(sourceRefs.length?{sourceRefs}:{})};
 }
 
-export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProgress }:{
+export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProgress, servicing }:{
   wrap:(fn:(q:Request,r:Response)=>Promise<unknown>)=>(q:Request,r:Response)=>void;
   staff:(q:Request,permission:string)=>Promise<Employee>;
   transact:(fn:(c:Client)=>Promise<any>)=>Promise<any>;
+  servicing:boolean;
   saveProgress:(c:Client,leadId:string,actor:string,body:any,canWrite:(profile:any)=>boolean)=>Promise<any>;
 }) {
   const read = (fn:(c:Client,q:Request,actor:Employee)=>Promise<unknown>) => wrap(async(q,r)=>{
@@ -339,8 +388,12 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       ORDER BY o.created_at DESC,o.id`,[customer?.id??null])).rows.filter(row=>readProfile(actor,row.profile));
     const recordsById=await opportunityRecordsById(c,rows);
     const tasks=await opportunityTasks(c,rows.filter(row=>canProgress(actor,row.profile)).map(row=>row.profile));
-    const opportunities=rows.map(row=>({...attachOpportunityActions(actor,row.profile,
-      projectOpportunity(row,recordsById.get(row.id)??[],row.profile),tasks),assistanceDueAt:row.assistanceDueAt}));
+    const opportunities=rows.map(row=>{
+      const current=projectOpportunity(row,recordsById.get(row.id)??[],row.profile);
+      const actions=attachOpportunityActions(actor,row.profile,current,tasks);
+      return {...actions,assistanceDueAt:row.assistanceDueAt,
+        canAssist:servicing&&actions.canProgress&&canAssistOpportunity(current)&&!row.assistanceDueAt};
+    });
     return {opportunities,customer:customer?{id:customer.id,name:customer.profile.fullName}:undefined};
   }));
   app.get('/api/crm/opportunities/:id',read(async(c,q,actor)=>{
@@ -372,11 +425,13 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
         return source&&opportunitySourceKind(source)?[source]:[];
       }):[],
     })).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id));
+    const chatEvidence=current.records.length?await readOpportunityChatEvidence(c,customer.profile,row.id,row.level,
+      new Set(progress.flatMap(entry=>entry.sources.filter(source=>source.type==='customer_message').map(source=>source.id)))):[];
     const tasks=await opportunityTasks(c,canProgress(actor,customer.profile)?[customer.profile]:[]);
     const actions=attachOpportunityActions(actor,customer.profile,current,tasks);
     const assistance=actions.canProgress?{
       email:customer.profile.email||'',phone:customer.profile.whatsapp||'',
-      allowed:!current.records.some(record=>record.kind==='order'&&!['ended','expired'].includes(record.state)),
+      allowed:servicing&&canAssistOpportunity(current),
     }:undefined;
     const assistanceHistory=(await c.query(`SELECT id,class_id AS classId,order_id AS orderId,actor,
       data->>'$.lang' AS lang,expires_at>UTC_TIMESTAMP(6) AS active,
@@ -384,10 +439,91 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       DATE_FORMAT(confirmed_at,'%Y-%m-%dT%H:%i:%sZ') AS confirmedAt FROM enrollment_assisted_applications
       WHERE opportunity_id=:p1 ORDER BY created_at DESC,id LIMIT 1`,[row.id])).rows[0];
     const mail=assistanceHistory?await latestAssistanceMail(c,assistanceHistory.id):undefined;
-    return {...actions,progress,emails,assistance,
+    return {...actions,progress,emails,chatEvidence,assistance,
       assistanceDueAt:Number(assistanceHistory?.active)===1&&!assistanceHistory?.orderId?assistanceHistory.expiresAt:undefined,
       assistanceHistory:assistanceHistory&&{...assistanceHistory,mail}};
   }));
+  app.get('/api/crm/leads/:id/enrollment-opportunities',read(async(c,q,actor)=>{
+    const customer=await canonicalIdentity(c,String(q.params.id));
+    if(!customer || !readProfile(actor,customer.profile)) invalid('enrollment_customer_not_found',404);
+    if(q.query.level!==undefined){
+      const level=q.query.level;
+      if(typeof level!=='string'||!enrollmentOpportunityLevels.includes(level)) invalid('enrollment_invalid_opportunity_progress');
+      if(!canProgress(actor,customer.profile)) invalid('enrollment_opportunity_progress_forbidden',403);
+      if(!servicing) invalid('enrollment_opportunity_progress_unavailable',503);
+      const candidates=await activeOpportunityCandidates(c,customer,level);
+      return {opportunities:candidates.map(row=>({id:row.id}))};
+    }
+    if(!canProgress(actor,customer.profile)) return {opportunities:[]};
+    const rows=(await c.query(`SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id
+      WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY o.created_at DESC,o.id`,[customer.id])).rows;
+    const options=[];
+    for(const row of rows){
+      const current=projectOpportunity(row,await recordsForOpportunity(c,row.id),customer.profile);
+      if(isOpenOpportunity(current)) options.push({
+        id:current.id,level:current.level,state:current.state,salesStage:current.salesStage,revision:current.revision,
+      });
+    }
+    return {opportunities:options};
+  }));
+
+  app.post('/api/crm/leads/:id/purchase-intent-dismissal',wrap(async(q,r)=>{
+    if(!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);
+    const actor=await staff(q,'crm.followup');
+    const result=await transact(async c=>{
+      await lockIdentityRegistry(c);
+      const customer=await canonicalIdentity(c,String(q.params.id));
+      if(!customer||!readProfile(actor,customer.profile)) invalid('enrollment_customer_not_found',404);
+      if(!purchaseIntentReviewable(actor,customer.profile)||(await pendingIdentity(c,customer.id)).length)
+        invalid('enrollment_opportunity_progress_forbidden',403);
+      return operation(c,actor.id,q.body??{},{leadId:customer.id,kind:'purchase_intent.dismiss'},async()=>{
+        const suggestion=await lockPurchaseIntentSuggestion(c,customer.profile,q.body.suggestionId);
+        await recordPurchaseIntentReview(c,actor.id,suggestion,'dismissed');
+        return {suggestionId:suggestion.id};
+      });
+    });
+    r.set('Cache-Control','no-store').json(result);
+  }));
+
+  // CRM can read existing opportunities independently of Enrollment servicing.
+  if (!servicing) return;
+
+  app.post('/api/crm/opportunities/:id/private-lessons/:recordId',wrap(async(q,r)=>{
+    if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
+    const actor=await staff(q,'crm.followup');
+    const opportunityId=String(q.params.id);
+    const recordId=String(q.params.recordId);
+    const {firstLessonAt,teacher,schedule}=q.body??{};
+    if(typeof firstLessonAt!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(firstLessonAt)||
+      !Number.isFinite(Date.parse(firstLessonAt))||new Date(firstLessonAt).toISOString()!==firstLessonAt||
+      typeof teacher!=='string'||!teacher.trim()||teacher.length>120||typeof schedule!=='string'||schedule.length>600)invalid('enrollment_invalid_appointment');
+    const confirmation={firstLessonAt,teacher:teacher.trim(),schedule:schedule.trim()};
+    const result=await transact(async c=>{
+      const [row]=(await c.query('SELECT state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE',[recordId])).rows;
+      const appointment=row?.criteria?.appointment;
+      if(!appointment)invalid('enrollment_interest_not_found',404);
+      await lockIdentityRegistry(c);
+      const opportunity=(await c.query('SELECT * FROM enrollment_opportunities WHERE id=:p1',[opportunityId])).rows[0];
+      const customer=opportunity&&await canonicalIdentity(c,opportunity.lead_id);
+      if(!customer||!readProfile(actor,customer.profile))invalid('enrollment_opportunity_not_found',404);
+      const records=await recordsForOpportunity(c,opportunityId);
+      if(!canProgress(actor,customer.profile)||!isOpenOpportunity(projectOpportunity(opportunity,records,customer.profile)))
+        invalid('enrollment_opportunity_progress_forbidden',403);
+      if(!records.some(record=>record.kind==='demand'&&record.id===recordId))invalid('enrollment_interest_not_found',404);
+      if(row.state!=='active')invalid('enrollment_demand_conflict',409);
+      if(appointment.confirmation){
+        if(appointment.confirmation.firstLessonAt===confirmation.firstLessonAt&&appointment.confirmation.teacher===confirmation.teacher&&
+          appointment.confirmation.schedule===confirmation.schedule)return {confirmation:appointment.confirmation};
+        invalid('enrollment_demand_conflict',409);
+      }
+      await c.query('UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2',
+        [{...row.criteria,appointment:{...appointment,confirmation}},recordId]);
+      await fact(c,customer.id,'enrollment.private_lesson.confirmed',actor.id,{recordId,opportunityId,...confirmation});
+      return {confirmation};
+    });
+    r.set('Cache-Control','no-store').json(result);
+  }));
+
   app.post('/api/crm/opportunities/:id/progress',wrap(async(q,r)=>{
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);
     const actor=await staff(q,'crm.followup');
@@ -414,17 +550,22 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
   app.post('/api/crm/leads/:id/enrollment-opportunities',wrap(async(q,r)=>{
     if(!validMutationOrigin(q)) invalid('enrollment_origin_rejected',403);
     const actor=await staff(q,'crm.followup');
-    const {level,note,requestId,sourceRefs}=q.body??{};
+    const {level,note,requestId,sourceRefs,expectedOpportunityId,purchaseIntentSuggestionId}=q.body??{};
     if(!enrollmentOpportunityLevels.includes(level)||typeof note!=='string'||!note.trim()||note.length>2000)
       invalid('enrollment_invalid_opportunity_progress');
+    if(expectedOpportunityId!==undefined&&expectedOpportunityId!==null&&
+      (typeof expectedOpportunityId!=='string'||!/^[a-f0-9-]{36}$/i.test(expectedOpportunityId))) invalid('enrollment_invalid_opportunity_progress');
     const result=await transact(async c=>{
       await lockIdentityRegistry(c);
       const customer=await canonicalIdentity(c,String(q.params.id));
       if(!customer||!readProfile(actor,customer.profile)) invalid('enrollment_customer_not_found',404);
       if(!canProgress(actor,customer.profile)) invalid('enrollment_opportunity_progress_forbidden',403);
       return operation(c,actor.id,q.body,{leadId:customer.id,kind:'enrollment.opportunity.open'},async()=>{
+        const suggestion=purchaseIntentSuggestionId===undefined?undefined:await lockPurchaseIntentSuggestion(c,customer.profile,purchaseIntentSuggestionId);
         const active=await activeOpportunityCandidates(c,customer,level);
         if(active.length>1) invalid('enrollment_opportunity_selection_required',409);
+        if(expectedOpportunityId!==undefined&&expectedOpportunityId!==(active[0]?.id??null))
+          invalid('enrollment_opportunity_preview_changed',409);
         const created=!active.length;
         const id=active[0]?.id??randomUUID();
         if(created) await c.query(`INSERT INTO enrollment_opportunities(id,lead_id,level,sales_stage,created_at)
@@ -433,25 +574,12 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
           workflowVersion:3,requestId,summary:note,recordKind:'internal',expectedRevision:customer.profile.simpleRevision||0,
           opportunityLink:{id,revision:Number(active[0]?.revision??0),sourceRefs},
         },profile=>readProfile(actor,profile)&&canProgress(actor,profile));
+        await reconcileEnrollmentRecords(c,customer.id,actor.id,level);
+        if(suggestion)await recordPurchaseIntentReview(c,actor.id,suggestion,'registered');
         return {opportunityId:id,created,logId:saved.logId};
       });
     });
     r.set('Cache-Control','no-store').json(result);
-  }));
-  app.get('/api/crm/leads/:id/enrollment-opportunities',read(async(c,q,actor)=>{
-    const customer=await canonicalIdentity(c,String(q.params.id));
-    if(!customer || !readProfile(actor,customer.profile)) invalid('enrollment_customer_not_found',404);
-    if(!canProgress(actor,customer.profile)) return {opportunities:[]};
-    const rows=(await c.query(`SELECT o.* FROM enrollment_opportunities o JOIN portal_leads l ON l.id=o.lead_id
-      WHERE l.id=:p1 OR l.profile->>'$.identityMergedInto'=:p1 ORDER BY o.created_at DESC,o.id`,[customer.id])).rows;
-    const options=[];
-    for(const row of rows){
-      const current=projectOpportunity(row,await recordsForOpportunity(c,row.id),customer.profile);
-      if(isOpenOpportunity(current)) options.push({
-        id:current.id,level:current.level,state:current.state,salesStage:current.salesStage,revision:current.revision,
-      });
-    }
-    return {opportunities:options};
   }));
   app.get('/api/crm/leads/:id/enrollment-records',read(async(c,q,actor)=>{
     const customer=await canonicalIdentity(c,String(q.params.id));
@@ -505,10 +633,7 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
         const level=recordOpportunityLevel(row);
         const candidates=level?await activeOpportunityCandidates(c,customer,level):[];
         if(!candidates.some(candidate=>candidate.id===opportunityId))invalid('enrollment_opportunity_not_found',404);
-        await c.query(`UPDATE enrollment_customer_records SET opportunity_id=:p1 WHERE kind=:p2 AND record_id=:p3
-          AND opportunity_id IS NULL`,[opportunityId,kind,recordId]);
-        await c.query('UPDATE enrollment_opportunities SET revision=revision+1 WHERE id=:p1',[opportunityId]);
-        await fact(c,customer.id,'enrollment.opportunity.linked',actor.id,{opportunityId,recordId,kind});
+        await attachUnassignedEnrollmentRecord(c,customer.id,actor.id,{kind:kind as RecordKind,record_id:recordId},opportunityId);
         return {opportunityId,recordId,kind};
       });
     });

@@ -3,14 +3,14 @@ import {mountClientDiagnostics} from './clientDiagnostics.ts';
 import {listPromotionReviews,promotionReviewCounts,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
 import {campaignPromotionPath,campaignPromotionShortUrl,promotionIdForShortSlug,PROMOTION_SHORT_CODE_PREFIX} from "../src/utils/campaignPromotion.ts";
 import {presetPromotionOwner,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
-import {addCampaignPromotion,deleteCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
+import {addCampaignPromotion,campaignPromotionResult,deleteCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
 import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
 import {resolveCampaignLinks} from "../src/utils/campaignCode.ts";
 import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
 import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
 import {canonicalCampaignId} from '../src/utils/organicCampaign.ts';
 import {mountMetadataHeaders,mountMetadataHtml} from './siteMetadata.ts';
-import {frontendStaticOptions} from './staticCache.ts';
+import {frontendStaticCompression,frontendStaticOptions} from './staticCache.ts';
 import {companyConfiguration,productionConfiguration} from './companyTrial.ts';
 import {acquireCompanyRuntimeLease} from '../cloud/mysql/company-maintenance.mjs';
 import { configureAccessTransport, validMutationOrigin } from "./portal/accessTransport.ts";
@@ -28,11 +28,11 @@ import {portalWorkerEnabled} from './environment.mjs';
 import {platform} from './portal/identity.ts';
 import {visitor} from './portal/runtime.ts';
 import {leadTier,taskDeadline} from './portal/followup.ts';
-import {campaignsContext} from '../cloud/mysql/campaign-context.mjs';
+import {campaignContextMiddleware} from '../cloud/mysql/campaign-context.mjs';
 import {loadCampaigns,getCurrentCampaigns,saveCampaign,deleteCampaign,trackCampaignImpression,synthesizeCampaignAiAssets,getCampaignByIdOrCode} from './campaignStorage.ts';
 import {log} from './logger.ts';
-import {mountRequestTracing} from './requestTracing.ts';
-export async function startMysqlApplication(){
+import {mountRequestTracing,requestErrorContext} from './requestTracing.ts';
+export async function startMysqlApplication(runtimeVersion=createRuntimeVersion()){
 const company=companyConfiguration();
 const production=productionConfiguration();
 const deployment=company || production;
@@ -61,7 +61,6 @@ if(process.env.TRIAL_MODEL_STUB==='true'||process.env.TRIAL_PRIMARY_FAILURE==='t
     process.env.DEEPSEEK_API_BASE_URL='http://127.0.0.1:4413/deepseek';
   }
 }
-const runtimeVersion=createRuntimeVersion();
 const app=express();
 // First middleware: trace id adoption plus the per-request access-log line.
 mountRequestTracing(app);
@@ -99,7 +98,7 @@ app.get('/api/promotion-links/:p',wrap(async(q:any,r:any)=>{
  if(!resolved)return r.status(404).json({status:'unverified'});
  r.json({status:'verified',promotion:publicPromotion(resolved)});
 }));
-app.use('/api',async (_q,_r,next)=>{try{const rows=(await pool.query("SELECT config FROM trial_campaigns ORDER BY created_at DESC")).rows;campaignsContext.run(rows.map(r=>r.config),next);}catch(e){next(e);}});
+app.use('/api',campaignContextMiddleware(pool));
 await mountPortal(app);await ensureOrganicCampaign();mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
@@ -111,6 +110,11 @@ app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>{
 app.get('/api/crm/campaigns/sources/promotions/:leadId/results/:requestId',wrap(async(q:any,r:any)=>r.json(await promotionReviewResult(q.params.leadId,q.params.requestId,r.locals.crmEmployee))));
 app.post('/api/crm/campaigns/sources/promotions/:leadId/review',wrap(async(q:any,r:any)=>r.json(await reviewPromotion(q.params.leadId,q.body,r.locals.crmEmployee))));
 app.get(['/api/crm/campaigns/:idOrCode','/api/campaigns/:idOrCode'],wrap(async(q:any,r:any)=>{const list=q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns();const resolved=await getCampaignByIdOrCode(q.params.idOrCode);const campaign=resolved && list.find(c=>c.id===resolved.id);if(!campaign)return r.status(404).json({error:'Campaign not found'});const {stats,...publicCampaign}=campaign;r.json({success:true,campaign:q.path.startsWith('/api/crm')?campaign:publicCampaign});}));
+app.get('/api/crm/campaigns/:id/links/results/:requestId',wrap(async(q:any,r:any)=>{
+ const actor=r.locals.crmEmployee;
+ if(!actor.permissions.includes('campaigns.manage'))return r.status(403).json({error:'Permission denied'});
+ r.set('Cache-Control','no-store').json(await campaignPromotionResult(q.params.id,q.params.requestId,actor.id));
+}));
 app.post('/api/crm/campaigns/:id/links',wrap(async(q:any,r:any)=>r.json({success:true,...await addCampaignPromotion(q.params.id,q.body,r.locals.crmEmployee.id)})));
 app.delete('/api/crm/campaigns/:id/links/:linkId',wrap(async(q:any,r:any)=>{
  if(!r.locals.crmEmployee.permissions.includes('campaigns.manage')||!validMutationOrigin(q))return r.status(403).json({error:'Permission denied'});
@@ -133,10 +137,11 @@ app.post(['/api/crm/campaigns/:idOrCode/impression','/api/campaigns/:idOrCode/im
 app.use('/api',(_q,r)=>r.status(404).json({error:'API endpoint not found'}));
 if(process.env.TRIAL_FRONTEND_DIRECTORY){
   const directory=path.resolve(process.env.TRIAL_FRONTEND_DIRECTORY);
+  app.use(frontendStaticCompression);
   app.use(express.static(directory,frontendStaticOptions(directory)));
   mountMetadataHtml(app,directory,nativePool);
 }
-app.use((e:any,q:any,r:any,_next:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status===413?'Request too large':'Request could not be processed'});});
+app.use((e:any,q:any,r:any,_next:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,status,traceId:r.locals.traceId,...requestErrorContext(q,e)});r.status(status).json({error:status===413?'Request too large':'Request could not be processed'});});
 if(workerEnabled&&!activeLocal&&!company&&!production){
  const channels=(await pool.query("SELECT * FROM notification_channels")).rows;
  if(channels.some(c=>!c.config.deleted&&c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');

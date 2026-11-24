@@ -1,0 +1,56 @@
+.admin-workspace-main {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1560px;
+  margin-inline: auto;
+  padding: 12px;
+}
+@media (min-width:640px) {
+  .admin-workspace-main { padding: 20px; }
+}
+@media (min-width:1024px) {
+  .admin-workspace-main { padding: 24px; }
+}
+
+.admin-page-header {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 24px;
+  min-width: 0;
+}
+.admin-page-identity {
+  flex: 1 1 15rem;
+  min-width: 0;
+}
+.admin-page-header .admin-page-identity h1 {
+  align-content: center;
+  min-block-size: 40px;
+  margin: 0;
+  color: var(--admin-text);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  overflow-wrap: anywhere;
+}
+.admin-page-header .admin-page-identity p {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.admin-page-identity h1:focus-visible {
+  outline: 2px solid var(--admin-focus);
+  outline-offset: 3px;
+}
+.admin-page-header > .admin-page-actions {
+  max-width: 100%;
+  justify-content: flex-end;
+  margin-inline-start: auto;
+}
+.admin-page-header .admin-record-back { min-height: 40px; }
+
+.enrollment-settings-heading { margin-block-end: 16px; }

@@ -6,10 +6,12 @@ import {
   HSK_SCORING_VERSION,
   getVersionQuestions,
   requireHskVersion,
+  type HskVersion,
 } from "./hskAssessmentVersions";
 export { HSK_EXAM_VERSION, HSK_SCORING_VERSION } from "./hskAssessmentVersions";
 export type HskLanguage = "zh" | "en" | "id";
 export type HskMode = "express" | "full";
+export const HSK_ATTEMPT_CLOCK_TOLERANCE_MS = 300000;
 export interface HskAttempt {
   attemptId: string;
   examVersion: string;
@@ -93,6 +95,22 @@ export function newHskAttempt(mode: HskMode, attemptId: string): HskAttempt {
     pauseCount: 0,
   };
 }
+type AttemptQuestions = {
+  ordered: RealHskQuestion[];
+  byId: Map<string, RealHskQuestion>;
+};
+const questionIndexes = new WeakMap<HskVersion, Partial<Record<HskMode, AttemptQuestions>>>();
+
+function attemptQuestions(version: HskVersion, mode: HskMode) {
+  let modes = questionIndexes.get(version);
+  if (!modes) questionIndexes.set(version, modes = {});
+  if (!modes[mode]) {
+    const ordered = getVersionQuestions(mode, version.examVersion, version.scoringVersion);
+    modes[mode] = { ordered, byId: new Map(ordered.map(question => [String(question.id), question])) };
+  }
+  return modes[mode];
+}
+
 /** Treat both saved drafts and network payloads as untrusted. */
 export function validateHskAttempt(input: unknown): HskAttempt {
   const a = input as HskAttempt;
@@ -120,22 +138,23 @@ export function validateHskAttempt(input: unknown): HskAttempt {
     end = a.completedAt ? Date.parse(a.completedAt) : undefined;
   if (
     !Number.isFinite(start) ||
-    start > Date.now() + 300000 ||
+    start > Date.now() + HSK_ATTEMPT_CLOCK_TOLERANCE_MS ||
     (end !== undefined &&
-      (!Number.isFinite(end) || end < start || end > Date.now() + 300000))
+      (!Number.isFinite(end) || end < start || end > Date.now() + HSK_ATTEMPT_CLOCK_TOLERANCE_MS))
   )
     invalid();
-  const qs = getVersionQuestions(a.mode, a.examVersion, a.scoringVersion);
-  const ids = new Set(qs.map((q) => String(q.id)));
+  const version = requireHskVersion(a.examVersion, a.scoringVersion);
+  const { ordered: questions, byId } = attemptQuestions(version, a.mode);
   for (const field of ["answers", "activeSeconds", "plays"] as const) {
     const value = a[field];
     if (!value || typeof value !== "object" || Array.isArray(value)) invalid();
     for (const [key, v] of Object.entries(value)) {
-      if (!ids.has(key)) invalid();
+      const question = byId.get(key);
+      if (!question) return invalid();
       if (field === "answers") {
         if (
           v !== null &&
-          !qs.find((q) => String(q.id) === key)?.options.some((o) => o.id === v)
+          !question.options.some((o) => o.id === v)
         )
           invalid();
       } else if (
@@ -146,7 +165,7 @@ export function validateHskAttempt(input: unknown): HskAttempt {
         invalid();
       if (
         field === "plays" &&
-        qs.find((q) => String(q.id) === key)?.section !== "listening"
+        question.section !== "listening"
       )
         invalid();
     }
@@ -155,25 +174,25 @@ export function validateHskAttempt(input: unknown): HskAttempt {
     !Array.isArray(a.audioFailures) ||
     new Set(a.audioFailures).size !== a.audioFailures.length ||
     a.audioFailures.some(
-      (id) => !qs.some((q) => q.id === id && q.section === "listening"),
+      (id) => typeof id !== "number" || byId.get(String(id))?.section !== "listening",
     )
   )
     invalid();
   // Normalize key order and ignore extra client fields (score, claimed level, etc.).
-  const sequential = requireHskVersion(a.examVersion, a.scoringVersion).administration;
+  const sequential = version.administration;
   if (sequential) {
     for (const value of [a.navigation,a.audioPositions]) if (value !== undefined && (!value || typeof value !== "object" || Array.isArray(value))) invalid();
     if (a.pauseCount !== undefined && (!Number.isInteger(a.pauseCount) || a.pauseCount < 0 || a.pauseCount > 10000)) invalid();
     for (const [key, reason] of Object.entries(a.navigation || {}))
-      if (!ids.has(key) || !["next", "skip", "timeout"].includes(reason)) invalid();
+      if (!byId.has(key) || !["next", "skip", "timeout"].includes(reason)) invalid();
     for (const [key, seconds] of Object.entries(a.audioPositions || {})) {
-      const asset = requireHskVersion(a.examVersion, a.scoringVersion).audioAssets[key];
+      const asset = version.audioAssets[key];
       if (!asset || !Number.isFinite(seconds) || seconds < 0 || seconds > asset.durationSec + 0.1) invalid();
     }
   }
   const ordered = <T>(v: Record<number, T>) =>
     Object.fromEntries(
-      qs.filter((q) => Object.hasOwn(v, q.id)).map((q) => [q.id, v[q.id]]),
+      questions.filter((q) => Object.hasOwn(v, q.id)).map((q) => [q.id, v[q.id]]),
     );
   return {
     attemptId: a.attemptId,

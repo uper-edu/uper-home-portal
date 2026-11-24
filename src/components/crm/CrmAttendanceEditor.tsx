@@ -180,12 +180,12 @@ export function CrmAttendanceEditor({
     else delete cache[lead.id];
     onDirty?.(dirty);
   }, [mode, boundCampaignId, campaign?.id, record?.confirmed, record?.mode]);
-  const complete=(updated:any,message:string)=>{
+  const complete=(updated:any)=>{
     if(updated?.id!==lead.id)throw Error();
     onUpdated(updated);
     request.current=crypto.randomUUID();delete cache[lead.id];
     setPending(undefined);setMode('');setBoundCampaign('');setFailed(false);
-    onDirty?.(false);setStatus(message);
+    onDirty?.(false);setStatus('');
   };
   const save=async(confirmed:boolean)=>{
     if(busy||pending||!campaign||!selectedMode||contextChanged)return;
@@ -201,8 +201,7 @@ export function CrmAttendanceEditor({
         setFailed(true);setStatus(data?.error||'Save failed');return;
       }
       if(!response.ok)throw Error();
-      complete((await response.json()).lead,confirmed?t('Participation recorded','Partisipasi dicatat','已记录参与确认'):
-        t('Confirmation withdrawn','Konfirmasi ditarik','已撤销确认'));
+      complete((await response.json()).lead);
     }catch{
       setPending(original);onDirty?.(true);
       setStatus(t('Check the current participation record before submitting again.','Periksa catatan partisipasi sebelum mengirim ulang.','结果待确认，请先核对当前参与记录。'));
@@ -220,7 +219,7 @@ export function CrmAttendanceEditor({
         setStatus(t('The current record differs from your submission. Your draft is retained.','Catatan saat ini berbeda dari pengajuan Anda. Draf disimpan.','当前记录与提交内容不同，草稿已保留。'));
         return;
       }
-      complete(current,t('The current record matches your submission.','Catatan saat ini sesuai dengan pengajuan Anda.','当前参与记录与提交内容一致。'));
+      complete(current);
     }catch{
       setStatus(t('Unable to check the current record. Your draft is retained.','Catatan saat ini belum dapat diperiksa. Draf disimpan.','暂时无法核对当前记录，草稿已保留。'));
     }finally{setBusy(false);onBusy?.(false);}
@@ -265,8 +264,8 @@ export function CrmAttendanceEditor({
           />
         )}
       </CrmDisclosure>
-      {status&&(pending||failed||!expanded)&&<AdminFormFeedback ref={errorFocus} tabIndex={-1} lang={lang}
-        state={pending?'unknown':failed?'error':'saved'}>{failed?crmError(status,lang):status}</AdminFormFeedback>}
+      {status&&(pending||failed)&&<AdminFormFeedback ref={errorFocus} tabIndex={-1} lang={lang}
+        state={pending?'unknown':'error'}>{failed?crmError(status,lang):status}</AdminFormFeedback>}
       {pending&&<button className="crm-work-button" type="button" disabled={busy} onClick={()=>void check()}>
         {t('Check participation record','Periksa catatan partisipasi','核对参与记录')}</button>}
       {failed && !loaded && !loading && (

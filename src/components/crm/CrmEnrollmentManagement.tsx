@@ -1,7 +1,8 @@
-import {enrollmentClassTitle} from '../../utils/enrollmentCatalog';
+import {enrollmentClassTitle,enrollmentCopy} from '../../utils/enrollmentCatalog';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminListTable,AdminListState,AdminListPagination} from '../admin/AdminList';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
+import {useAdminRecordSidebarLayout} from '../admin/AdminRecordWorkspace';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import {CrmContentNav} from './CrmDetailWorkspace';
 import {AdminSearchField} from '../admin/AdminSearchField';
@@ -10,8 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import {Settings } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { containPaneKeys, revealRecord } from '../adminScroll';
-import { interestOption } from '../EnrollmentInterests';
-import { enrollmentCopy } from '../EnrollmentApplication';
+import { interestOption } from '../../utils/enrollmentInterestCopy';
 import { formatCrmEventTime } from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
@@ -22,11 +22,11 @@ import { canViewEnrollmentManagement, enrollmentManagementScopes, enrollmentClas
   type EnrollmentClassSummary, type EnrollmentRosterEntry, type EnrollmentRosterState } from '../../utils/crmEnrollmentManagement';
 import { CrmEnrollmentSupport } from './CrmEnrollmentResolution';
 import { CrmSingleSelect } from './CrmSingleSelect';
-import { CrmPageIdentity } from './CrmPageIdentity';
+import { AdminPageHeader } from '../admin/AdminPageHeader';
 import { CrmPageAction } from './CrmPageAction';
 import { enrollmentSettingsPath } from './operationsSections';
-import { CrmDetailActions, CrmRecordFilters, CrmRecordNavigation, CrmRecordRow, CrmRecordSearch,
-  CrmRecordSidebar, CrmRecordSidebarToggle, CrmRecordTitle } from './CrmRecordWorkspace';
+import { CrmDetailActions, CrmRecordFilters, CrmRecordRow, CrmRecordSearch,
+  CrmRecordSidebar, CrmRecordTitle } from './CrmRecordWorkspace';
 import { useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
 import './crm-enrollment-management.css';
 
@@ -94,15 +94,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
   const rosterPositionKey=rosterPositionBase+(returnFromSettings?':settings':'');
   const rosterRestoreTarget=returnFromSettings?'settings':rosterOrder;
   const settingsButtonId='crm-enrollment-class-settings';
-  const [sidebarPreference,setSidebarPreference]=useState<boolean|undefined>(()=>{
-    if(!id||!rosterRestoreTarget)return undefined;
-    try{
-      const position=JSON.parse(sessionStorage.getItem(rosterPositionKey)??'null');
-      if(position?.orderId===rosterRestoreTarget&&typeof position.sidebarOpen==='boolean')return position.sidebarOpen;
-    }catch{}
-    return undefined;
-  });
-  const sidebarOpen=sidebarPreference??independent;
+  const [browseClasses,setBrowseClasses]=useState(false);
   const restoredFilter=enrollmentRosterStates.find(state=>state===params.get('rosterStatus'))??'';
   const restoredClosure=params.get('rosterClosure')??'';
   const [filter,setFilter]=useState<EnrollmentRosterState|''>(restoredFilter);
@@ -123,7 +115,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
       rosterReturn:'/crm?'+returnParams});
   };
   const rememberRoster=(orderId:string,key=rosterPositionBase)=>{
-    try{sessionStorage.setItem(key,JSON.stringify({orderId,sidebarOpen,top:window.scrollY,bodyTop:detailBody.current?.scrollTop,tableLeft:rosterTable.current?.scrollLeft}));}catch{}
+    try{sessionStorage.setItem(key,JSON.stringify({orderId,top:window.scrollY,bodyTop:detailBody.current?.scrollTop,tableLeft:rosterTable.current?.scrollLeft}));}catch{}
   };
   const [classFilters,setClassFilters]=useState(()=>readEnrollmentClassFilters(params));
   const classLinkParams=new URLSearchParams();
@@ -140,6 +132,9 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     const rowTop=event.currentTarget.closest('tr')?.getBoundingClientRect().top;
     try{sessionStorage.setItem(classPositionKey,JSON.stringify({classId,roster,rowTop,top:window.scrollY,left:classTable.current?.scrollLeft}));}catch{}
   };
+  const recordLayout=useAdminRecordSidebarLayout({id:'crm-class-records',lang,persistent:independent,available:allowed,
+    listOpen:browseClasses,setListOpen:setBrowseClasses,
+    back:{label:t(['返回班次列表','Back to classes','Kembali ke daftar kelas']),href:list+classFilterQuery+'&resumeClassList=1'}});
   const changeClassFilters=(next:Partial<EnrollmentClassFilters>)=>{
     const updated={...classFilters,page:1,...next};
     setClassFilters(updated);
@@ -153,12 +148,12 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     return ()=>window.removeEventListener('popstate',restore);
   },[]);
   useEffect(()=>{
-    if(!id||aftercare)setSidebarPreference(undefined);
+    setBrowseClasses(false);
     if(detailBody.current)detailBody.current.scrollTop=0;
     restored.current=null;
   },[id,aftercare]);
   useEffect(()=>{
-    if(!classDetail||!allowed||!sidebarOpen)return;
+    if(!classDetail||!allowed||!recordLayout.sidebarVisible)return;
     const controller=new AbortController();
     setSidebarLoading(true);setSidebarFailed(false);
     void fetch('/api/crm/enrollment/management',{cache:'no-store',signal:controller.signal}).then(async response=>{
@@ -169,7 +164,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
       if(!controller.signal.aborted){setSidebarClasses(undefined);setSidebarFailed(true);}
     }).finally(()=>{if(!controller.signal.aborted)setSidebarLoading(false);});
     return ()=>controller.abort();
-  },[classDetail,allowed,sidebarOpen,authorizationKey,requestVersion]);
+  },[classDetail,allowed,recordLayout.sidebarVisible,authorizationKey,requestVersion]);
   useEffect(()=>{
     setLoaded(undefined);setFilter(restoredFilter);setClosure(restoredClosure);
   },[id,employee.id,allowed]);
@@ -322,11 +317,6 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
   const loadingLabel=t(['正在加载…','Loading…','Memuat…']);
   const noMatches=t(['暂无符合条件的班次。','No classes match.','Tidak ada kelas yang sesuai.']);
 
-  const backToClasses={label:t(['返回班次列表','Back to classes','Kembali ke daftar kelas']),href:list+classFilterQuery+'&resumeClassList=1'};
-  const sidebarToggle=allowed&&<CrmRecordSidebarToggle controls="crm-class-records" expanded={sidebarOpen}
-    label={sidebarOpen?t(['收起班次侧栏','Hide class sidebar','Sembunyikan daftar kelas']):
-      t(['展开班次侧栏','Show class sidebar','Tampilkan daftar kelas'])}
-    onClick={()=>setSidebarPreference(!sidebarOpen)}/>;
   const openClassSettings=(classId:string)=>{
     const returnTo=new URLSearchParams(classLinkParams);
     returnTo.set('tab','enrollment-management');
@@ -337,15 +327,15 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     onNavigate(enrollmentSettingsPath('enrollment-classes',{classId,returnTo:'/crm?'+returnTo}));
   };
   const overviewHeader=<div className="crm-enrollment-overview">
-    {!classDetail&&<header className="admin-page-toolbar crm-enrollment-heading" data-theme={isLight?'light':'dark'}>
-      <CrmPageIdentity title={title}/>
-      {allowed&&(scope.operations||canRefresh)&&<div className="crm-enrollment-heading-actions">
+    {!classDetail&&<AdminPageHeader title={title} subtitle={aftercare
+      ?t(['按报名订单查找学员，跟进转班、退款和其他售后处理。','Find learners by enrollment order and follow up on transfers, refunds and other after-sales requests.','Cari peserta berdasarkan pesanan pendaftaran dan tindak lanjuti pindah kelas, pengembalian dana, serta layanan purnajual lainnya.'])
+      :t(['按班次查看报名人数、名单和学员的付款状态。','Review enrollment counts, rosters and learner payment status by class.','Lihat jumlah pendaftar, daftar peserta, dan status pembayaran per kelas.'])}
+      actions={allowed&&(scope.operations||canRefresh)&&<>
         {scope.operations&&<CrmPageAction icon={Settings}
           label={t(['课程与班次设置','Course and class settings','Pengaturan kursus dan kelas'])}
           onClick={()=>onNavigate(enrollmentSettingsPath('courses',{returnTo:(aftercare?aftercarePath:list)+classFilterQuery}))}/>}
         {canRefresh&&<AdminRefreshAction label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
-      </div>}
-    </header>}
+    </>}/>}
     {!id&&allowed&&canSupport&&<CrmContentNav label={title} onNavigate={onNavigate} items={[
       {href:list+classFilterQuery,label:t(['班次','Classes','Kelas']),current:!aftercare},
       {href:aftercarePath+classFilterQuery,label:t(['售后服务','After-sales support','Layanan purnajual']),current:aftercare},
@@ -395,11 +385,10 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
             onPageChange={page=>changeClassFilters({page})}/>
         </section>}
         {classDetail&&<div className="crm-enrollment-detail-shell crm-detail-root" data-theme={isLight?'light':'dark'}
-          data-record-detail="true" data-record-scroll={independent?'independent':'page'} data-sidebar={independent&&sidebarOpen}
+          data-record-detail="true" data-record-scroll={independent?'independent':'page'} data-sidebar={independent&&recordLayout.sidebarVisible}
           style={{'--crm-shell-height':shellHeight+'px'} as React.CSSProperties}>
-          {!independent&&sidebarOpen&&<CrmRecordNavigation label={t(['班次导航','Class navigation','Navigasi kelas'])}
-            back={backToClasses} tools={sidebarToggle}/>}
-          <CrmRecordSidebar id="crm-class-records" title={t(['班次','Classes','Kelas'])} hidden={!sidebarOpen||!allowed}
+          {recordLayout.listNavigation}
+          <CrmRecordSidebar {...recordLayout.sidebar} title={t(['班次','Classes','Kelas'])}
             count={classes?matchedClasses.length:undefined} selectedId={matchedClasses.some(row=>row.id===id)?id??undefined:undefined}
             busy={sidebarLoading} busyLabel={loadingLabel}
             note={classes&&cohort&&!matchedClasses.some(row=>row.id===id)?t([
@@ -425,14 +414,14 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
                     if(classFilters.page!==targetPage)setClassFilters(current=>({...current,page:targetPage}));
                     navigate(path);
                   }
-                  if(!independent)setSidebarPreference(false);
+                  if(!independent)setBrowseClasses(false);
                 }} meta={<>{statusBadge(row)}<small>{firstLesson(row)}</small></>}/>;
             })}
           </CrmRecordSidebar>
-          <div className="crm-detail-panel crm-enrollment-detail-panel" hidden={!independent&&sidebarOpen}>
-            <AdminRecordHeader back={backToClasses} title={<CrmRecordTitle title={cohort?classTitle(cohort):t(['班次详情','Class details','Detail kelas'])}
+          <div className="crm-detail-panel crm-enrollment-detail-panel" hidden={recordLayout.listOnly}>
+            <AdminRecordHeader back={recordLayout.headerBack} title={<CrmRecordTitle title={cohort?classTitle(cohort):t(['班次详情','Class details','Detail kelas'])}
                 status={cohort&&statusBadge(cohort)} meta={cohort&&[firstLesson(cohort),cohort.schedule].filter(Boolean).join(' · ')}/>}
-              actions={<CrmDetailActions label={t(['班次操作','Class actions','Tindakan kelas'])} secondary={<>{sidebarToggle}
+              actions={<CrmDetailActions label={t(['班次操作','Class actions','Tindakan kelas'])} secondary={<>{recordLayout.browseAction}
                 {scope.operations&&cohort&&<CrmPageAction id={settingsButtonId} icon={Settings} label={t(['班次设置','Class settings','Pengaturan kelas'])}
                   onClick={()=>openClassSettings(cohort.id)}/>}
                 {canRefresh&&<AdminRefreshAction label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}

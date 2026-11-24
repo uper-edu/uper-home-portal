@@ -1,3 +1,4 @@
+import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {Plus,X} from 'lucide-react';
 import {AdminCalendarPicker, type AdminCalendarDayMark} from '../admin/AdminCalendarPicker';
 import {previewEnrollmentClassSchedule} from '../../utils/enrollmentClassSchedule';
@@ -19,7 +20,7 @@ import { compareEnrollmentClassStarts,enrollmentClassDateFilter,enrollmentClassM
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AdminField, AdminFieldLabel, AdminForm, AdminRequiredNote } from '../AdminForm';
-import { AdminStaticField, AdminFormActions, AdminFormFeedback, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
+import { AdminStaticField, AdminFormActions, AdminFormFeedback, AdminSavedReadError, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, CrmSaveFeedback } from './CrmDetailWorkspace';
 import { CrmSingleSelect, type CrmChoice } from './CrmSingleSelect';
@@ -28,7 +29,7 @@ import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/en
 import { validEnrollmentHolidayDate } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { formatCurrency } from '../../utils/currency';
-import { enrollmentPost } from '../EnrollmentApplication';
+import { enrollmentPost } from '../../services/enrollmentSession';
 
 type Copy = readonly [string, string, string];
 
@@ -150,6 +151,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       ? t(['Unable to check the result. Your draft is retained.','Hasil belum dapat diperiksa. Draf disimpan.','暂时无法查询结果，草稿已保留。'])
       : undefined;
   const [busy, setBusy] = useState(false);
+  const [awaitingSavedRead,setAwaitingSavedRead]=useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const endpoint = '/api/crm/enrollment/classes';
@@ -168,7 +170,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       if(!result.ok)throw Error();
       const data=await result.json();
       if(signal.aborted)return;
-      setCatalog(data);setReadState('ready');
+      setCatalog(data);setReadState('ready');setAwaitingSavedRead(false);
     }catch(cause){
       if(signal.aborted)return;
       setReadState('error');
@@ -239,20 +241,21 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       setDraft({ id: crypto.randomUUID(), revision: 0, state: 'draft', config: { ...initial } });
     }
   }
-  function chooseTemplate(id:string){
+  function chooseTemplate(id:string,{initial=false}={}){
     const template=catalog?.templates.find(item=>item.id===id);
     const course=catalog?.courses.find(item=>item.id===template?.courseId);
     const derived=template&&course&&enrollmentTemplateClassFields(template,course);
     if(!derived)return;
     setDraft(value=>value&&({...value,config:{...value.config,...derived,
       teacher:value.config.teacherType&&value.config.teacherType!==derived.teacherType?'':value.config.teacher}}));
-    setDirty(true);setError('');
+    if(!initial)setDirty(true);
+    setError('');
   }
   useEffect(()=>{
     if(!catalog||!createFrom||createOpened.current===createFrom)return;
     createOpened.current=createFrom;
     edit();
-    chooseTemplate(createFrom);
+    chooseTemplate(createFrom,{initial:true});
   },[catalog,createFrom]);
   function change(name: keyof EnrollmentClassConfig, value: string | number | null) {
     setDraft(current=>{
@@ -337,7 +340,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     setPending(undefined);
     setDirty(false);
     setDraft(undefined);
-    setSaved(true);
+    setAwaitingSavedRead(true);
     await load().catch(()=>{});
   }
   async function save(state:Draft['state']=draft?.state??'draft') {
@@ -501,15 +504,14 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       {hint(name)}
     </AdminField>;
   return <section className="crm-course-catalog" ref={catalogPanel}>
-    <header className="admin-edit-header">
-      <div className="admin-edit-title"><h2>{title}</h2></div>
-      <div className="crm-ops-actions">
+    <AdminTopicHeader title={title} isLight={isLight}
+      subtitle={t(['Create classes from templates, set lesson schedules and preview before publishing.','Buat kelas dari templat, atur jadwal, dan lihat pratinjau sebelum menerbitkan.','从班型模板创建班次，维护上课时间并预览发布。'])} actions={<>
         {target&&<AdminRowAction onClick={onShowAll}>{t(['View all classes','Lihat semua kelas','查看全部班次'])}</AdminRowAction>}
         <AdminRefreshAction label={t(['Refresh', 'Segarkan', '刷新'])} loading={readState==='loading'} onClick={refresh}/>
         <CrmPageAction icon={Plus} variant="primary" label={t(['Create class','Buat kelas','创建班次'])} disabled={readState!=='ready'} onClick={()=>edit()}/>
-      </div>
-    </header>
+    </>}/>
     {!!error && !draft && !insertion && <p role="alert">{error}</p>}
+    {awaitingSavedRead&&readState==='error'&&<AdminSavedReadError lang={lang} onRetry={refresh}/>}
     {saved && <CrmSaveFeedback state="saved" lang={lang}/>}
     {deleted && <CrmSaveFeedback state="saved" lang={lang}>{t(['Class draft deleted.','Draf kelas dihapus.','班次草稿已删除。'])}</CrmSaveFeedback>}
     {!target&&catalog&&<>
@@ -543,7 +545,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
         ])}
       </EnrollmentSettingsListSummary>
     </>}
-    {(listState!=='ready'||!visibleClasses?.length)&&<AdminListState lang={lang}
+    {(listState!=='ready'||!visibleClasses?.length)&&!(awaitingSavedRead&&readState==='error')&&<AdminListState lang={lang}
       state={listState==='ready'?'empty':listState}
       message={listState==='ready'&&target?t(['Class not found.','Kelas tidak ditemukan.','班次不存在。'])
         :listState==='error'&&catalog?t(['Refresh failed. Showing the last loaded classes.','Gagal menyegarkan. Kelas yang terakhir dimuat masih ditampilkan.','刷新失败，仍显示上次读取的班次。']):undefined}

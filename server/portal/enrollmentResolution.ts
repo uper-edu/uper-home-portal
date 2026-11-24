@@ -52,6 +52,7 @@ export async function enrollmentAftercareStatus(c:Client,id:string,includeRefund
     WHERE i.order_id=:p1 ORDER BY i.created_at DESC`,[id])).rows.map(row=>({
       id:row.id,targetClassId:row.target_class_id,expiresAt:row.expires_at_iso,
       state:row.state,level:row.data.level,format:row.data.format,period:row.data.period,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
+      weeklySchedule:row.data.weeklySchedule,minutes:row.data.minutes,
     }));
   const refund=includeRefund?await refundLedger(c,id):null;
   const transfers=(await c.query('SELECT source_class_id,target_class_id,created_at FROM enrollment_transfers WHERE order_id=:p1 ORDER BY created_at DESC',[id])).rows;
@@ -131,11 +132,11 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
   }));
   app.get(staff+'/:id/results/:operation/:requestId',wrap(async(q,r)=>{
     const name=String(q.params.operation);
-    if(name!=='invitations'&&name!=='refund')invalid('enrollment_result_missing',404);
-    const actor=name==='refund'?await manager(q):await supportActor(q);
+    if(name!=='invitations'&&name!=='refund'&&name!=='end')invalid('enrollment_result_missing',404);
+    const actor=name==='invitations'?await supportActor(q):await manager(q);
     const result=await read(async c=>{
       if(name==='invitations')await authorizeInvitation(c,actor,String(q.params.id));
-      return operationResult(c,q,actor,name==='invitations'?'enrollment.transfer.invite':'enrollment.refund.intake');
+      return operationResult(c,q,actor,name==='invitations'?'enrollment.transfer.invite':name==='end'?'enrollment.order.end':'enrollment.refund.intake');
     });
     r.set('Cache-Control','no-store').json(result);
   }));

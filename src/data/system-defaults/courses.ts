@@ -1,9 +1,10 @@
-// Initial publication and discount settings for standard HSK courses.
-// Course names, lesson counts and IDR prices come from ../crmCoursePrices.json.
-// Zero maximum discount means no discount is granted by the initial course settings.
-// The initializer preserves prices, discounts and publication status already saved in CRM.
+import hsk1Introduction from './hsk1-course-introduction.json' with {type:'json'};
+import hsk2Introduction from './hsk2-course-introduction.json' with {type:'json'};
+import hsk3Introduction from './hsk3-course-introduction.json' with {type:'json'};
+import hsk4Introduction from './hsk4-course-introduction.json' with {type:'json'};
+import {defaultEnrollmentCourseName,type EnrollmentTeaching} from '../../utils/enrollmentTemplates.ts';
 
-export default {
+const terms = {
   // Newly seeded courses are available in the published CRM catalog.
   "active": true,
   // Basis points: 100 means 1%. Zero grants no percentage discount.
@@ -11,3 +12,24 @@ export default {
   // Optional absolute cap in IDR. Null adds no absolute cap; the percentage limit still applies.
   "maxDiscountAmount": null
 };
+
+// Stable IDs match the enrollment catalog. Amounts are totals in IDR.
+const definitions = [
+  {id:'4b7a59a2-cea5-4bf3-b8e4-102dd9bc4803',level:'HSK 1',sessions:23,price:1_150_000},
+  {id:'5cd7f25c-c2ed-4e67-b797-940c3fbb784a',level:'HSK 2',sessions:24,price:2_880_000},
+  {id:'74516bc0-f265-4225-8698-7133a95059e6',level:'HSK 3',sessions:42,price:5_040_000},
+  {id:'3abe725a-d334-4b3c-8c49-12b679fe09b6',level:'HSK 4',sessions:84,price:10_080_000},
+] as const;
+
+const introductions = {'HSK 1':hsk1Introduction,'HSK 2':hsk2Introduction,'HSK 3':hsk3Introduction,'HSK 4':hsk4Introduction};
+
+export const enrollmentCoursePresets = definitions.map(({id,level,sessions,price})=>{
+  const teaching:EnrollmentTeaching={
+    level, material:'New Concept Chinese', minutes:45,
+    knowledge:'', learningOutcomes:'', resources:'',
+    introduction:introductions[level],
+  };
+  return {id,config:{name:defaultEnrollmentCourseName(teaching,sessions),sessions,price,...terms,teaching}};
+});
+
+export default terms;

@@ -125,6 +125,8 @@ test("presentation preferences cannot remove customer identity or admit stale/un
 });
 test("customer worklist links one active opportunity directly and multiple to the customer scope", (context) => {
   assert.match(render(lead({enrollmentOpportunitySummary:{count:0}})), /No active opportunities/);
+  for(const view of ["worklist","table"] as const)
+    assert.match(render(lead({enrollmentOpportunitySummary:{count:0,hasEnrollment:true}}),{view,lang:"zh"}), /已报名/);
   const single=render(lead({enrollmentOpportunitySummary:{count:1,only:{id:"test-opportunity",level:"HSK 2",stage:"progress:proposal"}}}));
   assert.match(single, /customerId=synthetic-workspace[^"]+opportunity=test-opportunity/);
   assert.match(single, /Confirming proposal/);

@@ -1,28 +1,28 @@
 import {AdminDateField} from '../admin/AdminDateField';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminRecordHeader} from '../admin/AdminRecordHeader';
+import {useAdminRecordSidebarLayout} from '../admin/AdminRecordWorkspace';
 import {AdminListState} from '../admin/AdminList';
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import { useEffect,useState,useRef } from 'react';
 import {Send, Wallet } from 'lucide-react';
 import { containPaneKeys, recordSplitMinWidth, revealRecord } from '../adminScroll';
-import { enrollmentCopy,enrollmentPost,enrollmentStatuses } from '../EnrollmentApplication';
+import {enrollmentCopy,type PublicEnrollmentClass} from '../../utils/enrollmentCatalog';
+import {enrollmentStatuses,type EnrollmentClosureReason} from '../../utils/enrollmentOrderStatus';
 import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
 import {CrmOrderOperationFeedback,useCrmOrderOperation} from './CrmOrderOperation';
-import { AdminFormActions,AdminFormFeedback } from '../AdminFormLayout';
+import { AdminFormActions,AdminFormFeedback,AdminSavedReadError } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmDiscardDialog, useCrmShellHeight, useRecordScrollMode } from './CrmDetailWorkspace';
 import { CrmPageAction } from './CrmPageAction';
-import { CrmDetailActions, CrmRecordFilters, CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordSidebarToggle, CrmRecordTitle } from './CrmRecordWorkspace';
+import { CrmDetailActions, CrmRecordFilters, CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordTitle } from './CrmRecordWorkspace';
 import { CrmSingleSelect } from './CrmSingleSelect';
 import { CrmListFilters, CrmListSearch, CrmListStatus, CrmListTable, enrollmentListTone, CrmListViews } from './CrmList';
-import { interestOption } from '../EnrollmentInterests';
+import { interestOption } from '../../utils/enrollmentInterestCopy';
 import { enrollmentClassManagementPath,type EnrollmentClassSummary } from '../../utils/crmEnrollmentManagement';
-import type { EnrollmentClosureReason } from '../../utils/enrollmentOrderStatus';
 import {formatCrmEventTime,formatCrmOperatingTime,validateLocalInstant,viewerTimeZone} from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
-import type { PublicEnrollmentClass } from '../../utils/enrollmentCatalog';
 
 type ServiceOrder={id:string;classId:string;name:string;level:string;format:PublicEnrollmentClass['format'];opened:boolean;canInvite:boolean;transferred:boolean;received:number;priorityRequested:boolean;period:string;schedule:string;firstLessonAt:string;status:string;replyBy?:string;closureReason?:EnrollmentClosureReason};
 type SupportFilter=''|'ready_to_invite'|'awaiting_reply'|'refunding'|'refunded';
@@ -65,7 +65,6 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
   const independent=useRecordScrollMode(shellHeight)==='independent';
   const [wide,setWide]=useState(()=>typeof window!=='undefined'&&window.innerWidth>=recordSplitMinWidth);
   const [orderListOpen,setOrderListOpen]=useState(false);
-  const singleColumnListOpen=!wide&&orderListOpen;
   useEffect(()=>{
     const media=window.matchMedia(`(min-width: ${recordSplitMinWidth}px)`);
     const update=()=>{
@@ -89,11 +88,10 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
   const [editor,setEditor]=useState<{order:ServiceOrder;mode:SupportAction;requestId:string}>();
   const [targetId,setTargetId]=useState('');
   const aftercareOperation=useCrmOrderOperation();
-  const [endBusy,setEndBusy]=useState(false);
-  const busy=aftercareOperation.busy||endBusy;
+  const busy=aftercareOperation.busy;
   const [dirty,setDirty]=useState(false);
   const [discard,setDiscard]=useState(false);
-  const [notice,setNotice]=useState('');
+  const [awaitingSavedList,setAwaitingSavedList]=useState(false);
   const [error,setError]=useState('');
   const filtersKey=JSON.stringify([query.trim(),classFilter,progressFilter,quickFilter]);
   const [loadedOffset,setLoadedOffset]=useState(0);
@@ -108,7 +106,7 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
     if(signal?.aborted)return;
     const nextOrders:ServiceOrder[]=data.orders;
     setSelectedOrder(current=>current?nextOrders.find(row=>row.id===current.id)??current:undefined);
-    setLoadedOffset(offset);setOrders(nextOrders);setTotal(data.total);setPageSize(data.pageSize);setCanReviewRefunds(data.canReviewRefunds);
+    setLoadedOffset(offset);setOrders(nextOrders);setTotal(data.total);setPageSize(data.pageSize);setCanReviewRefunds(data.canReviewRefunds);setAwaitingSavedList(false);
     if(offset&&data.orders.length===0)setOffset(Math.max(0,offset-data.pageSize));
   };
   useEffect(()=>{
@@ -135,11 +133,6 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
     void read('/api/crm/enrollment/management').then(rows=>{if(!controller.signal.aborted)setClassOptions(rows);}).catch(()=>{});
     return ()=>controller.abort();
   },[refreshVersion]);
-  useEffect(()=>{
-    if(!notice)return;
-    const timeout=window.setTimeout(()=>setNotice(''),6000);
-    return ()=>window.clearTimeout(timeout);
-  },[notice]);
   useEffect(()=>{
     if(!selectedId)return;
     const controller=new AbortController();
@@ -208,25 +201,20 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
     setDetailFocus(undefined);
   },[details,selectedId,detailFocus,editor,independent]);
   const start=(order:ServiceOrder,mode:SupportAction)=>{
-    aftercareOperation.clear();setEditor({order,mode,requestId:crypto.randomUUID()});setTargetId('');setDirty(false);setError('');setNotice('');
+    aftercareOperation.clear();setEditor({order,mode,requestId:crypto.randomUUID()});setTargetId('');setDirty(false);setError('');
   };
   const close=()=>{if(!busy){if(dirty)setDiscard(true);else setEditor(undefined);}};
   const endTitle=t('确认学员放弃报名','Confirm learner withdrawal','Konfirmasi siswa mengundurkan diri');
   const refundTitle=t('受理退款','Accept refund request','Terima permintaan pengembalian');
   const inviteTitle=t('发转班邀请','Send transfer invitation','Kirim undangan pindah kelas');
-  const finishAftercare=(mode:SupportAction,replyBy?:string)=>{
-    setEditor(undefined);setDirty(false);
-    const deadline=formatCrmEventTime(replyBy);
-    setNotice(mode==='refund'?t('已受理退款，相关席位已释放。','Refund accepted and the seat released.','Pengembalian diterima dan kursi dilepas.'):
-      mode==='end'?t('报名已结束，席位已释放。','Enrollment ended and its seat was released.','Pendaftaran berakhir dan kursi dilepas.'):
-        deadline?t(`转班邀请已登记，答复截止为 ${deadline}。`,`Transfer invitation recorded. Reply by ${deadline}.`,`Undangan pindah kelas dicatat. Jawab sebelum ${deadline}.`):
-          t('转班邀请已登记。','Transfer invitation recorded.','Undangan pindah kelas dicatat.'));
+  const finishAftercare=()=>{
+    setEditor(undefined);setDirty(false);setAwaitingSavedList(true);
     closeDetail();setListRevision(version=>version+1);
   };
   const aftercareOutcome=async(result:ReturnType<typeof aftercareOperation.submit>)=>{
     const outcome=await result;
     if(!editor||!outcome)return;
-    if(outcome.state==='saved'){finishAftercare(editor.mode,outcome.replyBy);return;}
+    if(outcome.state==='saved'){finishAftercare();return;}
     setEditor({...editor,requestId:crypto.randomUUID()});
     setError(outcome.code==='enrollment_active_invitation'
       ? t('订单已有有效邀请，请核对当前转班进度。','There is already an active invitation. Review the transfer status.','Sudah ada undangan aktif. Periksa status pindah kelas.')
@@ -301,7 +289,9 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
         {(query||classFilter||progressFilter||quickFilter)&&<button type="button" className="crm-work-link" onClick={()=>{setQuery('');setSearch('');setClassFilter('');setProgressFilter('');setQuickFilter('');setOffset(0);}}>
           {t('清除筛选','Clear filters','Hapus filter')}</button>}
   </>;
-  const backToOrders={label:t('返回售后服务','Back to after-sales support','Kembali ke layanan purnajual'),onClick:closeDetail};
+  const recordLayout=useAdminRecordSidebarLayout({id:'crm-aftercare-records',lang,persistent:wide,
+    listOpen:orderListOpen,setListOpen:setOrderListOpen,
+    back:{label:t('返回售后服务','Back to after-sales support','Kembali ke layanan purnajual'),onClick:closeDetail}});
   return <section className="crm-aftercare-workspace">
     <div className="crm-aftercare-list" hidden={Boolean(selectedId)}>
       {!embedded&&<header className="admin-page-toolbar"><h1>{t('售后服务','After-sales support','Layanan purnajual')}</h1></header>}
@@ -319,7 +309,7 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
     </div>
     {!orders&&!error&&<p className="crm-enrollment-empty" role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
     {orders?.length===0&&!isSearching&&<p className="crm-enrollment-empty">{t('没有符合条件的报名订单。','No enrollment orders match.','Tidak ada pesanan yang cocok.')}</p>}
-    {!editor&&error&&<p className="crm-enrollment-empty" role="alert">{error}</p>}
+        {!editor&&error&&(awaitingSavedList?<AdminSavedReadError lang={lang} busy={loading} onRetry={()=>setListRevision(value=>value+1)}/>:<p className="crm-enrollment-empty" role="alert">{error}</p>)}
     {orders&&<p className="crm-list-meta" role="status">{t(`匹配 ${total} 笔订单`,`${total} matching orders`,`${total} pesanan cocok`)}</p>}
     {!!orders?.length&&<CrmListTable label={t('售后服务订单','After-sales orders','Pesanan purnajual')}
       busy={isSearching} viewportRef={listTable} headers={[t('学员与订单','Learner and order','Siswa dan pesanan'),t('当前班次','Current class','Kelas saat ini'),
@@ -349,15 +339,12 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
       </div>
     </div>}
     </div>
-    {notice&&<span className="crm-opportunity-feedback" role="status">{notice}</span>}
     {selectedId&&<div className="crm-aftercare-detail-shell crm-detail-root" data-theme={isLight?'light':'dark'}
       data-record-detail="true" data-record-scroll={independent?'independent':'page'} data-sidebar={wide}
       style={{'--crm-shell-height':shellHeight+'px'} as React.CSSProperties}>
-      {singleColumnListOpen&&<div className="crm-record-navigation"><CrmRecordSidebarToggle
-        controls="crm-aftercare-records" expanded label={t('返回订单详情','Back to order details','Kembali ke detail pesanan')}
-        onClick={()=>{setOrderListOpen(false);requestAnimationFrame(()=>detailPanel.current?.querySelector<HTMLElement>('.crm-record-sidebar-toggle')?.focus());}}/></div>}
-      <CrmRecordSidebar id="crm-aftercare-records" title={t('售后订单','After-sales orders','Pesanan purnajual')}
-        count={orders?total:undefined} hidden={!wide&&!singleColumnListOpen} selectedId={selectedId}
+      {recordLayout.listNavigation}
+      <CrmRecordSidebar {...recordLayout.sidebar} title={t('售后订单','After-sales orders','Pesanan purnajual')}
+        count={orders?total:undefined} selectedId={selectedId}
         filters={<CrmRecordFilters lang={lang} count={[classFilter,progressFilter,quickFilter].filter(Boolean).length}
           search={<CrmRecordSearch label={t('搜索售后订单','Search after-sales orders','Cari pesanan purnajual')}
             placeholder={t('学员、订单号或班次','Learner, order number or class','Siswa, nomor pesanan atau kelas')}
@@ -374,16 +361,14 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
           {error||(isSearching?t('正在加载…','Loading…','Memuat…'):t('没有符合条件的报名订单。','No enrollment orders match.','Tidak ada pesanan yang cocok.'))}</p>:undefined}>
         {orders?.map(row=><CrmRecordRow key={row.id} selected={row.id===selectedId} name={row.name}
           title={row.name+' · '+className(row)+' · '+orderNumberLabel+' '+orderShort(row)}
-          onClick={()=>{if(row.id!==selectedId||singleColumnListOpen)chooseOrder(row);}}
+          onClick={()=>{if(row.id!==selectedId||recordLayout.listOnly)chooseOrder(row);}}
           meta={<>{status(row)}<small>{className(row)}</small><small className="crm-aftercare-side-reference">{orderNumberLabel} {orderShort(row)}</small></>}/>)}
       </CrmRecordSidebar>
-      <div className="crm-detail-panel crm-aftercare-detail-panel" ref={detailPanel} hidden={singleColumnListOpen}>
-        <AdminRecordHeader back={backToOrders} title={<CrmRecordTitle title={selected?.name||t('报名订单详情','Enrollment order details','Detail pesanan pendaftaran')}
+      <div className="crm-detail-panel crm-aftercare-detail-panel" ref={detailPanel} hidden={recordLayout.listOnly}>
+        <AdminRecordHeader back={recordLayout.headerBack} title={<CrmRecordTitle title={selected?.name||t('报名订单详情','Enrollment order details','Detail pesanan pendaftaran')}
             status={selected&&status(selected)} meta={selected&&orderNumberLabel+' '+selected.id}/>} actions={<CrmDetailActions label={t('售后订单操作','After-sales actions','Tindakan purnajual')}
             secondary={<>
-              {!wide&&<CrmRecordSidebarToggle controls="crm-aftercare-records" expanded={false}
-                label={t('查看售后订单','View after-sales orders','Lihat pesanan purnajual')}
-                onClick={()=>{setOrderListOpen(true);requestAnimationFrame(()=>document.querySelector<HTMLElement>('#crm-aftercare-records input[type=search]')?.focus({preventScroll:true}));}}/>}
+              {recordLayout.browseAction}
               {selected&&selectedDetails?.canRefund&&<CrmPageAction icon={Wallet} label={refundTitle}
                 disabled={isSearching} onClick={()=>start(selected,'refund')}/>}
               <AdminRefreshAction label={t('刷新','Refresh','Segarkan')} loading={isSearching}
@@ -457,12 +442,10 @@ export function CrmEnrollmentSupport({lang,isLight,embedded=false,refreshVersion
           if(!String(form.get('reason')??'').trim()){
             setError(t('请填写学员放弃报名的原因。','Enter the reason the learner withdrew.','Isi alasan siswa mengundurkan diri.'));return;
           }
-          setEndBusy(true);setError('');
-          try{
-            await enrollmentPost(staff+'/'+editor.order.id+'/end',{classId:editor.order.classId,requestId:editor.requestId,reason:form.get('reason')});
-            finishAftercare('end');
-          }catch{setError(t('未能确认操作，请刷新核对订单。','The action could not be confirmed. Refresh to review the order.','Tindakan belum terkonfirmasi. Muat ulang pesanan.'));}
-          finally{setEndBusy(false);}
+          setError('');
+          await aftercareOutcome(aftercareOperation.submit('end',editor.order.id,{
+            classId:editor.order.classId,requestId:editor.requestId,reason:form.get('reason'),
+          }));
           return;
         }
         const original={classId:editor.order.classId,requestId:editor.requestId};
@@ -530,6 +513,7 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange,onDra
   const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
   const [returnEntry,setReturnEntry]=useState<{reference:string;requestId:string}>();
   const base=finance+'/'+id;
+  const [awaitingSavedRefund,setAwaitingSavedRefund]=useState(false);
   const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'|'empty'>('loading');
   const load=async(signal?:AbortSignal)=>{
     setReadState('loading');
@@ -540,7 +524,7 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange,onDra
       if(response.status===404){setDetails(undefined);setReadState('empty');return;}
       if(!response.ok)throw Error();
       const data=await response.json();
-      if(!signal?.aborted){setDetails(data);setReadState('ready');}
+      if(!signal?.aborted){setDetails(data);setReadState('ready');setAwaitingSavedRefund(false);}
     }catch{
       if(!signal?.aborted)setReadState('error');
     }
@@ -551,7 +535,7 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange,onDra
     if(outcome.state==='saved'){
       if(bankReturn)setReturnEntry(undefined);
       else {refundForm.current?.reset();setSource('');setRequestId(crypto.randomUUID());}
-      await load();onUpdate();
+      setAwaitingSavedRefund(true);await load();onUpdate();
       return;
     }
     if(bankReturn)setReturnEntry(entry=>entry&&{...entry,requestId:crypto.randomUUID()});
@@ -566,6 +550,7 @@ export function CrmEnrollmentRefund({id,lang,isLight,onUpdate,onBusyChange,onDra
   };
   useEffect(()=>{onBusyChange?.(busy);return ()=>onBusyChange?.(false);},[busy,onBusyChange]);
   useEffect(()=>{const request=new AbortController();void load(request.signal);return ()=>request.abort();},[id]);
+  if(readState==='error'&&awaitingSavedRefund)return <AdminSavedReadError lang={lang} onRetry={()=>void load()}/>;
   if(readState!=='ready'||!details)return <AdminListState lang={lang} compact state={readState==='ready'?'empty':readState}
     message={readState==='error'?t('未能加载退款明细。','Refund details could not be loaded.','Rincian belum dapat dimuat.'):undefined}
     onRetry={()=>void load()}/>;

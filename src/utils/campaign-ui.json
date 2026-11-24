@@ -63,6 +63,22 @@
     "Coba lagi",
     "重试"
   ],
+  "Check save result": [
+    "Periksa hasil penyimpanan",
+    "查询保存结果"
+  ],
+  "No result yet. The original draft is retained.": [
+    "Hasil belum ditemukan. Draf tetap tersimpan.",
+    "暂未查到结果，原草稿已保留。"
+  ],
+  "Unable to check the result. The original draft is retained.": [
+    "Hasil belum dapat diperiksa. Draf tetap tersimpan.",
+    "暂时无法查询结果，原草稿已保留。"
+  ],
+  "Save outcome unknown. Check the original result before saving again.": [
+    "Hasil simpan belum pasti. Periksa hasil awal sebelum menyimpan lagi.",
+    "保存结果尚未确认，请先查询原操作。"
+  ],
   "Retry original request": [
     "Ulangi permintaan awal",
     "重试原请求"

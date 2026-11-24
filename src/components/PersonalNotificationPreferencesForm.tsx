@@ -8,7 +8,7 @@ import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {personalNotificationTypes,personalNotificationCategory,normalizePersonalPreferences,type PersonalNotificationPreferences} from '../utils/personalNotificationPreferences';
 import type {CrmLanguage} from '../utils/crmLanguage';
 const same=(a:PersonalNotificationPreferences,b:PersonalNotificationPreferences)=>a.language===b.language&&JSON.stringify(a.disabledTypes)===JSON.stringify(b.disabledTypes);
-export function PersonalNotificationPreferencesForm({initial,systemTypes,visibleTypes,deliveryEnabled,bound,lang,isLight,onDirty,onBusy,onCancel,header}:{initial:PersonalNotificationPreferences;systemTypes:string[];visibleTypes:string[];deliveryEnabled:boolean;bound:boolean;lang:CrmLanguage;isLight:boolean;onDirty:(v:boolean)=>void;onBusy:(v:boolean)=>void;onCancel:()=>void;header?:ReactNode}){
+export function PersonalNotificationPreferencesForm({initial,systemTypes,visibleTypes,deliveryEnabled,bound,lang,isLight,onDirty,onBusy,onCancel,onSaved,header}:{initial:PersonalNotificationPreferences;systemTypes:string[];visibleTypes:string[];deliveryEnabled:boolean;bound:boolean;lang:CrmLanguage;isLight:boolean;onDirty:(v:boolean)=>void;onBusy:(v:boolean)=>void;onCancel:()=>void;onSaved:(value:PersonalNotificationPreferences)=>void;header?:ReactNode}){
  const t=(zh:string,en:string,id:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const [draft,setDraft]=useState(()=>normalizePersonalPreferences(initial)),[saved,setSaved]=useState(()=>normalizePersonalPreferences(initial)),[busy,setBusy]=useState(false),[feedback,setFeedback]=useState(''),[conflict,setConflict]=useState(false),[unknown,setUnknown]=useState(false);
  const dirty=!same(draft,saved),current=useRef(draft);current.current=draft;
@@ -22,10 +22,13 @@ export function PersonalNotificationPreferencesForm({initial,systemTypes,visible
    if(save){
     const r=await fetch('/api/crm/lark/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(draft)});
     if(!r.ok){if(r.status>=400&&r.status<500){const code=(await r.json()).error;setConflict(true);setUnknown(false);setFeedback(code==='notification_preferences_conflict'?t('通知设置已在其他窗口修改。你的修改已保留，请重新打开后核对。','Settings changed. Your draft is retained; close and reopen to review.','Pengaturan berubah. Draf disimpan; tutup dan buka kembali untuk memeriksa.'):t('可接收的通知已调整，本次修改未保存。请重新打开通知设置后再试。','Notification availability changed; your changes were not saved. Close and reopen to review.','Ketersediaan notifikasi berubah; perubahan belum tersimpan. Tutup dan buka kembali.'));return;}throw Error('save');}
-    value=normalizePersonalPreferences((await r.json()).preferences);
-   }else{const r=await fetch('/api/crm/lark/me',{cache:'no-store'});if(!r.ok)throw Error('read');value=normalizePersonalPreferences((await r.json()).preferences);}
-   setSaved(value);setUnknown(false);
-   if(same(current.current,value)){setDraft(value);setConflict(false);setFeedback(t('通知偏好已保存。','Notification preferences saved.','Preferensi notifikasi tersimpan.'));}
+    const {preferences}=await r.json();
+    if(!Number.isInteger(preferences?.revision)||preferences.revision<=draft.revision)throw Error('unconfirmed');
+    value=normalizePersonalPreferences(preferences);
+   }else{const r=await fetch('/api/crm/lark/me',{cache:'no-store'});if(!r.ok)throw Error('read');const {preferences}=await r.json();if(!Number.isInteger(preferences?.revision))throw Error('unconfirmed');value=normalizePersonalPreferences(preferences);}
+   if(!save&&!same(current.current,value))throw Error('unconfirmed');
+   setSaved(value);setUnknown(false);onSaved(value);
+   if(same(current.current,value)){setDraft(value);setConflict(false);setFeedback('');}
    else{setConflict(value.revision!==saved.revision);setFeedback(t('已检查保存结果，你的修改仍保留在表单中。','Saved result checked; your draft was retained.','Hasil tersimpan diperiksa; draf tetap disimpan.'));}
   }catch{setUnknown(true);setFeedback(t('暂时无法确认是否保存成功。修改已保留，请先检查结果，避免重复保存。','We could not confirm whether your changes were saved. Your changes are retained; check the result before saving again.','Belum dapat memastikan perubahan tersimpan. Perubahan tetap disimpan di formulir; periksa hasil sebelum menyimpan ulang.'));}
   finally{setBusy(false);onBusy(false);}

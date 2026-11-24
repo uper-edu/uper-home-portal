@@ -119,7 +119,7 @@ test("restore validates conditions and removes retired filters instead of mappin
     },
     "own",
   );
-  assert.deepEqual(f.stage, ["progress:proposal"]);
+  assert.deepEqual(f.stage, []);
   assert.deepEqual(f.connect, []);
   assert.deepEqual(f.situation, []);
   assert.deepEqual(f.signal, []);
@@ -149,7 +149,8 @@ test("all active conditions remain visible with primary selectors and accessible
     }),
   );
   for (const text of [
-    "销售阶段 · 方案确认中",
+    "人工沟通 · 不限",
+    "移除历史销售阶段：方案确认中",
     "首次联系 · 不限",
     "已选条件",
     "移除负责人：未分配",

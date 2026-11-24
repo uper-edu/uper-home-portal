@@ -1,6 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {publicEnrollmentClass,type EnrollmentClassAdmin} from '../../utils/enrollmentCatalog';
-import {enrollmentCopy} from '../EnrollmentApplication';
+import {enrollmentCopy,publicEnrollmentClass,type EnrollmentClassAdmin} from '../../utils/enrollmentCatalog';
 
 export function EnrollmentLearnerPreview({row,language}:{
   row:EnrollmentClassAdmin;language:'zh'|'en'|'id';

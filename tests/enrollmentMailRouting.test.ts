@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {enrollmentMailPreset} from '../server/portal/enrollmentMailPresets.ts';
-import {selectMailAccount} from '../server/portal/enrollmentMailRouting.ts';
+import {mailPoolQuotaReason,selectMailAccount} from '../server/portal/enrollmentMailRouting.ts';
 import {activeEnrollmentMailConfig,enrollmentMailDefaults,enrollmentSmtpLimit,mailAccountDefaults,mailPoolDefaults} from '../src/utils/enrollmentMailConfig.ts';
 
 const a={...mailAccountDefaults,address:'a@example.invalid',daily:20,external:2,monthly:30};
@@ -18,14 +18,14 @@ test('the default limits distinguish message count and distinct external recipie
 });
 test('chooses by normalized capacity, respecting monthly limits and fixed account affinity',()=>{
   const usage={
-    [a.address]:{daily:10,external:0,monthly:30,seen:false},
-    [b.address]:{daily:15,external:0,monthly:17,seen:false},
+    [a.address]:{daily:10,external:0,monthly:30,recipients:0,seen:false},
+    [b.address]:{daily:15,external:0,monthly:17,recipients:0,seen:false},
   };
   assert.equal(selectMailAccount(config,usage,eligible,{urgent:true,external:true})?.address,b.address);
   assert.equal(selectMailAccount(config,usage,eligible,{urgent:true,external:true,bound:a.address}),undefined);
 });
 test('a repeat recipient does not consume a new slot, and ordinary mail leaves headroom for codes',()=>{
-  const usage={[a.address]:{daily:19,external:2,monthly:22,seen:true}};
+  const usage={[a.address]:{daily:19,external:2,monthly:22,recipients:0,seen:true}};
   const fixed={bound:a.address,external:true};
   assert.equal(selectMailAccount(config,usage,eligible,{...fixed,urgent:true})?.address,a.address);
   assert.equal(selectMailAccount(config,usage,eligible,{...fixed,urgent:false}),undefined);
@@ -41,11 +41,11 @@ test('only selected pool accounts can send and removed fixed accounts cannot fal
 
 test('priority uses pool member order, skips exhausted accounts, and honors a fixed sender',()=>{
   const selected=activeEnrollmentMailConfig({...config,selectedPool:'priority',pools:[{
-    id:'priority',name:'Priority',enabled:true,transport:'smtp',members:[a.address,b.address],dailyLimit:null,strategy:'priority',
+    id:'priority',name:'Priority',enabled:true,transport:'smtp',members:[a.address,b.address],dailyLimit:null,dailyRecipientLimit:null,strategy:'priority',
   }]});
   const opts={urgent:true,external:true};
   assert.equal(selectMailAccount(selected,{},eligible,opts)?.address,a.address);
-  const usage={[a.address]:{daily:a.daily,monthly:0,external:0,seen:false}};
+  const usage={[a.address]:{daily:a.daily,monthly:0,external:0,recipients:0,seen:false}};
   assert.equal(selectMailAccount(selected,usage,eligible,opts)?.address,b.address);
   assert.equal(selectMailAccount(selected,usage,eligible,{...opts,bound:a.address}),undefined);
   assert.equal(selectMailAccount(selected,{},eligible,{...opts,bound:b.address})?.address,b.address);
@@ -128,7 +128,7 @@ test('each non-production pool seeds its own Gmail member and preserves saved di
 });
 
 test('new pools start enabled with no daily limit and balanced routing',()=>{
-  assert.deepEqual(mailPoolDefaults,{enabled:true,dailyLimit:null,strategy:'balanced'});
+  assert.deepEqual(mailPoolDefaults,{enabled:true,dailyLimit:null,dailyRecipientLimit:null,strategy:'balanced'});
 });
 
 test('an explicit pool selection uses its configured members regardless of preset names or environment',()=>{
@@ -143,4 +143,54 @@ test('an explicit pool selection uses its configured members regardless of prese
     assert.ok(pool?.members.includes(selectMailAccount(selected,{},eligible,opts)?.address??''));
     assert.equal(selectMailAccount(selected,{},new Set(),opts),undefined);
   }
+});
+
+test('pool recipient quota admits an existing address at capacity and keeps the message quota independent',()=>{
+  const pool={dailyLimit:6,dailyRecipientLimit:2};
+  const used={total:5,recipients:2,seen:false};
+  assert.equal(mailPoolQuotaReason(pool,used),'pool_daily_recipient_limit');
+  assert.equal(mailPoolQuotaReason(pool,{...used,seen:true}),undefined);
+  assert.equal(mailPoolQuotaReason(pool,{...used,seen:true,total:6}),'pool_daily_limit');
+  assert.equal(mailPoolQuotaReason(pool,{total:0,recipients:0,seen:false}),undefined);
+  assert.equal(mailPoolQuotaReason({...pool,dailyRecipientLimit:null},used),undefined);
+});
+
+test('pool recipient limits survive config readback and old pools default to unlimited',()=>{
+  const config=enrollmentMailPreset('dev');
+  const [pool,...otherPools]=config.pools!;
+  const {dailyRecipientLimit:_,...oldPool}=pool;
+  assert.equal(enrollmentMailPreset('dev',{...config,pools:[oldPool,...otherPools]}).pools![0].dailyRecipientLimit,null);
+  assert.equal(enrollmentMailPreset('dev',{...config,pools:[{...pool,dailyRecipientLimit:3},...otherPools]}).pools![0].dailyRecipientLimit,3);
+});
+
+test('send volume and unique recipient strategies can choose different accounts and preserve quota and affinity',()=>{
+  const preset=enrollmentMailPreset('dev');
+  const pool={...preset.pools!.find(item=>item.id==='local')!,members:[a.address,b.address]};
+  const selected=(strategy:'message_count'|'recipient_count')=>
+    activeEnrollmentMailConfig({...config,selectedPool:pool.id,pools:[{...pool,strategy}]});
+  const usage={
+    [a.address]:{daily:10,external:0,monthly:10,recipients:1,seen:false},
+    [b.address]:{daily:12,external:0,monthly:12,recipients:8,seen:false},
+  };
+  const options={urgent:true,external:false};
+  assert.equal(selectMailAccount(selected('message_count'),usage,eligible,options)?.address,b.address);
+  assert.equal(selectMailAccount(selected('recipient_count'),usage,eligible,options)?.address,a.address);
+  assert.equal(selectMailAccount(selected('recipient_count'),usage,eligible,{...options,bound:b.address})?.address,b.address);
+  usage[a.address].monthly=a.monthly;
+  assert.equal(selectMailAccount(selected('recipient_count'),usage,eligible,options)?.address,b.address);
+  assert.equal(selectMailAccount(selected('message_count'),usage,eligible,{...options,bound:a.address}),undefined);
+  assert.equal(enrollmentMailPreset('dev',{...preset,pools:[{...pool,strategy:'recipient_count'}]}).pools![0].strategy,'recipient_count');
+});
+
+test('unique-recipient balancing counts new addresses but reuses a recipient at equal projected load',()=>{
+  const preset=enrollmentMailPreset('dev');
+  const pool={...preset.pools!.find(item=>item.id==='local')!,members:[a.address,b.address],strategy:'recipient_count'} as const;
+  const selected=activeEnrollmentMailConfig({...config,selectedPool:pool.id,pools:[pool]});
+  const usage={
+    [a.address]:{daily:6,external:0,monthly:6,recipients:4,seen:true},
+    [b.address]:{daily:3,external:0,monthly:3,recipients:3,seen:false},
+  };
+  assert.equal(selectMailAccount(selected,usage,eligible,{urgent:true,external:true})?.address,a.address);
+  usage[a.address].seen=false;
+  assert.equal(selectMailAccount(selected,usage,eligible,{urgent:true,external:true})?.address,b.address);
 });

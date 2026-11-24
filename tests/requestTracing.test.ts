@@ -1,6 +1,44 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
+import {EventEmitter} from "node:events";
+import {measureEnrollmentPhase,mountRequestTracing,requestErrorContext} from "../server/requestTracing.ts";
+
+test("enrollment telemetry omits identifiers and distinguishes completed and interrupted writes without a server",async t=>{
+  const lines:string[]=[];
+  t.mock.method(console,'log',(line:string)=>lines.push(line));
+  let middleware:(q:any,r:any,next:()=>void)=>void=()=>assert.fail('middleware not installed');
+  mountRequestTracing({use:(handler:typeof middleware)=>{middleware=handler;}} as express.Express);
+  const event=()=>Object.assign(new EventEmitter(),{locals:{},setHeader(){},statusCode:200,writableFinished:false});
+  const request={method:'POST',path:'/api/enrollment/orders/private-id/proofs/finish',headers:{},
+    route:{path:'/api/enrollment/orders/:id/proofs/finish'}};
+  const finished=event();
+  middleware(request,finished,()=>{});
+  assert.equal(await measureEnrollmentPhase(finished as unknown as express.Response,'transaction',()=>42),42);
+  finished.emit('finish');
+  finished.emit('close');
+  const interrupted=event();
+  middleware(request,interrupted,()=>{});
+  interrupted.emit('close');
+  Object.assign(interrupted,{destroyed:true});
+  await measureEnrollmentPhase(interrupted as unknown as express.Response,'transaction',()=>42);
+  assert.equal(lines.length,3);
+  const [a,b,phase]=lines.map(line=>JSON.parse(line));
+  assert.equal(a.outcome,'finished');
+  assert.equal(a.path,request.route.path);
+  assert.equal(a.status,200);
+  assert.ok(a.phases.transaction>=0);
+  assert.equal(b.outcome,'aborted');
+  assert.equal(b.status,undefined);
+  assert.equal(phase.event,'enrollment.phase_after_disconnect');
+  assert.equal(phase.traceId,b.traceId);
+  assert.equal(phase.outcome,'resolved');
+  assert.ok(lines.every(line=>!line.includes('private-id')));
+  assert.deepEqual(requestErrorContext(request,Error('enrollment_invalid_proof')),
+    {path:request.route.path,errorCode:'enrollment_invalid_proof'});
+  assert.deepEqual(requestErrorContext({...request,route:undefined},Error('private-id')),
+    {path:'/api/:enrollment',errorCode:undefined});
+});
 
 // Trace-id adoption and the /api access log; see server/requestTracing.ts.
 async function withServer(

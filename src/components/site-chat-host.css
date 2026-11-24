@@ -1,0 +1,31 @@
+.site-chat-host {
+  --site-chat-menu-clearance: 100px;
+  --site-chat-bottom: 24px;
+  position: fixed;
+  inset: auto 24px var(--site-chat-bottom) auto;
+  z-index: 49;
+  margin: 0;
+  padding: 0;
+  width: min(560px, calc(100vw - 48px));
+  height: min(860px, calc(100dvh - var(--site-chat-menu-clearance) - var(--site-chat-bottom)));
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  border: 1px solid #c0d5ce;
+  border-radius: 18px;
+  box-shadow: 0 12px 38px #15332d36;
+  background: #f5f8f7;
+}
+
+.site-chat-host[data-fullscreen] {
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.site-chat-host[data-fullscreen]::backdrop { background: #f5f8f7; }
+html:has(.site-chat-host:modal) { overflow: hidden; }
+.site-chat-host .standalone-chat-page { height: 100%; }

@@ -1,9 +1,11 @@
+import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {Plus} from 'lucide-react';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
 import {CrmSingleSelect} from './CrmSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
+import {enrollmentIntroductionFields,enrollmentIntroductionLanguages,enrollmentIntroductionLimits,enrollmentIntroductionStages,type EnrollmentCourseIntroduction,type EnrollmentIntroductionLanguage,type EnrollmentIntroductionStage} from '../../utils/enrollmentCourseIntroduction';
 import {defaultEnrollmentCourseName} from '../../utils/enrollmentTemplates';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {CrmPageAction} from './CrmPageAction';
@@ -11,11 +13,11 @@ import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useId,useRef,useState} from 'react';
 import {AdminField} from '../AdminForm';
-import {AdminStaticField,AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
+import {AdminSavedReadError,AdminStaticField,AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
 import {AdminEditor} from '../admin/AdminEditor';
-import {CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
+import {CrmDetailTabs,CrmDiscardDialog,CrmSaveFeedback} from './CrmDetailWorkspace';
 import {courseError} from '../../utils/crmCoursePricing';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:CrmLanguage;isLight:boolean;onDraftChange:(dirty:boolean)=>void;onCreateTemplate:(courseId:string)=>void}){
@@ -23,6 +25,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  const [data,setData]=useState<any>(null),[form,setForm]=useState<any>(null),[error,setError]=useState(''),[state,setState]=useState(''),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[latest,setLatest]=useState<any>(null);
  const pending=useRef<any>(null),gate=useRef(false);const busy=['saving','checking'].includes(state),unknown=state==='unknown';
  const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
+ const [awaitingSavedRead,setAwaitingSavedRead]=useState(false);
  const readRequest=useRef<AbortController|null>(null);
  const title=t('Courses','Kursus','课程');
  const {filters,change,clear}=useEnrollmentSettingsFilters('courses',{search:'',level:'',status:'',sort:'level'});
@@ -41,7 +44,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
    if(!r.ok)throw Error();
    const d=await r.json();
    if(signal.aborted)return;
-   setData(d);setReadState('ready');
+   setData(d);setReadState('ready');setAwaitingSavedRead(false);
    try{const id=sessionStorage.getItem('uper_course_pending:'+d.actorId);if(id&&!pending.current){pending.current={requestId:id};setState('unknown');}}catch{}
   }catch(cause){
    if(signal.aborted)return;
@@ -56,10 +59,28 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  useEffect(()=>{const warn=(e:BeforeUnloadEvent)=>{if(dirty||unknown){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[dirty,unknown]);
  const [manualName,setManualName]=useState(false);
  const [addingBook,setAddingBook]=useState(false);
+ const [contentLanguage,setContentLanguage]=useState<EnrollmentIntroductionLanguage>('en');
+ const [contentStage,setContentStage]=useState<EnrollmentIntroductionStage|'course'>('course');
+ const contentTabsId=useId();
+ const contentPanelId=contentTabsId+'-panel';
+ const introduction:EnrollmentCourseIntroduction|undefined=form?.config.teaching.introduction;
+ const translation=introduction?.[contentLanguage];
+ const isStagedCourse=form?.config.teaching.level==='HSK 4';
+ const stage=isStagedCourse&&contentStage!=='course'?contentStage:undefined;
+ const visibleContent=stage?translation?.stages?.[stage]:translation;
+ const contentLanguageLabel=t('Content language','Bahasa konten','内容语言');
+ const introductionLabels={
+   audience:t('Who it’s for and recommended starting level','Untuk siapa dan kemampuan awal yang disarankan','适合学员与建议基础'),
+   outcomes:t('Learning outcomes','Hasil belajar','学习成果'),
+   topics:t('Core topics','Topik utama','核心知识点'),
+   practice:t('Learning activities and practice resources','Kegiatan dan sumber latihan','教学活动与练习资源'),
+ };
  const emptyTeaching={level:'',material:'',knowledge:'',learningOutcomes:'',resources:'',minutes:0};
  const edit=(c?:any)=>{
    setManualName(!!c&&c.name!==defaultEnrollmentCourseName(c.teaching??emptyTeaching,c.sessions));
    setAddingBook(false);
+   setContentLanguage('en');
+   setContentStage(c?.teaching?.level==='HSK 4'?'4A':'course');
    setForm(c?{...c,config:{name:c.name,sessions:c.sessions,teaching:c.teaching??emptyTeaching,price:c.price,active:c.active,maxDiscountBps:c.maxDiscountBps,maxDiscountAmount:c.maxDiscountAmount}}:{id:crypto.randomUUID(),revision:0,config:{name:'',sessions:'',price:0,teaching:emptyTeaching,active:false,maxDiscountBps:0,maxDiscountAmount:null}});
    setError('');setLatest(null);setState('');setDirty(false);pending.current=null;
  };
@@ -71,7 +92,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
    });
    setDirty(true);setError('');setState('');
  };
- const teach=(key:string,value:string|number)=>patch('teaching',{...form.config.teaching,[key]:value});
+ const teach=(key:string,value:unknown)=>patch('teaching',{...form.config.teaching,[key]:value});
  const books=[...new Set<string>((data?.courses??[]).flatMap((c:any)=>c.teaching?.material?[c.teaching.material]:[]))].sort((a,b)=>a.localeCompare(b,lang));
  const textbookLabel=t('Main textbook and edition','Buku ajar utama dan edisi','主教材及版本');
  const visibleLabel=t('Visible to learners','Ditampilkan kepada siswa','学员可见');
@@ -89,9 +110,15 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
      a.id.localeCompare(b.id);
  })??[];
  const close=()=>{if(dirty||unknown)setDiscard(true);else setForm(null);};
+ async function finishSave() {
+   setDirty(false);setForm(null);pending.current=null;
+   try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}
+   setState('');setError('');setAwaitingSavedRead(true);
+   await load().catch(()=>{});
+ }
  const save=async(e:any)=>{e.preventDefault();if(gate.current||unknown)return;if(!form.config.teaching.level){setError(t('Select the level.','Pilih level.','请选择级别。'));return;}if(!form.config.teaching.material.trim()){setError(t('Select or add a textbook.','Pilih atau tambahkan buku ajar.','请选择或新增主教材。'));return;}gate.current=true;setState('saving');setError('');const b={id:form.id,revision:form.revision,requestId:crypto.randomUUID(),config:{...form.config,sessions:Number(form.config.sessions),price:Number(form.config.price),maxDiscountBps:Number(form.config.maxDiscountBps),maxDiscountAmount:form.config.maxDiscountAmount===null||form.config.maxDiscountAmount===''?null:Number(form.config.maxDiscountAmount)}};pending.current=b;try{sessionStorage.setItem('uper_course_pending:'+data.actorId,b.requestId);}catch{}
- try{const r=await fetch('/api/crm/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();if(!r.ok){if(r.status>=500){setState('unknown');return;}setState('failed');setError(courseError(d.error,lang));if(r.status===409){try{const fresh=await fetch('/api/crm/courses',{cache:'no-store'});if(fresh.ok)setLatest((await fresh.json()).courses.find((c:any)=>c.id===b.id));}catch{}}pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}return;}if(d.courseId!==b.id||d.operationKind!=='course')throw Error('unconfirmed');setDirty(false);setForm(null);pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}setState('saved');await load().catch(()=>setError(t('Saved; refresh to review.','Disimpan; segarkan untuk memeriksa.','已保存，请刷新核对。')));}catch{setState('unknown');}finally{gate.current=false;}};
- const query=async()=>{if(!pending.current||gate.current)return;gate.current=true;setState('checking');try{const r=await fetch('/api/crm/courses/results/'+pending.current.requestId,{cache:'no-store'});if(!r.ok)throw Error();setDirty(false);setForm(null);pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}setState('saved');await load().catch(()=>setError(t('Saved; refresh to review.','Disimpan; segarkan untuk memeriksa.','已保存，请刷新核对。')));}catch{setState('unknown');setError(t('Save result is not confirmed. Check again before resubmitting.','Hasil simpan belum pasti. Periksa lagi sebelum mengirim ulang.','保存结果尚未确认，请继续查询，不要重复提交。'));}finally{gate.current=false;}};
+ try{const r=await fetch('/api/crm/courses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();if(!r.ok){if(r.status>=500){setState('unknown');return;}setState('failed');setError(courseError(d.error,lang));if(r.status===409){try{const fresh=await fetch('/api/crm/courses',{cache:'no-store'});if(fresh.ok)setLatest((await fresh.json()).courses.find((c:any)=>c.id===b.id));}catch{}}pending.current=null;try{sessionStorage.removeItem('uper_course_pending:'+data.actorId);}catch{}return;}if(d.courseId!==b.id||d.operationKind!=='course')throw Error('unconfirmed');await finishSave();}catch{setState('unknown');}finally{gate.current=false;}};
+ const query=async()=>{if(!pending.current||gate.current)return;gate.current=true;setState('checking');try{const r=await fetch('/api/crm/courses/results/'+pending.current.requestId,{cache:'no-store'});if(!r.ok)throw Error();const receipt=await r.json();if(receipt.operationKind!=='course'||!receipt.courseId||(pending.current.id&&receipt.courseId!==pending.current.id))throw Error();await finishSave();}catch{setState('unknown');setError(t('Save result is not confirmed. Check again before resubmitting.','Hasil simpan belum pasti. Periksa lagi sebelum mengirim ulang.','保存结果尚未确认，请继续查询，不要重复提交。'));}finally{gate.current=false;}};
  const [deleting,setDeleting]=useState<{id:string;name:string;revision:number;requestId:string}>();
  const [deleteState,setDeleteState]=useState<'idle'|'saving'|'unknown'|'checking'>('idle');
  const deleteGate=useRef(false);
@@ -122,9 +149,13 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  };
  useEffect(()=>{if(deleting)onDraftChange(true);return()=>{if(deleting)onDraftChange(false);};},[deleting,onDraftChange]);
  return <div className="crm-course-catalog">
- <header className="admin-edit-header"><div className="admin-edit-title"><h2>{title}</h2><p className="crm-work-muted">{t('Maintain teaching content and course specifications.','Kelola materi dan spesifikasi kursus.','维护主教材、节数和学习成果。')}</p></div><div className="crm-ops-actions"><AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>{data?.canManage&&<CrmPageAction icon={Plus} variant="primary" label={t('Create course','Buat kursus','创建课程')} disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}/>}</div></header>
+ <AdminTopicHeader title={title} isLight={isLight}
+   subtitle={t('Maintain teaching content and course specifications.','Kelola materi dan spesifikasi kursus.','维护主教材、节数和学习成果。')}
+   actions={<><AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>
+     {data?.canManage&&<CrmPageAction icon={Plus} variant="primary" label={t('Create course','Buat kursus','创建课程')} disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}/>}</>}/>
+ {awaitingSavedRead&&readState==='error'&&<AdminSavedReadError lang={lang} onRetry={refresh}/>}
  {!form&&unknown&&<div><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" className="crm-work-button" onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></div>}{!form&&state==='saved'&&<CrmSaveFeedback state="saved" lang={lang}/ >}{!form&&error&&<p role="alert">{error}</p>}
- {(listState!=='ready'||!data?.courses.length)&&<AdminListState lang={lang}
+ {(listState!=='ready'||!data?.courses.length)&&!(awaitingSavedRead&&readState==='error')&&<AdminListState lang={lang}
    state={listState==='ready'?'empty':listState}
    message={listState==='ready'
     ?t('No courses yet. Create and publish a course before confirming enrollment.','Belum ada kursus. Buat dan terbitkan sebelum konfirmasi pendaftaran.','暂无课程。创建并发布课程后，销售才能确认报名。')
@@ -158,7 +189,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
    <td>{c.teaching?.material??'—'}</td><td>{c.sessions}{c.teaching?' × '+c.teaching.minutes+' min':''}</td>
    <td><AdminStatus tone={c.active?'success':'neutral'}>{c.active?t('Published','Diterbitkan','已发布'):t('Draft','Draf','草稿')}</AdminStatus></td>
    <td>{data.canManage&&<div className="flex flex-wrap gap-x-3 gap-y-1">
-     <AdminRowAction disabled={busy||unknown} onClick={()=>edit(c)}>{t('Edit','Edit','编辑')}</AdminRowAction>
+     <AdminRowAction disabled={busy||unknown||readState!=='ready'} onClick={()=>edit(c)}>{t('Edit','Edit','编辑')}</AdminRowAction>
      {c.active&&c.teaching&&<AdminRowAction disabled={busy||unknown||readState!=='ready'} onClick={()=>onCreateTemplate(c.id)}>
        {t('Create template','Buat templat','创建模板')}</AdminRowAction>}
      {c.canDelete&&<AdminRowAction disabled={busy||unknown||readState!=='ready'} onClick={()=>{setDeleteError('');setDeleting({id:c.id,name:c.name,revision:c.revision,requestId:crypto.randomUUID()});}}>
@@ -213,9 +244,42 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
     </AdminFormGrid>
   </AdminFormSection>
   <AdminFormSection variant="subgroup" title={t('Teaching content','Materi pembelajaran','教学内容')}>
-    {([[ 'knowledge','Core topics','Topik utama','核心知识点'],['learningOutcomes','Learning outcomes','Hasil belajar','学习成果'],['resources','Practice resources','Sumber latihan','练习资源']] as const).map(([key,en,id,zh])=><AdminField key={key}><span>{t(en,id,zh)} <span className="crm-work-muted text-xs font-normal">· {visibleLabel}</span></span>
-      <textarea maxLength={key==='knowledge'?1200:2500} value={form.config.teaching[key]} onChange={e=>teach(key,e.target.value)}/>
-    </AdminField>)}
+    <CrmDetailTabs id={contentTabsId} value={contentLanguage} label={contentLanguageLabel} contentId={contentPanelId}
+      disabled={busy||unknown} tabs={[
+        {id:'en',label:'English'},{id:'id',label:'Bahasa Indonesia'},{id:'zh',label:'中文'},
+      ]} onChange={value=>{
+        const locale=enrollmentIntroductionLanguages.find(candidate=>candidate===value);
+        if(locale)setContentLanguage(locale);
+      }}/>
+    <div id={contentPanelId} role="tabpanel" aria-labelledby={contentTabsId+'-tab-'+contentLanguage}>
+      {isStagedCourse&&<AdminField>{t('Course stage','Tahap kursus','课程阶段')}
+        <CrmSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
+          label={t('Course stage','Tahap kursus','课程阶段')} value={contentStage}
+          options={[
+            {value:'course',label:t('Course overview','Ringkasan kursus','课程总览')},
+            ...enrollmentIntroductionStages.map(value=>({value,label:'HSK '+value})),
+          ]} onChange={value=>setContentStage(enrollmentIntroductionStages.find(candidate=>candidate===value)??'course')}/>
+      </AdminField>}
+      {enrollmentIntroductionFields.map(field=><AdminField key={field}>
+        <span>{introductionLabels[field]} <span className="crm-work-muted text-xs font-normal">· {visibleLabel}</span></span>
+        <textarea disabled={busy||unknown} maxLength={enrollmentIntroductionLimits[field]}
+          value={visibleContent?.[field]??''} onChange={event=>{
+            const next={...visibleContent,[field]:event.target.value};
+            teach('introduction',{
+              ...introduction,[contentLanguage]:stage
+                ? {...translation,stages:{...translation?.stages,[stage]:next}}
+                : next,
+            });
+          }}/>
+      </AdminField>)}
+    </div>
+    {(['knowledge','learningOutcomes','resources'] as const).some(key=>form.config.teaching[key])&&<details>
+      <summary>{t('Existing unlocalized content','Konten lama tanpa bahasa','既有未分语种内容')}</summary>
+      {([['knowledge','Core topics','Topik utama','核心知识点'],['learningOutcomes','Learning outcomes','Hasil belajar','学习成果'],['resources','Practice resources','Sumber latihan','练习资源']] as const).map(([key,en,id,zh])=><AdminField key={key}>
+        <span>{t(en,id,zh)}</span>
+        <textarea disabled={busy||unknown} maxLength={key==='knowledge'?1200:2500} value={form.config.teaching[key]} onChange={e=>teach(key,e.target.value)}/>
+      </AdminField>)}
+    </details>}
   </AdminFormSection>
   <AdminFormSection variant="subgroup" title={t('Publication settings','Pengaturan publikasi','发布设置')}>
     <label className="admin-field admin-field--choice"><input type="checkbox" disabled={busy||unknown} checked={form.config.active} onChange={e=>patch('active',e.target.checked)}/>

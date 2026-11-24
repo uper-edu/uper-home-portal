@@ -2,14 +2,14 @@ import {EnrollmentMailWorkspace} from '../EnrollmentMailWorkspace';
 import {BookOpen, Layers, CalendarCheck, Clock3, Mail} from 'lucide-react';
 import {AdminTopicFrame} from '../AdminTopicFrame';
 import {AdminListState} from '../admin/AdminList';
-import {AdminRecordHeader} from '../admin/AdminRecordHeader';
+import {AdminRecordBack} from '../admin/AdminRecordHeader';
+import {AdminPageHeader} from '../admin/AdminPageHeader';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 import {enrollmentSettingsReturnPath} from '../../utils/crmEnrollmentManagement';
 import {CrmEnrollmentTemplates} from './CrmEnrollmentTemplates';
 import {CrmCourses} from './CrmCourses';
 import {CrmEnrollmentClasses} from './CrmEnrollmentClasses';
 import {CrmEnrollmentRules} from './CrmEnrollmentRules';
-import {CrmRecordTitle} from './CrmRecordWorkspace';
 import {enrollmentSettingSections, enrollmentSettingsPath, resolveEnrollmentSettingsTopic} from './operationsSections';
 
 const topicIcons={courses:BookOpen,'enrollment-templates':Layers,'enrollment-classes':CalendarCheck,'enrollment-rules':Clock3,'enrollment-mail':Mail};
@@ -28,7 +28,9 @@ export function CrmEnrollmentSettings({lang,isLight,allowed,params,rulesDirty,on
     ?['Back to class roster','Kembali ke daftar siswa','返回班次名单'][index]
     :['Back to enrollment management','Kembali ke pengelolaan pendaftaran','返回报名管理'][index];
   return <section className="crm-ops-workspace-sample" data-theme={isLight?'light':'dark'}>
-    <AdminRecordHeader back={{label:backLabel,onClick:()=>onNavigate(back)}} title={<CrmRecordTitle title={title}/>}/>
+    <AdminPageHeader className="enrollment-settings-heading" title={title}
+      subtitle={['Manage courses, class templates, schedules and enrollment settings.','Kelola kursus, templat kelas, jadwal, dan pengaturan pendaftaran.','维护课程、班型模板和班次安排，设置报名规则及招生邮件。'][index]}
+      actions={<AdminRecordBack target={{label:backLabel,onClick:()=>onNavigate(back)}}/>}/>
     {allowed?<AdminTopicFrame label={title} selection={topic} navigation={
       <nav className="crm-ops-nav" aria-label={title}>
         {enrollmentSettingSections.map(({id,title:label})=>{

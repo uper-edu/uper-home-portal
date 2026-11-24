@@ -1,7 +1,7 @@
 import {systemCampaignDefaults} from './system-campaign-defaults.mjs';
 import {syncPromotionIndex} from './promotion-index.mjs';
-import defaults, {courses as courseDefaults} from '../../src/data/system-defaults/index.ts';
-import courseBook from '../../src/data/crmCoursePrices.json' with {type:'json'};
+import defaults from '../../src/data/system-defaults/index.ts';
+import {enrollmentCoursePresets} from '../../src/data/system-defaults/courses.ts';
 import {LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
 import {CRM_BOT_CHANNEL} from '../../server/portal/policy.ts';
 import {findSystemLarkGroup, SYSTEM_LARK_GROUP_NAME} from '../../server/portal/larkSystemChannels.ts';
@@ -61,17 +61,13 @@ export async function initializeSystemDefaults(c){
    );
   }
   const [catalogOverride]=await c.execute("SELECT id FROM portal_settings WHERE id='enrollment_catalog_replaced'");
-  for(const course of catalogOverride.length?[]:courseBook.courses){
-   const id='hsk-standard-'+course.id.replace(/^HSK /,'').toLowerCase();
-   const [existing]=await c.execute("SELECT id FROM crm_courses WHERE id=? OR JSON_UNQUOTE(JSON_EXTRACT(value,'$.name'))=?",[id,course.id]);
-   if(existing.some(r=>r.id===id))continue;
-   if(existing.length>1)throw Error('Ambiguous existing standard course: '+course.id);
-   if(existing.length)continue; // Older manually seeded IDs retain pricing/history and existing enrollment references.
-   const config={name:course.id,sessions:course.sessions,price:course.total,...courseDefaults};
+  const [existingCourses]=await c.execute('SELECT id FROM crm_courses LIMIT 1');
+  const presets=catalogOverride.length||existingCourses.length?[]:enrollmentCoursePresets;
+  for(const {id,config} of presets){
    const value={...config,presetKey:'hsk_standard_v1',updatedAt:at,history:[{id:'system-initialize-'+id,actor:'system',at,before:null,after:config}]};
    await c.execute('INSERT INTO crm_courses(id,revision,value) VALUES(?,1,?)',[id,JSON.stringify(value)]);
   }
   await syncPromotionIndex(c);
-  await c.commit();return {campaigns:records.map(r=>r.id),role:'finance',courses:catalogOverride.length?0:courseBook.courses.length};
+  await c.commit();return {campaigns:records.map(r=>r.id),role:'finance',courses:presets.length};
  }catch(e){await c.rollback();throw e;}
 }

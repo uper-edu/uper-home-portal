@@ -1,7 +1,7 @@
 /** An opaque cache namespace, never an authentication credential. Only /session selects it. */
 let scope = '';
 let revision = 0;
-let pending: Promise<VisitorSession> | undefined;
+let pending: {request:Promise<VisitorSession>;controller:AbortController} | undefined;
 const listeners = new Set<() => void>();
 export const VISITOR_MARKER = 'uper_active_visitor_scope';
 export interface VisitorSession { registered: boolean; cacheScope: string; profile?: Record<string, any> | null }
@@ -24,12 +24,25 @@ export function selectVisitorScope(next: string) {
 export function subscribeVisitorScope(listener: () => void) {
   listeners.add(listener); return () => { listeners.delete(listener); };
 }
-export function invalidateVisitorScope() { pending = undefined; selectVisitorScope(''); }
+export function invalidateVisitorScope() {
+  const previousCheck = pending;
+  pending = undefined;
+  previousCheck?.controller.abort();
+  if (scope) {
+    selectVisitorScope('');
+  } else {
+    // A first check can be superseded before any visitor has been selected.
+    revision++;
+    if (previousCheck) for (const listener of listeners) listener();
+  }
+}
 export function verifyVisitorSession(_refresh = false): Promise<VisitorSession> {
-  if (pending) return pending;
+  if (pending) return pending.request;
   // Session is deliberately rechecked before mutations and when returning to a tab.
   const started = revision;
-  const request = fetch('/api/portal/session', {cache: 'no-store', signal: AbortSignal.timeout(15000)})
+  const controller = new AbortController();
+  const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
+  const request = fetch('/api/portal/session', {cache: 'no-store', signal})
     .then(async r => {
       if (!r.ok) throw Error('Visitor identity is unavailable');
       const s: VisitorSession = await r.json();
@@ -41,10 +54,15 @@ export function verifyVisitorSession(_refresh = false): Promise<VisitorSession> 
       } catch { /* Storage may be unavailable. The live session is still authoritative. */ }
       return s;
     });
-  pending = request;
-  void request.finally(() => { if (pending === request) pending = undefined; }).catch(() => {});
+  pending = {request,controller};
+  void request.finally(() => { if (pending?.request === request) pending = undefined; }).catch(() => {});
   return request;
 }
-if (typeof window !== 'undefined') window.addEventListener('storage', event => {
-  if (event.key === VISITOR_MARKER && event.newValue !== scope) invalidateVisitorScope();
-});
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', event => {
+    if (event.key === VISITOR_MARKER && event.newValue !== scope) invalidateVisitorScope();
+  });
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) invalidateVisitorScope();
+  });
+}

@@ -1,9 +1,10 @@
 import {trackEvent,trackConfirmedReceipt} from '../../utils/analytics';
+import {crmSaveFailureKind} from '../../utils/crmOperationResult';
 import {profileAnalyticsReceipt} from '../../utils/analyticsReceipts';
 import {CrmHistoryAccess} from './CrmHistoryAccess';
 import {CrmQuestionnaireEvidence} from './CrmQuestionnaireEvidence';
 import {CrmFormSection} from './CrmFormLayout';
-import {AdminFormActions,AdminFormFeedback,AdminFormGrid} from '../AdminFormLayout';
+import {AdminFormActions,AdminFormFeedback,AdminFormGrid,AdminSavedReadError} from '../AdminFormLayout';
 import { useCrmUiText, useCrmUiLanguage } from "./CrmUiLanguage";
 import { CrmOperationLayer } from "./CrmOperationLayer";
 import { CrmDiscardDialog } from "./CrmDetailWorkspace";
@@ -472,6 +473,7 @@ export function CrmReportedLevel({lead,lang:provided}:any){
 export function CrmProfileEditor({
   lead,
   onSaved,
+  onReloadSavedProfile,
   onDirty,
   disabled,
   timezone,
@@ -500,8 +502,7 @@ export function CrmProfileEditor({
   const formRef = useRef<HTMLDivElement>(null);
   const [conflict, setConflict] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const [success, setSuccess] = useState(""),
-    [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<any[]>([]);
   const [open, setOpen] = useState(false),
     [updates, setUpdates] = useState<any>({}),
     [versions, setVersions] = useState<any>({}),
@@ -510,6 +511,20 @@ export function CrmProfileEditor({
     [busy, setBusy] = useState(false),
     [request, setRequest] = useState<any>(null),
     [unknown, setUnknown] = useState(false);
+  const [savedReadFailed,setSavedReadFailed]=useState(false);
+  const [readingSavedProfile,setReadingSavedProfile]=useState(false);
+  const readSavedProfile=async()=>{
+    if(!onReloadSavedProfile||readingSavedProfile)return;
+    setReadingSavedProfile(true);
+    try{
+      await onReloadSavedProfile();
+      setSavedReadFailed(false);
+    }catch{
+      setSavedReadFailed(true);
+    }finally{
+      setReadingSavedProfile(false);
+    }
+  };
   async function save(query = false) {
     if (busy) return;
     if (!query) {
@@ -528,7 +543,6 @@ export function CrmProfileEditor({
     onBusy?.(true);
     setError("");
     setConflict(false);
-    setSuccess("");
     setResults([]);
     let body = request;
     let knownFailure = false;
@@ -559,12 +573,14 @@ export function CrmProfileEditor({
       const d = await r.json();
       if (!r.ok) {
         setConflict(r.status === 409);
-        if (r.status === 404 && query) {
-          setRequest(null);
-          setUnknown(false);
-          throw Error("未查到保存结果，可以明确重试");
+        const failure = crmSaveFailureKind(r.status, query);
+        if (failure === "receipt_missing") {
+          setError(lang === "zh" ? "暂未查到保存结果，输入已保留，请稍后再次查询。" :
+            lang === "id" ? "Hasil penyimpanan belum ditemukan. Isian dipertahankan. Periksa lagi nanti." :
+            "No save receipt yet. Your input is retained. Check again later.");
+          return;
         }
-        if (r.status < 500 && !query) {
+        if (failure === "rejected") {
           knownFailure = true;
           setRequest(null);
           setUnknown(false);
@@ -579,18 +595,10 @@ export function CrmProfileEditor({
       setRequest(null);
       onDirty?.(false);
       setOpen(false);
-      setSuccess(
-        scope === "needs"
-          ? "已保存"
-          : "已更新" +
-              (d.profileFieldResults || []).filter(
-                (r: any) => r.status === "applied",
-              ).length +
-              "项客户资料，请查看各字段结果。",
-      );
       setResults(scope === "needs" ? [] : d.profileFieldResults || []);
       trackConfirmedReceipt(profileAnalyticsReceipt(d,lead.id,body?.requestId,scope));
       onSaved(d.lead);
+      void readSavedProfile();
     } catch (e) {
       if (!knownFailure && !(e as Error).message.includes("未查到"))
         setUnknown(true);
@@ -611,7 +619,7 @@ export function CrmProfileEditor({
       <button
         type="button"
         className="crm-work-button crm-profile-edit-action"
-        disabled={busy || open}
+        disabled={busy||open||readingSavedProfile||savedReadFailed}
         onClick={() => openEditor(kind)}
       >
         <Pencil size={16} aria-hidden="true" />
@@ -638,7 +646,7 @@ export function CrmProfileEditor({
         </h3>
         {editAction('needs','人工纠正学习需求')}
       </header>
-      {success && <AdminFormFeedback lang={lang} state="saved" placement="floating">{success}</AdminFormFeedback>}
+      {savedReadFailed&&<AdminSavedReadError lang={lang} busy={readingSavedProfile} onRetry={()=>void readSavedProfile()}/>}
       <CrmProfileSaveResult results={results} />
       {(lead.reportedLevel||visibleProfileNeedsGroups(lead).length>0)&&<section className="crm-insights-group" aria-label={ui('学习需求与偏好')}><h4>{ui('学习需求与偏好')}</h4><div className="crm-profile-needs-group">
         <dl>

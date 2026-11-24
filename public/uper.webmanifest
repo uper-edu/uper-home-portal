@@ -1,0 +1,14 @@
+{
+  "id": "/link",
+  "name": "UPER",
+  "short_name": "UPER",
+  "start_url": "/link",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0d9488",
+  "background_color": "#f8fafc",
+  "icons": [
+    { "src": "/uper-app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/uper-app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

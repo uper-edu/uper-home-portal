@@ -1,5 +1,5 @@
-import {trackEvent,trackConfirmedReceipt} from '../utils/analytics';
-import {assessmentAnalyticsReceipt} from '../utils/analyticsReceipts';
+import {createBrowserUuid} from '../utils/browserUuid';
+import {trackEvent} from '../utils/analytics';
 import {visitorScope, assertVisitorScope} from '../services/visitorScope';
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -26,7 +26,7 @@ import {
   writeHskResult,
   readHskHistoryState,
 } from "../services/hskAttemptStorage";
-import { saveHskAttempt, restoreHskHistory, restoreHskAttempt } from "../services/portalChat";
+import { saveHskAttempt, restoreHskHistory, recoverHskAttempt, retryHskAttempt } from "../services/portalChat";
 import { HskPlayback, type PlaybackStatus } from "../services/hskPlayback";
 import { HskExamImage } from "./HskExamVisuals";
 import { HskPinyinText } from "./HskPinyinText";
@@ -36,13 +36,19 @@ import { hskInstruction } from "../data/hskInstructions";
 interface Props {
   onComplete: (result: HskResult) => void;
   onCancel?: () => void;
+  onAttemptStart?: (attemptId:string) => void;
+  active?: boolean;
   studentName: string;
   lang?: HskLanguage;
+  initialMode?: HskMode;
 }
 export default function HSKPlacementAssessment({
   onComplete,
   onCancel,
+  onAttemptStart,
+  active=true,
   lang = "en",
+  initialMode = "full",
 }: Props) {
   const t = (zh: string, en: string, id: string) =>
     chooseText(lang, zh, en, id);
@@ -53,7 +59,7 @@ export default function HSKPlacementAssessment({
     !!requireHskVersion(draft.attempt.examVersion, draft.attempt.scoringVersion)
       .administration;
   const [mode, setMode] = useState<HskMode>(
-    continuing ? draft!.attempt.mode : "full",
+    continuing ? draft!.attempt.mode : initialMode,
   );
   const [attempt, setAttempt] = useState<HskAttempt | null>(null);
   const [index, setIndex] = useState(0);
@@ -135,15 +141,13 @@ export default function HSKPlacementAssessment({
     };
   }, []);
   useEffect(() => {
-    let active = true;
-    restoreHskHistory(lang)
+    const request=new AbortController();
+    restoreHskHistory(lang,request.signal)
       .then((h) => {
-        if (active) setHistory(h);
+        if (!request.signal.aborted) setHistory(h);
       })
       .catch(() => {});
-    return () => {
-      active = false;
-    };
+    return () => request.abort();
   }, [lang]);
   const activate = (a: HskAttempt, i: number, position = 0, auto = true) => {
     const item = getVersionQuestions(a.mode, a.examVersion, a.scoringVersion)[
@@ -278,6 +282,9 @@ export default function HSKPlacementAssessment({
     document.addEventListener("visibilitychange", hidden);
     return () => document.removeEventListener("visibilitychange", hidden);
   }, [attempt?.attemptId, complete]);
+  useEffect(() => {
+    if (!active) pause();
+  }, [active,attempt?.attemptId,complete]);
   const resume = () => {
     pausedRef.current = false;
     setPaused(false);
@@ -285,8 +292,9 @@ export default function HSKPlacementAssessment({
   };
   const start = (restore = false) => {
     const old = restore && continuing ? draft : null;
-    const a = old ? old.attempt : newHskAttempt(mode, crypto.randomUUID());
+    const a = old ? old.attempt : newHskAttempt(mode, createBrowserUuid());
     const i = old ? old.currentIdx : 0;
+    onAttemptStart?.(a.attemptId);
     trackEvent(old?'assessment_resume':'assessment_start',{assessment_mode:a.mode});
     setAttempt(a);
     setIndex(i);
@@ -297,7 +305,7 @@ export default function HSKPlacementAssessment({
   const recoverSaved = async()=>{
     if(!attempt||savingRef.current)return;
     savingRef.current=true;setSaving(true);setSaveError(false);
-    try{const saved=await restoreHskAttempt(attempt.attemptId,ownerScope);trackConfirmedReceipt(assessmentAnalyticsReceipt(saved,attempt.attemptId));writeHskResult(saved);clearHskDraft();if(mounted.current)onComplete(saved);}
+    try{const saved=await recoverHskAttempt(attempt.attemptId,ownerScope);clearHskDraft(attempt.attemptId);if(mounted.current)onComplete(saved);}
     catch{if(mounted.current)setSaveError(true);}
     finally{savingRef.current=false;if(mounted.current)setSaving(false);}
   };
@@ -318,9 +326,8 @@ export default function HSKPlacementAssessment({
     setPending(local);
     writeHskResult(local);
     try {
-      const saved = await saveHskAttempt(local.attempt, lang, ownerScope);
-      writeHskResult(saved);
-      clearHskDraft();
+      const saved = await (saveError ? retryHskAttempt : saveHskAttempt)(local.attempt, lang, ownerScope);
+      clearHskDraft(local.attempt.attemptId);
       if (mounted.current) onComplete(saved);
     } catch (e) {
       trackEvent('assessment_save_result',{assessment_mode:attempt.mode,status:'unknown',operation:'assessment'});
@@ -578,14 +585,14 @@ export default function HSKPlacementAssessment({
               ? t("阅读", "Reading", "Membaca")
               : t("识字选择", "Characters", "Karakter")}
         </h2>
-        <button
-          className="min-h-11 text-sm underline"
-          onClick={paused ? resume : pause}
-        >
-          {paused
-            ? t("继续测评", "Continue assessment", "Lanjutkan tes")
-            : t("暂停测评", "Pause assessment", "Jeda tes")}
-        </button>
+        <div className="flex flex-wrap justify-end gap-x-4">
+          <button className="min-h-11 text-sm underline" onClick={paused ? resume : pause}>
+            {paused?t("继续测评","Continue assessment","Lanjutkan tes"):t("暂停测评","Pause assessment","Jeda tes")}
+          </button>
+          {paused&&storageOK&&onCancel&&<button type="button" className="min-h-11 text-sm underline" onClick={onCancel}>
+            {t("返回咨询","Return to chat","Kembali ke chat")}
+          </button>}
+        </div>
       </div>
       <progress
         className="block w-full h-1 accent-primary-600"

@@ -562,8 +562,16 @@
   {
     "layer": "contract",
     "object": "CrmLeadRecord",
+    "key": "purchaseIntentSuggestion",
+    "type": "PurchaseIntentSuggestion | null",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
     "key": "enrollmentOpportunitySummary",
-    "type": "{ count: number; only?: { id: string; level: string; stage: string; }; }",
+    "type": "{ count: number; hasEnrollment?: true; only?: { id: string; level: string; stage: string; }; }",
     "optional": true,
     "source": "src/types/crmLead.ts"
   },
@@ -573,6 +581,14 @@
     "key": "enrollmentOpportunitySummary.count",
     "type": "number",
     "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentOpportunitySummary.hasEnrollment",
+    "type": "true",
+    "optional": true,
     "source": "src/types/crmLead.ts"
   },
   {

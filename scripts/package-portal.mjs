@@ -4,6 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {build,transform} from 'esbuild';
 import {environmentName,frontendEnvironment} from '../server/environment.mjs';
 import {buildIdentity,sourceIdentity} from '../server/runtimeVersion.mjs';
+import {readStartupMigrationSqlNames,verifyPackagedMigrationSql} from './lib/package-migration-sql.mjs';
 export async function buildPortalPackage({environment='dev',directory}={}) {
 const root=process.cwd();
 const target=environmentName(environment);
@@ -11,6 +12,9 @@ const out=path.resolve(root,directory||path.join('build',target));
 if(![path.join(root,'.local-backups')+path.sep,path.join(root,'build')+path.sep].some(p=>out.startsWith(p)))throw Error('Build output must be in an ignored build or local-backups directory');
 await fs.mkdir(out,{recursive:true});
 const identity=buildIdentity(target,root,frontendEnvironment(target));
+const releaseMarker=path.join(out,'.uper-release.json');
+// Rebuilding in place supersedes the old release as soon as output can change.
+await fs.rm(releaseMarker,{force:true});
 execFileSync(process.execPath,['node_modules/vite/bin/vite.js','build','--mode',target,'--outDir',path.join(out,'web')],{stdio:'inherit',env:{...process.env,UPER_BUILD_IDENTITY:JSON.stringify(identity)}});
 // Preserve ESM module boundaries: a single bundle changes import.meta.url and async cycle semantics.
 const graph=await build({entryPoints:['server.ts','cloud/mysql/access-recovery.mjs','cloud/company-trial/maintenance.mjs','cloud/mysql/retire-test-policy.mjs'],outdir:path.join(out,'graph-only'),bundle:true,platform:'node',target:'node24',format:'esm',packages:'external',write:false,metafile:true});
@@ -32,7 +36,12 @@ for(const file of inputs){
  const {code}=await transform(source,{loader:file.endsWith('.tsx')?'tsx':file.endsWith('.ts')?'ts':'js',format:'esm',target:'node24',jsx:'automatic',sourcemap:false});
  await fs.writeFile(dest,code.replace(/(\bfrom\s+["'][^"']+\.json["'])(?!\s+with\b)/g,'$1 with { type: "json" }'));
 }
-for(const f of ['schema.sql','schema-v2.sql','schema-v13.sql','schema-v14.sql','schema-v15.sql','schema-v16.sql','schema-v19.sql','schema-v20.sql','schema-enrollment-20261114172847.sql','schema-enrollment-20261114174435.sql','schema-enrollment-20261114175859.sql','schema-enrollment-20261114181313.sql','schema-enrollment-20261114182623.sql','schema-enrollment-20261114183459.sql','schema-enrollment-20261114193153.sql','schema-enrollment-20261114213702.sql','schema-enrollment-20261114234419.sql','schema-enrollment-20261114235011.sql','schema-enrollment-20261114235404.sql','schema-enrollment-20261115000007.sql','schema-enrollment-20261115014556.sql','schema-enrollment-20261115183339.sql','schema-enrollment-20261116191537.sql','schema-enrollment-20261116214753.sql'])await fs.copyFile('cloud/mysql/'+f,path.join(runtime,'cloud/mysql',f));
+const migrationSource=path.join('cloud','mysql');
+const packagedMigrations=path.join(runtime,migrationSource);
+for(const name of await readStartupMigrationSqlNames(migrationSource)){
+ await fs.copyFile(path.join(migrationSource,name),path.join(packagedMigrations,name));
+}
+await verifyPackagedMigrationSql(migrationSource,packagedMigrations);
 for(const f of ['package.json','package-lock.json'])await fs.copyFile(f,path.join(out,f));
 const dockerfile=await fs.readFile('cloud/company-trial/Dockerfile','utf8');
 await fs.writeFile(path.join(out,'Dockerfile'),dockerfile+'\nENV PORTAL_ENV='+target+' PORTAL_PACKAGE_ENV='+target+' PORTAL_ENV_SOURCE=injected\n');
@@ -44,8 +53,14 @@ await walk(out);if(forbidden.length)throw Error('Forbidden deployment payload en
 const after=sourceIdentity(root);if(after.sourceDigest!==identity.sourceDigest||after.gitCommit!==identity.gitCommit||after.dirty!==identity.dirty)throw Error('Source changed during build; rebuild before release');
 await fs.writeFile(path.join(runtime,'portal-build.json'),JSON.stringify(identity,null,2));
 await fs.writeFile(path.join(out,'web/portal-build.json'),JSON.stringify(identity,null,2));
-const metadata={...identity,gitCommit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),dirty:!!execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim(),environment:target,envFile:'.env.'+target,deployed:false,compiledModules:inputs.length};
-await fs.writeFile(path.join(out,'.uper-release.json'),JSON.stringify(metadata,null,2));
+const metadata={...identity,envFile:'.env.'+target,deployed:false,compiledModules:inputs.length};
+const pendingMarker=releaseMarker+'.tmp';
+try {
+ await fs.writeFile(pendingMarker,JSON.stringify(metadata,null,2));
+ await fs.rename(pendingMarker,releaseMarker);
+} finally {
+ await fs.rm(pendingMarker,{force:true});
+}
 console.log(JSON.stringify({packageReady:true,...metadata,directory:out}));
 return {directory:out,...metadata};
 }

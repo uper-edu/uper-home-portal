@@ -1,14 +1,22 @@
-import {mountEnrollmentMail,startEnrollmentMail} from './enrollmentMail.ts';
-import {promotionEntryPoint} from '../../src/utils/promotionNavigation.ts';
+import {checkNotificationSettingsVersion,notificationGroupSettingsVersion,readNotificationSettingsReceipt,writeNotificationSettings} from './notificationSettingsOperations.ts';
+import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
+import {operationContext} from './operationContext.ts';
+import {mountIntegrationCredentials} from './integrationCredentialAdmin.ts';
+import {groupCredential,larkApplication} from './integrationCredentialTargets.ts';
+import {initializeEnrollmentMailDelivery,mountEnrollmentMail,startEnrollmentMail} from './enrollmentMail.ts';
+import {promotionEntryPoint,promotionEvidenceKeys} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import { mountEnrollmentManagement } from './enrollmentManagement.ts';
 import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
+import {enrollmentSessionCookie,portalVisitorCookie,portalVisitorToken} from './enrollmentVisitorSession.ts';
 import { mountEnrollmentApplication } from './enrollmentApplication.ts';
 import { attachEnrollmentOpportunitySummaries } from './enrollmentCrm.ts';
+import { enrollmentNeedsNoSalesClaim } from '../../src/utils/crmEnrollment.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import {mountPaymentRoutes,attachPaymentSummaries} from './payments.ts';
 import {auditLog} from './audit.ts';
 import {log} from '../logger.ts';
+import {requestErrorContext} from '../requestTracing.ts';
 import {listInbox,readInbox} from './inappInbox.ts';
 import {previewBackfill,confirmBackfill,backfillResult} from './assignmentBackfill.ts';
 import {assignNewLead,prepareAssignmentPolicy} from './autoAssignment.ts';
@@ -46,6 +54,7 @@ import {validContactEmail, CONTACT_EMAIL_ERROR} from "../../src/utils/contactEma
 import {validContactPhone, CONTACT_PHONE_ERROR} from "../../src/utils/contactPhone.ts";
 import {attachFactMilestones} from "./factMilestones.ts";
 import { attachBuyingEvidence } from "./buyingEvidence.ts";
+import { attachPurchaseIntentSuggestions } from "./purchaseIntentSuggestions.ts";
 import {mountTrustRoutes} from "./trustRoutes.ts";
 import {fact,contactsConflict,stageFact,engagement,normalizeContactPhone} from "./trustWorkflow.ts";
 import { mountAccessOperations } from "./accessOperations.ts";
@@ -82,7 +91,7 @@ import {deleteNotificationGroupChannel, lockNotificationGroupChannels, notificat
 import {deleteNotificationPolicy} from "./notificationPolicyDeletion.ts";
 import {findSystemLarkGroup, isSystemLarkGroup, readSystemLarkGroupIds, systemLarkGroupName} from "./larkSystemChannels.ts";
 import {isolatedLarkRuntime,migrateLarkChannelModes,personalLarkChannel,PERSONAL_CHANNEL_SETTING} from "./larkChannelModes.ts";
-import { encryptGroupWebhook, groupWebhookUsesEnvironment, publicGroupChannelConfig, resolveGroupWebhook, usesEnvironmentGroupWebhook, usesLegacyProductionGroupWebhook, validWebhook } from "./larkGroupWebhook.ts";
+import { encryptGroupWebhook, groupWebhookUsesEnvironment, publicGroupChannelConfig, usesEnvironmentGroupWebhook, usesLegacyProductionGroupWebhook, validWebhook } from "./larkGroupWebhook.ts";
 import { findLarkChannelTest, planGroupChannelTest, recordLarkChannelTest, sendGroupChannelTest, type LarkChannelTestReceipt } from "./larkGroupChannelTest.ts";
 import { larkBindings } from "./larkApp.ts";
 import { planPersonalChannelTest, sendPersonalChannelTest } from "./larkPersonalChannelTest.ts";
@@ -119,15 +128,21 @@ import {
 import { getSystemInstruction } from "../../src/data/knowledgeBase.ts";
 import { loadCampaigns } from "../campaignStorage.ts";
 import { mountHskAssessments } from "./assessments.ts";
-const cookieName = "uper_visitor";
+const cookieName = portalVisitorCookie;
+async function issueVisitor(res: Response) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const row = (await pool.query(
+    "INSERT INTO visitor_sessions(id,expires_at) VALUES(:p1,UTC_TIMESTAMP(6)+INTERVAL 30 day)",
+    [token],
+  )).rows[0];
+  res.append("Set-Cookie",
+    `${cookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
+  return row;
+}
 async function visitor(req: Request, res: Response) {
   if (res.locals.portalVisitor) return res.locals.portalVisitor;
-  let token = (req.headers.cookie || "")
-    .split(";")
-    .map((s) => s.trim())
-    .find((s) => s.startsWith(cookieName + "="))
-    ?.slice(cookieName.length + 1);
-  let row =
+  const token = portalVisitorToken(req.headers.cookie);
+  const existing =
     token &&
     (
       await pool.query(
@@ -135,19 +150,7 @@ async function visitor(req: Request, res: Response) {
         [token],
       )
     ).rows[0];
-  if (!row) {
-    token = crypto.randomBytes(32).toString("hex");
-    row = (
-      await pool.query(
-        "INSERT INTO visitor_sessions(id,expires_at) VALUES(:p1,UTC_TIMESTAMP(6)+INTERVAL 30 day)",
-        [token],
-      )
-    ).rows[0];
-    res.append(
-      "Set-Cookie",
-      `${cookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
-    );
-  }
+  const row = existing || await issueVisitor(res);
   const expected = req.headers['x-visitor-scope'];
   if (expected && expected !== crypto.createHash('sha256').update(row.id).digest('hex')) fail(409, 'Visitor identity changed');
   res.locals.portalVisitor = row;
@@ -158,7 +161,7 @@ function wrap(fn: (req: Request, res: Response) => Promise<any>) {
     Promise.resolve().then(()=>{if(containsRemovedProfileMetadata(req.body))fail(400,"不支持的资料字段");return fn(req,res);}).catch((e) => {
       const status = (e as any).status || 503;
       // Business rejections (fail(4xx)) stay at warn; only service failures are error-level.
-      log[status < 500 ? "warn" : "error"]("http.error", { method: req.method, path: req.path, status, traceId: res.locals.traceId, error: e as Error });
+      log[status < 500 ? "warn" : "error"]("http.error", { method: req.method, status, traceId: res.locals.traceId, ...requestErrorContext(req,e) });
       if (!res.headersSent)
         res.status(e.status || 503).json({
           saved: typeof e.saved === "boolean" ? e.saved : undefined,
@@ -183,6 +186,37 @@ async function own(req: Request, res: Response) {
   ).rows[0];
   if (!row) fail(404, "Conversation not found");
   return row;
+}
+async function currentVisitorChat(db: Pick<typeof pool, 'query'>, visitorId: string) {
+  return (await db.query(
+    "SELECT * FROM conversations WHERE visitor_id=:p1 AND source IN ('homepage_widget','standalone_chat') AND (attribution->>'$.chatStartOrder' IS NOT NULL OR EXISTS(SELECT 1 FROM messages WHERE conversation_id=conversations.id)) ORDER BY CAST(COALESCE(attribution->>'$.chatStartOrder','0') AS UNSIGNED) DESC, updated_at DESC, id DESC LIMIT 1",
+    [visitorId],
+  )).rows[0];
+}
+export async function conversationSnapshot(row: {id:string;source:string;attribution:unknown}, view:'full'|'workspace'='full') {
+  const messages = (await pool.query(
+    view==='workspace'
+      ? "SELECT conversation_id,request_id,role,content,status,metadata,created_at FROM messages WHERE conversation_id=:p1 ORDER BY sequence"
+      : "SELECT * FROM messages WHERE conversation_id=:p1 ORDER BY sequence",
+    [row.id],
+  )).rows;
+  return {conversation:{id:row.id,source:row.source,attribution:row.attribution},messages};
+}
+function sharedChatLanding(page: unknown) {
+  if (typeof page !== 'string' || !page.startsWith('/') || page.startsWith('//')) return '';
+  const url = new URL(page, 'https://portal.invalid');
+  if (url.origin !== 'https://portal.invalid') return '';
+  const params = new URLSearchParams();
+  const entries = promotionEvidenceKeys.flatMap(key => url.searchParams.getAll(key).map(value => [key,value.slice(0,191)] as const));
+  for (const [key,value] of entries.slice(0,24)) params.append(key,value);
+  return url.pathname.slice(0,300) + (params.size ? '?' + params : '');
+}
+async function chatEntrySurface(value: unknown, conv: {id:string;visitor_id:string;source:string}, db: Pick<typeof pool,'query'>) {
+  if (value === undefined) return conv.source;
+  if (value !== 'homepage_widget' && value !== 'standalone_chat') fail(400,'Invalid chat entry');
+  if ((await currentVisitorChat(db, conv.visitor_id))?.id !== conv.id)
+    throw Object.assign(Error('Current conversation changed'), {status:409, saved:false});
+  return value;
 }
 function requestPermission(req:Request,original:string){
  const path=req.originalUrl.split('?')[0];
@@ -241,6 +275,7 @@ async function visibleLeadProfiles(e: any) {
     .filter((p) => allowed(e, p)));
   await attachLeadAttention(e, leads, snapshot);
   await attachBuyingEvidence(pool,leads);
+  await attachPurchaseIntentSuggestions(pool,leads,e);
   await attachFactMilestones(pool,leads);
   await attachPaymentSummaries(pool,leads);
   return leads;
@@ -271,7 +306,7 @@ async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
       inactivity: lead.contactOverview.stale,
       requestCount: pendingMap.get(lead.id)||0,
       latest: a?.latest,
-      customerRequests:requests.filter((r:any)=>r.lead_id===lead.id).map((r:any)=>({id:r.id,dueAt:r.data.dueAt,action:r.data.action})),
+      customerRequests:requests.filter((r:any)=>r.lead_id===lead.id).map((r:any)=>({id:r.id,dueAt:r.data.dueAt,action:r.data.action,state:r.state})),
       tasks: (a?.tasks || []).map((t:any)=>({...t,requestDueAt:requestDeadline(t,requests)})),
       isMine:
         lead.owner === e.id || (a?.tasks || []).some((t) => t.ownerId === e.id),
@@ -354,11 +389,12 @@ export async function mountPortal(app: Express) {
     return;
   }
   await initializePortalDefaults();
+  await initializeEnrollmentMailDelivery();
   mountCourseRoutes(app,{wrap,staff});
   app.use(accessRestoreGate);
   mountEnrollmentCatalog(app, { wrap, staff });
   mountEnrollmentManagement(app, wrap, staff);
-  mountEnrollmentApplication(app, { wrap, staff });
+  mountEnrollmentApplication(app, { wrap, staff, visitor });
   mountEnrollmentMail(app,{wrap,staff});
   startEnrollmentMail();
   mountAccessOperations(app);
@@ -368,6 +404,7 @@ export async function mountPortal(app: Express) {
   mountAccessManagement(app);
   mountLarkSelfService(app);
   mountAiServiceConfig(app);
+  mountIntegrationCredentials(app,{pool,tx: work => tx((db: any)=>operationContext.run(db,()=>work(db)))});
   mountGoalReviewRoute(app,{wrap,leadAccess});
   app.use("/api", (req, res, next) => {
     if (
@@ -420,7 +457,8 @@ export async function mountPortal(app: Express) {
   );
   app.post("/api/portal/new-person",wrap(async(req,res)=>{
     await visitor(req,res);
-    res.append("Set-Cookie",`${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+    await issueVisitor(res);
+    res.clearCookie(enrollmentSessionCookie,{path:"/api/enrollment",httpOnly:true,secure:req.secure,sameSite:"strict"});
     res.json({success:true});
   }));
   app.post(
@@ -430,12 +468,17 @@ export async function mountPortal(app: Express) {
       const source = req.body.source;
       if (!["homepage_widget", "standalone_chat"].includes(source))
         fail(400, "Invalid source");
+      const shared = req.body.shared === true;
+      if (shared && req.body.newSession === true && typeof req.body.previousConversationId !== 'string')
+        fail(400, 'Current conversation required');
       const row = await tx(async (c) => {
-        await c.query(
-          "SELECT id FROM visitor_sessions WHERE id=:p1 FOR UPDATE",
+        const visitorRow = (await c.query(
+          "SELECT * FROM visitor_sessions WHERE id=:p1 FOR UPDATE",
           [v.id],
-        );
-        const old =
+        )).rows[0];
+        const current = shared ? await currentVisitorChat(c, v.id) : undefined;
+        const startFresh = req.body.newSession === true && current?.id === req.body.previousConversationId;
+        const old = shared ? (startFresh ? undefined : current) :
           !req.body.newSession &&
           (
             await c.query(
@@ -443,52 +486,66 @@ export async function mountPortal(app: Express) {
               [v.id, source],
             )
           ).rows[0];
-        if (old) return old;
+        if (old) {
+          // Pin the most recently active legacy chat on first use. Late work in
+          // another tab must not replace the current conversation after a reset.
+          if (shared && !old.attribution?.chatStartOrder)
+            await c.query("UPDATE conversations SET attribution=JSON_SET(attribution,'$.chatStartOrder',CAST(:p2 AS UNSIGNED)) WHERE id=:p1",
+              [old.id, Date.now()]);
+          return old;
+        }
+        const chatStartOrder = Math.max(Date.now(), Number(current?.attribution?.chatStartOrder ?? 0) + 1);
         const row = (
           await c.query(
             "INSERT INTO conversations(id,visitor_id,lead_id,source,attribution) VALUES(:p1,:p2,:p3,:p4,:p5)",
             [
               id(),
               v.id,
-              v.lead_id,
+              visitorRow.lead_id,
               source,
               {
-                page: String(req.body.page || "").slice(0, 300),
+                page: shared
+                  ? current?.attribution?.page ?? sharedChatLanding(req.body.page)
+                  : String(req.body.page || "").slice(0, 300),
+                ...(shared && {chatStartOrder, chatRestarted:startFresh, chatOriginSource:current?.attribution?.chatOriginSource ?? current?.source ?? source}),
               },
             ],
           )
         ).rows[0];
-        if (v.lead_id) {
+        if (visitorRow.lead_id) {
           const last = (
             await c.query(
               "SELECT updated_at FROM conversations WHERE (lead_id=:p1 OR lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) AND id<>:p2 ORDER BY updated_at DESC LIMIT 1",
-              [v.lead_id, row.id],
+              [visitorRow.lead_id, row.id],
             )
           ).rows[0];
           if (
             !last ||
             Date.now() - new Date(last.updated_at).getTime() > 86400000
           )
-            await event(c, "conversation.reactivated", v.lead_id, { source,conversationId:row.id });
+            await event(c, "conversation.reactivated", visitorRow.lead_id, { source,conversationId:row.id });
         }
         return row;
       });
-      res.json({ conversationId: row.id });
+      if (shared && req.body.includeHistory === true) {
+        const snapshot = await conversationSnapshot(row,'workspace');
+        const historyDigest = crypto.createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+        res.setHeader('Cache-Control','no-store');
+        res.json({conversationId:row.id,historyDigest,
+          ...(req.body.historyDigest===historyDigest ? {historyUnchanged:true} : {snapshot})});
+      } else res.json({ conversationId: row.id });
     }),
   );
   app.get(
     "/api/portal/conversations/:id",
     wrap(async (req, res) => {
       const c = await own(req, res);
-      res.json({
-        conversation: c,
-        messages: (
-          await pool.query(
-            "SELECT * FROM messages WHERE conversation_id=:p1 ORDER BY sequence",
-            [c.id],
-          )
-        ).rows,
-      });
+      res.setHeader('Cache-Control','no-store');
+      if(req.query.view==='reference'){
+        res.json({conversation:{id:c.id,source:c.source}});
+        return;
+      }
+      res.json(await conversationSnapshot(c));
     }),
   );
   mountHskAssessments(app);
@@ -790,6 +847,7 @@ export async function mountPortal(app: Express) {
           const current = (
             await db.query("SELECT * FROM conversations WHERE id=:p1", [c.id])
           ).rows[0];
+          const entrySurface = await chatEntrySurface(req.body.entrySurface,c,db);
           const old = (
             await db.query(
               "SELECT * FROM messages WHERE conversation_id=:p1 AND request_id=:p2",
@@ -831,8 +889,8 @@ export async function mountPortal(app: Express) {
           if(action==='booking'&&bookingRequestSuppressed(content))
             fail(400,lang==='zh'?'当前文字是否定、历史引用或撤回预约，请作为普通咨询发送。':lang==='id'?'Pesan menyangkal, mengutip niat lama, atau menarik permintaan reservasi. Kirim sebagai konsultasi biasa.':'This message denies, quotes a past booking intention, or withdraws it. Send it as an ordinary consultation.');
           await db.query(
-            "INSERT INTO messages(id,conversation_id,request_id,role,content,status) VALUES(:p1,:p2,:p3,'user',:p4,'saved')",
-            [id(), c.id, messageId, content],
+            "INSERT INTO messages(id,conversation_id,request_id,role,content,status,metadata) VALUES(:p1,:p2,:p3,'user',:p4,'saved',:p5)",
+            [id(), c.id, messageId, content, {entrySurface}],
           );
           const result = await ensureFollowup(
             db,
@@ -848,7 +906,7 @@ export async function mountPortal(app: Express) {
               c.id,
               messageId,
               result.reply,
-              { followupAction: action, taskId: result.taskId, language: lang, taskOperation: result.taskOperation },
+              { followupAction: action, taskId: result.taskId, language: lang, taskOperation: result.taskOperation, entrySurface },
             ],
           );
           await db.query(
@@ -906,6 +964,9 @@ export async function mountPortal(app: Express) {
         ...settings.find((r) => r.id === "crm_policy")?.value,
       };
       const now = Date.now();
+      const servicing=enrollmentServicePolicy().servicing;
+      const needsSummaryBeforeFilter=filters.sort==="priority"||filters.ownership==="unassigned";
+      if(servicing&&needsSummaryBeforeFilter)await attachEnrollmentOpportunitySummaries(pool,leads);
       const result = filterAndSummarize(
         leads,
         filters,
@@ -914,7 +975,7 @@ export async function mountPortal(app: Express) {
         now,
         config,
       );
-      if(enrollmentServicePolicy().servicing)await attachEnrollmentOpportunitySummaries(pool,result.leads);
+      if(servicing&&!needsSummaryBeforeFilter)await attachEnrollmentOpportunitySummaries(pool,result.leads);
       res.json({
         ...result,
         notificationScope,
@@ -952,6 +1013,7 @@ export async function mountPortal(app: Express) {
     wrap(async (req, res) => {
       const { l, e } = await leadAccess(req);
       await attachLeadAttention(e, [l.profile]);
+      if(enrollmentServicePolicy().servicing)await attachEnrollmentOpportunitySummaries(pool,[l.profile]);
       const rows = (
         await pool.query(
           "SELECT m.*,c.source FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE (c.lead_id=:p1 OR c.lead_id IN (SELECT id FROM portal_leads WHERE profile->>'$.identityMergedInto'=:p1)) ORDER BY m.sequence",
@@ -965,6 +1027,7 @@ export async function mountPortal(app: Express) {
         ])
       ).rows;
       await attachBuyingEvidence(pool,[l.profile]);
+      await attachPurchaseIntentSuggestions(pool,[l.profile],e);
       await attachFactMilestones(pool,[l.profile]);
       await attachPaymentSummaries(pool,[l.profile]);
       res.json({
@@ -1009,6 +1072,18 @@ export async function mountPortal(app: Express) {
           fail(409, "Lead has already been assigned; refresh the list");
         if (!allowed(e, current)) fail(404, "Lead not found");
         if(e.grants&&!canClaimRecord(e,current))fail(404,'Lead not found');
+        if(enrollmentServicePolicy().servicing){
+          const [profile]=await projectIdentityProfiles(c,[current]);
+          if(profile){
+            await attachEnrollmentOpportunitySummaries(c,[profile]);
+            if(profile.enrollmentOpportunitySummary?.hasEnrollment&&profile.enrollmentOpportunitySummary.count===0){
+              const tasks=await identityProjectionRows(c,[profile],"SELECT lead_id,status FROM followup_tasks WHERE status IN ('open','overdue','migration_hold') AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))");
+              const customerRequests=await identityProjectionRows(c,[profile],"SELECT lead_id,state FROM crm_engagements WHERE kind='task_request' AND state='pending' AND JSON_CONTAINS(:p1,JSON_QUOTE(lead_id))");
+              if(enrollmentNeedsNoSalesClaim({...profile,attention:{tasks,customerRequests}}))
+                fail(409,'ENROLLMENT_SALES_CLAIM_NOT_NEEDED');
+            }
+          }
+        }
         const next = {
           ...current,
           owner: e.id,
@@ -1312,6 +1387,11 @@ export async function mountPortal(app: Express) {
       res.json(globalWorkCalendar(value));
     }),
   );
+  app.get('/api/crm/notification-settings/results/:requestId',wrap(async(req,res)=>{
+    const employee=await staff(req,'notifications.manage');
+    if(!employee.permissions.includes('notifications.manage'))fail(403,'Permission denied');
+    res.set('Cache-Control','no-store').json(await readNotificationSettingsReceipt(pool,employee.id,String(req.params.requestId)));
+  }));
   app.get(
     "/api/crm/notification-rules",
     wrap(async (req, res) => {
@@ -1347,7 +1427,7 @@ export async function mountPortal(app: Express) {
       } catch (e) {
         fail(400, (e as Error).message);
       }
-      await tx(async (c) => {
+      await tx(c=>writeNotificationSettings(c,e.id,'rule',String(req.params.id),req.body,async()=>{
         const groupIds = notificationGroupIds(config);
         const groupRows = await lockNotificationGroupChannels(c, groupIds);
         if (groupRows.some(row => row.config.deleted) || (config.groupIds !== undefined && groupRows.length !== groupIds.length))
@@ -1357,6 +1437,7 @@ export async function mountPortal(app: Express) {
             req.params.id,
           ])
         ).rows[0];
+        checkNotificationSettingsVersion(req.body.expectedVersion,Number(old?.version??0));
         if (old?.config.deleted) fail(409, "This policy has been deleted. Use a new configuration ID.");
         if((old?.config.requiresRoutingReview || config.requiresRoutingReview) && req.body.confirmRoutingReset!==true){config.requiresRoutingReview=true;if(req.body.enabled===true)fail(409,"Confirm routing review before enabling");}
         if(req.body.confirmRoutingReset===true)delete config.requiresRoutingReview;
@@ -1375,7 +1456,8 @@ export async function mountPortal(app: Express) {
           [e.id, "rule.save", { id: req.params.id, version }],
         );
         auditLog(e.id, "rule.save");
-      });
+        return {success:true};
+      }));
       res.json({ success: true });
     }),
   );
@@ -1493,11 +1575,11 @@ export async function mountPortal(app: Express) {
     "/api/crm/integration-readiness",
     wrap(async (req, res) => {
       await staff(req, "notifications.manage");
-      const channels = (
+      const channels = await Promise.all((
         await pool.query("SELECT * FROM notification_channels")
-      ).rows.filter(row => !row.config.deleted).map((row) => {
+      ).rows.filter(row => !row.config.deleted).map(async (row) => {
         const config = row.config;
-        const connection = channelConnection(row.id, config);
+        const connection = channelConnection(row.id, config, await groupCredential(row.id, config) ?? {});
         return {
           id: row.id,
           groupName: config.groupName,
@@ -1509,7 +1591,7 @@ export async function mountPortal(app: Express) {
           status: connection.status,
           realReceiptVerified: false,
         };
-      });
+      }));
       const channelIds = new Set(channels.map(channel => channel.id));
       const missingReferences = (await notificationGroupPolicyReferences(pool)).filter(ref => !channelIds.has(ref.channel));
       res.json({
@@ -1558,7 +1640,8 @@ export async function mountPortal(app: Express) {
     if (lock) await db.query("SELECT value FROM access_state WHERE id='policy' FOR UPDATE");
     const channel = await personalLarkChannel(db, lock);
     const binding = (await larkBindings(db))[employeeId];
-    return { channel, ...planPersonalChannelTest(channel, binding) };
+    const app=await larkApplication(db);
+    return { channel, ...planPersonalChannelTest(channel, binding, {...process.env,LARK_APP_ID:app.appId,LARK_APP_SECRET:app.key}) };
   }
   async function lockedChannelTestPlan(db: Pick<typeof pool, "query">, channelId: string, employeeId: string) {
     if (channelId === personalTestChannelId)
@@ -1567,7 +1650,7 @@ export async function mountPortal(app: Express) {
       "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE", [channelId],
     )).rows[0];
     if (!channel || channel.config.deleted) fail(404, "Notification channel not found.");
-    return { kind: "group" as const, plan: planGroupChannelTest(channelId, channel.config) };
+    return { kind: "group" as const, plan: planGroupChannelTest(channelId, channel.config, process.env, await groupCredential(channelId, channel.config, db) ?? {}) };
   }
   app.get(
     "/api/crm/notification-channels",
@@ -1582,17 +1665,19 @@ export async function mountPortal(app: Express) {
         channels: await Promise.all(
           (await pool.query("SELECT * FROM notification_channels")).rows.filter(row => !row.config.deleted).map(
             async (row) => {
-              const { blocked, simulated, version } = planGroupChannelTest(row.id, row.config);
+              const credential = await groupCredential(row.id, row.config) ?? {};
+              const { blocked, simulated, version } = planGroupChannelTest(row.id, row.config, process.env, credential);
               const latest = await findLarkChannelTest(pool, row.id, null);
               const linked = references.filter(ref => ref.channel === row.id);
               return {
               ...row,
+              settingsVersion:notificationGroupSettingsVersion(row.config),
               config: {
                 ...publicGroupChannelConfig(row.config),
                 ...(usesLegacyProductionGroupWebhook(row.config) ? { secretRef: row.config.secretRef } : {}),
               },
               systemManaged: isSystemLarkGroup(row.id, row.config),
-              connection: channelConnection(row.id, row.config),
+              connection: channelConnection(row.id, row.config, credential),
               testDelivery: {
                 blocked, simulated, version,
                 latest: latest?.data.version === version ? latest.data : null,
@@ -1605,6 +1690,8 @@ export async function mountPortal(app: Express) {
         ),
         unconnected: ["email", "sms"],
         groupWebhookUsesEnvironment: groupWebhookUsesEnvironment(),
+        managedCredentials: Boolean(process.env.PORTAL_CREDENTIAL_KEYRING_FILE),
+        canManageCredentials: isAiAdministrator(employee),
         personalChannel: {
           ...personal.channel, systemManaged: true, appConfigured: personal.appConfigured,
           testDelivery: {
@@ -1623,10 +1710,12 @@ export async function mountPortal(app: Express) {
       const { mode, revision } = req.body;
       if (!["simulation", "live"].includes(mode) || !Number.isSafeInteger(revision) || revision < 1)
         fail(400, "Invalid channel config");
-      if (mode === "live" && (isolatedLarkRuntime() || !process.env.LARK_APP_ID || !process.env.LARK_APP_SECRET))
+      const app=mode==='live'?await larkApplication():undefined;
+      if (mode === "live" && (isolatedLarkRuntime() || !app?.appId || !app.key))
         fail(409, "Live personal delivery is unavailable.");
-      const result = await tx(async c => {
+      const result = await tx(c=>writeNotificationSettings(c,employee.id,'personal',PERSONAL_CHANNEL_SETTING,req.body,async()=>{
         const current = await personalLarkChannel(c, true);
+        checkNotificationSettingsVersion(req.body.expectedVersion,current.revision);
         if (current.mode === mode) return current;
         if (current.revision !== revision) fail(409, "Channel settings changed. Refresh before saving.");
         const next = { mode, revision: revision + 1 };
@@ -1635,8 +1724,8 @@ export async function mountPortal(app: Express) {
           employee.id, "channel.save", { id: PERSONAL_CHANNEL_SETTING, mode, version: next.revision },
         ]);
         return next;
-      });
-      res.json(result);
+      }));
+      res.json({mode:result.mode,revision:result.revision});
     }),
   );
   app.post(
@@ -1732,6 +1821,9 @@ export async function mountPortal(app: Express) {
       } = req.body;
       const channelId = String(req.params.id);
       const changingWebhook = webhook !== undefined;
+      if (changingWebhook && !isAiAdministrator(e)) fail(403, "Permission denied");
+      if (process.env.PORTAL_CREDENTIAL_KEYRING_FILE && (changingWebhook || secretRef !== undefined || signingSecretRef !== undefined))
+        fail(409, "Use the credential editor for group Webhook and signing credentials.");
       if (changingWebhook && groupWebhookUsesEnvironment())
         fail(409, "The group Webhook is managed in the server environment.");
       if (!/^[A-Za-z0-9._-]{1,100}$/.test(channelId) ||
@@ -1741,14 +1833,21 @@ export async function mountPortal(app: Express) {
       if (webhook !== undefined && webhook !== null &&
           (typeof webhook !== "string" || webhook.length > 512 || !validWebhook(webhook.trim())))
         fail(400, "Enter a valid Lark group Webhook address");
-      await tx(async (c) => {
+      await tx(c=>writeNotificationSettings(c,e.id,'group',channelId,req.body,async()=>{
         const previous = (
           await c.query(
             "SELECT config FROM notification_channels WHERE id=:p1 FOR UPDATE",
             [channelId],
           )
         ).rows[0]?.config;
+        checkNotificationSettingsVersion(req.body.expectedVersion,notificationGroupSettingsVersion(previous));
         if (previous?.deleted) fail(409, "Notification channel has been deleted.");
+        const previousSigning = previous?.signingEnabled ?? Boolean(previous?.signingSecretRef);
+        if (!isAiAdministrator(e) &&
+          (secretRef !== undefined && secretRef !== previous?.secretRef ||
+           signingSecretRef !== undefined && signingSecretRef !== previous?.signingSecretRef ||
+           signingEnabled !== undefined && signingEnabled !== previousSigning))
+          fail(403, "Permission denied");
         if (secretRef !== undefined && previous?.encryptedWebhook !== undefined)
           fail(409, "Webhook configuration changed. Reopen the channel and try again.");
         if (changingWebhook && (previous?.webhookRevision ?? null) !== (webhookRevision ?? null))
@@ -1762,16 +1861,23 @@ export async function mountPortal(app: Express) {
           (usesEnvironmentGroupWebhook(previous) || usesLegacyProductionGroupWebhook(previous))
           ? previous.secretRef : undefined;
         const savedRef = secretRef ?? retainedRef;
+        const targetConfig = {...previous, team:team ?? previous?.team,
+          groupName:systemLarkGroupName(channelId, previous, groupName), signingEnabled:signing,
+          signingSecretRef:signingRef, secretRef:savedRef};
+        const currentCredential = changingWebhook ? undefined : await groupCredential(channelId,targetConfig,c);
+        const requiresManagedSigning = Boolean(process.env.PORTAL_CREDENTIAL_KEYRING_FILE && mode === "live" &&
+          signing && !currentCredential?.signingKey);
         if (
-          !["simulation", "live"].includes(mode) ||
+          !["simulation", "live"].includes(mode) || requiresManagedSigning ||
           (mode === "live" && previous?.mode !== "live" &&
-            !(changingWebhook ? webhook : resolveGroupWebhook(channelId, { ...previous, secretRef: savedRef }))) ||
+            !(changingWebhook ? webhook : currentCredential?.webhook)) ||
           (signingSecretRef !== undefined &&
             (typeof signingSecretRef !== "string" ||
               !/^[A-Z0-9_]{1,80}$/.test(signingSecretRef))) ||
           (signingEnabled !== undefined && typeof signingEnabled !== "boolean") ||
           (mode === "live" &&
             signing &&
+            !currentCredential?.signingKey &&
             (typeof signingRef !== "string" ||
               !/^[A-Z0-9_]{1,80}$/.test(signingRef))) ||
           (maxPerHour !== undefined &&
@@ -1829,7 +1935,8 @@ export async function mountPortal(app: Express) {
             } : {}) },
           ],
         );
-      });
+        return {success:true};
+      }));
       auditLog(e.id, "channel.save");
       res.json({ success: true });
     }),
@@ -1964,12 +2071,12 @@ export async function mountPortal(app: Express) {
         ...DEFAULT_CRM_POLICY_CONFIG,
         ...settings.find((r) => r.id === "crm_policy")?.value,
       };
-      res
-        .attachment("leads.json")
-        .json(
-          filterAndSummarize(rows, filters, e.id, timezone, Date.now(), config)
-            .leads,
-        );
+      const useOpportunityPriority=filters.sort==="priority"&&enrollmentServicePolicy().servicing;
+      const rankingRows=useOpportunityPriority?rows.map(row=>({...row})):rows;
+      if(useOpportunityPriority)await attachEnrollmentOpportunitySummaries(pool,rankingRows);
+      const {leads}=filterAndSummarize(rankingRows,filters,e.id,timezone,Date.now(),config);
+      const originalRows=new Map(rows.map(row=>[row.id,row]));
+      res.attachment("leads.json").json(leads.map(lead=>originalRows.get(lead.id)));
     }),
   );
   app.get('/api/crm/campaign-save-results/:requestId',wrap(campaignSaveResultHandler(pool,req=>platform.authenticate(req))));
@@ -1997,4 +2104,4 @@ export async function mountPortal(app: Express) {
       .catch((e) => r.status(e.status || 503).json({ error: e.message }));
   });
 }
-export { wrap, own, fail, visitor };
+export { wrap, own, fail, visitor, chatEntrySurface };

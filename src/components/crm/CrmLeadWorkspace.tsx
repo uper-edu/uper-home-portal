@@ -1,6 +1,7 @@
 import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
-import {CrmCurrentSalesState,CrmIdentityStatus} from './CrmCurrentSalesState';
+import {CrmCustomerContactRestrictions,CrmIdentityStatus} from './CrmCurrentSalesState';
 import {CrmIdentityAction} from './CrmIdentityAction';
+import {CrmPurchaseIntentReviewAction} from './CrmPurchaseIntentReview';
 import {CrmProgressAction} from './CrmProgressAction';
 import type {ProgressActionState} from '../../utils/crmProgressAction';
 import {CrmSalesStage,CrmStopContact} from './CrmSalesStage';
@@ -10,7 +11,9 @@ import {CrmListAgreements} from './CrmListAgreements';
 import {CrmContactResult} from './CrmContactResult';
 import {CrmInteractionTimelines} from './CrmInteractionTimelines';
 import {containPaneKeys} from '../adminScroll';
-import {CrmRecordRow, CrmRecordSearch, CrmRecordSidebar, CrmRecordSidebarToggle} from './CrmRecordWorkspace';
+import type {AdminBackTarget} from '../admin/AdminRecordHeader';
+import {useAdminRecordSidebarLayout} from '../admin/AdminRecordWorkspace';
+import {CrmRecordRow, CrmRecordSearch, CrmRecordSidebar} from './CrmRecordWorkspace';
 import {useCrmShellHeight,useRecordScrollMode} from "./CrmDetailWorkspace";
 import { worklistIntents, visibleIntentEvidence, buyingEvidenceLabel, evidenceHeading } from "../../utils/crmBuyingEvidence";
 import { CrmSingleSelect } from "./CrmSingleSelect";
@@ -60,7 +63,7 @@ function LearningNeedText({value,lang}:{value:string;lang:CrmLanguage}){
 }
 function CustomerOpportunities({lead,lang,table=false}:{lead:CrmLeadRecord;lang:CrmLanguage;table?:boolean}){
  const summary=lead.enrollmentOpportunitySummary;
- if(!summary)return table?'—':<CrmSalesStage stage={lead.currentStage} lang={lang}/>;
+ if(!summary)return '—';
  if(!summary.count)return table?'0':<span className="crm-work-muted">{lang==='zh'?'暂无进行中商机':lang==='id'?'Belum ada peluang aktif':'No active opportunities'}</span>;
  const list='/crm?'+new URLSearchParams({tab:'opportunities',customerId:lead.id,opportunityOwner:'all'});
  if(!table&&summary.only)return <>
@@ -70,6 +73,7 @@ function CustomerOpportunities({lead,lang,table=false}:{lead:CrmLeadRecord;lang:
  const label=lang==='zh'?`${summary.count} 笔进行中`:lang==='id'?`${summary.count} berlangsung`:`${summary.count} in progress`;
  return <AdminRowAction href={list} aria-label={label}>{table?summary.count:label}</AdminRowAction>;
 }
+const enrollmentLabel=(lang:CrmLanguage)=>lang==='zh'?'已报名':lang==='id'?'Sudah terdaftar':'Enrolled';
 export interface LeadWorkspaceProps {
   leads: CrmLeadRecord[];
   selectedId?: string;
@@ -86,6 +90,7 @@ export interface LeadWorkspaceProps {
     displayName?: string;
   }>;
   onSignal?: (lead:CrmLeadRecord,id:string)=>void;
+  onPurchaseIntent?: (lead:CrmLeadRecord)=>void;
   onIdentity?: (lead:CrmLeadRecord)=>void;
   onClaim?: (lead:CrmLeadRecord)=>void;
   canClaim?: (lead:CrmLeadRecord)=>boolean;
@@ -95,10 +100,10 @@ export interface LeadWorkspaceProps {
   onOpen: (lead: CrmLeadRecord, tab?: CustomerTab) => void;
   onReset: () => void;
   sidebarFilters?: React.ReactNode;
-  detailNavigation?: (toggle: React.ReactNode) => React.ReactNode;
+  backToList?: AdminBackTarget;
   search?:string;
   onSearch?:(value:string)=>void;
-  children?: ((toggle:React.ReactNode)=>React.ReactNode)|null;
+  children?: ((browseAction:React.ReactNode,headerBack:AdminBackTarget|undefined)=>React.ReactNode)|null;
 }
 export function CrmLeadWorkspace({
   leads,
@@ -111,8 +116,8 @@ export function CrmLeadWorkspace({
   loadUnavailable,accessibleCount,
   employeeId,
   employees,
-  onSignal,onOpen,onIdentity,onClaim,onProcess,canProcess,canClaim,progressAction,
-  onReset,sidebarFilters,detailNavigation,search="",onSearch,
+  onSignal,onPurchaseIntent,onOpen,onIdentity,onClaim,onProcess,canProcess,canClaim,progressAction,
+  onReset,sidebarFilters,backToList,search="",onSearch,
   children,
 }: LeadWorkspaceProps) {
   const t = (en: string, zh: string) =>
@@ -122,9 +127,9 @@ export function CrmLeadWorkspace({
   const headerHeight=useCrmShellHeight();
   const scrollMode=useRecordScrollMode(headerHeight);
   const independent=scrollMode==='independent';
-  const [collapsed,setCollapsed]=useState(false);
   const [showList,setShowList]=useState(false);
-  const sidebarVisible=independent?!collapsed:showList;
+  const recordLayout=useAdminRecordSidebarLayout({id:'crm-customer-records',lang,persistent:independent,
+    listOpen:showList,setListOpen:setShowList,back:backToList??{label:t('Back to customer list','返回客户列表'),href:'/crm?tab=leads'}});
   const open:typeof onOpen=(lead,tab)=>{
     if(!independent&&lead.id===selectedId)setShowList(false);
     onOpen(lead,tab);
@@ -153,6 +158,8 @@ export function CrmLeadWorkspace({
     value && Date.parse(value) > 0
       ? formatCrmOperatingTime(value, viewerTimeZone())
       : t("Unknown time", "未知时间");
+  const reviewPurchaseIntent=(lead:CrmLeadRecord)=>lead.purchaseIntentSuggestion&&onPurchaseIntent&&
+    <CrmPurchaseIntentReviewAction lang={lang} onClick={()=>onPurchaseIntent(lead)}/>;
   const identityAction=(lead:CrmLeadRecord)=>lead.identityReview?.pending&&lead.identityReview.canReview?<CrmIdentityAction lang={lang} onClick={()=>onIdentity?onIdentity(lead):open(lead,'profile')}/>:null;
   const follow = (lead: CrmLeadRecord, compact = false, readOnly = false) => (
     <>{!readOnly&&<CrmStopContact lead={lead} lang={lang}/>}<CrmFollowUp
@@ -177,7 +184,7 @@ export function CrmLeadWorkspace({
             onClick={() => open(lead)}
           >
             {lead.fullName || t("Unnamed customer", "未填写姓名")}
-          </AdminRecordEntry><CrmIdentityStatus lead={lead} lang={lang} explain/>{!fields.includes("followup")&&identityAction(lead)}</div>
+          </AdminRecordEntry>{lead.enrollmentOpportunitySummary?.hasEnrollment&&<div className="crm-work-muted">{enrollmentLabel(lang)}</div>}{reviewPurchaseIntent(lead)}<CrmIdentityStatus lead={lead} lang={lang} explain/>{!fields.includes("followup")&&identityAction(lead)}</div>
         );
       case "owner":
         return owner(lead);
@@ -239,10 +246,6 @@ export function CrmLeadWorkspace({
       <p>{accessibleCount===0?t("No accessible leads are currently available","当前没有可访问的客户"):t("No leads match the current filters","当前筛选条件下没有匹配客户")}</p>
       {accessibleCount!==0&&<button type="button" className="crm-work-link" onClick={onReset}>{t("Clear filters and show all accessible leads","清空筛选，查看全部可见客户")}</button>}
     </div>:undefined;
-  const listToggle=<CrmRecordSidebarToggle controls="crm-customer-records" expanded={sidebarVisible}
-    label={sidebarVisible?(lang==='zh'?'收起客户侧栏':lang==='id'?'Sembunyikan panel pelanggan':'Hide customer sidebar'):
-      (lang==='zh'?'展开客户侧栏':lang==='id'?'Tampilkan panel pelanggan':'Show customer sidebar')}
-    onClick={()=>independent?setCollapsed(value=>!value):setShowList(value=>!value)}/>;
   // Filters can hide the current row while its authorized detail and draft stay open.
   return (
     <div
@@ -251,17 +254,17 @@ export function CrmLeadWorkspace({
       data-open={!!children}
       data-record-scroll={scrollMode}
       onKeyDown={containPaneKeys}
-      data-list-collapsed={Boolean(children&&!sidebarVisible)}
-      data-show-list={Boolean(children&&!independent&&showList)}
+      data-list-collapsed={Boolean(children&&!recordLayout.sidebarVisible)}
+      data-show-list={Boolean(children&&recordLayout.listOnly)}
       data-record-detail={children?true:undefined}
       style={
         { "--crm-shell-height": `${headerHeight}px` } as React.CSSProperties
       }
     >
-      {children&&!independent&&showList&&detailNavigation?.(listToggle)}
-      {children?<CrmRecordSidebar id="crm-customer-records" title={t("Customers","客户")} count={leads.length}
+      {children&&recordLayout.listNavigation}
+      {children?<CrmRecordSidebar {...recordLayout.sidebar} title={t("Customers","客户")} count={leads.length}
         selectedId={leads.some(lead=>lead.id===selectedId)?selectedId:undefined}
-        busy={loading} busyLabel={t('Updating…','更新中…')} hidden={!sidebarVisible}
+        busy={loading} busyLabel={t('Updating…','更新中…')}
         filters={sidebarFilters??(onSearch&&<CrmRecordSearch label={t("Search customers","搜索客户")}
           placeholder={t("Search customers…","搜索客户…")} value={search} onChange={onSearch}/>)}
         note={selectedId&&!loading&&!leads.some(lead=>lead.id===selectedId)?
@@ -271,7 +274,7 @@ export function CrmLeadWorkspace({
           name={lead.fullName||t("Unnamed customer","未填写姓名")} title={t("Open customer: ","打开客户：")+lead.fullName}
           onClick={()=>open(lead)} meta={<>{leadDisplayNumber(lead)} · {owner(lead)}</>}
           extra={<>
-            <CrmCurrentSalesState lead={lead} lang={lang} compact/>
+            <CrmCustomerContactRestrictions lead={lead} lang={lang} compact/>
             <LeadActivity readOnly lead={lead} lang={lang} timezone={timezone} onOpen={()=>open(lead,'activities')}/>
             {follow(lead,true,true)}
             <CrmListAgreements lead={lead} lang={lang} timezone={timezone} now={agreementNow} readOnly onOpen={()=>open(lead,'activities')}/>
@@ -380,8 +383,10 @@ export function CrmLeadWorkspace({
                       </AdminRecordEntry>
                       <div className="crm-work-muted">
                         {leadDisplayNumber(lead)} · {owner(lead)}
+                        {lead.enrollmentOpportunitySummary?.hasEnrollment&&<> · {enrollmentLabel(lang)}</>}
                       </div>
                       {identityFacts.length>0&&<div className="crm-work-muted crm-work-demographics" aria-label={lang==='zh'?'居住地与客户身份':lang==='id'?'Domisili dan identitas pelanggan':'Residence and customer identity'}>{identityFacts.join(' · ')}</div>}
+                      {reviewPurchaseIntent(lead)}
                       {!lead.identityReview?.canReview&&<CrmIdentityStatus lead={lead} lang={lang} explain/>}
                       {['ai.failed','task.overdue'].includes(lead.attention?.latest?.type||'')&&<LeadActivity
                         lead={lead}
@@ -434,7 +439,7 @@ export function CrmLeadWorkspace({
           </>
         )}
       </div>}
-      {children&&<div className="crm-lead-detail-column" hidden={!independent&&showList}>{children(listToggle)}</div>}
+      {children&&<div className="crm-lead-detail-column" hidden={recordLayout.listOnly}>{children(recordLayout.browseAction,recordLayout.headerBack)}</div>}
     </div>
   );
 }

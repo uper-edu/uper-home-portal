@@ -49,3 +49,11 @@
 .crm-opportunity-detail-shell.crm-detail-root[data-record-scroll=independent] .crm-opportunity-detail-column{
   position:static;height:var(--admin-record-pane-height);max-height:var(--admin-record-pane-height);
 }
+
+.crm-purchase-intent-entry { display:inline-flex; align-items:center; gap:6px; text-align:start; }
+.crm-purchase-intent-entry svg { flex:none; }
+.crm-work-identity > .crm-purchase-intent-entry { align-self:start; }
+.crm-purchase-intent-review > p,.crm-purchase-intent-review blockquote { margin:0; white-space:pre-wrap; }
+.crm-purchase-intent-review section { display:grid; gap:8px; justify-items:start; }
+.crm-purchase-intent-review section ol { width:100%; }
+.crm-opportunity-next-actions { display:flex; flex-wrap:wrap; gap:4px 12px; }

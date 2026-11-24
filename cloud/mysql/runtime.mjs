@@ -56,7 +56,12 @@ export async function initialize() {
 }
 export async function connection() {
   const c = await raw.getConnection();
-  await c.query("SET time_zone='+00:00'");
+  try {
+    await c.query("SET time_zone='+00:00'");
+  } catch (error) {
+    c.destroy();
+    throw error;
+  }
   const sessionLocks = new Set(),
     transactionLocks = new Set();
   let inTransaction = false,

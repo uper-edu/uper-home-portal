@@ -42,8 +42,8 @@ export function previewEnrollmentClassSchedule(config: Schedule, holidayDates: r
     originalDates,meetings,skippedDates,
     makeupDates:meetings.filter(({date})=>!original.has(date)).map(({date})=>date),
     unneededDates:holidayDates.filter(date=>!skipped.has(date)),
-    originalEnd:originalDates.at(-1)!,
+    originalEnd:originalDates[originalDates.length-1],
     first:meetings[0].date,
-    end:meetings.at(-1)!.date,
+    end:meetings[meetings.length-1].date,
   };
 }

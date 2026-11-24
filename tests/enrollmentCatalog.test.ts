@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
-import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentScheduleDefaults, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
+import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentScheduleDefaults, enrollmentScheduleLabel, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
+import {enrollmentTemplateClassFields} from '../src/utils/enrollmentTemplates';
+import {parseEnrollmentCourseIntroduction} from '../src/utils/enrollmentCourseIntroduction';
+import {enrollmentDateFormatter} from '../src/utils/enrollmentDateFormat';
+import {enrollmentCoursePresets} from '../src/data/system-defaults/courses';
 
 const sample = {
   courseId: 'hsk1', level: 'HSK 1', format: 'standard', period: 'weekend',
@@ -10,6 +15,69 @@ const sample = {
   price: 575000, standardPrice: null, learningOutcomes: 'Introduction and greetings',
   material: 'Sample materials', resources: 'Sample practice', teacher: 'Sample teacher',
 };
+
+test('a new class uses course and template terms without copying teaching descriptions',()=>{
+  const teaching={level:'HSK 1' as const,minutes:45,material:'Textbook',knowledge:'Topics',learningOutcomes:'Goals',resources:'Practice'};
+  const template={id:'tpl',revision:1,name:'Standard',courseId:sample.courseId,format:'standard' as const,
+    teacherType:'local' as const,capacity:20,minimumPaid:13,standardUnitPrice:25000,saleUnitPrice:25000};
+  const derived=enrollmentTemplateClassFields(template,{id:sample.courseId,name:'Course',active:true,sessions:23,teaching});
+  assert.ok(derived);
+  for(const field of ['material','knowledge','learningOutcomes','resources','introduction'])assert.equal(Reflect.has(derived,field),false);
+  const config=validateEnrollmentClass({...derived,period:sample.period,firstLesson:sample.firstLesson,
+    enrollmentCloses:sample.enrollmentCloses,schedule:sample.schedule,teacher:''});
+  assert.equal(config.material,'');
+});
+
+test('the HSK 1 sample provides all introduction fields in each supported language',()=>{
+  const sample=JSON.parse(readFileSync(new URL('../src/data/system-defaults/hsk1-course-introduction.json',import.meta.url),'utf8'));
+  assert.deepEqual(parseEnrollmentCourseIntroduction(sample),sample);
+  assert.deepEqual(Object.keys(sample),['en','id','zh']);
+  for(const language of ['en','id','zh']){
+    assert.deepEqual(Object.keys(sample[language]),['audience','outcomes','topics','practice']);
+    assert.equal(sample[language].outcomes.split('\n').length,10);
+    const textbookSummary=sample[language].topics.split('\n')[1];
+    for(const count of ['400','300','40','20'])assert.match(textbookSummary,new RegExp(`\\b${count}\\b`));
+  }
+});
+
+test('course introductions retain supported translations and reject malformed public content',()=>{
+  const content={en:{audience:' Beginners ',practice:'   '},id:{audience:'Pemula'},zh:{audience:'零基础学员'}};
+  assert.deepEqual(parseEnrollmentCourseIntroduction(content),{
+    en:{audience:'Beginners'},id:{audience:'Pemula'},zh:{audience:'零基础学员'},
+  });
+  assert.throws(()=>parseEnrollmentCourseIntroduction({en:{audience:['Beginner']}}));
+  assert.throws(()=>parseEnrollmentCourseIntroduction({en:{audience:'a'.repeat(321)}}));
+  assert.throws(()=>parseEnrollmentCourseIntroduction({fr:{audience:'Débutants'}}));
+  assert.throws(()=>parseEnrollmentCourseIntroduction({en:{stages:{'4C':{audience:'Unknown stage'}}}}));
+  assert.throws(()=>parseEnrollmentCourseIntroduction({en:{stages:{'4A':{outcomes:['Invalid list']}}}}));
+  assert.deepEqual(parseEnrollmentCourseIntroduction({en:{stages:{'4A':{audience:'  '},'4B':{audience:' Stage B '}}}}),
+    {en:{stages:{'4B':{audience:'Stage B'}}}});
+});
+
+test('HSK 2 through 4 presets preserve each translated outcome and both HSK 4 stages',()=>{
+  const [hsk1,hsk2,hsk3,hsk4]=enrollmentCoursePresets.map(course=>course.config.teaching.introduction);
+  for(const introduction of [hsk2,hsk3,hsk4]){
+    assert.ok(introduction);
+    assert.deepEqual(parseEnrollmentCourseIntroduction(introduction),introduction);
+    assert.deepEqual(Object.keys(introduction),['en','id','zh']);
+  }
+  for(const language of ['en','id','zh'] as const){
+    const sharedResources=hsk1?.[language]?.practice?.split('\n').slice(1);
+    assert.equal(sharedResources?.length,3);
+    for(const introduction of [hsk2,hsk3,hsk4]){
+      assert.deepEqual(introduction?.[language]?.practice?.split('\n').slice(-3),sharedResources);
+    }
+    assert.equal(hsk2?.[language]?.outcomes?.split('\n').length,10);
+    assert.equal(hsk3?.[language]?.outcomes?.split('\n').length,10);
+    const stages=hsk4?.[language]?.stages;
+    assert.ok(stages?.['4A']&&stages['4B']);
+    assert.equal(stages['4A'].outcomes?.split('\n').length,8);
+    assert.equal(stages['4B'].outcomes?.split('\n').length,8);
+    assert.match(stages['4A'].topics??'',/579[\s\S]*303[\s\S]*40/);
+    assert.match(stages['4B'].topics??'',/600[\s\S]*200[\s\S]*40/);
+    assert.match(stages['4B'].outcomes??'',/CSC/);
+  }
+});
 
 test('class break preview keeps the period total and uses later sessions on the same weekly schedule',()=>{
   const config={...sample,firstLesson:'2026-12-10T20:00',sessions:5,weeklySchedule:{days:[2,4],start:'20:00',lessons:2}};
@@ -187,4 +255,25 @@ test('mixed schedules keep the actual weekday times and validate the first sessi
   assert.equal(enrollmentWeeklyScheduleText(plan,45,'zh'),'每周五 19:00–20:30；周六 15:00–16:30 WIB');
   assert.equal(enrollmentWeeklyScheduleText(plan,45,'en'),'Fri 19:00–20:30 / Sat 15:00–16:30 WIB');
   assert.equal(enrollmentWeeklyScheduleText(plan,45,'id'),'Jum 19:00–20:30 / Sab 15:00–16:30 WIB');
+});
+
+
+test('learner schedule uses the current language while preserving legacy text-only records',()=>{
+  const schedule='每周一、三 19:00–19:45 WIB';
+  const row={schedule,minutes:45,weeklySchedule:{days:[1,3],start:'19:00',lessons:1}};
+  assert.equal(enrollmentScheduleLabel(row,'en'),'Mon, Wed 19:00–19:45 WIB');
+  assert.equal(enrollmentScheduleLabel(row,'id'),'Sen, Rab 19:00–19:45 WIB');
+  assert.equal(enrollmentScheduleLabel(row,'zh'),schedule);
+  assert.equal(enrollmentScheduleLabel({schedule},'id'),schedule);
+  assert.equal(enrollmentScheduleLabel({...row,weeklySchedule:{...row.weeklySchedule,days:[]}},'en'),schedule);
+});
+test('learner date formatting reuses each locale and style while preserving the Jakarta day boundary',()=>{
+  const nearMidnight = new Date('2026-12-31T17:15:00Z');
+  for(const [language,locale] of [['zh','zh-CN'],['en','en-GB'],['id','id-ID']] as const){
+    const withYear=enrollmentDateFormatter(language,'shortDayWithYear');
+    assert.equal(withYear,enrollmentDateFormatter(language,'shortDayWithYear'));
+    assert.match(withYear.format(nearMidnight),/2027/);
+    assert.equal(enrollmentDateFormatter(language,'time').format(nearMidnight),
+      new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Asia/Jakarta'}).format(nearMidnight));
+  }
 });

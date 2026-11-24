@@ -16,20 +16,16 @@ import {configureAccessTransport} from '../server/portal/accessTransport.ts';
 import {openTrialDatabase} from '../cloud/mysql/database.mjs';
 import {resolveMetadata,publicPages} from '../src/utils/siteMetadata.ts';
 import {acquireCompanyRuntimeLease,companyRuntimeLock} from '../cloud/mysql/company-maintenance.mjs';
-const valid:any={PORTAL_DEPLOYMENT:'company-trial',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:companyOrigin,ACCESS_PUBLIC_ORIGIN:companyOrigin,ACCESS_TRUSTED_PROXIES:'172.20.0.10',ACCESS_OPERATION_KEY:'x'.repeat(40),TRIAL_FRONTEND_DIRECTORY:'/app/web',MYSQL_CA_PEM:'placeholder',PORTAL_WORKER_ENABLED:'false'};
-const production:any={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',PORTAL_PRODUCTION_READY:'true',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:productionOrigin,ACCESS_PUBLIC_ORIGIN:productionOrigin,ACCESS_ALLOWED_ORIGINS:'https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com',ACCESS_TRUSTED_PROXIES:'10.20.0.8',ACCESS_OPERATION_KEY:'x'.repeat(40),MYSQL_TLS_MODE:'disabled',MYSQL_TRIAL_URL:'mysql://Home:password@10.20.0.9:3306/prod_uper_trial_home',PORT:'8080',PORTAL_WORKER_ENABLED:'false'};
+const valid:any={PORTAL_DEPLOYMENT:'company-trial',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:companyOrigin,PORTAL_PUBLIC_ORIGIN:companyOrigin,ACCESS_TRUSTED_PROXIES:'172.20.0.10',TRIAL_FRONTEND_DIRECTORY:'/app/web',MYSQL_CA_PEM:'placeholder'};
+const production:any={PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production',PORTAL_PRODUCTION_READY:'true',NODE_ENV:'production',APP_ENV:'production',TRIAL_DATASET:'synthetic',PLATFORM_MODE:'local',PORTAL_DATABASE_DRIVER:'mysql',APP_URL:productionOrigin,PORTAL_PUBLIC_ORIGIN:productionOrigin,ACCESS_ALLOWED_ORIGINS:'https://uperedu.com,https://www.uperedu.com,https://home.uperedu.com',ACCESS_TRUSTED_PROXIES:'10.20.0.8',MYSQL_TLS_MODE:'disabled',MYSQL_TRIAL_URL:'mysql://Home:password@10.20.0.9:3306/prod_uper_trial_home',PORT:'8080'};
 test('company deployment gate preserves local safeguards and rejects unsafe configuration',()=>{
  assert.equal(companyConfiguration({} as any),null);assert.deepEqual(companyConfiguration(valid),{port:8080,host:'0.0.0.0'});
- for(const [key,value] of Object.entries({NODE_ENV:'development',APP_ENV:'test',TRIAL_DATASET:'local-crm',PLATFORM_MODE:'mock',PORTAL_LOCAL_CUTOVER:'true',PORTAL_FAULT_TEST:'true',ACCESS_ALLOW_TEST_PASSWORDS:'true',APP_URL:'http://home.prototype.uperedu.com',ACCESS_OPERATION_KEY:'short',MYSQL_TRIAL_SOCKET:'/private/local.sock',MYSQL_CA_PEM:'',PORT:'3000',TRIAL_FRONTEND_DIRECTORY:''}))assert.throws(()=>companyConfiguration({...valid,[key]:value}),key);
+ for(const [key,value] of Object.entries({NODE_ENV:'development',APP_ENV:'test',TRIAL_DATASET:'local-crm',PLATFORM_MODE:'mock',PORTAL_LOCAL_CUTOVER:'true',PORTAL_FAULT_TEST:'true',ACCESS_ALLOW_TEST_PASSWORDS:'true',APP_URL:'http://home.prototype.uperedu.com',MYSQL_TRIAL_SOCKET:'/private/local.sock',MYSQL_CA_PEM:'',PORT:'3000',TRIAL_FRONTEND_DIRECTORY:''}))assert.throws(()=>companyConfiguration({...valid,[key]:value}),key);
  assert.throws(()=>companyConfiguration({...valid,ACCESS_TRUSTED_PROXIES:'0.0.0.0/0'}));
- assert.deepEqual(companyConfiguration({...valid,PORTAL_WORKER_ENABLED:undefined}),{port:8080,host:'0.0.0.0'});
- assert.throws(()=>companyConfiguration({...valid,PORTAL_WORKER_ENABLED:''}));
  assert.throws(()=>companyConfiguration({...valid,ACCESS_RECOVERY_MAINTENANCE:'true'}));
 });
 test('production gate allows the approved internal no-TLS MySQL path and canonical origin',()=>{
  assert.equal(productionConfiguration({} as any),null);assert.deepEqual(productionConfiguration(production),{port:8080,host:'0.0.0.0'});
- assert.deepEqual(productionConfiguration({...production,PORTAL_WORKER_ENABLED:undefined}),{port:8080,host:'0.0.0.0'});
- assert.throws(()=>productionConfiguration({...production,PORTAL_WORKER_ENABLED:''}));
  assert.throws(()=>productionConfiguration({...production,APP_URL:companyOrigin}));
  assert.throws(()=>productionConfiguration({...production,MYSQL_TLS_MODE:'required'}));
  assert.throws(()=>productionConfiguration({...production,ACCESS_TRUSTED_PROXIES:'0.0.0.0/0'}));
@@ -39,11 +35,11 @@ test('production gate allows the approved internal no-TLS MySQL path and canonic
 test('production configuration and template use the apex, www and home hosts and reject unknown origins',async()=>{
  assert.equal(productionOrigin,'https://uperedu.com');
  const retired='https://legacy.uperedu.com';
- for(const key of ['APP_URL','ACCESS_PUBLIC_ORIGIN'])assert.throws(()=>productionConfiguration({...production,[key]:retired}),/canonical/);
+ for(const key of ['APP_URL','PORTAL_PUBLIC_ORIGIN'])assert.throws(()=>productionConfiguration({...production,[key]:retired}),/canonical/);
  for(const extra of [retired,'https://evil.example'])assert.throws(()=>productionConfiguration({...production,ACCESS_ALLOWED_ORIGINS:production.ACCESS_ALLOWED_ORIGINS+','+extra}),/allowlist/);
  const template=parseEnvironment(await fs.readFile(new URL('../.env.prod.example',import.meta.url)));
  assert.equal(template.APP_URL,productionOrigin);
- assert.equal(template.ACCESS_PUBLIC_ORIGIN,productionOrigin);
+ assert.equal(template.UPER_PORTAL_PUBLIC_ORIGIN,productionOrigin);
  assert.deepEqual(template.ACCESS_ALLOWED_ORIGINS.split(',').sort(),['https://uperedu.com','https://www.uperedu.com','https://home.uperedu.com'].sort());
 });
 test('company runtime lease loss fails closed and never returns a locked session to the pool',async()=>{
@@ -66,7 +62,7 @@ test('company proxy trust accepts exact private peers only, never networks or pu
  for(const v of ['0.0.0.0/0','172.20.0.0/16','true','*','8.8.8.8','0.0.0.0','nginx','::'])assert.equal(exactPrivateProxy(v),false,v);
  configureAccessTransport(express(),valid);
  assert.throws(()=>configureAccessTransport(express(),{...valid,ACCESS_TRUSTED_PROXIES:'172.20.0.0/16'}));
- assert.throws(()=>configureAccessTransport(express(),{ACCESS_TRUSTED_PROXIES:'172.20.0.10',ACCESS_PUBLIC_ORIGIN:companyOrigin}));
+ assert.throws(()=>configureAccessTransport(express(),{ACCESS_TRUSTED_PROXIES:'172.20.0.10',PORTAL_PUBLIC_ORIGIN:companyOrigin}));
 });
 test('company browser metadata stays noindex across public pages and all three languages',()=>{
  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'window');
@@ -104,7 +100,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV)await test('company packaged application: i
  await root.query("GRANT ALL ON "+name+".* TO 'trial'@'localhost'");await root.end();
  const users=['Suki','Robert','Fadhil','Zainul','Wigar','Tester','Fenny','Ethan','Monite'],passwords=Object.fromEntries(users.map(u=>[u,'TEST-'+u+'-'+crypto.randomBytes(10).toString('hex')]));
  const initial=path.join(dir,'initial.json');await fs.writeFile(initial,JSON.stringify(passwords),{mode:0o600});
- const env:any={...process.env,...valid,PORTAL_ENV:'test',PORTAL_ENV_SOURCE:'injected',PORT:String(appPort),ACCESS_TRUSTED_PROXIES:'127.0.0.1',MYSQL_CA_PEM:await fs.readFile(caCert,'utf8'),MYSQL_TRIAL_URL:`mysql://trial:${password}@localhost:${sqlPort}/${name}`,TRIAL_FRONTEND_DIRECTORY:path.resolve('.local-backups/company-trial-20261014/package/web'),ACCESS_INITIAL_PASSWORDS_FILE:initial,PORTAL_WORKER_ENABLED:'false'};
+ const env:any={...process.env,...valid,PORTAL_ENV:'test',PORTAL_ENV_SOURCE:'injected',PORT:String(appPort),ACCESS_TRUSTED_PROXIES:'127.0.0.1',MYSQL_CA_PEM:await fs.readFile(caCert,'utf8'),MYSQL_TRIAL_URL:`mysql://trial:${password}@localhost:${sqlPort}/${name}`,TRIAL_FRONTEND_DIRECTORY:path.resolve('.local-backups/company-trial-20261014/package/web'),ACCESS_INITIAL_PASSWORDS_FILE:initial,PORTAL_ENROLLMENT_SIMULATION_DATABASE:name};
  for(const k of ['MYSQL_TRIAL_SOCKET','PORTAL_LOCAL_CUTOVER','PORTAL_ENV_FILE','ACCESS_ALLOW_TEST_PASSWORDS','PORTAL_FAULT_TEST','OPENAI_API_KEY','DEEPSEEK_API_KEY','LARK_WEBHOOK_ENCRYPTION_KEY'])delete env[k];
  await assert.rejects(async()=>{const p=await openTrialDatabase({...env,MYSQL_CA_PEM:''});try{await p.query('SELECT 1');}finally{await p.end();}});
  await assert.rejects(async()=>{const p=await openTrialDatabase({...env,MYSQL_CA_PEM:'invalid CA'});try{await p.query('SELECT 1');}finally{await p.end();}});
@@ -193,9 +189,6 @@ if(process.env.MYSQL_NATIVE_TEST_ENV)await test('company packaged application: i
  assert.equal((await state(linked)).state,'cancelled');
  const [untouched]=await db.execute('SELECT due_at,status FROM followup_tasks WHERE id=?',[untouchedTask]);assert.equal(untouched[0].due_at,originalDeadline[0].due_at);assert.equal(untouched[0].status,'open');
  const backupFile=path.join(dir,'test-backup.sql');const {backup}=await import('../cloud/mysql/backup.mjs');assert.ok((await backup({...env,MYSQL_BIN_DIRECTORY:binary},backupFile)).bytes>0);
- const {exerciseCompanyRecovery}=await import('./helpers/companyRecovery.ts');
- const recoveryEvidence=await exerciseCompanyRecovery({t,env,dir,db,client,passwords,stopApp:()=>stop(app),restart:async(nextEnv:any)=>{await stop(app);app=spawn(process.execPath,[path.resolve('.local-backups/company-trial-20261014/package/runtime/server.mjs')],{cwd:dir,env:nextEnv,stdio:['ignore',appLog.fd,appLog.fd]});let ready=false;for(let i=0;i<100;i++){if(app.exitCode!==null)throw Error('Company restart failed: '+await fs.readFile(path.join(dir,'app.log'),'utf8'));try{await new Promise<void>((r,j)=>{const c=net.connect(appPort,'127.0.0.1',()=>{c.destroy();r();});c.on('error',j);});ready=true;break;}catch{await new Promise(r=>setTimeout(r,100));}}assert.ok(ready);},createRestoreTarget:async()=>{const c=await mysql.createConnection({user:'root',socketPath:socket});try{await c.query('CREATE DATABASE '+name+'_restore CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin');await c.query("GRANT ALL ON "+name+"_restore.* TO 'trial'@'localhost'");}finally{await c.end();}return env.MYSQL_TRIAL_URL.replace('/'+name,'/'+name+'_restore');}});
- await fs.mkdir('.local-backups/company-recovery-20261014',{recursive:true});await fs.writeFile('.local-backups/company-recovery-20261014/integration-acceptance.json',JSON.stringify(recoveryEvidence,null,2),{mode:0o600});
  assert.equal((await state(held)).state,'pending');
  const evidence={target:companyOrigin,packagedApp:true,mysqlTLSVerified:true,wrongCAAndHostnameRejected:true,httpsCanonicalProxy:true,trilingualNoindexPages:15,secureCookies:true,permissions:true,leadClaimAndFollowupIdempotency:true,contactRecordDoesNotAutoCompleteTasks:true,onlySelectedTaskNotificationCancelled:true,unrelatedTaskDeadlinePreserved:true,simulationNoExternalCalls:true,larkAcceptedAndUnknownStubVerified:true,rateLimitAndBusinessFailure:true,verifiedTlsBackup:true,historicalHoldNotReplayed:true,realLarkCalls:0,realAiCalls:0};
  await fs.mkdir('.local-backups/company-trial-20261014',{recursive:true});await fs.writeFile('.local-backups/company-trial-20261014/integration-acceptance.json',JSON.stringify(evidence,null,2),{mode:0o600});console.log(evidence);

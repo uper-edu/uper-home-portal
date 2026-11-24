@@ -41,7 +41,7 @@ test('real MySQL portal API: registration, access scope, claiming, handoff and s
   const chatId='ai-'+marker;
   const chat=await learner('/api/chat',{conversationId:conversation.json.conversationId,messageId:chatId,content:'TEST: I would like to know the class schedule',lang:'en'});
   assert.equal(chat.status,200,JSON.stringify(chat.json));
-  assert.equal(chat.json.modelUsed,'deepseek-flash');
+  assert.equal(chat.json.modelUsed,'deepseek-v4-pro');
   assert.equal(chat.json.status,'completed');
   assert.ok(!chat.json.reply.includes('FAILED PRIMARY PARTIAL'));
   assert.equal((await sales('/api/crm/leads/'+lead.id)).status,200);

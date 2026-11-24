@@ -1,3 +1,4 @@
+import './admin-workspace-base.css';
 import {validStaffPassword} from '../utils/staffPassword';
 import {PersonalLarkControls} from './PersonalLarkControls';
 import {AdminField,AdminRequiredNote,AdminForm} from './AdminForm';
@@ -17,7 +18,7 @@ import {
   crmError,
   type CrmLanguage,
 } from "../utils/crmLanguage";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 export interface CrmEmployee {
   passwordChangeRequired?: boolean;
   id: string;
@@ -106,16 +107,19 @@ export function CrmAccountControls({
     </details>
   );
 }
-async function auth(path: string, body?: any) {
+async function auth(path: string, body?: any, signal?: AbortSignal) {
   const r = await fetch("/api/crm/auth/" + path, {
     method: body ? "POST" : "GET",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
+    signal,
   });
-  const d = await r.json();
-  if (!r.ok) throw Object.assign(Error(d.error || "Authentication failed"),{status:r.status});
-  return d;
+  if (!r.ok) {
+    const failure=await r.json().catch(()=>null);
+    throw Object.assign(Error(failure?.error || "Authentication failed"),{status:r.status});
+  }
+  return r.json();
 }
 export default function CrmAccess({
   children,
@@ -145,25 +149,47 @@ export default function CrmAccess({
     [next, setNext] = useState(""),
     [confirm, setConfirm] = useState(""),
     [notice, setNotice] = useState("");
+  const sessionRead=useRef<AbortController | undefined>(undefined);
+  async function checkSession(replace=false) {
+    if(sessionRead.current&&!replace)return;
+    sessionRead.current?.abort();
+    const check=new AbortController();
+    sessionRead.current=check;
+    try {
+      const d=await auth('me',undefined,AbortSignal.any([check.signal,AbortSignal.timeout(12000)]));
+      if(check.signal.aborted)return;
+      if(typeof d?.employee?.id!=='string'||!d.employee.id)throw Error('Invalid staff session response');
+      setEmployee(d.employee);
+      setConnectionProblem(false);
+    } catch(error) {
+      if(check.signal.aborted)return;
+      if([401,403].includes((error as {status:number}).status)){
+        setEmployee(null);setChange(false);setConnectionProblem(false);
+      }else setConnectionProblem(true);
+    } finally {
+      if(sessionRead.current===check){sessionRead.current=undefined;setLoading(false);}
+    }
+  }
   useEffect(() => {
-    auth("me")
-      .then((d) => setEmployee(d.employee))
-      .catch(() => setEmployee(null))
-      .finally(() => setLoading(false));
-  }, []);
-  useEffect(() => {
-    if (!employee) return;
-    const timer = setInterval(() => {
-      auth("me")
-        .then((d) => {setEmployee(d.employee);setConnectionProblem(false);})
-        .catch((error:any) => {
-          if([401,403].includes(error.status)){setEmployee(null);setChange(false);}
-          else setConnectionProblem(true);
-        });
-    }, 60000);
-    return () => clearInterval(timer);
+    let active=true,scheduled=false;
+    const refresh=()=>{
+      if(scheduled)return;
+      scheduled=true;
+      queueMicrotask(()=>{scheduled=false;if(active)void checkSession(true);});
+    };
+    void checkSession();
+    window.addEventListener('uper-access-changed',refresh);
+    return ()=>{
+      active=false;
+      sessionRead.current?.abort();sessionRead.current=undefined;
+      window.removeEventListener('uper-access-changed',refresh);
+    };
+  },[]);
+  useEffect(()=>{
+    if(!employee)return;
+    const timer=setInterval(()=>void checkSession(),60000);
+    return ()=>clearInterval(timer);
   }, [employee?.id]);
-  useEffect(()=>{const refresh=()=>auth('me').then(d=>setEmployee(d.employee)).catch(e=>{if([401,403].includes(e.status))setEmployee(null);});window.addEventListener('uper-access-changed',refresh);return()=>window.removeEventListener('uper-access-changed',refresh);},[]);
 
   const field =
     "w-full p-3 rounded-lg border border-slate-300 bg-white text-slate-900";
@@ -202,7 +228,9 @@ export default function CrmAccess({
             setError("");
             try {
               const d = await auth("login", { loginId, password });
+              sessionRead.current?.abort();
               setEmployee(d.employee);
+              setConnectionProblem(false);
               setPassword("");
             } catch (e) {
               setError((e as Error).message);
@@ -214,6 +242,10 @@ export default function CrmAccess({
           <div className="crm-sign-in-lock"><LockKeyhole size={22} aria-hidden="true" /></div>
           <h1><span>{isSystem ? st("System sign in","Login sistem","系统登录") : isCms ? cmsText("CMS sign in", "CMS 登录", lang) : t("CRM sign in", "CRM 登录")}</span><AdminRequiredNote lang={lang} inline/></h1>
           <p className="crm-sign-in-subtitle">{t("Use your staff account", "请使用员工账号登录")}</p>
+          {connectionProblem&&<p role="status" className="crm-sign-in-error">
+            {st('Could not check your sign-in status.','Status login belum dapat diperiksa.','暂时无法确认登录状态。')}{' '}
+            <button type="button" disabled={busy} className="underline" onClick={()=>void checkSession()}>{st('Retry check','Periksa lagi','重新检查')}</button>
+          </p>}
           <AdminField className="crm-sign-in-label">
             {st("Login ID or email", "ID login atau email", "登录ID或邮箱")}
             <input
@@ -273,6 +305,7 @@ export default function CrmAccess({
           setBusy(true);
           try {
             await auth("logout", {});
+            sessionRead.current?.abort();
             clearStaffDrafts(employee.id);clearAccessPasswords(employee.id);
             setEmployee(null);
             setChange(false);
@@ -288,7 +321,10 @@ export default function CrmAccess({
         },
       }}
     >
-      {connectionProblem&&<p role="status" className="p-3 border border-amber-500">{lang==='zh'?'连接暂不可用，工作区和草稿仍保留；请恢复连接后重试。':lang==='id'?'Koneksi sementara tidak tersedia. Ruang kerja dan draf tetap disimpan; coba lagi setelah tersambung.':'Connection temporarily unavailable. Your workspace and draft remain; retry after reconnecting.'}</p>}
+      {connectionProblem&&<p role="status" className="p-3 border border-amber-500">
+        {st('Connection temporarily unavailable. Your workspace and draft remain.','Koneksi sementara tidak tersedia. Ruang kerja dan draf tetap disimpan.','连接暂不可用，工作区和草稿仍保留。')}{' '}
+        <button type="button" disabled={busy} className="underline" onClick={()=>void checkSession()}>{st('Retry check','Periksa lagi','重新检查')}</button>
+      </p>}
       {!employee.passwordChangeRequired&&children(employee, lang, setLang)}
       {(change||employee.passwordChangeRequired) && (
         <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-6">
@@ -307,7 +343,7 @@ export default function CrmAccess({
                 setCurrent("");
                 setNext("");
                 setConfirm("");
-                const refreshed=await auth('me');setEmployee(refreshed.employee);
+                await checkSession(true);
                 setChange(false);setNotice("password_updated");
               } catch (e) {
                 setError((e as Error).message);
@@ -373,7 +409,7 @@ export default function CrmAccess({
                 disabled={busy}
                 className="order-first"
                 onClick={async () => {
-                  if(employee.passwordChangeRequired){await auth('logout',{});setEmployee(null);}
+                  if(employee.passwordChangeRequired){await auth('logout',{});sessionRead.current?.abort();setEmployee(null);}
                   setChange(false);
                   setCurrent("");
                   setNext("");

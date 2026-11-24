@@ -1,0 +1,248 @@
+{
+  "id": {
+    "header": {
+      "tag": "Pembelajaran Berbasis Teknologi",
+      "title1": "Kuasai Bahasa Mandarin bersama Tutor Ahli &",
+      "title2": "Bantuan AI",
+      "desc": "Masuki era baru persiapan HSK. Kami tidak hanya bergantung pada kecerdasan buatan pasif, namun mengkombinasikan pengalaman mendalam dari tutor ahli dengan platform AI adaptif untuk menemukan kelemahan Anda secara efektif."
+    },
+    "blcu": {
+      "tag": "Otoritas Akademik",
+      "title": "Dukungan Sistem Pengajaran & Penelitian BLCU",
+      "desc": "Mengandalkan fondasi akademis yang mendalam, autentik, dan tepercaya dari Beijing Language and Culture University (BLCU)—pionir dalam Pembelajaran Bahasa Mandarin untuk Penutur Asing (TCFL)—serta memadukannya dengan teknologi modern, kami merancang kurikulum bahasa Mandarin elit yang presisi dan komprehensif.",
+      "point1": {
+        "title": "Sistem Pengajaran & Penelitian BLCU",
+        "desc": "Selaras dengan silabus TCFL standar tinggi dan metrik penilaian akademik BLCU"
+      },
+      "point2": {
+        "title": "Bimbingan dari Tim Pengajar Ahli BLCU",
+        "desc": "Diawasi dan dirancang oleh akademisi serta pengajar senior BLCU garis depan"
+      },
+      "point3": {
+        "title": "Latar Belakang Profesional TCFL",
+        "desc": "Menghadirkan talenta penelitian pendidikan Master dan Doktor TCFL terbaik dari Tiongkok dan Indonesia"
+      },
+      "point4": {
+        "title": "Keunggulan Penelitian HSK",
+        "desc": "Penguasaan luar biasa atas evolusi silabus HSK baru dengan analisis multi-dimensi yang tepat pada poin ujian utama"
+      }
+    },
+    "levels": [
+      {
+        "level": "HSK 1-2",
+        "title": "Pemula",
+        "desc": "Ungkapan dasar bahasa Mandarin dan keterampilan komunikasi untuk pemula."
+      },
+      {
+        "level": "HSK 3-4",
+        "title": "Menengah",
+        "desc": "Keterampilan bahasa tingkat menengah untuk situasi sehari-hari dan konteks akademik."
+      },
+      {
+        "level": "HSK 5-6",
+        "title": "Lanjutan",
+        "desc": "Kemahiran tingkat lanjut untuk topik yang sangat kompleks serta lingkungan profesional."
+      }
+    ],
+    "methodology": {
+      "title": "Metodologi Kami",
+      "desc": "Kami menggabungkan ketelitian akademik tradisional dengan solusi teknologi modern.",
+      "items": [
+        "Diskusi kelas imersif",
+        "Latihan mendengarkan & berbicara secara intensif",
+        "Sumber daya multimedia & bermain peran",
+        "Materi pembelajaran komprehensif & ujian tiruan (mock exams)"
+      ]
+    },
+    "benefits": {
+      "title": "Mengapa Memilih UPER untuk HSK?",
+      "desc": "Sistem pengajaran kami berasal dari tim pengajaran dan penelitian Beijing Language and Culture University, dengan desain kurikulum yang sangat selaras dengan persyaratan ujian HSK. Mulai dari bimbingan guru bahasa Mandarin profesional hingga alat pembelajaran digital dan sistem pembelajaran bantuan AI, kami membantu siswa meningkatkan kemampuan mendengarkan, berbicara, membaca, dan menulis secara komprehensif untuk mencapai hasil pembelajaran bahasa Mandarin yang lebih efisien.",
+      "btn": "Daftar Gelombang Berikutnya"
+    },
+    "vision": {
+      "tag": "Sedang Dikembangkan",
+      "title1": "Masa Depan",
+      "title2": "AI Bahasa",
+      "desc": "Kami saat ini sedang mengembangkan sistem AI eksklusif yang akan merevolusi cara siswa kami mempelajari bahasa Mandarin. Bersiaplah untuk perjalanan belajar yang benar-benar personal.",
+      "items": [
+        {
+          "title": "Penilaian Pintar (Smart Assessment)",
+          "desc": "Evaluasi berkelanjutan untuk menemukan letak area yang butuh perbaikan secara akurat."
+        },
+        {
+          "title": "Jalur Belajar Adaptif",
+          "desc": "Kurikulum dinamis yang menyesuaikan dengan gaya dan kecepatan belajar Anda."
+        },
+        {
+          "title": "Tutor Virtual 24/7",
+          "desc": "Berlatih berbicara kapan saja dengan agen AI percakapan kami."
+        }
+      ],
+      "inDevelopment": "Target Rilis: Musim Gugur 2025"
+    }
+  },
+  "en": {
+    "header": {
+      "tag": "Tech-Enhanced Learning",
+      "title1": "Master Chinese with Expert Tutors &",
+      "title2": "AI Assistance",
+      "desc": "Experience a new era of HSK preparation. We combine highly experienced human tutors with adaptive AI platforms to pinpoint your weak spots and warmly guide you to fluency."
+    },
+    "blcu": {
+      "tag": "Academic Authority",
+      "title": "BLCU Teaching & Research System Support",
+      "desc": "Relying on the deep, authentic and authoritative academic foundation of Beijing Language and Culture University (BLCU)—the cradle of Teaching Chinese as a Foreign Language (TCFL)—and combining it with modern technology, we tailor a precise, comprehensive, and elite Chinese curriculum.",
+      "point1": {
+        "title": "BLCU Teaching & Research Support",
+        "desc": "Aligned with BLCU's high-standard TCFL syllabus and academic assessment metrics"
+      },
+      "point2": {
+        "title": "Guidance from Expert BLCU Tutors",
+        "desc": "Supervised and designed by senior front-line TCFL professors and expert educators from BLCU"
+      },
+      "point3": {
+        "title": "Professional TCFL Backgrounds",
+        "desc": "Brings together top-tier TCFL Master's and PhD educational research talents from China and Indonesia"
+      },
+      "point4": {
+        "title": "Advanced HSK Research Focus",
+        "desc": "Exceptional mastery of the new HSK syllabus evolution, with precise multi-dimensional analysis of key testing points"
+      }
+    },
+    "levels": [
+      {
+        "level": "HSK 1-2",
+        "title": "Beginner",
+        "desc": "Fundamental Chinese expressions and basic communication skills for beginners."
+      },
+      {
+        "level": "HSK 3-4",
+        "title": "Intermediate",
+        "desc": "Intermediate language skills for everyday situations and academic contexts."
+      },
+      {
+        "level": "HSK 5-6",
+        "title": "Advanced",
+        "desc": "Advanced proficiency for highly complex topics and professional environments."
+      }
+    ],
+    "methodology": {
+      "title": "Our Methodology",
+      "desc": "We combine traditional academic rigor with modern technological solutions.",
+      "items": [
+        "Immersive classroom discussions",
+        "Intensive listening & speaking exercises",
+        "Multimedia resources & role-plays",
+        "Comprehensive study materials & mock exams"
+      ]
+    },
+    "benefits": {
+      "title": "Why Choose UPER for HSK?",
+      "desc": "Our teaching system is derived from the teaching and research team of Beijing Language and Culture University, with curriculum designs closely aligned with HSK exam requirements. From professional Chinese tutor guidance to digital materials and AI-assisted learning systems, we help students comprehensively improve their listening, speaking, reading, and writing skills to achieve more efficient Chinese learning outcomes.",
+      "btn": "Start Your Journey"
+    },
+    "vision": {
+      "tag": "In Development",
+      "title1": "The Future of",
+      "title2": "Language AI",
+      "desc": "We are currently developing a proprietary AI system that will revolutionize how our students learn Chinese. Get ready for a truly personalized learning journey.",
+      "items": [
+        {
+          "title": "Smart Assessment",
+          "desc": "Continuous evaluation to pinpoint exact areas needing improvement."
+        },
+        {
+          "title": "Adaptive Pathway",
+          "desc": "Dynamic curriculum that adjusts to your learning speed and style."
+        },
+        {
+          "title": "24/7 Virtual Tutor",
+          "desc": "Practice speaking anytime with our conversational AI agent."
+        }
+      ],
+      "inDevelopment": "Expected Launch: Fall 2025"
+    }
+  },
+  "zh": {
+    "header": {
+      "tag": "科技赋能语言学习",
+      "title1": "掌握中文：专业导师与",
+      "title2": "AI 智能辅助",
+      "desc": "体验全新一代HSK备考。我们不仅仅依赖冷冰冰的机器，而是将深厚教学经验的真人导师与自适应AI平台结合，有效找出您的薄弱环节，温暖相伴您的流利之路。"
+    },
+    "blcu": {
+      "tag": "权威学术支撑",
+      "title": "北语教研体系支持",
+      "desc": "依托“对外汉语”摇篮——北京语言大学（BLCU）正统深厚、权威卓越的教研底蕴，结合现代先进科技，专门量身定制更精准、全方位的精英中文课程体系。",
+      "point1": {
+        "title": "北京语言大学教研体系支持",
+        "desc": "对接北语高标准对外汉语教学大纲与学术考量指标"
+      },
+      "point2": {
+        "title": "北语名师团队指导",
+        "desc": "由北京语言大学一线资深对外汉语名师全程监督及设计指导"
+      },
+      "point3": {
+        "title": "中文国际教育专业背景",
+        "desc": "汇聚中印两地一流对外汉语硕博教研背景人才支持"
+      },
+      "point4": {
+        "title": "HSK教学研究优势",
+        "desc": "极具优势的HSK新课纲演进研究，对考点难点多维度精准穿透"
+      }
+    },
+    "levels": [
+      {
+        "level": "HSK 1-2",
+        "title": "初级",
+        "desc": "适合初学者的汉语基础表达和基本沟通技巧。"
+      },
+      {
+        "level": "HSK 3-4",
+        "title": "中级",
+        "desc": "适合日常场景和学术语境的中级语言技能。"
+      },
+      {
+        "level": "HSK 5-6",
+        "title": "高级",
+        "desc": "适合复杂主题和专业工作环境的高级语言能力。"
+      }
+    ],
+    "methodology": {
+      "title": "我们的教学方法",
+      "desc": "我们将传统学术的严谨性与现代科技手段相结合。",
+      "items": [
+        "沉浸式课堂讨论",
+        "高强度听说训练",
+        "多媒体资源与情景模拟",
+        "全面的学习资料及模拟考试"
+      ]
+    },
+    "benefits": {
+      "title": "为什么选择UPER学习HSK？",
+      "desc": "我们的教学体系源于北京语言大学教研团队，课程设计紧贴HSK考试要求。从专业中文教师指导，到数字化学习工具与AI辅助学习系统，帮助学生全面提升听、说、读、写能力，实现更高效的中文学习成果。",
+      "btn": "报名下一期"
+    },
+    "vision": {
+      "tag": "研发中项目",
+      "title1": "语言AI的",
+      "title2": "未来",
+      "desc": "我们目前正在开发一套专属人工智能系统，以彻底改变学生学习中文的方式。准备好迎接真正个性化的学习之旅吧。",
+      "items": [
+        {
+          "title": "智能评估",
+          "desc": "持续测评以准确定位需要改进的具体环节。"
+        },
+        {
+          "title": "自适应路径",
+          "desc": "动态调整的课程体系，贴合您的学习速度和风格。"
+        },
+        {
+          "title": "24/7 虚拟导师",
+          "desc": "通过我们的对话型AI助手随时随地练习口语。"
+        }
+      ],
+      "inDevelopment": "预计发布：2025年秋季"
+    }
+  }
+}

@@ -30,7 +30,7 @@ test('fresh installs and process restarts retire the Instagram Bio seed and pres
   async function withApplication(check: () => Promise<void>) {
     const child = spawn(process.execPath, ['--import', 'tsx', '--input-type=module', '-e',
       "import {startMysqlApplication} from './server/mysqlApplication.ts'; await startMysqlApplication();"], {
-      env: {...process.env, PORT:String(port), PLATFORM_MODE:'local', APP_URL:base, PORTAL_WORKER_ENABLED:'false'},
+      env: {...process.env, PORT:String(port), PLATFORM_MODE:'local', APP_URL:base},
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     const closed = once(child, 'close');

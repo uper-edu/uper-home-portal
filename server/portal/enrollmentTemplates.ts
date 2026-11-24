@@ -1,6 +1,7 @@
 import type {Express, Request, Response} from 'express';
 import {enrollmentLevels} from '../../src/utils/enrollmentCatalog.ts';
 import {enrollmentTeacherTypes,enrollmentTemplateFormats,enrollmentTemplateQuote, type EnrollmentTeaching, type EnrollmentTemplate} from '../../src/utils/enrollmentTemplates.ts';
+import {parseEnrollmentCourseIntroduction} from '../../src/utils/enrollmentCourseIntroduction.ts';
 import {validMutationOrigin} from './accessTransport.ts';
 import {tx} from './store.ts';
 import {invalid,operation} from './trustWorkflow.ts';
@@ -12,19 +13,27 @@ export function enrollmentTeaching(value:any):EnrollmentTeaching {
     return input.trim();
   };
   if(!enrollmentLevels.includes(value?.level)||!Number.isInteger(value?.minutes)||value.minutes<1||value.minutes>600)invalid('course_information_invalid');
+  let introduction:EnrollmentTeaching['introduction'];
+  if(value.introduction!==undefined){
+    try {introduction=parseEnrollmentCourseIntroduction(value.introduction);}
+    catch {invalid('course_information_invalid');}
+  }
   return {level:value.level,minutes:value.minutes,
+    ...(introduction?{introduction}:{}),
     material:text('material',1200),knowledge:text('knowledge',1200,false),learningOutcomes:text('learningOutcomes',2500,false),resources:text('resources',2500,false)};
 }
 
 const prefix='enrollment_template:';
+export const enrollmentTemplateKey=(id:string)=>prefix+id;
+export const enrollmentTemplateIdPattern=prefix.replace('_','\\_')+'%';
 const isId=(value:unknown):value is string=>typeof value==='string'&&/^[a-zA-Z0-9-]{1,64}$/.test(value);
 export async function listEnrollmentTemplates(c:any):Promise<EnrollmentTemplate[]>{
-  const {rows}=await c.query('SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id',[prefix.replace('_','\\_')+'%']);
+  const {rows}=await c.query('SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id',[enrollmentTemplateIdPattern]);
   return rows.map((row:any)=>row.value);
 }
 export async function readEnrollmentTemplate(c:any,id:string):Promise<EnrollmentTemplate|undefined>{
   if(!isId(id))invalid('enrollment_template_invalid');
-  return (await c.query('SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE',[prefix+id])).rows[0]?.value;
+  return (await c.query('SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE',[enrollmentTemplateKey(id)])).rows[0]?.value;
 }
 
 export function mountEnrollmentTemplates(app:Express,{wrap,staff}:{

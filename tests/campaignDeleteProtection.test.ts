@@ -59,7 +59,7 @@ if (!process.env.MYSQL_NATIVE_TEST_ENV) {
 } else {
   const {setupNativeTest}=await import('./helpers/mysql.mjs');
   await setupNativeTest('delete691');
-  Object.assign(process.env,{PLATFORM_MODE:'local',PORT:'4592',PORTAL_WORKER_ENABLED:'false'});
+  Object.assign(process.env,{PLATFORM_MODE:'local',PORT:'4592'});
   const {pool}=await import('../server/portal/store.ts');
   const seeds=[['TEST691-home','home'],['TEST691-case',' HOME '],['TEST691-normal','test691-normal'],['TEST691-links','test691-links'],['TEST691-review','test691-review']];
   for(const [id,code] of seeds)await pool.query('INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p2,:p3)',[id,code,{id,code,name:id,stats:{impressions:0,budgetCost:0},...(id.endsWith('-links')?{promotionLinks:[{id:'TEST691-link'}]}:{})}]);

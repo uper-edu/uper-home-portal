@@ -53,7 +53,7 @@ export function CrmDetailHeader({
 export interface CrmDetailTab {
   id: string;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
 }
 export function CrmDetailTabs({
   id,
@@ -61,6 +61,7 @@ export function CrmDetailTabs({
   tabs,
   label,
   contentId,
+  disabled=false,
   onChange,
 }: {
   id: string;
@@ -68,6 +69,7 @@ export function CrmDetailTabs({
   tabs: CrmDetailTab[];
   label: string;
   contentId: string;
+  disabled?: boolean;
   onChange: (value: string, keyboard: boolean) => void;
 }) {
   const pendingFocus = useRef<string | null>(null);
@@ -92,6 +94,7 @@ export function CrmDetailTabs({
             role="tab"
             aria-selected={value === tab.id}
             aria-controls={contentId}
+            disabled={disabled}
             tabIndex={value === tab.id ? 0 : -1}
             onClick={() => {
               pendingFocus.current = null;
@@ -116,7 +119,7 @@ export function CrmDetailTabs({
               }
             }}
           >
-            <Icon size={17} aria-hidden="true" />
+            {Icon&&<Icon size={17} aria-hidden="true" />}
             <span>{tab.label}</span>
           </button>
         );

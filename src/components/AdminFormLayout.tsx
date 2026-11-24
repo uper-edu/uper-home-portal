@@ -35,6 +35,15 @@ export function AdminFormFeedback({state,lang='en',children,className='',placeme
  return <p {...props} className={`admin-form-feedback ${className}`.trim()} data-state={state} data-tone={tone} data-placement={placement} role={props.role||(state==='error'||state==='unknown'?'alert':'status')} aria-atomic="true">{children||messages[state][lang==='zh'?2:lang==='id'?1:0]}</p>;
 }
 
+/** A confirmed write whose updated record could not be loaded. */
+export function AdminSavedReadError({lang,onRetry,busy=false}:{lang:CrmLanguage;onRetry:()=>void;busy?:boolean}){
+ const message=lang==='zh'?'修改已保存，暂时无法读取最新记录。':lang==='id'?'Perubahan sudah disimpan. Data terbaru belum dapat dimuat.':'Changes were saved. The latest record could not be loaded.';
+ const retry=lang==='zh'?'重新读取':lang==='id'?'Muat ulang':'Reload';
+ return <AdminFormFeedback state="error" lang={lang}>
+  {message}{' '}<button type="button" disabled={busy} onClick={onRetry}>{retry}</button>
+ </AdminFormFeedback>;
+}
+
 /** A fixed value in an editor. It stays readable and selectable without a form control. */
 export function AdminStaticField({label,value,fullWidth=false}:{
   label:ReactNode;value:ReactNode;fullWidth?:boolean;

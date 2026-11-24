@@ -2,22 +2,24 @@ import {parsePhoneNumberFromString} from "libphonenumber-js/max";
 
 export const CONTACT_PHONE_ERROR = "INVALID_CONTACT_PHONE";
 export const CONTACT_PHONE_MAX_LENGTH = 40;
+export const DEFAULT_CONTACT_PHONE_COUNTRY = "ID";
 
-export function validContactPhone(value: unknown, required = true): boolean {
-  if (typeof value !== "string" || value.length > CONTACT_PHONE_MAX_LENGTH) return false;
+export function parseContactPhone(value: unknown) {
+  if (typeof value !== "string" || value.length > CONTACT_PHONE_MAX_LENGTH) return;
   const input = value.trim();
-  if (!input) return !required;
   // Validate the original characters before removing presentation separators.
   // Never turn letters, an extension, or several numbers into one valid number.
-  if (!/^\+?[0-9]+(?:[ -]+[0-9]+)*$/.test(input)) return false;
+  if (!/^\+?[0-9]+(?:[ -]+[0-9]+)*$/.test(input)) return;
   let number = input.replace(/[ -]/g, "");
   if (number.startsWith("00")) number = "+" + number.slice(2);
   else if (number.startsWith("62")) number = "+" + number;
-  try {
-    return parsePhoneNumberFromString(number, {defaultCountry: "ID", extract: false})?.isValid() === true;
-  } catch {
-    return false;
-  }
+  const phone = parsePhoneNumberFromString(number, {defaultCountry: DEFAULT_CONTACT_PHONE_COUNTRY, extract: false});
+  if (phone?.isValid()) return phone;
+}
+
+export function validContactPhone(value: unknown, required = true): boolean {
+  if (!required && typeof value === "string" && value.length <= CONTACT_PHONE_MAX_LENGTH && !value.trim()) return true;
+  return Boolean(parseContactPhone(value));
 }
 
 export function contactPhoneText(language: string) {

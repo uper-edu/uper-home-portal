@@ -1,5 +1,7 @@
-import {dispatchEnrollmentMail,enrollmentMailConfigured,enrollmentMailMode,enrollmentSmtpReady} from './enrollmentMail.ts';
-import type { Express, Request, Response } from 'express';
+import {measureEnrollmentPhase} from '../requestTracing.ts';
+import {enrollmentSessionCookie,enrollmentVisitorDigest,inspectEnrollmentEmailSession,readEnrollmentEmailSession,readEnrollmentSessionDigest,revokeEnrollmentEmailSession} from './enrollmentVisitorSession.ts';
+import {dispatchEnrollmentMail,enrollmentMailDelivery,enrollmentMailDeliveryState,enrollmentMailbox,enrollmentMailReadiness} from './enrollmentMail.ts';
+import express, {type Express, type Request, type Response} from 'express';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
@@ -7,11 +9,11 @@ import { validMutationOrigin } from './accessTransport.ts';
 import { validContactEmail } from '../../src/utils/contactEmail.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import type { Employee } from './identity.ts';
-import { enrollmentSimulation } from './enrollmentSimulation.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitlist, startEnrollmentVacancySimulation, takenSeats } from './enrollmentInterests.ts';
 import { enrollmentInsertionPhone, enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
 import { allowsEnrollmentProof, enrollmentClosureReason, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
+import {enrollmentProofAccept,enrollmentProofFileIssue,matchesEnrollmentProofSignature,maxEnrollmentProofBytes} from '../../src/utils/enrollmentProofFile.ts';
 import { isEnrollmentInsertionWindow } from '../../src/utils/enrollmentCatalog.ts';
 import { mountEnrollmentRules, readEnrollmentRules, readEnrollmentWorkCalendar } from './enrollmentRules.ts';
 import { workingDayDeadline } from '../../src/utils/workCalendar.ts';
@@ -22,19 +24,19 @@ import { enrollmentAftercareStatus, mountEnrollmentResolution } from './enrollme
 import { assistedEnrollmentOpportunity, mountEnrollmentCrm, recordEnrollmentCustomer, validateAssistedContacts } from './enrollmentCrm.ts';
 import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
-import { proofTransferDetails } from './enrollmentProofTotals.ts';
+import { isEnrollmentProofAmount,proofTransferDetails } from './enrollmentProofTotals.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { latestAssistanceMail, orderNotice, proofNotices, sendAssistanceMail, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
 
 import { applyEnrollmentPaymentCredits, lockEnrollmentFunds, updateEnrollmentPayment } from './enrollmentPaymentCredits.ts';
 import { mountEnrollmentCardTargets } from './enrollmentCardTargets.ts';
-import { renderEnrollmentEmail } from './enrollmentEmail.ts';
+import { enrollmentEmailWhatsAppDestination, enrollmentEmailWhatsAppPath, renderEnrollmentEmail } from './enrollmentEmail.ts';
 import { lockEnrollmentEmail } from './enrollmentEmailAccess.ts';
 import { hasConfiguredEnrollmentBank,mountEnrollmentBank,readEnrollmentBank } from './enrollmentBank.ts';
 
 type Route = (q: Request, r: Response) => Promise<unknown>;
 type Client = { query: (sql: string, args?: unknown[]) => Promise<{ rows: any[] }> };
-const sessionCookie = 'uper_enrollment_session';
+
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const otpKey = randomBytes(32);
 const sha = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -51,11 +53,24 @@ const enrollTx = (work: (c: Client) => Promise<any>) => tx(work, { isolation: 'R
 const moneyTx = (work:(c:Client)=>Promise<any>)=>enrollTx(async c=>{await lockEnrollmentFunds(c);return work(c);});
 
 async function session(c: Client, q: Request): Promise<string> {
-  const token = q.headers.cookie?.match(/(?:^|;\s*)uper_enrollment_session=([a-f0-9]{64})(?:;|$)/)?.[1];
-  if (!token) invalid('enrollment_verification_required', 401);
-  const row = (await c.query('SELECT email FROM enrollment_email_sessions WHERE digest=:p1 AND expires_at>UTC_TIMESTAMP(6) FOR SHARE', [sha(token!)])).rows[0];
-  if (!row) invalid('enrollment_verification_required', 401);
-  return row.email;
+  const email=await readEnrollmentEmailSession(c,q.headers.cookie,q.get('X-Enrollment-Email'));
+  if (!email) invalid('enrollment_verification_required', 401);
+  return email;
+}
+
+export async function enrollmentAssistancePreview(c:Client,offer:{
+  class_id:string;email:string;order_id:string|null;data:{quote:unknown;name:string;phone:string};
+},mode:unknown,cookie:string|undefined,expectedEmail?:string) {
+  const preview={classId:offer.class_id,quote:offer.data.quote};
+  if(mode!==true&&mode!=='if-verified')return preview;
+  const sessionRead=readEnrollmentEmailSession(c,cookie,expectedEmail);
+  const email=await (mode===true?sessionRead:sessionRead.catch(()=>undefined));
+  if(email&&email===offer.email)return {...preview,name:offer.data.name,phone:offer.data.phone,email,orderId:offer.order_id};
+  if(mode===true){
+    if(!email)invalid('enrollment_verification_required',401);
+    invalid('enrollment_assistance_email',403);
+  }
+  return preview;
 }
 
 async function lockClass(c: Client, classId: string) {
@@ -89,53 +104,101 @@ function view(row: any, classState: string) {
     ...(row.data?.creditIn?{creditIn:Number(row.data.creditIn)}:{}),...(row.data?.creditOut?{creditOut:Number(row.data.creditOut)}:{}) };
 }
 
-function proofContent(raw: unknown, mime: unknown) {
-  if (typeof raw !== 'string' || raw.length > 2_800_000 || !/^[a-zA-Z0-9+/]+={0,2}$/.test(raw)) invalid('enrollment_invalid_proof');
-  const bytes = Buffer.from(raw as string, 'base64');
-  const hex = bytes.subarray(0, 8).toString('hex');
-  if (bytes.toString('base64') !== raw || bytes.length < 16 || bytes.length > 2 * 1024 * 1024 ||
-      !((mime === 'image/png' && hex === '89504e470d0a1a0a') ||
-        (mime === 'image/jpeg' && hex.startsWith('ffd8ff')) ||
-        (mime === 'application/pdf' && hex.startsWith('255044462d')))) invalid('enrollment_invalid_proof');
-  return createHash('sha256').update(bytes).digest('hex');
+export function proofContent(raw: unknown, mime: unknown) {
+  const binary = Buffer.isBuffer(raw);
+  if (!binary && (typeof raw !== 'string' || raw.length > 2_800_000 || !/^[a-zA-Z0-9+/]+={0,2}$/.test(raw))) invalid('enrollment_invalid_proof');
+  const bytes = binary ? raw : Buffer.from(raw as string, 'base64');
+  if (enrollmentProofFileIssue(bytes.length,mime) ||
+      !matchesEnrollmentProofSignature(bytes,mime)) invalid('enrollment_invalid_proof');
+  const encoded = bytes.toString('base64');
+  if (!binary && encoded !== raw) invalid('enrollment_invalid_proof');
+  return {digest:createHash('sha256').update(bytes).digest('hex'),encoded};
 }
 
-export async function enrollmentReadiness(c:Client,explain=false,policy=enrollmentServicePolicy()) {
-    const reasons = policy.acceptingNew ? [] : [policy.servicing ? 'paused' : 'service_disabled'];
-    if (!policy.simulation && (policy.acceptingNew || explain)) {
-      if (!hasConfiguredEnrollmentBank(await readEnrollmentBank(c))) reasons.push('bank_required');
-      if (!await enrollmentSmtpReady(c)) reasons.push('mail_required');
-    }
-    return {accepting:reasons.length===0,servicing:policy.servicing,reasons};
-  }
+const proofMimeTypes = enrollmentProofAccept.split(',');
+const readBinaryProof = express.raw({type:proofMimeTypes,limit:maxEnrollmentProofBytes,inflate:false});
 
-export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
+export async function readProofSubmission(q:Request,r:Response) {
+  const header=q.get('X-Enrollment-Proof');
+  let metadata=q.body;
+  if(header!==undefined){
+    if(header.length>4096)invalid('enrollment_invalid_proof');
+    try { metadata=JSON.parse(decodeURIComponent(header)); }
+    catch { invalid('enrollment_invalid_proof'); }
+  }
+  const {uploadId,reportedAmount,bankReference}=metadata??{};
+  if(typeof uploadId!=='string'||!uuid.test(uploadId))invalid('enrollment_invalid_proof');
+  if(header===undefined)return {uploadId,reportedAmount,bankReference,mime:metadata.mime,content:metadata.encoded};
+  const mime=q.is(proofMimeTypes)||undefined;
+  if(mime){
+    await new Promise<void>((resolve,reject)=>readBinaryProof(q,r,(error?:{status?:number})=>{
+      // Let the existing invalid-proof path clear an oversized or unsupported attempt.
+      if(error && error.status!==413 && error.status!==415){reject(error);return;}
+      if(error)q.body=undefined;
+      resolve();
+    }));
+  }
+  return {uploadId,reportedAmount,bankReference,mime,content:Buffer.isBuffer(q.body)?q.body:undefined};
+}
+
+async function readEnrollmentIntake(c:Client,policy?:ReturnType<typeof enrollmentServicePolicy>,includeBank=false) {
+  if(!(policy??enrollmentServicePolicy()).servicing)
+    return {readiness:{accepting:false,servicing:false,reasons:['service_disabled']}};
+  const mail=policy?undefined:await enrollmentMailReadiness(c);
+  policy??=enrollmentServicePolicy(process.env,mail?.mode);
+  const bank=includeBank||!policy.simulation?await readEnrollmentBank(c):undefined;
+  const reasons:string[]=[];
+  if(!policy.simulation){
+    if(!bank||!hasConfiguredEnrollmentBank(bank))reasons.push('bank_required');
+    if(!await (mail??await enrollmentMailReadiness(c)).smtpReady())reasons.push('mail_required');
+  }
+  return {readiness:{accepting:reasons.length===0,servicing:true,reasons},bank:bank?.bank};
+}
+
+export async function enrollmentReadiness(c:Client,policy?:ReturnType<typeof enrollmentServicePolicy>) {
+  return (await readEnrollmentIntake(c,policy)).readiness;
+}
+
+export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor }: {
   wrap: (fn: Route) => (q: Request, r: Response) => void;
   staff: (q: Request, permission: string) => Promise<Employee>;
+  visitor: (q:Request,r:Response)=>Promise<{id:string}>;
 }) {
-  const local = enrollmentSimulation();
   const policy = enrollmentServicePolicy();
+  const maintenanceMode=async()=>enrollmentServicePolicy(process.env,(await enrollmentMailDelivery()).mode);
   mountEnrollmentRules(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   mountEnrollmentBank(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   const base = '/api/enrollment';
   const finance = '/api/crm/enrollment/finance';
+  app.get(enrollmentEmailWhatsAppPath,(q,r)=>{
+    r.set({'Cache-Control':'no-store','Referrer-Policy':'no-referrer'});
+    r.redirect(302,enrollmentEmailWhatsAppDestination(q.query.text));
+  });
 
   async function requireNewEnrollment(c:Client) {
-    if (!(await enrollmentReadiness(c,false,policy)).accepting) invalid('enrollment_intake_paused',503);
+    const {reasons}=await enrollmentReadiness(c);
+    if(reasons.length)invalid('enrollment_intake_'+reasons[0],503);
   }
-  app.get(base + '/availability', wrap(async (_q,r) => {
-    const accepting=policy.acceptingNew&&await enrollTx(async c=>(await enrollmentReadiness(c,false,policy)).accepting).catch(()=>false);
-    r.set('Cache-Control','no-store').json({accepting,servicing:policy.servicing});
+  app.get(base + '/availability', wrap(async (q,r) => {
+    if(q.query.scope==='servicing'||!policy.servicing){
+      r.set('Cache-Control','no-store').json({accepting:false,servicing:policy.servicing,
+        reasons:policy.servicing?[]:['service_disabled']});
+      return;
+    }
+    const readiness=await enrollTx(c=>enrollmentReadiness(c)).catch(()=>({
+      accepting:false,servicing:policy.servicing,reasons:['check_failed'],
+    }));
+    r.set('Cache-Control','no-store').json(readiness);
   }));
   app.get('/api/crm/enrollment/readiness', wrap(async (q,r) => {
     await staff(q,'crm.operations.manage');
-    r.set('Cache-Control','no-store').json(await enrollTx(c=>enrollmentReadiness(c,true,policy)));
+    r.set('Cache-Control','no-store').json(await enrollTx(c=>enrollmentReadiness(c)));
   }));
+  mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow,servicing:policy.servicing});
   if (!policy.servicing) return;
-  mountEnrollmentCrm(app,{wrap,staff,transact:enrollTx,saveProgress:saveSimpleSalesWorkflow});
 
-  const post = (path: string, handler: Route) => app.post(path, wrap(async (q, r) => {
-    if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected', 403);
+  const post = (path: string, handler: Route, contentTypes?: string[]) => app.post(path, wrap(async (q, r) => {
+    if (!validMutationOrigin(q, contentTypes)) invalid('enrollment_origin_rejected', 403);
     r.set('Cache-Control', 'no-store');
     return handler(q, r);
   }));
@@ -155,9 +218,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     return actor;
   };
   mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
-  if(local) startEnrollmentWeeklySimulation(enrollTx);
-  startEnrollmentVacancySimulation(enrollTx,lockClass);
-  startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass});
+  startEnrollmentWeeklySimulation(enrollTx,async()=>{
+    const current=await maintenanceMode();
+    return current.simulation&&current.maintenance;
+  });
+  const maintenance=async()=>(await maintenanceMode()).maintenance;
+  startEnrollmentVacancySimulation(enrollTx,lockClass,maintenance);
+  startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass},maintenance);
   mountEnrollmentResolution(app,{wrap,post,transact:moneyTx,read:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
 
   post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {
@@ -196,12 +263,14 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
             < CAST(e.data->>'$.capacity' AS UNSIGNED)
         ORDER BY e.first_lesson_at,e.id`,[cohort.id,cohort.data.level,cohort.data.format])).rows.map(row=>({
           id:row.id,level:row.data.level,format:row.data.format,period:row.data.period,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
+          weeklySchedule:row.data.weeklySchedule,minutes:row.data.minutes,
         })):[];
       const status=await enrollmentAftercareStatus(c,order.id);
       const lateProofSubmitted=(order.state==='expired'||enrollmentClosureReason(order.state,order.data?.closureReason)==='learner_cancelled')&&verified===0&&!order.data?.creditOut&&
         (await c.query('SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1',[order.id])).rows.length>0;
       return { originalClassState:cohort.state, currentClass:{
         level:cohort.data.level,format:cohort.data.format,period:cohort.data.period,batchNumber:cohort.data.batchNumber,teacherType:cohort.data.teacherType,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
+        weeklySchedule:cohort.data.weeklySchedule,minutes:cohort.data.minutes,
         opened:!!confirmed,
       }, lateProofSubmitted, priorityRequested:typeof order.data?.priority==='boolean' ? order.data.priority : undefined,
         transfers, ...status, refund: verified<=0 ? { mode:'unavailable' } :
@@ -217,7 +286,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const email = contact(q.body.email);
     const id = randomUUID();
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    const pending=await enrollTx(async (c: Client) => {
+    const pending=await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
+      const {delivery,configured}=await enrollmentMailDeliveryState(c);
+      const local=enrollmentMailbox(delivery.mode);
+      if(delivery.mode==='disabled'||delivery.mode==='simulation'&&!local)invalid('enrollment_email_unavailable',503);
       await lockEnrollmentEmail(c, email);
       await c.query(`INSERT INTO enrollment_email_challenges(email,challenge_id,digest,expires_at,resend_at)
         VALUES(:p1,:p2,:p3,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE email=email`, [email, id, otpHash(id, code)]);
@@ -231,12 +303,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const message=renderEnrollmentEmail(q.body.purpose==='mine'?'otp_mine':'otp_apply',{
         language:q.body.language,code,codeMinutes:emailCodeMinutes,
       });
-      if(await enrollmentMailConfigured(c))return message;
-      if(!local||enrollmentMailMode()!=='simulation')invalid('enrollment_email_unavailable',503);
+      if(configured)return {message,delivery};
+      if(!local)invalid('enrollment_email_unavailable',503);
       await local.deliver(id,email,code,message);
-    });
+    }));
     if(pending){
-      const result=await dispatchEnrollmentMail('otp:'+id,email,pending,{code,deliveryId:id});
+      const result=await measureEnrollmentPhase(r,'mail_dispatch',()=>dispatchEnrollmentMail('otp:'+id,email,pending.message,{code,deliveryId:id,expected:pending.delivery}));
       if(result.state!=='accepted'&&result.state!=='simulated'){
         await enrollTx(c=>c.query(`UPDATE enrollment_email_challenges SET used=TRUE,
           resend_at=IF(:p3,UTC_TIMESTAMP(6),resend_at) WHERE email=:p1 AND challenge_id=:p2`,
@@ -248,11 +320,31 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     r.json({ challengeId: id });
   });
 
+  post(base + '/email/session', async (q, r) => {
+    if(q.body?.email===undefined){
+      const verifiedEmail=await inspectEnrollmentEmailSession(enrollTx,q.headers.cookie);
+      r.json({verifiedEmail:verifiedEmail??null});
+      return;
+    }
+    const email=contact(q.body?.email);
+    const verified=!!await inspectEnrollmentEmailSession(enrollTx,q.headers.cookie,email);
+    r.json({verified});
+  });
+
+  post(base + '/email/logout', async (q,r)=>{
+    const expected=q.get('X-Enrollment-Email');
+    const revoked=await enrollTx(c=>revokeEnrollmentEmailSession(c,q.headers.cookie,expected));
+    if(!revoked)invalid('enrollment_verification_required',401);
+    r.clearCookie(enrollmentSessionCookie,{path:base,httpOnly:true,secure:q.secure,sameSite:'strict'});
+    r.json({signedOut:true});
+  });
+
   post(base + '/email/verify', async (q, r) => {
     const email = contact(q.body.email);
     const { challengeId, code } = q.body;
     if (!uuid.test(challengeId) || typeof code !== 'string' || !/^\d{6}$/.test(code)) invalid('enrollment_invalid_code');
     const token = randomBytes(32).toString('hex');
+    const scope=await visitor(q,r);
     const sessionHours = await enrollTx(async (c: Client) => {
       await lockEnrollmentEmail(c, email);
       const row = (await c.query(`SELECT *,expires_at>UTC_TIMESTAMP(6) AS active
@@ -266,12 +358,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         return null;
       }
       await c.query('UPDATE enrollment_email_challenges SET used=TRUE WHERE email=:p1', [email]);
+      await revokeEnrollmentEmailSession(c,q.headers.cookie);
       await c.query('INSERT INTO enrollment_email_sessions(digest,email,expires_at) VALUES(:p1,:p2,TIMESTAMPADD(HOUR,:p3,UTC_TIMESTAMP(6)))',
-        [sha(token),email,rules.emailSessionHours]);
+        [enrollmentVisitorDigest(token,scope.id),email,rules.emailSessionHours]);
       return rules.emailSessionHours;
     });
     if (sessionHours===null) invalid('enrollment_invalid_code', 401);
-    r.cookie(sessionCookie, token, { httpOnly: true, secure: q.secure, sameSite: 'strict', path: base, maxAge: sessionHours*3_600_000 });
+    r.cookie(enrollmentSessionCookie, 'v2.'+token, { httpOnly: true, secure: q.secure, sameSite: 'strict', path: base, maxAge: sessionHours*3_600_000 });
     r.json({ verified: true });
   });
 
@@ -281,10 +374,9 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const id=randomUUID();
     const {email,name,phone,requestId,fingerprint,price,priority,source,actor,assistance}=input;
     const {paymentHours}=await readEnrollmentRules(c);
-    await requireNewEnrollment(c);
-    const bankSettings=await readEnrollmentBank(c);
-    if(!policy.simulation&&!hasConfiguredEnrollmentBank(bankSettings))invalid('enrollment_intake_paused',503);
-    const {bank}=bankSettings;
+    const {readiness,bank}=await readEnrollmentIntake(c,undefined,true);
+    if(!readiness.accepting)invalid('enrollment_intake_'+readiness.reasons[0],503);
+    if(!bank)invalid('enrollment_intake_bank_required',503);
     await c.query(`INSERT INTO enrollment_orders(id,class_id,email,request_id,fingerprint,state,price,payment_due_at,created_at,data)
       VALUES(:p1,:p2,:p3,:p4,:p5,'awaiting_payment',:p6,TIMESTAMPADD(HOUR,:p8,UTC_TIMESTAMP(6)),UTC_TIMESTAMP(6),:p7)`,
     [id,cohort.id,email,requestId,fingerprint,price,{name,phone,priority,bank},paymentHours]);
@@ -301,8 +393,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     }
     await convertLearnerWaitlist(c,cohort.id,email,name,id);
     await reconcileWaitlist(c,cohort,seats+1);
-    if(!actor)await applyEnrollmentPaymentCredits(c,{order:(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0],cohort},lockOrder);
-    const reserved=(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0];
+    const reservedOrderSql='SELECT * FROM enrollment_orders WHERE id=:p1';
+    let reserved=(await c.query(reservedOrderSql,[id])).rows[0];
+    if(!actor&&await applyEnrollmentPaymentCredits(c,{order:reserved,cohort},lockOrder))
+      reserved=(await c.query(reservedOrderSql,[id])).rows[0];
     if(Number(reserved.received)<price)await orderNotice(c,'seat_reserved',id,undefined,{price:price-Number(reserved.received)});
     return view(reserved,cohort.state);
   }
@@ -353,7 +447,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       if(!offer||offer.opportunity_id!==opportunityId)invalid('enrollment_assistance_unavailable',404);
       const latest=await latestAssistanceMail(c,result.id);
       return latest??(Number(offer.active)&&!offer.order_id
-        ?await sendAssistanceMail(c,local,offer,sha(actor.id+':'+requestId)):undefined);
+        ?await sendAssistanceMail(c,offer,sha(actor.id+':'+requestId)):undefined);
     });
     r.json({...result,mail});
   });
@@ -369,7 +463,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
           !Number(offer.active)||offer.order_id)invalid('enrollment_assistance_unavailable',404);
       const latest=await latestAssistanceMail(c,applicationId);
       if(['simulated','accepted','queued','unknown'].includes(latest?.state)||(latest?.id??null)!==q.body?.previousAttempt)return latest;
-      return sendAssistanceMail(c,local,offer,sha(latest?.id??'resume:'+applicationId));
+      return sendAssistanceMail(c,offer,sha(latest?.id??'resume:'+applicationId));
     });
     r.json({mail});
   });
@@ -378,9 +472,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     const result=await enrollTx(async c=>{
       const offer=(await c.query(offerProjection,lookup)).rows[0];
       if(!offer||!Number(offer.active)&&!offer.order_id)invalid('enrollment_assistance_unavailable',404);
-      if(q.body?.verified!==true)return {classId:offer.class_id,quote:offer.data.quote};
-      if(await session(c,q)!==offer.email)invalid('enrollment_assistance_email',403);
-      return {classId:offer.class_id,quote:offer.data.quote,name:offer.data.name,phone:offer.data.phone,email:offer.email,orderId:offer.order_id};
+      return enrollmentAssistancePreview(c,offer,q.body?.verified,q.headers.cookie,q.get('X-Enrollment-Email'));
     });
     r.json(result);
   });
@@ -414,6 +506,19 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
     r.json(result);
   });
 
+  app.get(base+'/applications/results/:requestId',wrap(async(q,r)=>{
+    r.set('Cache-Control','no-store');
+    const requestId=String(q.params.requestId);
+    if(!uuid.test(requestId))invalid('enrollment_invalid_application');
+    const result=await enrollTx(async(c:Client)=>{
+      const email=await session(c,q);
+      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state FROM enrollment_orders o
+        JOIN enrollment_classes b ON b.id=o.class_id WHERE o.email=:p1 AND o.request_id=:p2`,[email,requestId]);
+      return row?{state:'saved',order:view(row,row.class_state)}:{state:'unconfirmed'};
+    });
+    r.json(result);
+  }));
+
   post(base + '/applications', async (q, r) => {
     const { classId, requestId, name, priority } = q.body;
     const phone = enrollmentPhone(q.body.phone);
@@ -422,7 +527,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         typeof name !== 'string' || name.trim().length < 1 || name.length > 120 ||
         !phone ||
         typeof priority !== 'boolean') invalid('enrollment_invalid_application');
-    const result = await moneyTx(async (c: Client) => {
+    const result = await measureEnrollmentPhase(r,'transaction',()=>moneyTx(async (c: Client) => {
       const email = await session(c, q);
       const fingerprint = sha(JSON.stringify([classId, name.trim(), phone.trim(), priority]));
       const cohort = await lockClass(c, classId);
@@ -440,7 +545,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const seats = await takenSeats(c,classId);
       if (Number(seats) >= cohort.data.capacity) invalid('enrollment_class_full', 409);
       return reserveSeat(c,cohort,seats,{email,name:name.trim(),phone,requestId,fingerprint,price:cohort.data.price,priority,source:q.body.source});
-    });
+    }));
     r.json(result);
   });
 
@@ -469,6 +574,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
   });
 
   app.get(base + '/orders', wrap(async (q, r) => {
+    if(!readEnrollmentSessionDigest(q.headers.cookie))invalid('enrollment_verification_required',401);
     const result = await enrollTx(async (c: Client) => {
       const email = await session(c, q);
       const { rows } = await c.query(`SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,
@@ -498,45 +604,83 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       const orders=rows.map(row => ({ ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson,
         classCancelled:row.class_state==='cancelled',updatedAt:row.updated_at_iso,needsPayment:Number(row.needs_payment)===1,
         invitation:row.invitation_id?{id:row.invitation_id,deadline:row.invitation_deadline}:undefined }));
-      return {orders,applications};
+      return {orders,applications,verifiedEmail:email};
     });
     r.set('Cache-Control', 'no-store').json(result);
   }));
 
   app.get(base + '/orders/:id', wrap(async (q, r) => {
+    if(!readEnrollmentSessionDigest(q.headers.cookie))invalid('enrollment_verification_required',401);
     const result = await enrollTx(async (c: Client) => {
-      const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
-      return { ...view(order,cohort.state), bank: cohort.state!=='cancelled' && (order.state === 'awaiting_payment' || order.state === 'partial') ? order.data.bank : undefined };
+      const verifiedEmail = await session(c,q);
+      const { order,cohort } = await lockOrder(c, String(q.params.id), verifiedEmail);
+      return { ...view(order,cohort.state), verifiedEmail,
+        bank: cohort.state!=='cancelled' && (order.state === 'awaiting_payment' || order.state === 'partial') ? order.data.bank : undefined };
     });
     r.set('Cache-Control', 'no-store').json(result);
   }));
 
+  app.get(base+'/orders/:id/proofs/:uploadId/result',wrap(async(q,r)=>{
+    r.set('Cache-Control','no-store');
+    const {id,uploadId}=q.params;
+    if(!uuid.test(String(id))||!uuid.test(String(uploadId)))invalid('enrollment_invalid_proof');
+    const result=await enrollTx(async(c:Client)=>{
+      const email=await session(c,q);
+      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state, p.id AS saved_proof,
+        (o.upload_id=:p3 AND o.upload_expires_at>=UTC_TIMESTAMP(6)) AS upload_active
+        FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id
+        LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3
+        WHERE o.id=:p1 AND o.email=:p2`,[id,email,uploadId]);
+      if(!row)invalid('enrollment_order_not_found',404);
+      return row.saved_proof?{state:'saved',order:view(row,row.class_state)}:
+        {state:'unconfirmed',proofTransport:'binary-v1',uploadActive:Number(row.upload_active)===1};
+    });
+    r.json(result);
+  }));
+
   post(base + '/orders/:id/proofs/start', async (q, r) => {
-    const uploadId = await enrollTx(async (c: Client) => {
+    const previousUploadId=q.body?.previousUploadId;
+    if(previousUploadId!==undefined&&(typeof previousUploadId!=='string'||!uuid.test(previousUploadId)))
+      invalid('enrollment_invalid_proof');
+    const result = await enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
+      // A delayed finish may have committed while this retry waited for the
+      // same order lock. Return its result before opening another upload.
+      if(previousUploadId&&(await c.query('SELECT id FROM enrollment_proofs WHERE id=:p1 AND order_id=:p2',
+        [previousUploadId,order.id])).rows.length)return {state:'saved',order:view(order,cohort.state)};
       if (!allowsEnrollmentProof(order.state,order.data?.closureReason)) invalid('enrollment_proof_not_available', 409);
-      if (Number(order.upload_active)) return order.upload_id;
+      if (Number(order.upload_active)) {
+        if (previousUploadId && previousUploadId===order.upload_id &&
+            (order.state!=='awaiting_payment' || Number(order.before_due))) {
+          // Keep the idempotency key. After the payment deadline the original
+          // expiry still controls when an unpaid seat can be released.
+          await c.query(`UPDATE enrollment_orders SET upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE
+            WHERE id=:p1 AND upload_id=:p2 AND upload_expires_at<UTC_TIMESTAMP(6)+INTERVAL 190 SECOND
+              AND (state<>'awaiting_payment' OR payment_due_at>=UTC_TIMESTAMP(6))`,[order.id,previousUploadId]);
+        }
+        return {uploadId:order.upload_id,transport:'binary-v1'};
+      }
       const id = randomUUID();
       await c.query('UPDATE enrollment_orders SET upload_id=:p1,upload_expires_at=UTC_TIMESTAMP(6)+INTERVAL 5 MINUTE WHERE id=:p2', [id,order.id]);
-      return id;
+      return {uploadId:id,transport:'binary-v1'};
     });
-    r.json({ uploadId });
+    r.json(result);
   });
 
   post(base + '/orders/:id/proofs/finish', async (q, r) => {
-    const { uploadId, mime, encoded, reportedAmount, bankReference } = q.body;
-    if (typeof uploadId !== 'string' || !uuid.test(uploadId)) invalid('enrollment_invalid_proof');
+    const {uploadId,reportedAmount,bankReference,mime,content}=await readProofSubmission(q,r);
     // End the current attempt on a rejected upload, so a later attempt uses a fresh server clock.
-    const result = await enrollTx(async (c: Client) => {
+    const result = await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
       const prior = (await c.query('SELECT order_id FROM enrollment_proofs WHERE id=:p1', [uploadId])).rows[0];
       if (prior?.order_id === order.id) return view(order,cohort.state);
       if (order.upload_id !== uploadId || !Number(order.upload_active) || !allowsEnrollmentProof(order.state,order.data?.closureReason)) {
         invalid('enrollment_upload_expired', 409);
       }
-      let digest, transferDetails;
+      if (!isEnrollmentProofAmount(reportedAmount)) invalid('enrollment_invalid_proof_amount');
+      let proof, transferDetails;
       try {
-        digest = proofContent(encoded, mime);
+        proof = await measureEnrollmentPhase(r,'proof_validation',()=>proofContent(content,mime));
         transferDetails = proofTransferDetails(reportedAmount,bankReference);
       }
       catch {
@@ -545,7 +689,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         return null;
       }
       await c.query(`INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,transfer_details,created_at)
-        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,digest,encoded,transferDetails]);
+        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,proof.digest,proof.encoded,transferDetails]);
       const state = order.state === 'awaiting_payment' ? 'proof_review' : order.state;
       if (!order.data.firstReviewDueAt) {
         const first=(await c.query(`SELECT id,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS availableAt
@@ -559,12 +703,12 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         }
       }
       await c.query('UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
-      await proofNotices(c,order.id,cohort.id,digest,cohort.data.level);
+      await proofNotices(c,order.id,cohort.id,proof.digest,cohort.data.level);
       return view({...order,state},cohort.state);
-    });
+    }));
     if (!result) invalid('enrollment_invalid_proof');
     r.json(result);
-  });
+  }, ['application/json', ...proofMimeTypes]);
 
   app.get(finance+'/worklist',wrap(async(q,r)=>{
     await financeActor(q);
@@ -627,6 +771,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
 
   app.get(finance, wrap(async (q, r) => {
     await financeActor(q);
+    const orderId=typeof q.query.order==='string'?q.query.order:'';
     const orders = await enrollTx(async (c: Client) => {
       const rows=(await c.query(`SELECT o.*,e.state AS class_state,e.first_lesson_at AS firstLessonAt,
         e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,
@@ -641,7 +786,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         WHERE p.order_id=o.id ORDER BY p.created_at DESC,p.id DESC LIMIT 1) latest_proof ON TRUE
       WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
         OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR latest_proof.id IS NOT NULL)
-      ORDER BY o.created_at DESC LIMIT 150`,[typeof q.query.order==='string'?q.query.order:''])).rows;
+      ORDER BY o.created_at DESC LIMIT 150`,[orderId])).rows;
+      const proofs=orderId&&rows[0]?.proof_id?(await c.query(`SELECT id,mime,
+        DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS submittedAt,transfer_details AS transfer
+        FROM enrollment_proofs WHERE order_id=:p1 ORDER BY created_at DESC,id DESC`,[orderId])).rows:[];
       const receiptsByOrder=new Map<string,any[]>();
       const creditsByOrder=new Map<string,any[]>();
       if(rows.length){
@@ -668,7 +816,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         }
       }
       return rows.map(row=>({...view(row,row.class_state),name:row.data.name,opened:Number(row.opened)===1,
-        proofId:row.proof_id,proofMime:row.proof_mime,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[],
+        proofId:row.proof_id,proofMime:row.proof_mime,proofs,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[],
         level:row.level,format:row.format,period:row.period,firstLessonAt:row.firstLessonAt}));
     });
     r.set('Cache-Control', 'no-store').json({ orders });
@@ -695,7 +843,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
         !time || !Number.isFinite(time.getTime()) || time.getTime() > Date.now() ||
         typeof requestId !== 'string' || !uuid.test(requestId)) invalid('enrollment_invalid_receipt');
     const id = String(q.params.id);
-    const result = await moneyTx((c: Client) => operation(c, actor.id, q.body,
+    const result = await measureEnrollmentPhase(r,'transaction',()=>moneyTx((c: Client) => operation(c, actor.id, q.body,
       { leadId: 'enrollment:' + id, kind: 'enrollment.receipt', authorize: () => financeActor(q) }, async () => {
       if(typeof receivingAccount!=='string'||!receivingAccount.trim()||receivingAccount.trim().length>160)
         invalid('enrollment_receiving_account_required');
@@ -724,7 +872,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff }: {
       await applyEnrollmentPaymentCredits(c,{order:{...order,state,received},cohort},lockOrder);
       const latest=(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0];
       return {order:view(latest,cohort.state),...summary};
-    }));
+    })));
     r.json(result);
   });
 }

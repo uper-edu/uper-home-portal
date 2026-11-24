@@ -2,6 +2,7 @@ import {CrmEnrollmentContactLink} from './CrmEnrollmentContactLink';
 import {CrmFormSection} from './CrmFormLayout';
 import {CrmContactReference} from './CrmContactReference';
 import {copyPreparedContact} from '../../utils/crmContactPreparation';
+import {parseContactPhone} from '../../utils/contactPhone';
 import {AdminField,AdminRequiredNote,AdminFieldLabel} from '../AdminForm';
 import {contactRestriction} from '../../utils/crmContact';
 import {outreachPolicy,outreachText,isCrmManager,canClaimForContact} from '../../utils/crmOutreach';
@@ -295,7 +296,7 @@ export function CrmContactPreview({
         </p>
         </div><div className="crm-contact-actions">
           <div className="crm-contact-call-actions">
-          {lead.whatsapp&&<button type="button" className="crm-work-button" disabled={Boolean(denied)||working||Boolean(pending)||(exceptional&&!reason.trim())} onClick={async()=>{setWorking(true);try{await prepare('phone');window.location.assign(`tel:${lead.whatsapp.replace(/[^+0-9]/g,'')}`);operationKey.current=null;setError('');}catch(e){setError(contactError(e));}finally{setWorking(false);}}}>{t('Phone call','Telepon','拨打电话')}</button>}
+          {lead.whatsapp&&<button type="button" className="crm-work-button" disabled={Boolean(denied)||working||Boolean(pending)||(exceptional&&!reason.trim())} onClick={async()=>{setWorking(true);try{await prepare('phone');const phone=parseContactPhone(lead.whatsapp)?.number ?? lead.whatsapp.replace(/[^+0-9]/g,'');window.location.assign(`tel:${phone}`);operationKey.current=null;setError('');}catch(e){setError(contactError(e));}finally{setWorking(false);}}}>{t('Phone call','Telepon','拨打电话')}</button>}
           </div>
           <div className="crm-contact-message-actions">
           <button type="button"
@@ -324,8 +325,10 @@ export function CrmContactPreview({
               try {
                 setWorking(true);
                 await prepare("whatsapp");
+                const phone = parseContactPhone(lead.whatsapp)?.number.slice(1)
+                  ?? (lead.whatsapp || "").replace(/\D/g, "").replace(/^0/, "62");
                 window.open(
-                  `https://wa.me/${(lead.whatsapp || "").replace(/\D/g, "").replace(/^0/, "62")}?text=${encodeURIComponent(text)}`,
+                  `https://wa.me/${phone}?text=${encodeURIComponent(text)}`,
                   "_blank",
                   "noopener,noreferrer",
                 );

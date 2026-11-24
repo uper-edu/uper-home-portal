@@ -28,7 +28,6 @@
 @container campaign-process (min-width:1320px){.campaign-overview .crm-process-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
 
 /* Promotion exceptions are a collection with a review form within each record. */
-.crm-campaigns[data-campaign-area=sources] > .campaign-page-heading,
 .campaign-review-workspace {
   width: 100%;
   max-width: 1120px;
@@ -188,7 +187,6 @@
 
 
 
-.campaign-review-status{font-size:12px;color:var(--dw-muted)}
 
 
 .campaign-card-budget{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-height:20px;margin-top:6px;font-size:12px;line-height:1.5;color:var(--dw-muted)}
@@ -199,9 +197,7 @@
 .campaign-card-attendance svg{flex-shrink:0}
 
 
-.campaign-page-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;max-width:100%}
 .campaign-home-card-heading{width:100%}.campaign-home-card-heading>.campaign-home-type{flex:1;flex-shrink:1;min-width:0}.campaign-home-card-heading>.crm-campaign-status{max-width:45%;white-space:normal;overflow-wrap:anywhere}.campaign-home-metrics>div{display:flex;flex-direction:column;min-width:0}.campaign-home-metrics dt{flex:1}
-@media(max-width:767px){.campaign-page-actions{width:100%}}
 .campaign-editor-body>.admin-required-note{margin:0 0 16px}
 
 /* The record shell owns layout. Rows, filters and their states use shared styles. */
@@ -282,5 +278,3 @@
   border-color: var(--admin-action);
   color: var(--admin-action);
 }
-
-.campaign-review-dot{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:var(--admin-warning)}

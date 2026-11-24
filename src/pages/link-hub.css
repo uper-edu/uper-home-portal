@@ -1,7 +1,14 @@
 .linkhub-page {
   min-height: 100svh;
-  color: #111;
-  background: #53667f;
+  display: flex;
+  flex-direction: column;
+  --linkhub-ink: #172c30;
+  --linkhub-muted: #506863;
+  --linkhub-border: #d7e3df;
+  --linkhub-accent: #086658;
+  --linkhub-tint: #f0f7f3;
+  color: var(--linkhub-ink);
+  background: #f5f8f7;
   --linkhub-font:
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", sans-serif;
@@ -11,87 +18,45 @@
   font-weight: 400;
   line-height: 1.5;
   position: relative;
-  isolation: isolate;
-  overflow-x: clip;
 }
 .linkhub-page:lang(zh) {
   --linkhub-label-tracking: normal;
 }
-.linkhub-page :is(h1, h2, button, input) {
+.linkhub-page :is(h1, h2, input) {
   font-family: var(--linkhub-font);
-}
-.linkhub-page::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -2;
-  background: linear-gradient(0deg, #53667f, #90babc);
-  filter: url("#linkhub-background-grain");
-}
-.linkhub-page::after {
-  content: "";
-  position: fixed;
-  inset: auto 0 0;
-  height: 126px;
-  pointer-events: none;
-  z-index: -1;
-  background: linear-gradient(0deg, #000 0%, transparent 100%);
-}
-.linkhub-background-filter {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  pointer-events: none;
 }
 .linkhub-page button,
 .linkhub-page a {
   -webkit-tap-highlight-color: transparent;
 }
 .linkhub-page button {
-  font: inherit;
   cursor: pointer;
 }
 .linkhub-page a {
   color: inherit;
   text-decoration: none;
 }
-.linkhub-page :is(a, button, input):focus-visible {
-  outline: 3px solid #122f46;
-  outline-offset: 4px;
+.linkhub-page :is(a, button, input, summary):focus-visible {
+  outline: 2px solid var(--linkhub-accent);
+  outline-offset: 2px;
 }
 .linkhub-toolbar {
-  max-width: 788px;
-  margin: 0 auto;
   display: flex;
+  flex: none;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding-inline: max(14px, calc((100% - 748px) / 2));
   align-items: center;
+  gap: 4px;
+  background: #fff;
+  border-bottom: 1px solid var(--linkhub-border);
 }
-.linkhub-toolbar > a,
-.linkhub-toolbar > button {
-  border: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #32454985;
-  color: #fff;
-  display: grid;
-  place-items: center;
-}
-.linkhub-toolbar > a img {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  border-radius: 50%;
-}
-.linkhub-toolbar > button:hover {
-  background: #324549b5;
-}
+.linkhub-toolbar > a { display: flex; align-items: center; min-height: 44px; }
 .linkhub-main {
-  width: min(100% - 32px, 680px);
-  margin: 30px auto 0;
+  width: min(100% - 32px, 600px);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: clamp(22px, 4vh, 38px) auto 0;
   text-align: center;
 }
 .linkhub-profile {
@@ -100,82 +65,97 @@
   align-items: center;
 }
 .linkhub-avatar {
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  background: white;
+  background: #fff;
+  border: 1px solid var(--linkhub-border);
 }
 .linkhub-profile h1 {
-  color: white;
-  font-size: 24px;
+  font-size: clamp(20px, 5.4vw, 24px);
   line-height: 1.2;
-  font-weight: 600;
-  margin: 18px 0 4px;
+  font-weight: 700;
+  margin: 12px 0 4px;
   letter-spacing: normal;
 }
 .linkhub-profile > p {
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.5;
   margin: 0;
   font-weight: 500;
+  color: var(--linkhub-muted);
 }
 .linkhub-socials {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
+  gap: 8px;
   align-items: center;
-  margin-top: 16px;
 }
 .linkhub-socials a {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  transition: transform 0.15s;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--linkhub-border);
+  color: var(--linkhub-accent);
+  transition: background-color 0.15s;
 }
 .linkhub-socials svg {
-  width: 28px;
-  height: 28px;
+  width: 21px;
+  height: 21px;
 }
 .linkhub-socials a:hover {
-  transform: scale(1.12);
+  background: var(--linkhub-tint);
+}
+@media (max-width: 350px) {
+  .linkhub-socials { max-width: 200px; }
 }
 .linkhub-links {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-top: 36px;
+  gap: 10px;
+  margin-top: 20px;
 }
 .linkhub-card {
   position: relative;
   display: flex;
   align-items: stretch;
-  border-radius: 8px;
-  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--linkhub-border);
+  background: #fff;
   min-height: 64px;
-  transition:
-    transform 0.15s,
-    box-shadow 0.15s;
+  transition: border-color 0.15s, background-color 0.15s;
 }
-.linkhub-card:hover {
-  transform: scale(1.015);
-  box-shadow: 0 5px 18px #1826321a;
+.linkhub-card--enrollment {
+  background: var(--linkhub-tint);
+  border-color: #b8d5c9;
+}
+.linkhub-card:hover, .linkhub-card:focus-within {
+  border-color: #94beb0;
 }
 .linkhub-page .linkhub-card-main {
   border: 0;
   background: none;
   flex: 1;
   min-width: 0;
-  padding: 12px 48px;
+  padding: 12px 50px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  border-radius: 8px;
-  color: #111;
-  font-size: 14px;
+  border-radius: 12px;
+  color: var(--linkhub-ink);
+  font-size: 15px;
   line-height: 1.2;
   letter-spacing: var(--linkhub-label-tracking);
-  font-weight: 500;
+  font-weight: 650;
+  text-align: center;
   text-wrap: pretty;
 }
 .linkhub-card-main small {
@@ -186,7 +166,7 @@
   font-size: 12px;
   line-height: 18px;
   letter-spacing: var(--linkhub-label-tracking);
-  color: #666;
+  color: var(--linkhub-muted);
   font-weight: 400;
 }
 .linkhub-card-share {
@@ -194,100 +174,32 @@
   right: 4px;
   top: 50%;
   transform: translateY(-50%);
-  width: 40px;
+  width: 44px;
   height: 44px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 6px;
   background: none;
-  color: #666;
+  color: var(--linkhub-muted);
 }
 .linkhub-card-share:hover {
-  background: #f0f2f2;
-  color: #111;
+  background: #e8f5ef;
+  color: var(--linkhub-accent);
 }
 .linkhub-footer {
-  padding: 110px 0 28px;
-  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+  padding: 28px 0 max(20px, env(safe-area-inset-bottom));
+  color: var(--linkhub-muted);
   font-size: 12px;
-  opacity: 0.8;
 }
 .linkhub-footer a:hover {
   text-decoration: underline;
 }
-.linkhub-dialog {
-  border: 0;
-  border-radius: 20px;
-  padding: 0;
-  width: min(520px, calc(100vw - 32px));
-  max-height: calc(100svh - 32px);
-  color: #172029;
-  background: white;
-  box-shadow: 0 20px 70px #0004;
-  overflow: auto;
-  margin: auto;
-  font-family: var(--linkhub-font);
-}
-.linkhub-dialog::backdrop {
-  background: #101b2680;
-  backdrop-filter: blur(6px);
-}
-.linkhub-dialog-inner {
-  padding: 24px;
-}
-.linkhub-dialog header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-.linkhub-dialog h2 {
-  font-size: 18px;
-  line-height: 1.4;
-  font-weight: 600;
-  margin: 0;
-}
-.linkhub-dialog header button {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #f0f3f4;
-}
-.linkhub-dialog :is(a, button, input):focus-visible {
-  outline: 3px solid #21625f;
-  outline-offset: 3px;
-}
-.linkhub-dialog button {
-  cursor: pointer;
-  font: inherit;
-}
-.linkhub-share-title {
-  font-size: 15px;
-  margin-bottom: 12px;
-}
-.linkhub-dialog input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 12px;
-  border: 1px solid #ccd3d5;
-  border-radius: 8px;
-  font-size: 14px;
-  background: #f7f9f9;
-  color: #243735;
-}
-.linkhub-share-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-}
-.linkhub-share-actions button,
 .linkhub-document footer :is(a, button) {
   display: inline-flex;
   gap: 8px;
@@ -301,18 +213,10 @@
   color: #172029;
   text-decoration: none;
 }
-.linkhub-share-actions button:first-child {
-  background: #172b2a;
-  color: white;
-}
-.linkhub-copy-status {
-  font-size: 13px;
-  margin: 12px 0 0;
-}
 .linkhub-document {
   width: min(850px, calc(100vw - 32px));
 }
-.linkhub-document .linkhub-dialog-inner {
+.linkhub-document .public-link-dialog-inner {
   display: flex;
   flex-direction: column;
   max-height: calc(100svh - 32px);
@@ -321,7 +225,8 @@
 .linkhub-document header {
   margin-bottom: 8px;
 }
-.linkhub-document-summary {
+.linkhub-document-summary,
+.linkhub-document .pdf-preview-error {
   font-size: 14px;
   line-height: 1.5;
   margin: 0 0 16px;
@@ -334,19 +239,6 @@
   padding-top: 16px;
 }
 @media (max-width: 480px) {
-  .linkhub-toolbar {
-    padding: 14px;
-  }
-  .linkhub-main {
-    width: calc(100% - 28px);
-    margin-top: 34px;
-  }
-  .linkhub-profile h1 {
-    font-size: 24px;
-  }
-  .linkhub-dialog-inner {
-    padding: 20px;
-  }
   .linkhub-document footer :is(a, button) {
     flex: 1;
     padding: 12px 8px;
@@ -359,98 +251,38 @@
   }
 }
 
-.linkhub-pdf-preview {
-  height: 60svh;
-  min-height: 180px;
-  overflow: auto;
-  overscroll-behavior: contain;
-  background: #edf0f1;
-  border-radius: 8px;
-  padding: 12px;
-  box-sizing: border-box;
-}
-.linkhub-pdf-page {
-  margin: 0 0 16px;
-  text-align: center;
-}
-.linkhub-pdf-page canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: white;
-  box-shadow: 0 1px 5px #0002;
-}
-.linkhub-pdf-page > span {
-  display: block;
-  font-size: 12px;
-  color: #526364;
-  margin-top: 6px;
-}
-
-.linkhub-languages {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 24px;
-  background: #ffffffb8;
-}
-.linkhub-languages button {
-  border: 0;
-  border-radius: 18px;
-  padding: 6px 10px;
-  background: transparent;
-  color: #263c40;
-  font-size: 12px;
-  line-height: 20px;
-  min-height: 32px;
-}
-.linkhub-languages button[aria-pressed="true"] {
-  background: #324549;
-  color: #fff;
-}
-.linkhub-languages button:hover {
-  box-shadow: inset 0 0 0 1px #32454955;
-}
-
 /* Keep controls reachable in short landscape viewports; only the PDF scrolls. */
-.linkhub-toolbar > a,
-.linkhub-toolbar > button,
-.linkhub-socials a,
-.linkhub-dialog header button,
-.linkhub-card-share {
-  width: 44px;
-  height: 44px;
-}
-.linkhub-languages button {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 6px 8px;
-}
 .linkhub-document {
   overflow: hidden;
 }
 .linkhub-document header,
 .linkhub-document-summary,
+.linkhub-document .pdf-preview-error,
 .linkhub-document footer {
   flex-shrink: 0;
 }
-.linkhub-document .linkhub-pdf-preview {
+.linkhub-document .pdf-preview-frame {
   flex: 1 1 60svh;
   min-height: 0;
 }
+.linkhub-document .pdf-preview-pages {
+  height: 100%;
+  min-height: 0;
+}
+.linkhub-document .pdf-preview-loading { color: var(--linkhub-muted); }
 .linkhub-document footer :is(a, button) {
   min-height: 44px;
   box-sizing: border-box;
 }
 @media (max-height: 480px) {
-  .linkhub-document .linkhub-dialog-inner {
+  .linkhub-document .public-link-dialog-inner {
     padding: 12px 16px;
   }
   .linkhub-document header {
     margin-bottom: 4px;
   }
-  .linkhub-document-summary {
+  .linkhub-document-summary,
+  .linkhub-document .pdf-preview-error {
     margin-bottom: 8px;
   }
   .linkhub-document footer {

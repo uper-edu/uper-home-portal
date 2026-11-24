@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {canonicalIdentity,consolidatedProfile,identityProjectionRows,mergeIdentityLead,assertIdentitySalesAllowed,activateIdentityLead,explicitIdentityRefusal} from '../server/portal/identityConsolidation.ts';
-import {attachIdentity,identityMatch} from '../server/portal/identityReview.ts';
+import {canonicalIdentity,consolidatedProfile,identityProjectionRows,mergeIdentityLead,assertIdentitySalesAllowed,activateIdentityLead,explicitIdentityRefusal,lockIdentityRegistry} from '../server/portal/identityConsolidation.ts';
+import {attachIdentity,discoverIdentity,identityMatch,pendingIdentity} from '../server/portal/identityReview.ts';
 import {progressActionState} from '../src/utils/crmProgressAction.ts';
 import {campaignMetrics} from '../src/utils/crmCampaignMetrics.ts';
 import React from 'react';
@@ -29,6 +29,87 @@ test('only B is pending; the original A remains usable and the manager cannot by
  assert.equal(profiles[0].identityReview.pending,false);assert.equal(profiles[1].identityReview.pending,true);assert.equal(profiles[1].identityReview.blocked,true);
  await assertIdentitySalesAllowed(db,'A');await assert.rejects(assertIdentitySalesAllowed(db,'B'),/IDENTITY_REVIEW_REQUIRED/);
  assert.equal(progressActionState({active:true,permissions:['crm.followup']},profiles[1]),'hidden');
+});
+test('pending identity limits a customer read in SQL and retains matching merged aliases',async()=>{
+ const other={...b,id:'C'};
+ const root={...a,email:'root@example.invalid',whatsapp:'+6281234567892'};
+ const alias={...a,id:'alias-of-A',identityMergedInto:'A'};
+ const candidates=[
+  {lead_id:'B',candidate_id:'A',source_profile:b,candidate_profile:root},
+  {lead_id:'C',candidate_id:'A',source_profile:other,candidate_profile:root},
+ ];
+ const reads:{values:string[];locked:boolean}[]=[];
+ const db={async query(sql:string,values:string[]=[]){
+  if(sql.includes('FROM identity_candidates')){
+   const scoped=sql.includes('AND i.lead_id=:p1');
+   assert.equal(scoped,values.length===1);
+   reads.push({values,locked:sql.endsWith('FOR UPDATE')});
+   return {rows:scoped?candidates.filter(row=>row.lead_id===values[0]):candidates};
+  }
+  assert.match(sql,/identityMergedInto/);
+  return {rows:[{id:alias.id,profile:alias}]};
+ }};
+ const all=await pendingIdentity(db);
+ const scoped=await pendingIdentity(db,'B');
+ assert.equal(all.length,2);
+ assert.deepEqual(scoped,all.filter(row=>row.lead_id==='B'));
+ assert.deepEqual(scoped[0].aliasMatches,[{id:alias.id,name:alias.fullName,basis:['phone']}]);
+ assert.deepEqual(await pendingIdentity(db,'B',true),scoped);
+ assert.deepEqual(await pendingIdentity(db,'missing'),[]);
+ assert.deepEqual(reads,[
+  {values:[],locked:false},{values:['B'],locked:false},
+  {values:['B'],locked:true},{values:['missing'],locked:false},
+ ]);
+});
+test('batched discovery preserves alias evidence, pending fallback and manual decisions in MySQL',{
+ skip:!process.env.MYSQL_NATIVE_TEST_ENV && 'Requires authorized isolated MySQL',
+},async t=>{
+ const {setupNativeTest}=await import('./helpers/mysql.mjs');
+ const {disposeNativeTest}=await import('./helpers/disposeNativeTest.mjs');
+ const fixture=await setupNativeTest('identity_discovery_batch');
+ const {pool,tx}=await import('../server/portal/store.ts');
+ t.after(async()=>{await pool.end();await disposeNativeTest(fixture);});
+
+ const phone='+6281234597201';
+ const incoming={email:'incoming@example.invalid',whatsapp:phone};
+ const leads={
+  newLead:incoming,
+  parent:{email:incoming.email,whatsapp:'+6281234597202'},
+  pending:{email:'pending@example.invalid',whatsapp:phone,identityLifecycle:'pending'},
+  evidence:{email:'pending@example.invalid',identityMergedInto:'parent'},
+  fallback:{email:'fallback@example.invalid',whatsapp:phone,identityLifecycle:'pending'},
+  otherParent:{email:'fallback@example.invalid',whatsapp:'+6281234597203'},
+  aliasOne:{whatsapp:phone,identityMergedInto:'retained'},
+  aliasTwo:{whatsapp:phone,identityMergedInto:'retained'},
+  retained:{email:'retained@example.invalid'},
+  shared:{whatsapp:phone},
+  different:{whatsapp:phone},
+ };
+ for(const [id,profile] of Object.entries(leads))await pool.query('INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)',[id,{...profile,id}]);
+ for(const [id,lead] of [['visitor-new','newLead'],['visitor-prior','newLead'],['visitor-pending','pending'],['visitor-fallback','fallback']]){
+  await pool.query('INSERT INTO visitor_sessions(id,lead_id,expires_at) VALUES(:p1,:p2,UTC_TIMESTAMP(6)+INTERVAL 1 HOUR)',[id,lead]);
+ }
+ for(const [visitor,lead,candidate,decision] of [
+  ['visitor-pending','pending','parent','pending'],
+  ['visitor-fallback','fallback','otherParent','pending'],
+  ['visitor-prior','newLead','shared','shared'],
+  ['visitor-prior','newLead','different','different'],
+ ]){
+  await pool.query('INSERT INTO identity_candidates(visitor_id,lead_id,candidate_id,decision) VALUES(:p1,:p2,:p3,:p4)',[visitor,lead,candidate,decision]);
+ }
+ const submit=()=>tx(async c=>{
+  await lockIdentityRegistry(c);
+  return discoverIdentity(c,'visitor-new','newLead',incoming);
+ });
+ assert.equal(await submit(),3);
+ assert.equal(await submit(),3);
+ const result=(await pool.query('SELECT candidate_id,decision FROM identity_candidates WHERE lead_id=:p1 ORDER BY candidate_id',['newLead'])).rows;
+ assert.deepEqual(result.map(({candidate_id,decision})=>[candidate_id,decision]),[
+  ['different','different'],['fallback','pending'],['parent','pending'],['retained','pending'],['shared','shared'],
+ ]);
+
+ await pool.query('INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)', ['broken-alias',{whatsapp:phone,identityMergedInto:'missing'}]);
+ await assert.rejects(submit(),{message:'IDENTITY_TARGET_CHANGED',status:409});
 });
 test('same-person association changes only B, retains originals and all A business state and deadlines',async()=>{
  const db=fake();const result=await mergeIdentityLead(db,b,a,'manager','TEST verified in person');

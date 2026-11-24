@@ -2,6 +2,16 @@ import {reportClientFailure} from './services/clientDiagnostics';
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {safeStorage} from './utils/safeStorage.ts';
+import {installAbortSignalCompatibility} from './utils/abortSignalCompatibility';
+
+installAbortSignalCompatibility();
+if (typeof Object.hasOwn !== 'function') {
+  Object.defineProperty(Object, 'hasOwn', {
+    configurable: true,
+    writable: true,
+    value: (object: object, property: PropertyKey) => Object.prototype.hasOwnProperty.call(object, property),
+  });
+}
 
 // Initialize default preferences at startup (Indonesian, Modern Professional, Classic Mint) safely
 try {

@@ -1,17 +1,18 @@
 import {useEnrollmentPhoneField} from '../useEnrollmentPhoneField';
+import * as phoneValidation from '../../utils/contactPhone';
 import {AdminCopyAction} from '../admin/AdminRecordActions';
 import {useEffect,useState} from 'react';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
 import {AdminFormActions,AdminFormFeedback,AdminFormGrid,type AdminFeedbackState} from '../AdminFormLayout';
-import {enrollmentCopy,enrollmentPost} from '../EnrollmentApplication';
+import {enrollmentCopy,type PublicEnrollmentClass} from '../../utils/enrollmentCatalog';
+import {enrollmentPost} from '../../services/enrollmentSession';
 import {CrmOperationLayer} from './CrmOperationLayer';
 import {CrmDiscardDialog} from './CrmDetailWorkspace';
 import {CrmSingleSelect} from './CrmSingleSelect';
-import {interestOption} from '../EnrollmentInterests';
+import {interestOption} from '../../utils/enrollmentInterestCopy';
 import {formatCrmEventTime} from '../../utils/crmOperatingTime';
 import {formatCurrency} from '../../utils/currency';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-import type {PublicEnrollmentClass} from '../../utils/enrollmentCatalog';
 import {enrollmentAssistancePath,enrollmentPreviewOrigin,type EnrollmentAssistanceMail} from '../../utils/enrollmentAssistance';
 
 export type AssistanceResult={id:string;expiresAt:string;lang:string;mail?:EnrollmentAssistanceMail};
@@ -28,7 +29,7 @@ export function CrmEnrollmentAssistance({opportunityId,level,customerName,contac
   const [classes,setClasses]=useState<PublicEnrollmentClass[]>();
   const [classId,setClassId]=useState('');
   const [phone,setPhone]=useState(contacts.phone);
-  const phoneField=useEnrollmentPhoneField(lang,phone);
+  const phoneField=useEnrollmentPhoneField(lang,phone,phoneValidation);
   const [result,setResult]=useState(initial);
   const [requestId]=useState(()=>crypto.randomUUID());
   const [busy,setBusy]=useState(false);

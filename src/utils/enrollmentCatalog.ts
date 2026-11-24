@@ -1,7 +1,10 @@
+import type {EnrollmentCourseIntroduction} from './enrollmentCourseIntroduction';
+
 export const enrollmentLevels = ['HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 4A', 'HSK 4B'] as const;
 export const enrollmentOpportunityLevels:readonly string[]=enrollmentLevels;
 export const enrollmentFormats = ['standard', 'small'] as const;
 export const enrollmentPeriods = ['weekday-evening', 'weekend', 'mixed'] as const;
+export const enrollmentClassLookupLimit = 40;
 
 export const enrollmentScheduleReviewFields = ['firstLesson', 'days', 'start', 'holidayDates'] as const;
 export type EnrollmentScheduleReviewField = typeof enrollmentScheduleReviewFields[number];
@@ -60,6 +63,7 @@ export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 
 
 export type PublicEnrollmentClass = Omit<EnrollmentClassAdmin,
   'courseId' | 'templateId' | 'templateRevision' | 'revision' | 'state' | 'minimumPaid' | 'capacity' | 'enrollmentCloses' | 'decisionAt' | 'canDelete' | 'hasOrders' | 'holidayDates' | 'scheduleReview'> & {
+    introduction?: EnrollmentCourseIntroduction;
     opened?: boolean; availability?: 'full' | 'limited' | 'available';
     classSize?: {maximum:number; usualMinimum?:number};
   };
@@ -164,8 +168,9 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
     firstLesson, enrollmentCloses,
     schedule: string('schedule', 300, {optional:draft}), sessions: integer('sessions', 1000), minutes: integer('minutes', 600),
     minimumPaid, capacity, price, standardPrice,
-    learningOutcomes: input.templateId && input.learningOutcomes === '' ? '' : string('learningOutcomes', 2500), material: string('material', 2500),
-    resources: input.templateId && input.resources === '' ? '' : string('resources', 2500),
+    learningOutcomes: input.templateId&&input.learningOutcomes===undefined?'':string('learningOutcomes',2500,{optional:!!input.templateId}),
+    material: input.templateId&&input.material===undefined?'':string('material',2500,{optional:!!input.templateId}),
+    resources: input.templateId&&input.resources===undefined?'':string('resources',2500,{optional:!!input.templateId}),
     teacher: string('teacher', 2500, { optional: true }),
   };
 }
@@ -194,18 +199,18 @@ export const enrollmentWeekdays=[
 
 const enrollmentSessionTime=/^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** In local Jakarta time, with Monday as day 1. */
-export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh'){
+/** Display-ready day and time groups in Jakarta time, with Monday as day 1. */
+export function enrollmentWeeklyScheduleGroups(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh'){
   if(!plan||!Array.isArray(plan.days)||!plan.days.length||plan.days.some(day=>!Number.isInteger(day)||day<1||day>7)||
-    !Number.isInteger(plan.lessons)||plan.lessons<1||plan.lessons>24)return '';
+    !Number.isInteger(plan.lessons)||plan.lessons<1||plan.lessons>24)return [];
   const index=lang==='zh'?0:lang==='en'?1:2;
   const groups=new Map<string,string[]>();
   for(const day of [...new Set(plan.days)].sort((a,b)=>a-b)){
     const start=enrollmentSessionStart(plan,day);
-    if(typeof start!=='string'||!enrollmentSessionTime.test(start))return '';
+    if(typeof start!=='string'||!enrollmentSessionTime.test(start))return [];
     const [h,m]=start.split(':').map(Number);
     const end=h*60+m+plan.lessons*minutesPerPeriod;
-    if(!Number.isInteger(end)||end>=1440)return '';
+    if(!Number.isInteger(end)||end>=1440)return [];
     const endTime=[Math.floor(end/60),end%60].map(x=>String(x).padStart(2,'0')).join(':');
     const range=start+'–'+endTime;
     const label=enrollmentWeekdays[day-1][index];
@@ -213,9 +218,20 @@ export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undef
     names.push(lang==='zh'&&!plan.startByDay?label.slice(1):label);
     groups.set(range,names);
   }
-  const text=[...groups].map(([range,names])=>names.join(lang==='zh'?'、':', ')+' '+range);
-  const schedule=text.join(lang==='zh'?'；':' / ');
-  return (lang==='zh'?'每周'+(plan.startByDay?schedule.slice(1):schedule):schedule)+' WIB';
+  return [...groups].map(([time,names],i)=>({
+    days:(lang==='zh'&&i===0?(plan.startByDay?'每':'每周'):'')+names.join(lang==='zh'?'、':', '),time,
+  }));
+}
+
+export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh'){
+  const groups=enrollmentWeeklyScheduleGroups(plan,minutesPerPeriod,lang);
+  return groups.length?groups.map(({days,time})=>days+' '+time).join(lang==='zh'?'；':' / ')+' WIB':'';
+}
+
+export function enrollmentScheduleLabel(row:Partial<Pick<PublicEnrollmentClass,'weeklySchedule'|'minutes'|'schedule'>>|undefined,language:'zh'|'en'|'id') {
+  if (!row) return '';
+  const localized = row.minutes === undefined ? '' : enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,language);
+  return localized || row.schedule || '';
 }
 
 /** One title contract for the catalog, CRM, applications and order details. */
@@ -233,6 +249,22 @@ export function enrollmentClassTitle(row:EnrollmentClassIdentity,language:'zh'|'
 export function enrollmentTeacherLabel(type:'local'|'foreign'|undefined,language:'zh'|'en'|'id') {
   if(!type)return '';
   return {zh:{local:'本土教师',foreign:'外教'},en:{local:'Indonesian Teacher',foreign:'Foreign Teacher'},id:{local:'Pengajar Lokal',foreign:'Pengajar Asing'}}[language][type];
+}
+
+export function enrollmentPrivateLessonTitle(level:string,language:'zh'|'en'|'id') {
+  return enrollmentCopy(language,[
+    `${level.replace(/^HSK (?=\d)/,'HSK')} · 一对一 · 定制时间`,
+    `${level} · One-to-one · Custom schedule`,
+    `${level} · Kelas privat · Jadwal fleksibel`,
+  ]);
+}
+
+export function enrollmentFixedLessonDuration(lessons:number,minutes:number,language:'zh'|'en'|'id') {
+  return enrollmentCopy(language,[
+    `${lessons} 节 · 每节 ${minutes} 分钟`,
+    `${lessons} lessons · ${minutes} min each`,
+    `${lessons} sesi · ${minutes} menit per sesi`,
+  ]);
 }
 
 /** Seed empty recurring fields from the first session without replacing an existing schedule. */
@@ -279,4 +311,8 @@ export function enrollmentScheduleErrors(config:Partial<Omit<EnrollmentClassConf
     if(!errors.start&&plan.days.length&&!errors.lessons&&!enrollmentWeeklyScheduleText(plan,config.minutes??45))errors.start=t('请检查开始时间和节数，上课结束时间须早于次日 00:00。','Check the start time and periods: the session must end before midnight.','Periksa waktu mulai dan jumlah jam pelajaran: kelas harus selesai sebelum tengah malam.');
   }
   return errors;
+}
+
+export function enrollmentCopy(language: 'zh' | 'en' | 'id', text: readonly [string, string, string]) {
+  return text[language === 'zh' ? 0 : language === 'id' ? 2 : 1];
 }

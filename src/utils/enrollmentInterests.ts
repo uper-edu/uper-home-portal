@@ -1,16 +1,7 @@
 import {validContactPhone} from './contactPhone';
 
-export const demandLevels = ['HSK 1','HSK 2','HSK 3','HSK 4','unsure','other'] as const;
-export const demandPeriods = ['weekday-day','weekday-evening','weekend','mixed','any','other'] as const;
-export const demandFormats = ['standard','small','one-on-one','any','other'] as const;
-
-export interface DemandCriteria {
-  level: typeof demandLevels[number];
-  period: typeof demandPeriods[number];
-  format: typeof demandFormats[number];
-  notes: string;
-  phone: string;
-}
+import {demandFormats, demandLevels, demandPeriods, type DemandCriteria} from './enrollmentInterestRecords';
+export * from './enrollmentInterestRecords';
 
 export function enrollmentPhone(input: unknown): string | null {
   return typeof input === 'string' && validContactPhone(input) ? input.trim() : null;
@@ -34,7 +25,7 @@ export function parseDemand(input: Record<string,unknown>): DemandCriteria | nul
 }
 
 export function demandMatches(demand: DemandCriteria, cohort: {level:string;period:string;format:string}): boolean {
-  if (demand.level === 'unsure' || [demand.level,demand.period,demand.format].includes('other')) return false;
+  if (demand.level === 'unsure' || demand.format==='one-on-one' || [demand.level,demand.period,demand.format].includes('other')) return false;
   return (demand.level === cohort.level || (demand.level === 'HSK 4' && ['HSK 4A','HSK 4B'].includes(cohort.level))) &&
     (demand.period === 'any' || demand.period === cohort.period) &&
     (demand.format === 'any' || demand.format === cohort.format);

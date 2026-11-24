@@ -154,7 +154,8 @@ export const moduleNames: Record<string, Record<string, Words>> = {
     ],
   },
   system: {
-    ai: ["AI Services", "Layanan AI", "AI服务配置"],
+    ai: ["AI Model Services", "Layanan Model AI", "AI 模型服务"],
+    credentials: ["Integrations", "Integrasi", "集成配置"],
     users: ["Users", "Pengguna", "用户管理"],
     roles: ["Roles & Permissions", "Peran & Izin", "角色权限"],
     preview: ["Access Preview", "Pratinjau Akses", "权限预览"],

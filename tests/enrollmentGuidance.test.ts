@@ -1,6 +1,8 @@
+import './helpers/mockPortalDatabase.mjs';
+
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {enrollmentClassComparison,enrollmentDemandPrefill,enrollmentGuideHref,enrollmentGuideRows,matchEnrollmentGuidance,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation} from '../src/utils/enrollmentGuidance';
+import {enrollmentClassComparison,enrollmentDemandPrefill,enrollmentGuideHref,enrollmentGuideRows,matchEnrollmentGuidance,normalizeEnrollmentIntent,repeatedEnrollmentCards,resolveConsultationRecommendation,resolveEnrollmentComparison,sharedEnrollmentComparison,withExplicitChatAppointmentTime} from '../src/utils/enrollmentGuidance';
 import type {EnrollmentGuideAction} from '../src/utils/enrollmentGuidance';
 import type {PublicEnrollmentClass} from '../src/utils/enrollmentCatalog';
 
@@ -13,6 +15,116 @@ const sample=(overrides:Partial<PublicEnrollmentClass>={}):PublicEnrollmentClass
 const normalized=(overrides:Record<string,unknown>={})=>normalizeEnrollmentIntent({
   kind:'recommend',level:'HSK 1',period:'weekend',days:[6,7],earliest:'12:00',latest:'17:59',...overrides,
 })!;
+
+test('a shared comparison only consolidates equal schedule, tuition and duration across distinct batches',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const first=sample({batchNumber:1,period:'mixed',price:4158000,sessions:42,
+    weeklySchedule:{days:[5,6],start:'19:00',lessons:2,startByDay:{5:'19:00',6:'15:00'}}});
+  const second={...first,id:'fixture-b',batchNumber:2,firstLesson:'2027-01-15T19:00'};
+  const action:EnrollmentGuideAction={kind:'class',rows:[first,second],detailFields:['weekly','price','first'],sharedComparison:true};
+  assert.equal(sharedEnrollmentComparison(action)?.periods,42);
+  assert.match(enrollmentReply(action,'zh'),/两期课表、课时和学费相同/);
+  assert.match(enrollmentReply(action,'en'),/same weekly schedule/);
+  assert.match(enrollmentReply(action,'id'),/Jadwal mingguan/);
+  for(const change of [{price:second.price+1},{sessions:41},
+    {firstLesson:first.firstLesson},{weeklySchedule:{...second.weeklySchedule!,startByDay:{5:'19:00',6:'16:00'}}}]){
+    assert.equal(sharedEnrollmentComparison({...action,rows:[first,{...second,...change}]}),undefined);
+  }
+  assert.equal(sharedEnrollmentComparison({...action,detailFields:['weekly','price','teacher']}),undefined);
+  assert.equal(sharedEnrollmentComparison({...action,question:'apply'}),undefined);
+  assert.equal(sharedEnrollmentComparison({...action,firstDateConflict:true}),undefined);
+});
+
+test('a browse application uses verified timing and accepts exact evidence wrapped in quotation marks',()=>{
+  const previous={level:'HSK 2',windows:[{day:5,earliest:'19:00'},{day:6,earliest:'15:00'}]};
+  const apply={kind:'browse',question:'apply'};
+  const update={evidence:'“周五不行了，只能周六”',windows:[{day:6,earliest:'15:00'}]};
+  const verified=resolveConsultationRecommendation(apply,previous,'周五不行了，只能周六',update);
+  const intent=normalizeEnrollmentIntent(verified.value)!;
+  assert.equal(intent.level,'HSK 2');
+  assert.deepEqual(intent.windows?.map(w=>w.day),[6]);
+  const mixed=sample({level:'HSK 2',period:'mixed',weeklySchedule:{days:[5,6],start:'15:00',lessons:1}});
+  assert.equal(matchEnrollmentGuidance({...intent,kind:'recommend'},[mixed]).kind,'demand');
+  const invented=resolveConsultationRecommendation(apply,previous,'我只想先了解',update);
+  assert.deepEqual(invented.constraints?.windows,previous.windows);
+});
+
+test('unlisted HSK levels and singleton class formats survive into the demand form',()=>{
+  const intentFor=(value:unknown,previous:Parameters<typeof resolveConsultationRecommendation>[1],text:string,criteria?:unknown)=>
+    resolveConsultationRecommendation(value,previous,text,criteria);
+  const first=intentFor(null,undefined,'我只想上 HSK 6',{evidence:'我只想上 HSK 6',level:'HSK 6'});
+  const toPrefill=(value:unknown)=>{
+    const action=matchEnrollmentGuidance(normalizeEnrollmentIntent(value)!,[]);
+    const url=new URL(enrollmentGuideHref(action,'zh','ai_chat'),'http://localhost');
+    return enrollmentDemandPrefill(url.searchParams);
+  };
+  const followup=intentFor({kind:'demand'},first.constraints,'我可以登记需求吗？');
+  assert.deepEqual(toPrefill(followup.value),{level:'other',period:'any',format:'any',notes:'HSK 6',phone:''});
+  const revised=intentFor({kind:'demand'},followup.constraints,'改成 HSK 1 小班',{
+    evidence:'改成 HSK 1 小班',level:'HSK 1',formats:['small'],
+  });
+  assert.deepEqual(toPrefill(revised.value),{level:'HSK 1',period:'any',format:'small',notes:'',phone:''});
+  const mixed={kind:'demand',level:'HSK 3',formats:['standard','small'],windows:[{day:5,earliest:'19:00'},{day:6,earliest:'15:00'}]};
+  assert.equal(toPrefill(mixed).format,'any');
+  assert.equal(toPrefill(mixed).period,'mixed');
+});
+
+test('view-only and demand actions reuse verified constraints, while a new learner replaces them',()=>{
+  const previous={level:'HSK 3',format:'standard',period:'mixed',windows:[{day:5,earliest:'19:00'},{day:6,earliest:'12:00'}]};
+  const revised=resolveConsultationRecommendation({kind:'recommend'},previous,'周五不能上，周六只能到 16:30',{
+    evidence:'周五不能上',windows:[{day:6,earliest:'12:00',latestEnd:'16:30'}],
+  });
+  assert.equal(revised.constraints?.period,'weekend');
+  const viewed=normalizeEnrollmentIntent(resolveConsultationRecommendation({kind:'viewing'},revised.constraints,'我只想先看看').value);
+  assert.equal(viewed?.level,'HSK 3');
+  assert.equal(viewed?.period,'weekend');
+  const intent=normalizeEnrollmentIntent(resolveConsultationRecommendation({kind:'demand'},revised.constraints,'只发我表单').value)!;
+  const action=matchEnrollmentGuidance(intent,[]);
+  const url=new URL(enrollmentGuideHref(action,'zh','ai_chat'),'http://localhost');
+  const prefill=enrollmentDemandPrefill(url.searchParams);
+  assert.equal(prefill.level,'HSK 3');
+  assert.equal(prefill.period,'weekend');
+  assert.equal(prefill.format,'standard');
+  assert.equal(prefill.notes,'周六 从 12:00 起 最晚 16:30 下课 WIB');
+  const switched=normalizeEnrollmentIntent(resolveConsultationRecommendation({kind:'demand'},revised.constraints,'换我姐姐，她只看 HSK 1',{
+    evidence:'换我姐姐',subjectChanged:true,level:'HSK 1',
+  }).value);
+  assert.equal(switched?.level,'HSK 1');
+  assert.equal(switched?.period,undefined);
+  assert.equal(switched?.windows,undefined);
+});
+
+test('demand prefill accepts only validated weekdays and clock fields',()=>{
+  assert.equal(enrollmentDemandPrefill(new URLSearchParams({schedule:'[{"day":0,"earliest":"08:00"}]'})).notes,'');
+  assert.equal(enrollmentDemandPrefill(new URLSearchParams({schedule:'[{"day":1,"earliest":"bad"}]'})).notes,'');
+  assert.equal(enrollmentDemandPrefill(new URLSearchParams({schedule:'[{"day":1,"earliest":"09:00","latestEnd":"10:00"}]'}),'en').notes,
+    'Mon from 09:00 finish by 10:00 WIB');
+  const action=matchEnrollmentGuidance(normalizeEnrollmentIntent({kind:'demand',level:'HSK 2',
+    windows:[{day:1,earliest:'09:00',latestEnd:'10:00'}]})!,[]);
+  const url=new URL(enrollmentGuideHref(action,'zh','ai_chat'),'http://localhost');
+  assert.equal(enrollmentDemandPrefill(url.searchParams).period,'weekday-day');
+});
+
+test('assessment next steps respect both the weekly session limit and the existing schedule',()=>{
+  const value=normalizeEnrollmentIntent({kind:'recommend',question:'starting_point',level:'HSK 1',
+    maximumWeeklySessions:2,latestEnd:'16:00'})!;
+  const threeDays=sample({id:'three',weeklySchedule:{days:[1,3,5],start:'15:00',lessons:1}});
+  const tooLate=sample({id:'late',weeklySchedule:{days:[6,7],start:'19:00',lessons:1}});
+  assert.deepEqual(matchEnrollmentGuidance(value,[threeDays,tooLate,sample()]).rows?.map(row=>row.id),['fixture-a']);
+  assert.equal(matchEnrollmentGuidance(value,[threeDays,tooLate]).kind,'demand');
+});
+
+test('one-to-one advisor links take only a time preference evidenced in the current request',()=>{
+  const original:EnrollmentGuideAction={kind:'appointment',level:'HSK 1',period:'weekend'};
+  const weekend={period:'weekend',evidence:'一对一只方便周末'};
+  const actions:EnrollmentGuideAction[]=[original,{...original,kind:'quote',detailFields:['appointment']}];
+  for(const action of actions){
+    const href=(user:string)=>new URL(enrollmentGuideHref(withExplicitChatAppointmentTime(action,weekend,user)!,'zh','ai_chat'),'http://localhost').searchParams;
+    assert.equal(href('如果我问一对一，该怎么约？').has('period'),false);
+    assert.equal(href('一对一只方便周末，该怎么约？').get('period'),'weekend');
+  }
+  assert.equal(withExplicitChatAppointmentTime({kind:'class',period:'weekend'},undefined,'')?.period,'weekend');
+});
 
 test('prefer at most two eligible seats ordered by the first session',()=>{
   const action=matchEnrollmentGuidance(normalized(),[
@@ -74,9 +186,9 @@ test('chat distinguishes paused intake, catalogue read failures and an explicit 
   const settings={
     MYSQL_TRIAL_URL:'mysql://unused:unused@localhost/uper_local_crm',
     PORTAL_ENV:'dev',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',
-    MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock',PORTAL_WORKER_ENABLED:'false',
+    MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock',
     PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/private/tmp/guide-unit-test',PORTAL_DEPLOYMENT:'',
-    PORTAL_GA_API_SECRET:'',PORTAL_ENROLLMENT_ACCEPTING_NEW:'false',
+    PORTAL_GA_API_SECRET:'',
   };
   const original=Object.fromEntries(Object.keys(settings).map(key=>[key,process.env[key]]));
   Object.assign(process.env,settings);
@@ -84,9 +196,10 @@ test('chat distinguishes paused intake, catalogue read failures and an explicit 
   const client={query:async()=>{reads++;throw Error('Simulated catalogue unavailable');}};
   try{
     const {chatEnrollmentAction}=await import('../server/portal/chatEnrollment');
+    process.env.PORTAL_DEPLOYMENT='remote-dev';
     assert.equal((await chatEnrollmentAction(client,normalized(),false,false))?.kind,'paused');
     assert.equal(reads,0);
-    process.env.PORTAL_ENROLLMENT_ACCEPTING_NEW='true';
+    process.env.PORTAL_DEPLOYMENT='';
     assert.equal((await chatEnrollmentAction(client,normalized(),false,false))?.kind,'unavailable');
     assert.equal(reads,1);
     assert.equal(await chatEnrollmentAction(client,null,true,false),undefined);
@@ -183,6 +296,106 @@ test('a price lookup applies the verified period and direction of the first-sess
   ],[]).map(row=>row.id),['fixture-a']);
 });
 
+test('keep the new learner’s schedule across a clarification and a follow-up about tuition',async()=>{
+  const {matchingEnrollmentTuition,enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const before={level:'HSK 1',period:'weekend',format:'small',maximumTotal:1_000_000,days:[6,7]};
+  const turn='改问我姐姐，她只能周二周四晚上。';
+  const criteria={evidence:turn,subjectChanged:true,period:'weekday-evening',
+    windows:[{day:2,earliest:'18:00'},{day:4,earliest:'18:00'}]};
+  const clarification=resolveConsultationRecommendation(null,before,turn,criteria);
+  assert.equal(clarification.value,null);
+  assert.equal(clarification.constraints?.level,undefined);
+  assert.equal(clarification.constraints?.maximumTotal,undefined);
+  assert.equal(clarification.constraints?.format,undefined);
+  assert.equal(clarification.constraints?.days,undefined);
+  assert.deepEqual(clarification.constraints?.windows?.map(window=>window.day),[2,4]);
+  assert.equal(resolveConsultationRecommendation(null,before,'我还想看看。',criteria).constraints,undefined);
+
+  const tentative=resolveConsultationRecommendation({kind:'recommend',level:'HSK 2'},before,turn,criteria);
+  assert.equal(normalizeEnrollmentIntent(tentative.value)?.level,'HSK 2');
+  assert.equal(tentative.constraints?.level,undefined);
+  assert.deepEqual(normalizeEnrollmentIntent(tentative.value)?.windows?.map(window=>window.day),[2,4]);
+  const noSchedule=resolveConsultationRecommendation({kind:'recommend',level:'HSK 2'},before,turn,
+    {subjectChanged:true,evidence:criteria.evidence});
+  assert.equal(normalizeEnrollmentIntent(noSchedule.value)?.level,undefined);
+  const firstRecommendation=resolveConsultationRecommendation({kind:'recommend',level:'HSK 1'},
+    {windows:[{day:6},{day:7}]},'下午都行',{evidence:'下午都行',windows:[{day:6,earliest:'14:00'},{day:7,earliest:'14:00'}]});
+  assert.equal(normalizeEnrollmentIntent(firstRecommendation.value)?.level,'HSK 1');
+  assert.equal(firstRecommendation.constraints?.level,undefined);
+
+  const pricing=resolveConsultationRecommendation({kind:'quote',question:'matching_tuition',level:'HSK 2'},
+    clarification.constraints,'只看姐姐的选择，大概多少钱？');
+  const intent=normalizeEnrollmentIntent(pricing.value)!;
+  assert.equal(intent.level,'HSK 2');
+  assert.equal(pricing.constraints?.level,undefined);
+  assert.deepEqual(intent.windows?.map(window=>window.day),[2,4]);
+  const incompatible=sample({level:'HSK 2',period:'weekday-evening',price:2376000,
+    weeklySchedule:{days:[2,4,5],start:'19:00',lessons:1}});
+  const compatible=sample({id:'sister-class',level:'HSK 2',period:'weekday-evening',price:2376000,
+    weeklySchedule:{days:[2,4],start:'19:00',lessons:1}});
+  const match=matchingEnrollmentTuition(intent,[sample(),incompatible,compatible],true);
+  assert.deepEqual(match.rows?.map(row=>row.id),['sister-class']);
+  assert.match(enrollmentReply(match,'zh'),/周二、四 19:00.*Rp 2,376,000/);
+  const noMatch=matchingEnrollmentTuition(intent,[sample(),incompatible],true);
+  assert.equal(noMatch.kind,'demand');
+  assert.match(enrollmentReply(noMatch,'zh'),/^目前没有符合.*HSK 2 班课。[\s\S]*供预算参考[\s\S]*Rp 2,376,000/);
+  assert.match(enrollmentGuideHref(noMatch,'zh','ai_chat'),/^\/enrollment\/interest\?.*level=2/);
+});
+
+test('compare the original pair after a single-class follow-up and keep a singular request singular',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const pair=['first','second'];
+  const comparison={kind:'inspect',question:'compare_classes',fields:['first'],referenceIds:['first'],maxRecommendations:1};
+  const intent=normalizeEnrollmentIntent(resolveEnrollmentComparison(comparison,pair))!;
+  assert.deepEqual(intent.referenceIds,pair);
+  assert.equal(intent.maxRecommendations,2);
+  assert.deepEqual(normalizeEnrollmentIntent(resolveEnrollmentComparison({...comparison,question:undefined},pair))?.referenceIds,['first']);
+  assert.deepEqual(normalizeEnrollmentIntent(resolveEnrollmentComparison({...comparison,referenceIds:['different']},pair))?.referenceIds,[]);
+  const rows=enrollmentGuideRows([sample({id:'first',batchNumber:1,firstLesson:'2026-11-28T15:00'}),sample({id:'second',batchNumber:2})]);
+  const reply=enrollmentReply({kind:'class',rows,inspection:true,question:intent.question,detailFields:intent.detailFields},'zh');
+  assert.match(reply,/2026-11-28 15:00 WIB[\s\S]*2026-12-19 15:00 WIB[\s\S]*相隔 21 天/);
+  assert.doesNotMatch(reply,/申请|实付总价/);
+});
+
+test('convert Tokyo weekly windows to WIB, including a previous-day rollover',async()=>{
+  const {resolveChatLocalSchedule}=await import('../server/portal/chatLocalSchedule');
+  const now=new Date('2026-11-20T16:00:00Z');
+  const messages=['我只方便周末下午三点。','我住在东京。','周日零点半也行。'];
+  const input={timeZone:'Asia/Tokyo',zoneEvidence:'我住在东京',availabilityEvidence:'周末下午三点',
+    windows:[{day:6,earliest:'15:00',latestStart:'15:00'},{day:7,earliest:'15:00',latestStart:'15:00'}]};
+  const afternoon=resolveChatLocalSchedule(input,messages,now,'zh');
+  assert.match(afternoon?.summary??'',/周六 15:00 → 周六 13:00 WIB.*周日 15:00 → 周日 13:00 WIB/);
+  assert.deepEqual(afternoon?.windows.map(x=>[x.day,x.earliest,x.latestStart]),[[6,'13:00','13:00'],[7,'13:00','13:00']]);
+  const overnight=resolveChatLocalSchedule({...input,availabilityEvidence:'周日零点半',
+    windows:[{day:7,earliest:'00:30',latestStart:'00:30'}]},messages,now,'zh');
+  assert.deepEqual(overnight?.windows.map(x=>[x.day,x.earliest]),[[6,'22:30']]);
+  assert.equal(resolveChatLocalSchedule({...input,zoneEvidence:'我住在首尔'},messages,now,'zh'),undefined);
+  assert.equal(resolveChatLocalSchedule({...input,timeZone:'America/New_York'},messages,now,'en'),undefined);
+});
+
+test('individual group formats requested together each get a verified recommendation',()=>{
+  const options=[
+    sample({id:'std1'}),sample({id:'std2'}),sample({id:'sm1',format:'small'}),
+  ];
+  const intent=normalized({formats:['standard','small'],maxRecommendations:1});
+  assert.deepEqual(matchEnrollmentGuidance(intent,options).rows?.map(row=>row.id),['std1','sm1']);
+});
+
+test('explain the difference in current tuition before showing the original two classes',async()=>{
+  const {enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const pair=['standard','small'];
+  const comparison=resolveEnrollmentComparison({kind:'inspect',question:'price_difference',referenceIds:['standard']},pair);
+  assert.deepEqual(normalizeEnrollmentIntent(comparison)?.referenceIds,pair);
+  const rows=enrollmentGuideRows([
+    sample({id:'standard',level:'HSK 3',sessions:42,price:4158000,standardPrice:5040000}),
+    sample({id:'small',level:'HSK 3',format:'small',sessions:42,price:6300000,standardPrice:8400000}),
+  ]);
+  const reply=enrollmentReply({kind:'class',question:'price_difference',rows,inspection:true},'zh');
+  assert.match(reply,/^两班都是 42 节.*每节贵 Rp 51,000，整班贵 Rp 2,142,000/);
+  assert.match(reply,/实付总价 Rp 4,158,000/);
+  assert.match(reply,/实付总价 Rp 6,300,000/);
+});
+
 test('an advisor link reports the actual unsent status and retains public preferences',async()=>{
   const {enrollmentReply,chatEnrollmentAction}=await import('../server/portal/chatEnrollment');
   const action=await chatEnrollmentAction({query:async()=>{throw Error('No lookup is needed');}},
@@ -192,6 +405,8 @@ test('an advisor link reports the actual unsent status and retains public prefer
   assert.match(enrollmentReply(action,'en'),/haven’t sent a message/);
   assert.match(enrollmentReply(action,'id'),/belum mengirim pesan/);
   assert.match(enrollmentGuideHref(action,'zh','ai_chat'),/level=2.*period=weekend.*format=one-on-one/);
+  assert.match(enrollmentReply({...action,question:'advisor_question'},'zh'),/HSK 2 周末一对一/);
+  assert.doesNotMatch(enrollmentReply({...action,question:'advisor_send_status'},'zh'),/HSK 2/);
 });
 
 test('refund guidance puts approval before original-method processing and preserves status-only lookup',async()=>{
@@ -356,9 +571,9 @@ test('navigation turns address the specific request while the enrollment state s
   assert.equal(enrollmentReply(form,'zh'),'选课需求表在下方。');
   assert.match(enrollmentGuideHref(form,'zh','ai_chat'),/^\/enrollment\/interest\?.*level=2/);
   const other=matchEnrollmentGuidance(normalizeEnrollmentIntent({kind:'demand',level:'HSK 6'})!,[]);
-  assert.match(enrollmentReply(other,'zh'),/「其他」。请在备注填写你想学的级别/);
+  assert.match(enrollmentReply(other,'zh'),/带入：HSK 6.*「其他」，并在备注中填写了所需级别/);
   assert.doesNotMatch(enrollmentReply(other,'zh'),/不确定我的级别/);
-  assert.match(enrollmentGuideHref(other,'zh','ai_chat'),/level=other/);
+  assert.match(enrollmentGuideHref(other,'zh','ai_chat'),/level=other.*requestedLevel=HSK\+6/);
   const records={kind:'records' as const};
   assert.equal(enrollmentReply({...records,question:'records_location'},'zh'),'进入「我的报名」，验证报名邮箱后打开原订单。');
   assert.match(enrollmentReply({...records,question:'expired_unpaid'},'zh'),/超过付款期限后订单会终止，席位会释放/);
@@ -410,4 +625,173 @@ test('group overview answers size and tuition without selecting a particular bat
   assert.match(answer,/^HSK 1 小班为4–6 人。.*Rp 2,760,000.*Rp 120,000/);
   assert.doesNotMatch(answer,/第 2 期/);
   assert.match(enrollmentGuideHref(action,'zh','ai_chat'),/^\/enrollment\?.*format=small/);
+});
+
+test('a browse intent that asks to apply verifies intake before giving application, waitlist, or preference links',async()=>{
+  const {chatEnrollmentAction,enrollmentReply}=await import('../server/portal/chatEnrollment');
+  const keys=['PORTAL_ENV','TRIAL_DATASET','PORTAL_LOCAL_CUTOVER','MYSQL_TRIAL_SOCKET',
+    'PORTAL_DEPLOYMENT','PORTAL_ENROLLMENT_SIMULATION_MAILBOX'] as const;
+  const saved=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
+  Object.assign(process.env,{PORTAL_ENV:'dev',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',
+    MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock',PORTAL_DEPLOYMENT:'',
+    PORTAL_ENROLLMENT_SIMULATION_MAILBOX:'/tmp/chat-apply-fixture'});
+  const broad={kind:'browse',question:'apply'};
+  const scoped={...broad,level:'HSK 1',period:'weekend',format:'standard'};
+  const run=async(intent:unknown,rows:PublicEnrollmentClass[],references:string[]=[])=>{
+    const result=await chatEnrollmentAction({query:async(sql,args)=>{
+      if(sql.includes('enrollment_mail_configuration'))return {rows:[{revision:1,config:{accounts:[],delivery:{mode:'simulation',generation:'fixture'}}}]};
+      assert.match(sql,/FROM enrollment_classes e/);
+      assert.deepEqual(args,[references.length?1:null,references,1,0]);
+      return {rows:rows.filter(row=>!references.length||references.includes(row.id)).map(({id,availability,...data})=>
+        ({id,data:{...data,capacity:15},opened:0,seats:availability==='full'?15:0}))};
+    }},intent,false,false,references);
+    assert.ok(result);
+    return result;
+  };
+  try{
+    const open=await run(broad,[sample()]);
+    assert.equal(open.kind,'catalog');
+    assert.match(enrollmentReply(open,'zh'),/^现在可以报名。/);
+    const available=await run(scoped,[sample()]);
+    assert.equal(available.kind,'class');
+    assert.match(enrollmentReply(available,'zh'),/^现在可以报名/);
+    const full=await run(scoped,[sample({availability:'full'})]);
+    assert.equal(full.kind,'waitlist');
+    assert.match(enrollmentReply(full,'zh'),/^符合条件的班次目前已满。.*候补/);
+    const none=await run(scoped,[sample({period:'weekday-evening'})]);
+    assert.equal(none.kind,'demand');
+    assert.match(enrollmentGuideHref(none,'zh','ai_chat'),/^\/enrollment\/interest\?/);
+    const tuitionIntent={kind:'quote',question:'matching_tuition',level:'HSK 1'};
+    const quoteReads:string[]=[];
+    const quote=await chatEnrollmentAction({query:async(sql)=>{
+      quoteReads.push(sql);
+      assert.match(sql,/FROM enrollment_classes e/);
+      const group=sample({weeklySchedule:{days:[6],start:'15:00',lessons:1}});
+      return {rows:[{id:group.id,data:group,opened:0,seats:0}]};
+    }},tuitionIntent,false,false);
+    assert.equal(quote?.kind,'class');
+    assert.equal(quoteReads.length,1);
+    for(const extra of [{needsReview:true},{level:'unknown'}]){
+      let reads=0;
+      const unresolved=await chatEnrollmentAction({query:async()=>{
+        reads++;
+        return {rows:[]};
+      }},{...tuitionIntent,...extra},false,false);
+      assert.equal(unresolved?.kind,'unavailable');
+      assert.equal(reads,0);
+    }
+    assert.equal((await run(tuitionIntent,[])).kind,'demand');
+    const closedQuote=await chatEnrollmentAction({query:async(sql)=>{
+      assert.match(sql,/enrollment_classes|enrollment_bank|enrollment_mail_configuration/);
+      return {rows:[]};
+    }},tuitionIntent,false,false);
+    assert.equal(closedQuote?.kind,'catalog');
+    const referenceIds=['selected-class'];
+    const selected=sample({id:referenceIds[0],availability:'full'});
+    const unrelated=sample({id:'unrelated-class',availability:'available'});
+    const explicit={...scoped,referenceIds};
+    const waitlist=await run(explicit,[selected,unrelated],referenceIds);
+    assert.equal(waitlist.kind,'waitlist');
+    assert.deepEqual(waitlist.rows?.map(row=>row.id),referenceIds);
+    const missing=await run(explicit,[unrelated],referenceIds);
+    assert.equal(missing.kind,'unavailable');
+    assert.equal(missing.referenceUnavailable,true);
+    const recommendation=await run({kind:'recommend',level:'HSK 1',period:'weekend',referenceIds},
+      [{...selected,availability:'available'},unrelated],referenceIds);
+    assert.deepEqual(recommendation.rows?.map(row=>row.id),referenceIds);
+    const failure=await chatEnrollmentAction({query:async()=>{throw Error('query failed');}},broad,false,false);
+    assert.equal(failure?.kind,'unavailable');
+    assert.match(enrollmentReply(failure!,'zh'),/^暂时无法确认现在能否报名/);
+    const paused=await chatEnrollmentAction({query:async(sql)=>{
+      assert.match(sql,/enrollment_bank|enrollment_mail_configuration/);return {rows:[]};
+    }},broad,false,false);
+    assert.equal(paused?.kind,'paused');
+    assert.deepEqual(paused?.readinessReasons,['bank_required','mail_required']);
+    assert.match(enrollmentReply(paused!,'zh'),/^收款资料尚未就绪.*验证码邮件暂不可用/);
+    assert.match(enrollmentGuideHref(paused!,'zh','ai_chat'),/^\/enrollment\/mine\?/);
+    const recordsIntent={kind:'records',question:'records_location'};
+    const readRecords=async()=>{
+      const calls:string[]=[];
+      const result=await chatEnrollmentAction({query:async(sql)=>{
+        calls.push(sql);
+        throw Error('Mail or payment configuration is unavailable');
+      }},recordsIntent,false,false);
+      assert.deepEqual(calls,[]);
+      assert.ok(result);
+      return result;
+    };
+    const records=await readRecords();
+    assert.equal(records.kind,'records');
+    assert.match(enrollmentGuideHref(records,'zh','ai_chat'),/^\/enrollment\/mine\?/);
+    process.env.PORTAL_DEPLOYMENT='remote-dev';
+    const disabled=await chatEnrollmentAction({query:async()=>assert.fail('Should not query')},broad,false,false);
+    assert.equal(disabled?.recordsAvailable,false);
+    assert.deepEqual(disabled?.readinessReasons,['service_disabled']);
+    assert.doesNotMatch(enrollmentGuideHref(disabled!,'zh','ai_chat'),/\/mine/);
+    const support=await readRecords();
+    assert.equal(support.kind,'advisor');
+    assert.doesNotMatch(enrollmentGuideHref(support,'zh','ai_chat'),/\/mine/);
+  }finally{
+    for(const key of keys)if(saved[key]===undefined)delete process.env[key];else process.env[key]=saved[key];
+  }
+});
+
+test('explicit Chat inspection scopes the availability lookup and keeps reference order', async()=>{
+  const {chatEnrollmentAction}=await import('../server/portal/chatEnrollment');
+  const ids=['second-class','first-class'];
+  const result=await chatEnrollmentAction({query:async(sql,args)=>{
+    assert.match(sql,/e.id IN \(:p2\)/);
+    assert.deepEqual(args,[1,ids,1,0]);
+    return {rows:[{id:ids[1],data:{...sample(),capacity:15},opened:0,seats:2},
+      {id:ids[0],data:{...sample(),capacity:15},opened:0,seats:15}]};
+  }},{kind:'inspect',question:'compare_classes',referenceIds:ids},false,false,ids);
+  assert.equal(result?.kind,'class');
+  assert.deepEqual(result?.rows?.map(row=>[row.id,row.availability]),[[ids[0],'full'],[ids[1],'available']]);
+});
+
+test('public appointments preserve quoted prices and exclude incomplete or inactive entries',async()=>{
+  const {readPublicEnrollmentAppointments}=await import('../server/portal/enrollmentCatalog');
+  const template={id:'valid',teacherType:'local',saleUnitPrice:125000,standardUnitPrice:150000};
+  const introduction={en:{audience:'Beginners'},id:{audience:'Pemula'},zh:{audience:'零基础学员'}};
+  const course={name:'Mandarin',sessions:12,active:true,teaching:{level:'HSK 1',minutes:45,material:'New Concept Chinese',introduction}};
+  const result=await readPublicEnrollmentAppointments({query:async(sql:string)=>{
+    assert.match(sql,/JOIN crm_courses/);
+    assert.match(sql,/ORDER BY t.id/);
+    return {rows:[
+      {template:{...template,id:'inactive'},course:{...course,active:false}},
+      {template:{...template,id:'missing-price',saleUnitPrice:null},course},
+      {template:{...template,id:'missing-teaching'},course:{...course,teaching:null}},
+      {template,course},
+    ]};
+  }});
+  assert.deepEqual(result,[{id:'valid',level:'HSK 1',course:'Mandarin',teacherType:'local',
+    lessons:12,minutes:45,price:125000,standardPrice:150000}]);
+  const detail=await readPublicEnrollmentAppointments({query:async(sql:string,args:unknown[])=>{
+    assert.match(sql,/t.id=:p2/);
+    assert.equal(args[1],'enrollment_template:valid');
+    return {rows:[{template,course}]};
+  }},'valid');
+  assert.deepEqual(detail,[{...result[0],material:'New Concept Chinese',introduction}]);
+});
+
+test('mixed tuition quotes skip availability reads and retain group totals and private unit prices',async()=>{
+  const {chatEnrollmentAction}=await import('../server/portal/chatEnrollment');
+  const group=sample();
+  const lookups:string[]=[];
+  const result=await chatEnrollmentAction({query:async(sql,args)=>{
+    if(sql.includes('FROM enrollment_classes e')){
+      lookups.push('classes');
+      assert.deepEqual(args,[null,[],0,0]);
+      return {rows:[{id:group.id,data:group,opened:0,seats:null}]};
+    }
+    lookups.push('appointments');
+    assert.match(sql,/JOIN crm_courses/);
+    return {rows:[{
+      template:{id:'private',teacherType:'local',saleUnitPrice:125000,standardUnitPrice:150000},
+      course:{name:'Mandarin',sessions:12,active:true,teaching:{level:group.level,minutes:45}},
+    }]};
+  }},{kind:'quote',formats:[group.format,'one-on-one']},false,false);
+  assert.deepEqual(lookups,['classes','appointments']);
+  assert.deepEqual(result?.quotes?.map(row=>[row.id,row.actual,row.unitPriced]),
+    [[group.id,group.price,false],['private',125000,true]]);
 });

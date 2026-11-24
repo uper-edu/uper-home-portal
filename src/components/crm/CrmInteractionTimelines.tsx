@@ -1,6 +1,6 @@
 import {AdminRowAction} from '../admin/AdminListControl';
 import {CrmHistoryAccess} from './CrmHistoryAccess';
-import {interactionTrackLabel} from '../../utils/crmInteractionLabels';
+import {humanCommunicationLabel,interactionTrackLabel} from '../../utils/crmInteractionLabels';
 import {interactionElapsedLabel,shortInteractionElapsedLabel} from '../../utils/crmInteractionElapsed';
 import {CrmContactResult} from './CrmContactResult';
 import {CrmContactOverview} from './CrmContactOverview';
@@ -21,7 +21,7 @@ export function CrmInteractionTimelines({lead,lang,timezone,isLight,compact=fals
  useEffect(()=>{if(!summaryMode&&!compact)return;const timer=setInterval(()=>setRelativeNow(Date.now()),60000);return()=>clearInterval(timer);},[summaryMode,compact]);
  const t=(en:string,id:string,zh:string)=>interactionText(lang,en,id,zh);const [source,setSource]=useState<InteractionEvent|null>(null);useEffect(()=>setSource(null),[lead.id]);
  const title=(key:InteractionTrack)=>interactionTrackLabel(key,lang);
- const emptyLabel=(key:InteractionTrack)=>key==='communication'?t('No effective conversation recorded','Belum ada komunikasi dua arah tercatat','尚未记录有效沟通'):key==='customer'?t('No customer-initiated interaction recorded','Belum ada interaksi dari pelanggan tercatat','尚未记录客户主动互动'):t('No sales outreach recorded','Belum ada kontak sales tercatat','尚未记录销售主动联系');
+ const emptyLabel=(key:InteractionTrack)=>key==='communication'?humanCommunicationLabel('unrecorded',lang):key==='customer'?t('No customer-initiated interaction recorded','Belum ada interaksi dari pelanggan tercatat','尚未记录客户主动互动'):t('No sales outreach recorded','Belum ada kontak sales tercatat','尚未记录销售主动联系');
  const emptyStatus=(key:InteractionTrack)=><span className="crm-interaction-meta crm-interaction-empty"><span aria-hidden="true">{t('No records','Belum ada catatan','暂无记录')}</span><span className="sr-only">{emptyLabel(key)}</span></span>;
  const provenance=(e:InteractionEvent)=>e.source==='inquiry'?t('Contact form inquiry','Pertanyaan formulir kontak','联系表单咨询'):e.source==='contact'?t('Staff contact record','Catatan kontak staf','销售记录'):e.source==='assessment'?(e.assessment?.attempt?.mode==='full'?t('Full assessment','Asesmen lengkap','完整测评'):t('Quick assessment','Asesmen cepat','快速测评')):e.source==='request'?t('Customer request in AI chat','Permintaan dalam chat AI','客户对话'):t('Customer message in AI chat','Pesan pelanggan dalam chat AI','客户对话');
  const channel=(e:InteractionEvent)=>e.channel==='Assessment'?t('Assessment','Asesmen','测评'):e.channel==='AI chat'?t('AI chat','Chat AI','AI咨询'):crmValue(e.channel,lang);

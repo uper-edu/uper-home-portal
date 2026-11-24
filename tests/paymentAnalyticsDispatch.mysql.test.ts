@@ -124,6 +124,10 @@ test('native MySQL preserves historical rows and the restart cutoff, and sends e
     assert.equal(await purchase, 'accepted');
     await addEntry(activeProject, activeEntries, 'refund', 50_000, afterStart());
     // A fresh sender process has no in-memory cutoff and uses only this synthetic DB.
+    await db.execute('INSERT INTO portal_settings(id,value) VALUES(?,?)', [
+      'ga_settings:test',
+      JSON.stringify({measurementId:env.PORTAL_GA_MEASUREMENT_ID,dispatchEnabled:true,revision:1}),
+    ]);
     const {stdout} = await promisify(execFile)(process.execPath, ['--import','tsx','--input-type=module','-e', `
       import {pool,tx} from './cloud/mysql/runtime.mjs';
       import {dispatchPaymentAnalytics} from './server/portal/paymentAnalyticsDispatch.ts';

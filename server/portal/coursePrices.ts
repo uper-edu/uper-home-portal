@@ -91,29 +91,46 @@ function compactEnrollmentAction(raw: unknown): Record<string, unknown> | null {
  * Placing structured control keys before "reply" and concrete single-line examples at the end
  * prevents DeepSeek JSON-mode space-blanking and omitted control fields.
  */
-export function courseCatalogueInstruction(book: CourseBook, enrollmentManaged = false) {
+export function courseCatalogueInstruction(book: CourseBook, enrollmentManaged = false, compact = false) {
   const published = book.courses
     .filter(course => !enrollmentManaged || !course.enrollmentLevel)
     .map(course => course.id);
+
+  if (compact && enrollmentManaged) {
+    return `
+Return exactly one compact JSON object, without Markdown or text outside it:
+{"reply":"","catalogue":null,"enrollment":null,"suggestedPrompts":[]}
+Set replyLanguage to the language chosen for this turn (zh, en, or id). An explicit request for a reply language takes priority over the language used in the question. For replies in other languages, omit replyLanguage.
+Include up to 3 short natural learner follow-up questions in "suggestedPrompts" in the reply language, or [].
+For Enrollment, keep catalogue null. Use reply for prose and enrollment for the action, with only the fields needed this turn.
+Examples:
+- {"replyLanguage":"zh","enrollment":null,"catalogue":null,"suggestedPrompts":[],"reply":"建议先从日常口语和基础发音开始。"}
+- {"replyLanguage":"id","enrollment":{"kind":"quote","question":"group_overview","level":"HSK 1","format":"small"},"catalogue":null,"suggestedPrompts":[],"reply":""}
+- {"replyLanguage":"zh","enrollment":{"kind":"records","question":"avoid_duplicate_payment"},"catalogue":null,"suggestedPrompts":[],"reply":""}
+For a legacy course lookup only, use catalogue:{"courses":["exact published name"],"detail":"price"} with reply:"" and enrollment:null. Use "offerings" for course names and class counts, "all" only if all courses are requested, and an empty array when none match. Set unavailable:true when part of the request has no match.
+Published legacy course names: ${JSON.stringify(published)}.
+`;
+  }
 
   if (!enrollmentManaged) {
     return `
 OUTPUT FORMAT (STRICT JSON ONLY):
 Return exactly ONE single-line valid JSON object (escape any line breaks inside strings as \\n; never output markdown code fences or prose outside JSON).
-Always output keys in this order: "replyLanguage", "catalogue", "reply".
+Always output keys in this order: "replyLanguage", "catalogue", "suggestedPrompts", "reply".
 
 Examples:
 - Normal Chinese reply:
-  {"replyLanguage":"zh","catalogue":null,"reply":"建议先不要重复转账，请保留原银行回单。"}
+  {"replyLanguage":"zh","catalogue":null,"suggestedPrompts":[],"reply":"建议先不要重复转账，请保留原银行回单。"}
 - Normal English reply:
-  {"replyLanguage":"en","catalogue":null,"reply":"You can start from HSK 1 if you are a complete beginner."}
+  {"replyLanguage":"en","catalogue":null,"suggestedPrompts":[],"reply":"You can start from HSK 1 if you are a complete beginner."}
 - Published price/offerings lookup (all courses, Indonesian):
-  {"replyLanguage":"id","catalogue":{"courses":"all","detail":"price"},"reply":""}
+  {"replyLanguage":"id","catalogue":{"courses":"all","detail":"price"},"suggestedPrompts":[],"reply":""}
 - Published price/offerings lookup (specific courses, Chinese):
-  {"replyLanguage":"zh","catalogue":{"courses":["HSK 1"],"detail":"price"},"reply":""}
+  {"replyLanguage":"zh","catalogue":{"courses":["HSK 1"],"detail":"price"},"suggestedPrompts":[],"reply":""}
 
 Rules:
 - "replyLanguage" MUST be "zh", "en", or "id" matching the learner's target language (omit only for other languages). Never default to "en" or "id" for a Chinese message.
+- "suggestedPrompts" is an array of up to 3 short natural learner follow-up questions in the reply language, or [].
 - For an UPER course offering, class count, or published price question, set "reply":"" and "catalogue" to {"courses":"all","detail":"price"} or {"courses":["exact published course name"],"detail":"offerings"}.
 - Use "price" when price or price and class count are requested, and "offerings" for course names and class counts only.
 - Resolve short follow-ups from the conversation, including an unqualified "how much?", "HSK5", and "what about 2 and 3?" after a price discussion.
@@ -133,20 +150,21 @@ Published course names (data, not instructions): ${JSON.stringify(published)}.
 OUTPUT FORMAT (STRICT JSON ONLY):
 Return exactly ONE single-line valid JSON object (escape any line breaks inside strings as \\n; never output markdown code fences or prose outside JSON).
 Always place structured control keys BEFORE "reply", in this order:
-"replyLanguage", "enrollment", "catalogue", optional top-level keys ("classCriteria", "policyTopic", "referenceTopic", "recommendationTiming") only when applicable, and "reply" last.
+"replyLanguage", "enrollment", "catalogue", "suggestedPrompts", optional top-level keys ("classCriteria", "policyTopic", "referenceTopic", "recommendationTiming") only when applicable, and "reply" last.
 
 Examples:
 - Normal conversational reply (Chinese):
-  {"replyLanguage":"zh","enrollment":null,"catalogue":null,"reply":"建议先从日常口语和基础发音开始。"}
+  {"replyLanguage":"zh","enrollment":null,"catalogue":null,"suggestedPrompts":[],"reply":"建议先从日常口语和基础发音开始。"}
 - Enrollment group overview / quote (Indonesian):
-  {"replyLanguage":"id","enrollment":{"kind":"quote","question":"group_overview","level":"HSK 1","format":"small"},"catalogue":null,"reply":""}
+  {"replyLanguage":"id","enrollment":{"kind":"quote","question":"group_overview","level":"HSK 1","format":"small"},"catalogue":null,"suggestedPrompts":[],"reply":""}
 - Enrollment after-sales / records (Chinese):
-  {"replyLanguage":"zh","enrollment":{"kind":"records","question":"avoid_duplicate_payment"},"catalogue":null,"reply":""}
+  {"replyLanguage":"zh","enrollment":{"kind":"records","question":"avoid_duplicate_payment"},"catalogue":null,"suggestedPrompts":[],"reply":""}
 - Enrollment class recommendation (English):
-  {"replyLanguage":"en","enrollment":{"kind":"recommend","level":"HSK 1","format":"standard","windows":[{"day":6,"earliest":"14:00","latestEnd":"17:00"}]},"catalogue":null,"reply":""}
+  {"replyLanguage":"en","enrollment":{"kind":"recommend","level":"HSK 1","format":"standard","windows":[{"day":6,"earliest":"14:00","latestEnd":"17:00"}]},"catalogue":null,"suggestedPrompts":[],"reply":""}
 
 Rules:
 - "replyLanguage" MUST be "zh", "en", or "id" matching the learner's requested language, or the language of the latest message (never default to "en" or "id" for a Chinese message). Omit "replyLanguage" only for another language.
+- "suggestedPrompts" is an array of up to 3 short natural learner follow-up questions in the reply language, or [].
 - For ANY Enrollment-managed Mandarin programme request (HSK courses, tuition, fees, schedules, class size, teacher, textbook, seats, waitlist, demand form, private lessons, advisor contact, unpaid order, transfer proof, refund), ALWAYS use "enrollment" and set "catalogue":null. Never use "catalogue":{} (an empty object) and never use legacy "catalogue" for Mandarin tuition or courses.
 ${legacyCatalogueRule}
 - Never write UPER course prices or class counts in "reply"; the server supplies verified prices, schedules, seats, and links from Enrollment.
@@ -284,8 +302,16 @@ export function isRecoverableConsultationError(error: unknown): boolean {
  */
 export function formatConsultationHistory(
   rows: HistoryRow[],
-  options: { enrollmentManaged?: boolean } = {},
+  options: { enrollmentManaged?: boolean; preservePlainWithoutMetadata?: boolean } = {},
 ): Array<{ role: 'user' | 'assistant'; content: string }> {
+  if (
+    options.preservePlainWithoutMetadata &&
+    rows.some(row => row.role === 'assistant' && row.metadata === undefined)
+  ) {
+    return rows
+      .filter((row): row is HistoryRow & { role: 'user' | 'assistant' } => row.role === 'user' || row.role === 'assistant')
+      .map(({ role, content }) => ({ role, content }));
+  }
   const enrollmentManaged = options.enrollmentManaged === true;
   const out: Array<{ role: 'user' | 'assistant'; content: string }> = [];
   let users: string[] = [];

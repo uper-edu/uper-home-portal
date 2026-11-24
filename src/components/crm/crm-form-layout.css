@@ -92,10 +92,7 @@
 .notification-channel-limit input{width:112px}
 .notification-channel-signing.admin-field--choice{min-height:40px;align-items:center}
 .notification-channel-signing.admin-field--choice input[type=checkbox]{align-self:center;margin:0}
-.notification-channel-list,.notification-channel-heading{max-width:1120px}
-.notification-config-heading-row{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;min-height:40px}
-.notification-config-heading-row h2{margin:0}
-.notification-config-heading-row .notification-topic-actions{width:auto;flex-wrap:wrap;margin-inline-start:auto}
+.notification-channel-list{max-width:1120px}
 .notification-channel-list,.notification-policy-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,312px),1fr));gap:12px}
 .notification-policy-list{grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr))}
 .notification-channel-card,.notification-policy-card{display:grid;gap:8px;min-width:0;padding:12px;border:1px solid var(--af-border);border-radius:14px;background:var(--af-surface)}
@@ -141,7 +138,6 @@
 :is(.notification-channel-card-actions,.notification-policy-card-footer) .crm-work-button{min-height:40px;font-size:14px;border-radius:10px}
 .notification-channel-test-help{order:1;flex:0 0 100%;margin:0;overflow-wrap:anywhere}
 @media(max-width:600px){
-  .notification-config-heading-row{flex-wrap:wrap}
   .notification-channel-remove{width:44px;min-height:44px}
   .notification-channel-body .notification-channel-row{grid-template-columns:minmax(0,1fr)}
   .notification-channel-row>:is(.admin-field-label,.notification-channel-label){padding-top:0}
@@ -211,6 +207,14 @@
   border: 1px solid var(--af-border);
   border-radius: 14px;
 }
+.crm-enrollment-rules > .admin-form-section {
+  background: var(--af-surface);
+}
+.crm-enrollment-rules > .admin-form-section .crm-work-muted {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
 .crm-enrollment-rules-body > p {
   margin: 0;
   font-size: 13px;
@@ -222,7 +226,7 @@
   border-top: 1px solid var(--af-border);
   padding-top: var(--admin-form-group-gap);
 }
-.crm-enrollment-rules .admin-field input {
+.crm-enrollment-rules .admin-field input[type=number] {
   width: 8rem;
   padding: 8px 12px;
   font-variant-numeric: tabular-nums;
@@ -239,3 +243,5 @@
   order: 1;
   margin: 0 16px var(--admin-form-panel-bottom);
 }
+
+.notification-editor-fields{border:0;padding:0;margin:0;min-inline-size:0}

@@ -1,4 +1,5 @@
 import {AdminDisclosure,AdminDisclosureIndicator,AdminDisclosureSummary} from '../admin/AdminDisclosure';
+import {AdminSavedReadError} from '../AdminFormLayout';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {CrmEnrollmentCorrectionAction,CrmEnrollmentVoidStatus} from './CrmEnrollmentCorrection';
 import {historyResultKind} from '../../utils/crmHistoryResultContent';
@@ -39,10 +40,12 @@ import {historyProgressDetails} from '../../utils/crmProgressDetails';
 const amendable=new Set(['followup.recorded','task.request_evidence','profile.fields_updated']);
 const icons:any={message:MessageSquareText,sales:NotebookText,questionnaire:ClipboardList,assessment:GraduationCap,profile:UserRoundPen,stage:TrendingUp,ownership:ArrowLeftRight,other:FileSearch};
 const value=(v:any)=>v==null?'未填写':Array.isArray(v)?v.map(x=>crmValue(String(x),'zh')).join('、'):typeof v==='object'?'结构化信息':crmValue(String(v),'zh');
-export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,onDirty,onBusy,suspended,canEditProfile,isLight=true,lang='zh',focusRequest,onEditing,hideHeading=false,onProjection,extractions=[],extractionLoading=false,extractionError=false,onReloadExtraction,onViewAssessment,onSource,onAmendSalesRecord,requests=[],windowMode=false}:any){
+export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,onDirty,onBusy,suspended,canEditProfile,isLight=true,lang='zh',focusRequest,onEditing,hideHeading=false,onProjection,extractions=[],extractionLoading=false,extractionError=false,onReloadExtraction,onViewAssessment,onSource,onAmendSalesRecord,requests=[],windowMode=false,savedAmendmentId}:any){
  const ui=useCrmUiText(lang);
 
  const [loading,setLoading]=useState(true);
+ const [localSavedAmendmentId,setLocalSavedAmendmentId]=useState('');
+ const pendingAmendmentId=savedAmendmentId||localSavedAmendmentId;
  const typeId=useId(),searchId=useId(),ledgerRoot=useRef<HTMLElement>(null);
  const[data,setData]=useState<any>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0),[target,setTarget]=useState<any>(null),[notice,setNotice]=useState(''),[filter,setFilter]=useState('all'),[search,setSearch]=useState(''),[expanded,setExpanded]=useState<Set<string>>(new Set()),[evidenceSelection,setEvidenceSelection]=useState<{groupId:string;citation:HistoryCitation}|null>(null);
  useEffect(()=>{
@@ -56,7 +59,10 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
   document.addEventListener('pointerdown',collapseOutside,true);
   return()=>document.removeEventListener('pointerdown',collapseOutside,true);
  },[windowMode,suspended]);
- useEffect(()=>{let active=true;setLoading(true);setError('');onProjection?.({state:'loading',events:[]});fetch(`/api/crm/leads/${leadId}/facts`).then(async r=>{if(!r.ok)throw Error('历史依据暂不可用，请重试');return r.json();}).then(d=>{if(active){setData(d);onProjection?.({state:'ready',events:d.events});}}).catch(e=>{if(active){setError(e.message);onProjection?.({state:'error',events:[]});}}).finally(()=>{if(active)setLoading(false);});return()=>{active=false};},[leadId,revision,retry]);
+ useEffect(()=>{let active=true;setLoading(true);setError('');onProjection?.({state:'loading',events:[]});fetch(`/api/crm/leads/${leadId}/facts`).then(async r=>{if(!r.ok)throw Error('历史依据暂不可用，请重试');
+  const ledger=await r.json();
+  if(!Array.isArray(ledger.events))throw Error('历史依据暂不可用，请重试');
+  return ledger;}).then(d=>{if(active){setData(d);onProjection?.({state:'ready',events:d.events});}}).catch(e=>{if(active){setError(e.message);onProjection?.({state:'error',events:[]});}}).finally(()=>{if(active)setLoading(false);});return()=>{active=false};},[leadId,revision,retry,pendingAmendmentId]);
  const [preparedFocus,setPreparedFocus]=useState<any>(null);
  const handled=useRef<any>(null),positioned=useRef<any>(null),focusNode=useRef<HTMLDetailsElement>(null),settleFrame=useRef(0),groups=buildHistoryTimeline(data?.events||[],lead,extractions),focused=focusRequest&&data?historyGroupFor(groups,focusRequest.id):null;
  useEffect(()=>()=>cancelAnimationFrame(settleFrame.current),[focusRequest?.token]);
@@ -130,7 +136,9 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
  <div className="crm-history-search"><label htmlFor={searchId}>{ui("搜索原文与内容")}</label><AdminSearchField id={searchId} label={ui("搜索历史记录")} value={search} disabled={!!target} onChange={setSearch}/></div>
  </div>
 
- {notice&&<p role="status">{ui(notice)}</p>}{error&&<p role="alert">{ui(error)} <button onClick={()=>setRetry(v=>v+1)}>{ui("重试读取")}</button></p>}
+ {notice&&<p role="status">{ui(notice)}</p>}{error&&(pendingAmendmentId&&!data?.events?.some((event:any)=>event.eventType==='record.amended'&&event.payload?.id===pendingAmendmentId)?
+   <AdminSavedReadError lang={lang} onRetry={()=>setRetry(v=>v+1)}/>:
+   <p role="alert">{ui(error)} <button onClick={()=>setRetry(v=>v+1)}>{ui("重试读取")}</button></p>)}
  {extractionError&&<p role="alert">{ui("AI整理状态暂不可用，原始记录仍保留。")}<button onClick={onReloadExtraction}>{ui("重试AI整理状态")}</button></p>}
  {!data&&!error&&<p role="status">{ui("正在读取历史依据…")}</p>}{data&&!visible.length&&<p>{groups.length ? ui("没有符合筛选的记录。") : ui("尚无历史记录。")}</p>}
  <CrmHistoryStream enabled={windowMode} onLayout={windowMode?positionFocusedRecord:undefined}>{visible.map((g,i)=>{const Icon=icons[g.category]||FileSearch,correction=historyContactCorrection(g,lead),amendments=g.events.filter(e=>e.eventType==='record.amended'),root=g.root,primary=g.events.find(e=>e.eventType==='followup.recorded')||g.events.find(e=>e.eventType==='questionnaire.submitted')||g.events.find(e=>e.eventType==='task.request_evidence')||g.events.find(e=>amendable.has(e.eventType)),editingHere=!!target&&g.events.some(e=>e.eventId===target.eventId),message=g.events.find(e=>e.eventType==='customer.message'),information=historyInformation(g,extractions),citation=evidenceSelection?.groupId===g.id?evidenceSelection.citation:null;
@@ -174,7 +182,7 @@ export function CrmFactLedger({leadId,lead,revision,timezone,disabled,onChanged,
  {!windowMode&&<HistoryProcessingContent group={g} information={information} extractions={extractions} amendments={amendments} citation={citation} extractionLoading={extractionLoading} extractionError={extractionError} showEvidence={showEvidence} onViewAssessment={onViewAssessment}/>}
 
  <CrmHistorySources group={g} representedRoot={!!resultCard} disabled={disabled} suspended={suspended} editing={!!target} primaryId={primary?.eventId} onAmend={setTarget}/>
- {editingHere&&<CrmRecordAmendmentForm key={target.eventId} target={target} lead={lead} timezone={timezone} isLight={isLight} canEditProfile={canEditProfile} suspended={suspended} onDirty={onDirty} onBusy={onBusy} onCancel={()=>setTarget(null)} onSaved={(r:any)=>{setTarget(null);setRetry(n=>n+1);setNotice('补充／修正已保存，原文和关联保留。'+profileSaveSummary(r.profileFieldResults)+(({satisfied:'首次跟进仍满足要求。',restored:'原首次跟进要求已恢复，原期限不变；没有重发旧通知。',needs_review:'原首次要求无法明确定位，请核对；没有新增任务。'}as any)[r.firstRequirementStatus]||''));onChanged?.();}}/>}
+ {editingHere&&<CrmRecordAmendmentForm key={target.eventId} target={target} lead={lead} timezone={timezone} isLight={isLight} canEditProfile={canEditProfile} suspended={suspended} onDirty={onDirty} onBusy={onBusy} onCancel={()=>setTarget(null)} onSaved={(r:any)=>{setTarget(null);setLocalSavedAmendmentId(r.amendment.id);setNotice(profileSaveSummary(r.profileFieldResults)+(({satisfied:'首次跟进仍满足要求。',restored:'原首次跟进要求已恢复，原期限不变；没有重发旧通知。',needs_review:'原首次要求无法明确定位，请核对；没有新增任务。'}as any)[r.firstRequirementStatus]||''));onChanged?.();}}/>}
  </div></details></div>;
  })}</CrmHistoryStream></section></CrmHistorySearch.Provider>;
 }

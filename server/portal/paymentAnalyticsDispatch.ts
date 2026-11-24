@@ -1,3 +1,5 @@
+import {gaCredential,gaSettings} from './gaSettings.ts';
+import {legacyGaCredential} from './integrationCredentialTargets.ts';
 import {createHash} from 'node:crypto';
 import analytics from '../../src/data/analyticsEnvironments.json';
 
@@ -13,16 +15,16 @@ type Candidate = {
 type Client = {query(sql: string, values?: unknown[]): Promise<{rows: any[]; rowCount: number}>};
 type Transaction = <T>(work: (db: Client) => Promise<T>, options?: {isolation: 'READ COMMITTED'}) => Promise<T>;
 
-function dispatchConfig(env: NodeJS.ProcessEnv): {environment: Environment; endpoint: URL} | null {
+function dispatchConfig(env: NodeJS.ProcessEnv, secret: string | undefined): {environment: Environment; endpoint: URL} | null {
   const environment = env.PORTAL_ENV;
   if (environment !== 'dev' && environment !== 'test' && environment !== 'prod') return null;
   if (env.PORTAL_PACKAGE_ENV && env.PORTAL_PACKAGE_ENV !== environment) return null;
   if (environment === 'prod' && env.PORTAL_PRODUCTION_READY !== 'true') return null;
   const measurementId = analytics.environments[environment].measurementId;
-  if (env.PORTAL_GA_MEASUREMENT_ID !== measurementId || !env.PORTAL_GA_API_SECRET?.trim()) return null;
+  if (env.PORTAL_GA_MEASUREMENT_ID !== measurementId || !secret) return null;
   const endpoint = new URL('https://www.google-analytics.com/mp/collect');
   endpoint.searchParams.set('measurement_id', measurementId);
-  endpoint.searchParams.set('api_secret', env.PORTAL_GA_API_SECRET.trim());
+  endpoint.searchParams.set('api_secret', secret);
   return {environment, endpoint};
 }
 
@@ -56,7 +58,10 @@ export async function dispatchPaymentAnalytics({
   request?: typeof fetch;
   clock?: Date;
 }) {
-  const config = dispatchConfig(env);
+  const settings=env===process.env?await gaSettings():undefined;
+  if(settings&&!settings.dispatchEnabled)return;
+  const secret=settings?(await gaCredential(settings))?.key:legacyGaCredential(env)?.key;
+  const config=dispatchConfig(settings?{...env,PORTAL_GA_MEASUREMENT_ID:settings.measurementId}:env,secret);
   if (!config) return;
 
   const {environment, endpoint} = config;

@@ -60,6 +60,17 @@ export function sortFollowupOccurrences<T extends {times:{at:string|null}[]}>(en
 export function hasFollowupOccurrence(entry:{times:{at:string|null}[]}){return entry.times.some(t=>t.at&&crmInstant(t.at));}
 
 export const FOLLOWUP_RECENT_MS=7*24*60*60*1000;
+export function hasRecentFollowupGoal(lead:{
+ goal?:unknown;
+ submittedAt?:string;
+ profileFieldMeta?:{goal?:{effectiveAt?:string;sourceType?:string}};
+},now=Date.now()){
+ if(typeof lead.goal!=='string'||!lead.goal.trim())return false;
+ const meta=lead.profileFieldMeta?.goal;
+ const timestamp=meta?.effectiveAt||(!meta?.sourceType||meta.sourceType==='questionnaire'?lead.submittedAt:undefined);
+ const at=crmInstant(timestamp)?.getTime();
+ return at!==undefined&&at>=now-FOLLOWUP_RECENT_MS&&at<=now;
+}
 /** Display buckets only. No record is deleted and no signal, task or Tier state changes. */
 export function followupWindowGroups(entries:any[],now=Date.now()){
  const result:{recent:any[];important:any[];unknown:any[]}={recent:[],important:[],unknown:[]};

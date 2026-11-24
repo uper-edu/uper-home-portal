@@ -1,0 +1,320 @@
+{
+  "id": {
+    "tag": "Perluas Cara Pandang Anda",
+    "title1": "Perjalanan ",
+    "title2": "Transformasional",
+    "desc": "Tinggalkan wisata biasa. Ini bukan sekadar jalan-jalan di kampus Tsinghua atau Peking, melainkan perjalanan mendalam untuk menembus batas pemikiran, membangun Visi Global, dan memperkuat posisi Anda untuk pendaftaran universitas elit nanti.",
+    "highlights": [
+      {
+        "title": "Memperkuat Portofolio & Peluang Admisi",
+        "desc": "Eksplorasi mendalam di kampus top dunia. Rasakan aura akademik nyatanya, raih sertifikat prestisius, dan kumpulkan pengalaman yang akan memberi Anda keunggulan saat mendaftar kampus dan beasiswa."
+      },
+      {
+        "title": "Jejaring dengan Para Elit",
+        "desc": "Berdiskusi langsung dengan mahasiswa terbaik dan pakar industri. Bangun lingkaran pertemanan internasional dan pelajari pola pikir inovatif dari talenta-talenta cemerlang."
+      },
+      {
+        "title": "Menjelajahi Masa Depan Teknologi",
+        "desc": "Kunjungi raksasa teknologi dan pusat inovasi dunia. Saksikan langsung teknologi yang mengubah zaman dan perluas wawasan global Anda mengenai karier di masa depan."
+      },
+      {
+        "title": "Terobosan Budaya & Bahasa",
+        "desc": "Lebih dari sekadar melihat Tembok Besar dan Kota Terlarang, Anda akan mendobrak batasan bahasa di dunia nyata, menumbuhkan rasa percaya diri, dan membawa pulang kisah inspiratif untuk esai pendaftaran Anda."
+      }
+    ],
+    "contact": {
+      "title": "Jangan Lewatkan Perjalanan Mengubah Hidup Ini",
+      "desc": "Kuota kursi sangat luar biasa terbatas. Gabunglah di tur kami selanjutnya untuk mulai membangun rekam jejak akademik terbaik.",
+      "btn": "Minta Detail Kesempatan Eksklusif"
+    },
+    "availablePrograms": "Program Tersedia",
+    "requestItinerary": "Minta Rencana Perjalanan",
+    "guidingPrinciples": {
+      "title": "Prinsip Panduan Kami",
+      "desc": "Kami percaya pada pendekatan holistik yang menggabungkan efisiensi teknologi modern dengan kehangatan hubungan antarmanusia."
+    },
+    "destinations": {
+      "title": "Galeri Destinasi Studi",
+      "desc": "Jelajahi tempat-tempat luar biasa yang akan Anda kunjungi selama tur studi imersif kami."
+    },
+    "destinationLabel": "Destinasi",
+    "features": [
+      {
+        "title": "Program yang Dirancang Ahli",
+        "desc": "Pembelajaran bahasa, lokakarya budaya, interaksi akademik, serta kunjungan ke perusahaan teknologi dan tengara bersejarah."
+      },
+      {
+        "title": "Integrasi Sumber Daya yang Luas",
+        "desc": "Kemitraan jangka panjang dengan institusi pendidikan bergengsi, universitas papan atas, dan profesor ternama."
+      },
+      {
+        "title": "Jaminan Layanan Komprehensif",
+        "desc": "Pemimpin tur profesional, asuransi perjalanan luar negeri, akomodasi nyaman, dan komunikasi yang lancar dengan orang tua."
+      }
+    ],
+    "values": [
+      {
+        "title": "Pembelajaran Berbasis Teknologi",
+        "desc": "Alat AI mutakhir dan platform interaktif yang beradaptasi dengan kecepatan Anda, membuat penguasaan bahasa Mandarin lebih cepat."
+      },
+      {
+        "title": "Perhatian Humanis",
+        "desc": "Pendidikan lebih dari sekadar akademik. Kami memprioritaskan kesejahteraan emosional, pertumbuhan pribadi, dan kepekaan budaya Anda."
+      },
+      {
+        "title": "Kewarganegaraan Global",
+        "desc": "Dimulai dari Indonesia, kami membangun jembatan ke Tiongkok dan dunia, merayakan sudut pandang yang beragam."
+      }
+    ],
+    "programs": [
+      {
+        "title": "Tur Studi Wuhan",
+        "desc": "Benamkan diri Anda dalam budaya dinamis dan keunggulan akademik Tiongkok tengah. Kunjungi Menara Bangau Kuning, jelajahi Universitas Wuhan, dan rasakan tradisi lokal.",
+        "tags": [
+          "Musim Panas 2025",
+          "Bahasa",
+          "Budaya"
+        ]
+      },
+      {
+        "title": "Tur Studi Beijing",
+        "desc": "Pengalaman tur terpandu selama 14 hari penuh menjelajahi universitas ternama seperti Tsinghua dan Universitas Peking, inovasi teknologi, serta warisan sejarah.",
+        "tags": [
+          "Ibu Kota",
+          "Universitas Top",
+          "Warisan"
+        ]
+      },
+      {
+        "title": "Tur Studi Shanghai & Hangzhou",
+        "desc": "Rasakan keajaiban kota metropolis modern. Termasuk kunjungan ke markas besar Alibaba, pusat teknologi modern, dan keindahan Danau Barat.",
+        "tags": [
+          "Raksasa Teknologi",
+          "Kota Modern",
+          "E-commerce"
+        ]
+      },
+      {
+        "title": "Tur Studi Shenzhen",
+        "desc": "Masukilah pusat silikon Tiongkok. Akses eksklusif ke raksasa teknologi terkemuka, pasar perangkat keras, dan berjejaring dengan inovator lokal.",
+        "tags": [
+          "Inovasi",
+          "Jejaring",
+          "Pusat Teknologi"
+        ]
+      }
+    ]
+  },
+  "en": {
+    "tag": "Expand Your Worldview",
+    "title1": "Transformational ",
+    "title2": "Study Tours",
+    "desc": "Say goodbye to superficial sightseeing. This is more than a walk through Tsinghua or Peking University—it's an immersive journey to break cognitive boundaries, build a global vision, and powerfully endorse your future university applications.",
+    "highlights": [
+      {
+        "title": "Resume Building & Admission Edge",
+        "desc": "Dive deep into top-tier universities, experience the true academic vibe, and earn prestigious certificates and experiences that'll put you ahead in your future scholarship and admission battles."
+      },
+      {
+        "title": "Connect with Elite Minds",
+        "desc": "Engage in profound dialogues with outstanding university scholars and industry leaders. Build a global circle of friends and tap into an elite network of innovative thinking."
+      },
+      {
+        "title": "Explore Tech Frontiers",
+        "desc": "Step inside tech giants and innovation hubs to witness the technological forces changing the world, broadening your global understanding of future careers and commerce."
+      },
+      {
+        "title": "Language & Cultural Breakthroughs",
+        "desc": "Beyond the Great Wall and Forbidden City, you'll shatter language barriers in real-world scenarios, build cultural confidence, and return with a compelling growth story ready for your application essays."
+      }
+    ],
+    "contact": {
+      "title": "Don't Miss This Life-Changing Journey",
+      "desc": "Spots are highly exclusive. Reserve your place now to start accumulating compelling academic and personal milestones.",
+      "btn": "Request Exclusive Details"
+    },
+    "availablePrograms": "Available Programs",
+    "requestItinerary": "Learn More",
+    "guidingPrinciples": {
+      "title": "Our Guiding Principles",
+      "desc": "We believe in a holistic approach that combines the efficiency of modern technology with the warmth of human connection."
+    },
+    "destinations": {
+      "title": "Study Destinations Gallery",
+      "desc": "Explore the incredible places you'll visit during our immersive study tours."
+    },
+    "destinationLabel": "Destination",
+    "features": [
+      {
+        "title": "Expertly Crafted Programs",
+        "desc": "Language learning, cultural workshops, academic interactions, and visits to tech giants and historical landmarks."
+      },
+      {
+        "title": "Extensive Resource Integration",
+        "desc": "Long-term partnerships with prestigious educational institutions, top-tier universities, and renowned professors."
+      },
+      {
+        "title": "Comprehensive Service Assurance",
+        "desc": "Professional tour leaders, overseas travel insurance, comfortable accommodation, and seamless communication with parents."
+      }
+    ],
+    "values": [
+      {
+        "title": "Tech-Enhanced Learning",
+        "desc": "Cutting-edge AI tools and interactive platforms that adapt to your pace, making mastering Chinese faster and more intuitive."
+      },
+      {
+        "title": "Humanistic Care",
+        "desc": "Education is more than academics. We prioritize your emotional wellbeing, personal growth, and cultural sensitivity."
+      },
+      {
+        "title": "Global Citizenship",
+        "desc": "Starting in Indonesia, we build bridges to China and the world, celebrating diverse perspectives and inclusive environments."
+      }
+    ],
+    "programs": [
+      {
+        "title": "Wuhan Study Tour",
+        "desc": "Immerse yourself in the vibrant culture and academic excellence of central China. Visit Huanghelou, explore Wuhan University's campus, and experience local traditions.",
+        "tags": [
+          "Summer 2025",
+          "Language",
+          "Culture"
+        ]
+      },
+      {
+        "title": "Beijing Study Tour",
+        "desc": "A full 14-day guided experience exploring top universities like Tsinghua and Peking University, tech innovations in Zhongguancun, and historical heritage like the Great Wall.",
+        "tags": [
+          "Capital",
+          "Top Universities",
+          "Heritage"
+        ]
+      },
+      {
+        "title": "Shanghai-Hangzhou Study Tour",
+        "desc": "Experience the magic of modern metropolises. Includes visits to Alibaba headquarters, modern tech hubs, and the serene beauty of the West Lake.",
+        "tags": [
+          "Tech Giants",
+          "Modern City",
+          "E-commerce"
+        ]
+      },
+      {
+        "title": "Shenzhen Study Tour",
+        "desc": "Step into the heart of China's silicon valley. Exclusive access to leading technological giants, hardware markets, and networking with local innovators.",
+        "tags": [
+          "Innovation",
+          "Networking",
+          "Tech Hub"
+        ]
+      }
+    ]
+  },
+  "zh": {
+    "tag": "开启你的世界观",
+    "title1": "跨界成长",
+    "title2": "探研见学",
+    "desc": "告别走马观花式的旅行。这不仅是一次踏入清华、北大校园的探索，更是一次打破认知边界、建立国际视野、为未来升学与个人履历强效背书的游学奇旅。",
+    "highlights": [
+      {
+        "title": "名校敲门砖与履历背书",
+        "desc": "深入清华、北大等顶尖学府，不仅能感受真实的学术氛围，更能获得极具含金量的证书与见学经历，在未来的大学申请中先人一步。"
+      },
+      {
+        "title": "结识精英导师与同侪",
+        "desc": "与优秀的中国大学生及各路行业大咖深度对话，建立属于你的国际朋友圈，提前触达全球精英网络与创新思维体系。"
+      },
+      {
+        "title": "探索科技前沿与未来",
+        "desc": "深入字节跳动、腾讯等科技巨擘及创新中心，见证改变世界的科技力量，拓宽对未来职场及商业文明的全球化认知。"
+      },
+      {
+        "title": "沉浸式语言与文化突破",
+        "desc": "不仅走遍长城与故宫，更在真实场景中突破语言障碍、建立文化自信，带回一段属于你自己的、足以写进申请文书里的成长故事。"
+      }
+    ],
+    "contact": {
+      "title": "不要错过这段改变一生的旅程",
+      "desc": "席位极为稀缺。加入我们的下一次游学计划，开始积累你的硬核学术与成长履历。",
+      "btn": "索取独家内外部机会首发资料"
+    },
+    "availablePrograms": "精选项目",
+    "requestItinerary": "获取详细行程",
+    "guidingPrinciples": {
+      "title": "我们的核心理念",
+      "desc": "我们将现代科技的高效与人文关怀的温暖相结合，提供全方位的游学体验。"
+    },
+    "destinations": {
+      "title": "游学目的地概览",
+      "desc": "探索在我们沉浸式游学之旅中将会到访的精彩地点。"
+    },
+    "destinationLabel": "目的地",
+    "features": [
+      {
+        "title": "精心策划的项目",
+        "desc": "包括语言学习、文化体验、学术交流，以及参观科技巨头和历史名胜。"
+      },
+      {
+        "title": "丰富的资源整合",
+        "desc": "与顶尖名校、一流院系及知名教授建立长期合作。"
+      },
+      {
+        "title": "全方位的服务保障",
+        "desc": "专业领队、海外旅行保险、舒适的住宿以及与家长的无缝沟通。"
+      }
+    ],
+    "values": [
+      {
+        "title": "科技赋能学习",
+        "desc": "利用前沿的AI工具和互动平台，根据您的节奏进行调整，让中文学习更快捷直观。"
+      },
+      {
+        "title": "人文关怀",
+        "desc": "教育不仅限于学术。我们高度关注您的情感健康、个人成长和跨文化敏感度。"
+      },
+      {
+        "title": "全球视野",
+        "desc": "立足印尼，连接中国与世界，倡导多元视角和包容环境。"
+      }
+    ],
+    "programs": [
+      {
+        "title": "武汉游学团",
+        "desc": "沉浸式体验华中地区的活力文化与卓越学术。游览黄鹤楼，探访武汉大学校园，体验当地风情。",
+        "tags": [
+          "2025夏令营",
+          "语言",
+          "文化"
+        ]
+      },
+      {
+        "title": "北京游学团",
+        "desc": "为期14天的全方位深度游，探索清华北大等顶尖学府、体验中关村科技创新，并游历长城等历史文化遗产。",
+        "tags": [
+          "首都",
+          "顶尖名校",
+          "历史遗产"
+        ]
+      },
+      {
+        "title": "沪杭游学团",
+        "desc": "体验现代商都的魅力。包括参访阿里巴巴总部、现代科技中心，以及欣赏西湖的静谧美景。",
+        "tags": [
+          "科技巨头",
+          "现代都市",
+          "电子商务"
+        ]
+      },
+      {
+        "title": "深圳游学团",
+        "desc": "走进中国硅谷的核心。独家参访领先的科技巨头、硬件市场，并与当地创新者进行交流网络。",
+        "tags": [
+          "创新",
+          "行业交流",
+          "科技中心"
+        ]
+      }
+    ]
+  }
+}

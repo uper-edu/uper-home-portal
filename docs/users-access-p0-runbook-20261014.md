@@ -1,5 +1,7 @@
 # Users & access P0: implementation and recovery runbook
 
+> 历史记录。离线管理员恢复授权已下线。日常密码重置由另一位系统管理员在用户详情中完成。下文的授权签发和离线执行步骤仅用于追溯。
+
 > Recovery execution steps below are historical P0 behavior. The current implementation requires signed, scoped authorization and durable result reconciliation. Use the [P1 recovery and release runbook](./users-access-recovery-p1-runbook-20261014.md). P1 is independently tested; it has not been switched to local 3000.
 
 Status: independent synthetic MySQL implementation. This change does not authorize local 3000 cutover, GitHub push, or server deployment. No team-based authorization has been reintroduced.
@@ -90,7 +92,7 @@ Required server-only configuration introduced by this change:
 | `ACCESS_INITIAL_PASSWORDS_FILE` | Owner-only JSON mapping initial Login IDs to strong passwords for a genuinely new database. Existing initialized accounts do not require it and are not rewritten.                                                               |
 | `ACCESS_ALLOW_TEST_PASSWORDS`   | `true` is accepted only for explicitly isolated synthetic tests. Never enable on a real/server database.                                                                                                                         |
 | `ACCESS_TRUSTED_PROXIES`        | Exact comma-separated loopback peer addresses supported by this implementation; no `true`, blanket subnet or arbitrary hop count.                                                                                                |
-| `ACCESS_PUBLIC_ORIGIN`          | Exact HTTPS origin when using a trusted proxy. Origin/host/protocol mismatch fails closed.                                                                                                                                       |
+| `UPER_PORTAL_PUBLIC_ORIGIN`          | Exact HTTPS origin when using a trusted proxy. Origin/host/protocol mismatch fails closed.                                                                                                                                       |
 
 The actual reverse proxy must terminate valid TLS, forward to a loopback-only backend, and replace client-supplied forwarded headers. The application must run with production cookie settings. Local tests cover a real verified TLS connection with a test CA explicitly trusted by the test client; they do not install a system CA or bypass a browser warning. Multi-source IP testing uses controlled harness source simulation. Company reverse-proxy configuration, public certificate chains and real browser HTTPS remain a release gate.
 

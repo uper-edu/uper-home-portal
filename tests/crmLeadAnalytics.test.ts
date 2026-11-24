@@ -46,6 +46,27 @@ const base = (id: string, extra: any = {}) => ({
   attention: { tasks: [] },
   ...extra,
 });
+test('conversation filtering and counts use effective human records independently of orders and historical stages',()=>{
+  const connected=contact('call','Connected',-2*DAY,'customer');
+  const missed=contact('missed','No Response');
+  const has=base('has',{followUpLogs:[connected,missed],currentStage:'progress:enrolled'});
+  const corrected=base('corrected',{followUpLogs:[connected],recordAmendments:[
+    {id:'fix',targetLogId:'call',kind:'correction',contactResult:'Not Occurred'},
+  ]});
+  const selfService=base('self-service',{currentStage:'progress:enrolled',enrollmentOpportunitySummary:{count:1},
+    interactionTimeline:{communication:null,sales:null,customer:{source:'chat',at:iso(-DAY)}}});
+  const needsAction=base('needs-action',{currentStage:'progress:enrolled',attention:{tasks:[
+    {id:'task',kind:'consultation',status:'open',dueAt:iso(-1000)},
+  ]}});
+  const rows=[has,corrected,selfService,needsAction];
+  const query=(filter:Parameters<typeof filterAndSummarize>[1])=>filterAndSummarize(rows,filter,'sales-a','Asia/Jakarta',now).leads.map(row=>row.id);
+  const established=parseLeadFilters({communication:'established'});
+  assert.deepEqual(query(established),['has']);
+  assert.deepEqual(query({...established,communication:['unrecorded']}).sort(),['corrected','needs-action','self-service']);
+  assert.equal(processMetrics(rows,now).engagedCustomers,1);
+  assert.deepEqual(query({...defaultLeadFilters('all'),workScope:'action'}),['needs-action']);
+  assert.match(filterQuery(established),/communication=established/);
+});
 test("overview uses only first requirements, distinct customers and independent contact facts", () => {
   const rows = [
     base("maya", {
@@ -243,15 +264,15 @@ test("overview never represents AI replies or manual stage as a real contact, re
       leader: true,
       employees: [{ id: "刘 Alice", displayName: "刘 Alice" }],
       onMetric: () => {},
-      onStage: () => {},
+      onCommunication: () => {},
     }),
   );
   for (const label of [
     "当前客户",
     "首次联系未完成",
     "近7天互动客户",
-    "有效沟通覆盖",
-    "当前阶段分布",
+    "人工沟通覆盖",
+    "人工沟通分布",
     "联系与推进分析",
     "有效样本",
     "刘 Alice",
@@ -306,10 +327,10 @@ test("successive metric selections intersect the current cohort instead of repla
   assert.deepEqual(parsed.overview, ["communication", "recent_customer"]);
 });
 
-test('sales can read timing and stages without receiving manager-only owner comparisons',()=>{
+test('sales can read timing and conversation status without receiving manager-only owner comparisons',()=>{
  const m=processMetrics([base('maya',{owner:'manager-only-name'})],now);
- const html=renderToStaticMarkup(createElement(CrmProcessOverview,{metrics:m,lang:'zh',isLight:true,timezone:'Asia/Jakarta',leader:false,employees:[{id:'manager-only-name',displayName:'经理分组姓名'}],onMetric:()=>{},onStage:()=>{}}));
- assert.match(html,/首次实际主动联系|当前阶段停留/);assert.doesNotMatch(html,/按当前负责人查看|经理分组姓名/);
+ const html=renderToStaticMarkup(createElement(CrmProcessOverview,{metrics:m,lang:'zh',isLight:true,timezone:'Asia/Jakarta',leader:false,employees:[{id:'manager-only-name',displayName:'经理分组姓名'}],onMetric:()=>{},onCommunication:()=>{}}));
+ assert.match(html,/首次实际主动联系/);assert.match(html,/人工沟通分布/);assert.doesNotMatch(html,/按当前负责人查看|经理分组姓名|当前阶段停留/);
 });
 
 // Native MySQL adapters return Date objects before JSON serialization.
@@ -318,14 +339,14 @@ test('native database dates and HTTP ISO dates produce identical deadline metric
 
 test("list summary excludes detailed analytics while analysis keeps permission-gated breakdowns", () => {
  const metrics=processMetrics([base('summary-customer')],now);
- const props:any={metrics,lang:'zh',isLight:true,timezone:'Asia/Jakarta',leader:false,employees:[],onMetric:()=>{},onStage:()=>{}};
+ const props:any={metrics,lang:'zh',isLight:true,timezone:'Asia/Jakarta',leader:false,employees:[],onMetric:()=>{},onCommunication:()=>{}};
  const summary=renderToStaticMarkup(createElement(CrmProcessOverview,{...props,mode:'summary'}));
- for(const text of ['当前客户','首次联系未完成','近7天互动客户','有效沟通覆盖'])assert.ok(summary.includes(text),text);
- assert.doesNotMatch(summary,/当前阶段分布|首次实际主动联系|按当前负责人查看/);
+ for(const text of ['当前客户','首次联系未完成','近7天互动客户','人工沟通覆盖'])assert.ok(summary.includes(text),text);
+ assert.doesNotMatch(summary,/人工沟通分布|首次实际主动联系|按当前负责人查看/);
  assert.match(summary,/crm-overview-strip/);
  assert.doesNotMatch(summary,/crm-process-scope|当前筛选客户.*截至/);
  const analysis=renderToStaticMarkup(createElement(CrmProcessOverview,{...props,mode:'analysis'}));
- assert.match(analysis,/当前阶段分布/);assert.match(analysis,/首次实际主动联系/);
+ assert.match(analysis,/人工沟通分布/);assert.match(analysis,/首次实际主动联系/);
  assert.match(analysis,/所有数字跟随当前筛选及权限/);
  assert.match(analysis,/crm-process-scope/);
  assert.doesNotMatch(analysis,/crm-overview-cards|按当前负责人查看/);
@@ -334,7 +355,7 @@ test("list summary excludes detailed analytics while analysis keeps permission-g
 test("analysis filters retain cohort controls without list-only sort and view controls", async () => {
  const {CrmLeadFilters}=await import('../src/components/crm/CrmLeadFilters');
  const html=renderToStaticMarkup(createElement(CrmLeadFilters,{analysis:true,value:defaultLeadFilters('all'),onChange:()=>{},lang:'zh',scope:'all',owners:[],count:4,loading:false,timezone:'Asia/Jakarta',viewMode:'worklist',onViewMode:()=>{}}));
- assert.match(html,/搜索客户/);assert.match(html,/负责人/);assert.match(html,/销售阶段/);
+ assert.match(html,/搜索客户/);assert.match(html,/负责人/);assert.match(html,/人工沟通/);assert.doesNotMatch(html,/销售阶段/);
  assert.doesNotMatch(html,/crm-lead-sort|crm-lead-view/);
 });
 

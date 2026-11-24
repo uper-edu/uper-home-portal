@@ -24,8 +24,8 @@
 | 账号权限 | [`access.ts`](../../src/data/system-defaults/access.ts) | 六种内置角色模板与九个初始账号的角色组合；不存密码。 |
 | 通知 | [`notifications.ts`](../../src/data/system-defaults/notifications.ts) | 新群与个人渠道真实发送；默认英文、每小时100条；通知策略、个人偏好及不可关闭类型。 |
 | 销售运营 | [`sales.ts`](../../src/data/system-defaults/sales.ts) | 雅加达工作日历、首次联系与后续跟进时限、自动分案默认关闭及轮询策略。 |
-| 课程 | [`courses.ts`](../../src/data/system-defaults/courses.ts) | 课程默认发布、折扣权限为0；价格和课时仍读取已确认的价目表。 |
-| AI | [`ai.ts`](../../src/data/system-defaults/ai.ts) | 默认主模型 `gpt-6.1-sol`、备用 `deepseek-flash`；主模型仍允许 `OPENAI_MODEL` 提供默认值，已保存 CRM 选择优先。 |
+| 课程 | [`courses.ts`](../../src/data/system-defaults/courses.ts) | 空课程目录预置 HSK 1–4，主教材为 New Concept Chinese，课程默认发布，初始折扣为 0。保留已有课程目录，包括历史课程 ID、价格和课时。 |
+| AI | [`ai.ts`](../../src/data/system-defaults/ai.ts) | 默认主模型 `gpt-6.2-sol`、备用 `deepseek-v4-pro`；主模型仍允许 `OPENAI_MODEL` 提供默认值，已保存 CRM 选择优先。 |
 
 已有独立业务资源继续作为唯一来源，不把大数据包重复塞进初始化注册表：
 
@@ -44,6 +44,20 @@
 - 初始账号仍为 Suki、Robert、Fadhil、Zainul、Wigar、Tester、Fenny、Ethan、Monite。首次安装从各环境的私有 `ACCESS_INITIAL_PASSWORD` 读取统一密码，亦支持使用受限的 `ACCESS_INITIAL_PASSWORDS_FILE`。新建账号首次登录必须设置新密码，之后才能访问工作区。Robert的初始管理员授权仍由原有引导流程完成。
 - 已有账号的密码、停用状态及角色保持原样；重启不会把管理员已撤销的财务权限或其他权限加回。恢复审查屏障继续阻止账号初始化写入。
 - 离线迁移副本与恢复安全屏障保留原有保护。自动化夹具可显式使用 `initializeSystemDefaults=false` 构造空业务场景。
+
+## 首次初始化预置账号
+
+全新库首次启动前，按环境设置 `ACCESS_INITIAL_PASSWORD`。同一环境的预置账号使用该环境的临时密码，首次登录必须改密，完成后才能进入工作区。
+
+| 环境 | 私有配置位置 |
+| --- | --- |
+| 本地 3000 | 在私有 `.env.dev` 中填写，由本地启动器读取。 |
+| 公司测试 | 在服务器的私有 `.env.test` 中填写，由公司测试容器注入。 |
+| 生产 | 由部署层从私有配置注入。若启动器读取环境文件，在私有 `.env.prod` 中填写。也可放在 `UPER_PORTAL_BOOTSTRAP_SECRET_FILE` 指向的私有文件中。 |
+
+私有环境文件和启动凭证文件使用 `0600` 权限。模板中的密码值留空，真实值留在对应环境的私有配置中。
+
+确认预置账号初始化成功后，可从实际提供密码的私有配置中移除 `ACCESS_INITIAL_PASSWORD`。已初始化的数据库继续使用已保存的账号密码，尚未完成首次登录的账号仍须改密。旧部署仍可读取 `ACCESS_INITIAL_PASSWORDS_FILE`。
 
 ## 本轮验证范围
 

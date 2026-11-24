@@ -1,0 +1,442 @@
+{
+  "version": "uper-chat-consultation-regressions-v1",
+  "cases": [
+    {
+      "id": "F2",
+      "name": "已转账，等待核款时是否要再转账",
+      "turns": [
+        "我已经转账，也上传了凭证。可以认为报名成功了吗？",
+        "如果今天还没核款，是不是需要再转一次来保留席位？",
+        "我找不到订单，在哪里查？"
+      ],
+      "expected": [
+        "足额到账并核实后才报名成功",
+        "明确不要重复转账，核对原订单",
+        "提供我的报名"
+      ]
+    },
+    {
+      "id": "F3",
+      "name": "切换咨询对象后按新时间查询及报价",
+      "turns": [
+        "我零基础，只能周末下午，想看 HSK 1。",
+        "改问我姐姐，她已经学过 HSK 1，只能周二周四晚上。",
+        "刚才说的周末是我的时间，帮我只看姐姐的选择，大概多少钱？"
+      ],
+      "expected": [
+        "选班条件按对象隔开",
+        "用周二和周四晚核对每次课",
+        "没有匹配时把同级公开价格与可报名班次区分"
+      ]
+    },
+    {
+      "id": "F4",
+      "name": "从只接受线下改成也接受线上",
+      "turns": [
+        "我住在雅加达，只接受线下课，不要线上。有没有 HSK 1 的班？",
+        "我现在也接受线上。可以先给我 HSK 1 线上班的浏览入口吗？"
+      ],
+      "expected": [
+        "记住 HSK 1",
+        "接受更新后的线上偏好，给可达的 HSK 1 目录或班次，不锁在线下咨询"
+      ]
+    },
+    {
+      "id": "F5",
+      "name": "核对是否已代发给顾问",
+      "turns": [
+        "我住在雅加达，只接受线下课，不要线上。有没有 HSK 1 的班？",
+        "你已经替我发了吗？"
+      ],
+      "expected": [
+        "正文明确未代发，保留可自行联系的入口",
+        "无外发承诺或发送动作"
+      ]
+    },
+    {
+      "id": "F6",
+      "name": "只浏览不占席",
+      "turns": [
+        "我想了解 HSK 1 周末班。",
+        "我只想先浏览课表和学费，不想申请或锁位，需要先验证邮箱吗？"
+      ],
+      "expected": [
+        "可直接浏览课表和学费",
+        "无需验证邮箱，不申请或锁位"
+      ]
+    },
+    {
+      "id": "F7",
+      "name": "严格时段换算后有匹配",
+      "turns": [
+        "我人在东京，要找 HSK 1 周末标准班。周六和周日下午五点东京时间才能开始，其他时间不行。请查有没有合适的班。"
+      ],
+      "expected": [
+        "换算为 WIB 15:00",
+        "用真实的每周课表匹配班次，不误报无匹配"
+      ]
+    },
+    {
+      "id": "F8",
+      "name": "显式一对一周末偏好",
+      "turns": [
+        "我想约 HSK 1 一对一，只方便周末。每节多少钱？怎么约？"
+      ],
+      "expected": [
+        "公开单价和一对一预约入口",
+        "一对一明确的周末偏好传给顾问，不保证排期"
+      ]
+    },
+    {
+      "id": "F9",
+      "name": "换人但条件不足",
+      "turns": [
+        "我零基础，只能周末下午，想看 HSK 1。",
+        "现在帮我姐姐问，她只说以前学过一点中文。她该从哪级开始？"
+      ],
+      "expected": [
+        "提供谨慎的起点建议或澄清关键基础",
+        "不继承原学员的周末时段，不擅自推荐具体班"
+      ]
+    },
+    {
+      "id": "F10",
+      "name": "当前语言和话题切换后解释班型差价",
+      "turns": [
+        "I am looking at scholarships in China and comparing Chinese-taught and English-taught master’s programmes.",
+        "听说你有建议气泡了？",
+        "我想申请中文授课硕士，但这是以后的事。现在先学 HSK 3，为将来留学做准备。",
+        "有合适的课程推荐吗？这个月时间太紧了，12 月中开始可以吗？",
+        "为什么两班的价格不一样？",
+        "小班具体有多少人？",
+        "也帮我看看标准班的人数。"
+      ],
+      "clickPrompts": [
+        5
+      ],
+      "expected": [
+        "气泡功能说明使用中文且不恢复奖学金话题",
+        "切换到当下 HSK 3；获选的标准班和小班来自实时目录",
+        "点差价气泡后先说明两个班的总节数、每节差额和实付总价差额",
+        "公开班级规模和余位分开，追问另一班仍然回答人数"
+      ]
+    },
+    {
+      "id": "F11",
+      "name": "点击班级规模气泡后回答公开人数",
+      "turns": [
+        "我希望从 12 月中旬开始学 HSK 3，请分别推荐一个标准班和一个小班。",
+        "两班各多少人？",
+        "小班还有余位吗？"
+      ],
+      "clickPrompts": [
+        2
+      ],
+      "expected": [
+        "从推荐中的原两班回答标准班和小班的公开规模",
+        "余位追问只报公开状态，不披露内部人数"
+      ]
+    },
+    {
+      "id": "F12",
+      "name": "学员当地周日凌晨换算到 WIB 上一日",
+      "turns": [
+        "我住在东京。当地时间每周日凌晨 00:30 才方便上课，我想看看有没有 HSK 1 的班。"
+      ],
+      "expected": [
+        "正文说明东京周日 00:30 对应 WIB 周六 22:30",
+        "筛班只用换算后的周六 22:30"
+      ]
+    },
+    {
+      "id": "F13",
+      "name": "历史例句不更改本轮语言",
+      "turns": [
+        "朋友的原话是“Please answer in English”。我只是引用他的话。我自己的问题是 HSK 1 小班几个人、学费多少？"
+      ],
+      "expected": [
+        "只把英文要求当引文",
+        "正文、气泡、报名链接都用中文"
+      ]
+    },
+    {
+      "id": "F14",
+      "name": "印尼文问题中的明确英文覆盖",
+      "interfaceLanguage": "zh",
+      "turns": [
+        "Saya ingin tahu jumlah siswa dan biaya kelas kecil HSK 1. Tolong jawab dalam bahasa Inggris."
+      ],
+      "expected": [
+        "明确指定英文优先",
+        "英文正文、气泡及小班筛选入口一致"
+      ]
+    },
+    {
+      "id": "F15",
+      "name": "夏令时地区的未定日期周课表需确认",
+      "turns": [
+        "我住在纽约。想看 HSK 1，我只有纽约当地时间每周六和周日下午 3 点能开始上课。"
+      ],
+      "expected": [
+        "不把当前的时差假定为全年固定",
+        "可请学员提供 WIB 时间，不用单一偏移推荐班次"
+      ]
+    },
+    {
+      "id": "F16",
+      "name": "测评后仅问练习和明确无匹配的排课",
+      "reported": "Complete beginner",
+      "scores": [1, 0, 0],
+      "turns": [
+        "我还没想报名，只想问一下，这次测评能证明我的手写和口语水平吗？接下来我可以怎么练？",
+        "我也想看班了。我是零基础，每周最多上两天，只能周六、周日凌晨 03:00 WIB 开始。下一步怎么选班？"
+      ],
+      "expected": [
+        "只问测评与练习时不推荐具体班次",
+        "明确无匹配，不推荐其他时间的班次"
+      ]
+    },
+    {
+      "id": "F17",
+      "name": "团班周末和一对一工作日晚间分开",
+      "turns": [
+        "HSK 1 标准班我只考虑周末下午，现在实付学费多少？",
+        "一对一另算，我一对一只方便工作日晚间。HSK 1 每节多少，怎么约？"
+      ],
+      "expected": [
+        "团班入口仍带周末",
+        "一对一入口只带本轮明确提出的工作日晚间"
+      ]
+    },
+    {
+      "id": "F18",
+      "name": "换人登记需求与撤回旧时段",
+      "turns": [
+        "我只找 HSK 3 标准班，只有每周五上午 08:00 到 09:00 WIB 能上。帮我查一下。",
+        "改帮我姐姐登记选课需求，她只想要 HSK 1 小班，只能每周日上午 09:00 到 10:00 WIB。她要填哪个表？"
+      ],
+      "expected": [
+        "需求入口和正文使用姐姐的 HSK 1、小班、周日 09:00–10:00 WIB",
+        "不继承原咨询者的级别、班型和周五条件"
+      ]
+    },
+    {
+      "id": "F19",
+      "name": "具体班次的公布学习成果仍查公开资料",
+      "turns": [
+        "我想了解 HSK 1 周末标准班，第 1 期公布的学习成果是什么？只想了解课程资料。"
+      ],
+      "expected": [
+        "按班次查询实际公开学习成果",
+        "未公布时明确说明，无需回答是否保证流利"
+      ]
+    },
+    {
+      "id": "F20",
+      "name": "严格时段有匹配班次时可继续申请",
+      "turns": [
+        "我想现在报名 HSK 2 线上班，只能每周六、周日 15:00 到 16:00 WIB 上课。可以选哪班？"
+      ],
+      "expected": [
+        "核对完整周课表后给符合明确时段的具体班次",
+        "没有替学员报名或占席"
+      ]
+    },
+    {
+      "id": "F21",
+      "name": "撤回未上架级别后用新的已上架级别填表",
+      "turns": [
+        "我只考虑 HSK 6，如果没有课就想登记需求。请给我选课需求表。",
+        "我改主意了，不要 HSK 6。现在改成 HSK 1 小班，请给我选课需求表。"
+      ],
+      "expected": [
+        "首次表单是其他，备注保留 HSK 6",
+        "改级别后表单只带 HSK 1 和小班，移除 HSK 6"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "class-pair",
+      "case": "01",
+      "turn": 4,
+      "rule": "compare_original_pair",
+      "critical": false
+    },
+    {
+      "id": "duplicate-transfer",
+      "case": "F2",
+      "turn": 2,
+      "rule": "avoid_duplicate_transfer",
+      "critical": true
+    },
+    {
+      "id": "new-learner-schedule",
+      "case": "F3",
+      "turn": 3,
+      "rule": "keep_new_learner_schedule",
+      "critical": false
+    },
+    {
+      "id": "advisor_question",
+      "case": "07",
+      "turn": 2,
+      "rule": "advisor_question",
+      "critical": false
+    },
+    {
+      "id": "online_preference",
+      "case": "F4",
+      "turn": 2,
+      "rule": "online_preference",
+      "critical": false
+    },
+    {
+      "id": "advisor_send_status",
+      "case": "F5",
+      "turn": 2,
+      "rule": "advisor_send_status",
+      "critical": true
+    },
+    {
+      "id": "offline_entry_conditions",
+      "case": "07",
+      "turn": 3,
+      "rule": "offline_entry_conditions",
+      "critical": true
+    },
+    {
+      "id": "seat_hold_only_after_allocation",
+      "case": "27",
+      "turn": 2,
+      "rule": "seat_hold_only_after_allocation",
+      "critical": false
+    },
+    {
+      "id": "strict_local_time_no_match",
+      "case": "30",
+      "turn": 3,
+      "rule": "strict_local_time_no_match",
+      "critical": false
+    },
+    {
+      "id": "browse_without_holding",
+      "case": "F6",
+      "turn": 2,
+      "rule": "browse_without_holding",
+      "critical": false
+    },
+    {
+      "id": "strict_local_time_match",
+      "case": "F7",
+      "turn": 1,
+      "rule": "strict_local_time_match",
+      "critical": false
+    },
+    {
+      "id": "assessment_scope",
+      "case": "02",
+      "turn": 1,
+      "rule": "assessment_scope",
+      "critical": false
+    },
+    {
+      "id": "assessment_next_step",
+      "case": "02",
+      "turn": 4,
+      "rule": "assessment_next_step",
+      "critical": false
+    },
+    {
+      "id": "advisor_weekend_preference",
+      "case": "23",
+      "turn": 2,
+      "rule": "advisor_weekend_preference",
+      "critical": false
+    },
+    {
+      "id": "advisor_send_status",
+      "case": "23",
+      "turn": 3,
+      "rule": "advisor_send_status",
+      "critical": false
+    },
+    {
+      "id": "private_quote_without_group_period",
+      "case": "10",
+      "turn": 3,
+      "rule": "private_quote_without_group_period",
+      "critical": false
+    },
+    {
+      "id": "new_learner_direct_schedule",
+      "case": "F3",
+      "turn": 2,
+      "rule": "new_learner_direct_schedule",
+      "critical": false
+    },
+    {
+      "id": "private_explicit_weekend",
+      "case": "F8",
+      "turn": 1,
+      "rule": "private_explicit_weekend",
+      "critical": false
+    },
+    {
+      "id": "new_learner_unknown_constraints",
+      "case": "F9",
+      "turn": 2,
+      "rule": "new_learner_unknown_constraints",
+      "critical": false
+    },
+    {
+      "id": "chat_feature_current_topic",
+      "case": "F10",
+      "turn": 2,
+      "rule": "chat_feature_current_topic",
+      "critical": false
+    },
+    {
+      "id": "current_learner_chinese-3",
+      "case": "F10",
+      "turn": 3,
+      "rule": "current_learner_chinese",
+      "critical": false
+    },
+    {
+      "id": "current_learner_chinese-4",
+      "case": "F10",
+      "turn": 4,
+      "rule": "current_learner_chinese",
+      "critical": false
+    },
+    {
+      "id": "verified_tuition_difference",
+      "case": "F10",
+      "turn": 5,
+      "rule": "verified_tuition_difference",
+      "critical": false
+    },
+    {
+      "id": "public_small_group_size",
+      "case": "F10",
+      "turn": 6,
+      "rule": "public_small_group_size",
+      "critical": false
+    },
+    {
+      "id": "public_standard_group_size",
+      "case": "F10",
+      "turn": 7,
+      "rule": "public_standard_group_size",
+      "critical": false
+    },
+    {
+      "id": "public_pair_size",
+      "case": "F11",
+      "turn": 2,
+      "rule": "public_pair_size",
+      "critical": false
+    }
+  ]
+}

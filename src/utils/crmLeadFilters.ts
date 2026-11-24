@@ -1,7 +1,8 @@
 import {matchesLeadMetric,metricSelections} from './crmLeadAnalytics';
-import {hasConfirmedEnrollment} from './crmEnrollment';
-import {salesProgressStages,isClosedSalesStage,isSalesProgressStage} from './crmSalesProgress';
-import {projectInteractionTimeline} from './crmInteractionTimeline';
+import {enrollmentNeedsNoSalesClaim,hasConfirmedEnrollment} from './crmEnrollment';
+import {salesProgressStages,isSalesProgressStage} from './crmSalesProgress';
+import {humanCommunicationState,projectInteractionTimeline} from './crmInteractionTimeline';
+import {humanCommunicationLabels} from './crmInteractionLabels';
 import {contactOverview} from './crmContactOverview';
 import { worklistIntents } from "./crmBuyingEvidence.ts";
 import {needsHandling,contactPaused,needsTaskPlanning,contactStatistics} from "./crmContact.ts";
@@ -24,11 +25,19 @@ export const filterDimensions = {
     ],
   },
   stage: {
-    en: "Sales stage",
-    zh: "销售阶段",
+    en: "Historical sales stage",
+    zh: "历史销售阶段",
     options: [
       ...salesProgressStages.map(([value,zh,en])=>[value,en,zh] as const),
       ["__unknown", "Not recorded", "未填写"],
+    ],
+  },
+  communication: {
+    en:"Human conversation",
+    zh:"人工沟通",
+    options:[
+      ["established",humanCommunicationLabels.established[1],humanCommunicationLabels.established[0]],
+      ["unrecorded",humanCommunicationLabels.unrecorded[1],humanCommunicationLabels.unrecorded[0]],
     ],
   },
   connect: {
@@ -97,6 +106,7 @@ export interface LeadFilters {
   sort: string;
   tier: string[];
   stage: string[];
+  communication: string[];
   connect: string[];
   situation: string[];
   mode: string[];
@@ -112,6 +122,7 @@ export function defaultLeadFilters(scope: string): LeadFilters {
     sort: "priority",
     tier: [],
     stage: [],
+    communication: [],
     connect: [],
     situation: [],
     mode: [],
@@ -201,7 +212,7 @@ export function leadMatches(
 ) {
   if(f.overview?.some(key=>!matchesLeadMetric(lead,key,now)))return false;
   if (f.ownership === "mine" && lead.owner !== employeeId) return false;
-  if (f.ownership === "unassigned" && lead.owner) return false;
+  if (f.ownership === "unassigned" && (lead.owner || enrollmentNeedsNoSalesClaim(lead))) return false;
   if (f.ownership === "person" && lead.owner !== f.owner) return false;
   if (
     f.search &&
@@ -243,6 +254,7 @@ export function leadMatches(
   const values: Record<string, any> = {
     tier: lead.tier === "Unqualified" ? null : lead.tier,
     stage: isSalesProgressStage(lead.currentStage)?lead.currentStage:null,
+    communication: humanCommunicationState(lead),
     connect: (lead.interactionTimeline||projectInteractionTimeline(lead)).sales?.result,
     mode: lead.mode,
     signal: worklistIntents(lead).map(row=>row.evidence.value),
@@ -260,16 +272,15 @@ export function leadMatches(
       return false;
   }
   if (f.situation.length) {
-    const closed = isClosedSalesStage(lead.currentStage);
     const overview=contactOverview(lead,config,now);
     const situations = {
       first_contact: !overview.hasSales,
       stale:
         overview.stale,
       retry:
-        !closed &&
+        lead.followUpDisposition?.kind!=='none' &&
         overview.unanswered &&
-        !contactPaused(lead),
+        !contactPaused(lead,now),
       historical,
     };
     if (!f.situation.some((x) => situations[x as keyof typeof situations]))
@@ -290,19 +301,26 @@ export function filterAndSummarize(
     leadMatches(l, f, employeeId, timezone, now, config),
   );
   const time = (v: any) => (Number.isFinite(Date.parse(v)) ? Date.parse(v) : 0);
+  const taskDue=(task:any)=>Math.min(time(task.dueAt)||Infinity,time(task.requestDueAt)||Infinity);
+  const priorityDue=(lead:any)=>Math.min(...activeTasks(lead).map(taskDue),
+    ...(lead.attention?.customerRequests||[]).map((request:any)=>time(request.dueAt)||Infinity));
   rows.sort((a, b) => {
     const reviewRank=Number(Boolean(b.identityReview?.pending))-Number(Boolean(a.identityReview?.pending));
     if(reviewRank)return reviewRank;
     if(f.sort==="priority"){
-      const rank=(l:any)=>{const tasks=activeTasks(l).filter((t:any)=>t.status!=="migration_hold"&&time(t.dueAt)>0);
-        if(tasks.some((t:any)=>Math.min(time(t.dueAt)||Infinity,time(t.requestDueAt)||Infinity)<now)||(l.attention?.customerRequests||[]).some((r:any)=>time(r.dueAt)>0&&time(r.dueAt)<now))return 0;
-        if(tasks.some((t:any)=>calendarDay(Math.min(time(t.dueAt)||Infinity,time(t.requestDueAt)||Infinity),timezone)===calendarDay(now,timezone))||(l.attention?.customerRequests||[]).some((r:any)=>time(r.dueAt)>0&&calendarDay(time(r.dueAt),timezone)===calendarDay(now,timezone)))return 1;
-        if((l.attention?.customerRequests||[]).length||tasks.some((t:any)=>["handoff","booking","enrollment"].includes(t.kind)))return 2;
+      const rank=(lead:any)=>{
+        const tasks=activeTasks(lead);
+        const due=priorityDue(lead);
+        if(due<now)return 0;
+        if(Number.isFinite(due)&&calendarDay(due,timezone)===calendarDay(now,timezone))return 1;
+        if((lead.attention?.customerRequests||[]).length||tasks.some((task:any)=>["handoff","booking","enrollment"].includes(task.kind)))return 2;
         if(tasks.length)return 3;
-        return isClosedSalesStage(l.currentStage)||l.followUpDisposition?.kind==="none"?5:4;};
+        if(lead.enrollmentOpportunitySummary?.count>0)return 4;
+        return lead.followUpDisposition?.kind==="none"?6:5;
+      };
       const delta=rank(a)-rank(b);if(delta)return delta;
-      const due=(l:any)=>Math.min(...activeTasks(l).filter((t:any)=>t.status!=='migration_hold'&&time(t.dueAt)>0).map((t:any)=>Math.min(time(t.dueAt)||Infinity,time(t.requestDueAt)||Infinity)),...(l.attention?.customerRequests||[]).map((r:any)=>time(r.dueAt)||Infinity));
-      if(due(a)!==due(b))return due(a)<due(b)?-1:1;
+      const ad=priorityDue(a),bd=priorityDue(b);
+      if(ad!==bd)return ad<bd?-1:1;
       return time(b.attention?.latest?.at)-time(a.attention?.latest?.at)||String(a.id).localeCompare(String(b.id));
     }
     if (f.sort === "deadline") {
@@ -350,7 +368,7 @@ export function restoreLeadFilters(saved:any,scope:string):LeadFilters {
  if(typeof next.overview==='string')next.overview=[next.overview];
  delete next.unread;
  if(!taskOptions.some(o=>o[0]===next.task))next.task='all';
- for(const k of dimensions)next[k]=Array.isArray(saved[k])?saved[k].filter((v:unknown)=>filterDimensions[k].options.some(o=>o[0]===v)):[];
+ for(const k of dimensions)next[k]=k!=='stage'&&Array.isArray(saved[k])?saved[k].filter((v:unknown)=>filterDimensions[k].options.some(o=>o[0]===v)):[];
  try{return parseLeadFilters(Object.fromEntries([...new URLSearchParams(filterQuery(next)).keys()].map(k=>[k,(k==='overview'||dimensions.includes(k as Dimension))?new URLSearchParams(filterQuery(next)).getAll(k):new URLSearchParams(filterQuery(next)).get(k)])))}catch{return defaults}
 }
 

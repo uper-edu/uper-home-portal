@@ -42,12 +42,14 @@ test('new account initialization creates the existing nine-account roster with h
   await f.run();
   assert.equal(f.state.users.size,9);
   assert.equal(f.state.roles.size,6);
-  assert.ok(f.state.users.get('Robert').roles.includes('access_admin'));
+  assert.deepEqual([...f.state.users.values()].filter(user=>user.roles.includes('access_admin')).map(user=>user.id).sort(),['Ethan','Monite','Robert']);
+  for (const name of ['Ethan','Monite']) assert.deepEqual(f.state.users.get(name).roles,['crm_leader','cms_admin','access_admin']);
   assert.ok(f.state.users.get('Suki').roles.includes('finance'));
   for (const user of f.state.users.values()) assert.match(user.password_hash,/^[a-f0-9]{32}:[a-f0-9]{128}$/);
   // Saved permissions and credentials must survive a restart, including deliberate revocations.
   f.state.users.get('Suki').roles = ['sales'];
   f.state.users.get('Robert').roles = ['sales'];
+  for (const name of ['Ethan','Monite']) f.state.users.get(name).roles = ['crm_leader','cms_admin'];
   f.state.users.get('Robert').password_hash = 'saved-password-hash';
   f.state.users.get('Fadhil').active = false;
   f.state.roles.get('sales').grants = {'crm.read':'own'};

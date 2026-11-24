@@ -1,10 +1,54 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { enrollmentWeekOf, latestDueEnrollmentWeek } from '../server/portal/enrollmentWeekly';
-import { enrollmentOrderEmailPath, enrollmentEmailSubjects, renderEnrollmentEmail, type EnrollmentEmailKind } from '../server/portal/enrollmentEmail';
+import { enrollmentEmailWhatsAppDestination,enrollmentEmailWhatsAppPath,enrollmentOrderEmailPath,enrollmentEmailSubjects,renderEnrollmentEmail,type EnrollmentEmailKind } from '../server/portal/enrollmentEmail';
 import { enrollmentCard } from '../server/portal/enrollmentCards';
 import { proofTransferDetails,summarizeEnrollmentProofs } from '../server/portal/enrollmentProofTotals';
 import { workingDayDeadline } from '../src/utils/workCalendar';
+
+test('enrollment notices enqueue with one consistent mail configuration read',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {orderNotice,sendAssistanceMail,proofNotices}=await import('../server/portal/enrollmentNotices');
+  const {smtpRecipientPolicy}=await import('../server/portal/enrollmentMailRecipientPolicy');
+  const learner='notice-learner@example.invalid';
+  const quote={level:'HSK 1',format:'standard',period:'weekend',firstLesson:'2027-01-09T09:00',schedule:'Sat 09:00'};
+  const expiresAt='2027-01-02T09:00:00Z';
+  let mode:'smtp'|'disabled'='smtp',revision=1,reads=0;
+  const receipts:unknown[][]=[];
+  const client={query:async(sql:string,args:unknown[] = [])=>{
+    if(sql.includes('enrollment_mail_configuration')){
+      reads++;
+      return {rows:[{revision,config:{accounts:[],delivery:{mode,generation:'fixture-generation'}}}]};
+    }
+    if(sql.includes('FROM enrollment_orders'))return {rows:[{email:learner,data:{name:'Fixture'},class_data:quote,deadline:expiresAt}]};
+    if(sql.includes('INSERT INTO enrollment_notification_receipts')){receipts.push(args);return {rows:[]};}
+    if(sql.includes('FROM enrollment_notification_receipts'))return {rows:[{state:receipts.at(-1)?.[5]}]};
+    assert.fail('Unexpected query: '+sql);
+  }};
+  await orderNotice(client,'seat_reserved','fixture-order');
+  assert.equal(reads,1);
+  assert.equal(receipts[0][5],'queued');
+  assert.deepEqual((receipts[0][4] as {delivery:unknown}).delivery,
+    {mode:'smtp',generation:'fixture-generation',recipientPolicy:smtpRecipientPolicy});
+
+  assert.deepEqual(await sendAssistanceMail(client,{
+    id:'fixture-assistance',email:learner,data:{name:'Fixture',lang:'en',quote},expiresAt,
+  },'fixture-attempt'),{state:'queued'});
+  assert.equal(reads,2);
+  assert.deepEqual((receipts[1][4] as {delivery:unknown}).delivery,(receipts[0][4] as {delivery:unknown}).delivery);
+
+  mode='disabled';
+  await proofNotices(client,'fixture-order','fixture-class','fixture-proof','HSK 1');
+  assert.equal(reads,3);
+  assert.deepEqual(receipts.slice(-2).map(row=>[row[1],row[5]]),[['email','simulated'],['lark','simulated']]);
+  assert.equal(Object.hasOwn(receipts[2][4] as object,'delivery'),false);
+
+  mode='smtp';
+  revision=0;
+  await orderNotice(client,'seat_reserved','unconfigured-fixture-order');
+  assert.equal(reads,4);
+  assert.equal(receipts.at(-1)?.[5],'simulated');
+});
 
 test('refund deadline counts configured working dates across a weekend',()=>{
   const calendar={timezone:'Asia/Jakarta',workDays:[1,2,3,4,5],endTime:'17:00'};
@@ -55,11 +99,12 @@ test('each email template renders localized HTML and plain text and escapes save
       assert.match(email.html,new RegExp('<html lang="'+language+'">'));
       assert.match(email.html,/&lt;Santi&gt; &amp; Co/);
       assert.match(email.text,/<Santi> & Co/);
-      const contactMatch=email.text.match(/https:\/\/wa\.me\/6281116612062\?text=\S+/);
-      assert.ok(contactMatch);
-      const supportMessage=new URL(contactMatch[0]).searchParams.get('text')!;
+      const contactLink=email.text.split('\n\n').at(-1)!.split(' ').at(-1)!;
+      const contact=new URL(contactLink);
+      assert.equal(contact.pathname,enrollmentEmailWhatsAppPath);
+      const supportMessage=contact.searchParams.get('text')!;
       assert.ok(supportMessage.includes('UPER'));
-      assert.ok(email.html.includes(contactMatch[0]));
+      assert.ok(email.html.includes(contactLink));
       assert.doesNotMatch(supportMessage,/123456|Santi/);
       const otp=kind==='otp_apply'||kind==='otp_mine';
       const index=['zh','en','id'].indexOf(language);
@@ -80,6 +125,33 @@ test('each email template renders localized HTML and plain text and escapes save
       assert.ok(email.html.includes(['标准班','Standard class','Kelas standar'][index])===!otp);
     }
   }
+});
+
+test('enrollment email footer follows the current public origin and puts Chat third in HTML and text',()=>{
+  for(const [environment,origin] of [
+    ['dev','http://localhost:3000'],
+    ['test','https://home.prototype.uperedu.com'],
+    ['prod','https://uperedu.com'],
+  ]){
+    for(const language of ['zh','en','id']){
+      const env={PORTAL_ENV:environment,PORTAL_PUBLIC_ORIGIN:origin};
+      const email=renderEnrollmentEmail('seat_reserved',{language,url:'/enrollment/payment?order=qa'},env);
+      const hrefs=[...email.html.matchAll(/href="([^"]+)"/g)].map(match=>new URL(match[1]));
+      assert.ok(hrefs.every(link=>link.origin===origin));
+      assert.deepEqual(hrefs.map(link=>link.pathname),[
+        '/enrollment/payment','/','/enrollment','/chat',enrollmentEmailWhatsAppPath,
+      ]);
+      assert.ok(hrefs.slice(1,4).every(link=>link.searchParams.get('lang')===language));
+      const foot=email.text.split('\n\n').slice(-4).map(line=>new URL(line.split(' ').at(-1)!));
+      assert.deepEqual(foot.map(String),hrefs.slice(1).map(String));
+      const target=new URL(enrollmentEmailWhatsAppDestination(foot[3].searchParams.get('text')));
+      assert.equal(target.origin,'https://wa.me');
+      assert.equal(target.pathname,'/6281116612062');
+      assert.equal(target.searchParams.get('text'),foot[3].searchParams.get('text'));
+    }
+  }
+  const misconfigured=renderEnrollmentEmail('otp_apply',{language:'zh',code:'123456'},{PORTAL_ENV:'test'});
+  assert.doesNotMatch(misconfigured.html,/href=|localhost|uperedu\.com/);
 });
 
 test('payment confirmation leaves class arrangements to staff and has no separate opening email',()=>{

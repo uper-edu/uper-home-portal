@@ -18,7 +18,6 @@ import { CrmSingleSelect } from "./crm/CrmSingleSelect";
 import { managementRequest } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "./AccessOperationStatus";
 import { accessError } from "../utils/accessLanguage";
-import { AccessRecoveryPreparation } from "./AccessRecoveryPreparation";
 async function read(url: string) {
   const r = await fetch(url, { cache: "no-store" });
   const data = await r.json();
@@ -317,7 +316,7 @@ export function AccessSafetyPanel({
   actor: CrmEmployee;
   lang: CrmLanguage;
   isLight: boolean;
-  view?: 'recovery'|'review';
+  view?: 'review';
   onReview: () => void;
   onReturn: () => void;
   onDraft: (dirty:boolean) => void;
@@ -335,6 +334,10 @@ export function AccessSafetyPanel({
   const titleRef=useRef<HTMLHeadingElement>(null);
   useEffect(()=>{if(view)titleRef.current?.focus();},[view]);
   const showReview=full&&view==='review'&&state?.required;
+  useEffect(()=> {
+    onBusy(busy);
+    return ()=>onBusy(false);
+  },[busy,onBusy]);
   useEffect(()=>{
     if(!showReview)return;
     onDraft(Boolean(reason||confirmed));
@@ -400,9 +403,7 @@ export function AccessSafetyPanel({
         <CrmPageAction icon={ShieldAlert} label={t('Open security review','Buka tinjauan keamanan','进入安全复核')} onClick={onReview}/>
       </section>}
       {view&&<AdminRecordHeader back={{label:t('Back to users & access','Kembali ke pengguna & akses','返回用户与权限'),onClick:onReturn}}
-        title={<AdminRecordTitle titleRef={titleRef} title={view==='recovery'
-          ?t('Administrator recovery','Pemulihan administrator','管理员恢复')
-          :t('Restore security review','Tinjauan keamanan pemulihan','恢复后安全复核')}/>}/>}
+        title={<AdminRecordTitle titleRef={titleRef} title={t('Restore security review','Tinjauan keamanan pemulihan','恢复后安全复核')}/>}/>}
       {view&&!full&&<AdminFormFeedback state="error" lang={lang}>
         {t('You do not have permission to use administrator recovery.','Anda tidak memiliki izin pemulihan administrator.','无管理员恢复访问权限。')}
       </AdminFormFeedback>}
@@ -567,16 +568,6 @@ export function AccessSafetyPanel({
             )}
           </button></AdminFormActions>
         </section>
-      )}
-      {full && state && !released && (view==='recovery'||showReview) && (
-        <AccessRecoveryPreparation
-          actor={actor.id}
-          lang={lang}
-          isLight={isLight}
-          queryOnly={view==='review'||!!state.required}
-          onDraft={view==='recovery'?onDraft:undefined}
-          onBusy={view==='recovery'?onBusy:undefined}
-        />
       )}
       {actor.permissions.includes("access.read") && (
         <AccessHandoverPanel

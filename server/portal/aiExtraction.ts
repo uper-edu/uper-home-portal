@@ -17,11 +17,12 @@ import {supportsCourseBudget} from '../../src/utils/crmBudget.ts';
 import type {ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
 import {modelParameters} from './modelParameters.ts';
 import {log} from '../logger.ts';
+import {loadPurchaseIntentContext,PURCHASE_INTENT_VERSION,purchaseIntentInstruction,validatePurchaseIntent} from './purchaseIntentSuggestions.ts';
 /** Called in the original source transaction. Technical processing only; never a sales task or notification. */
 export async function queueExtraction(c:any,leadId:string,type:string,sourceId:string,text:string,occurredAt:string|null,actor:string,explicitFields:string[]=[],sourceRevision='1',relationship:any={}){
  const hash=createHash('sha256').update(text).digest('hex');
  const current=(await c.query('SELECT profile FROM portal_leads WHERE id=:p1',[leadId])).rows[0]?.profile;if(!current)return;
- const input={text,occurredAt,actor,explicitFields,profilePolicyVersion:AI_PROFILE_POLICY,insightsVersion:CUSTOMER_INSIGHTS_VERSION,recordedAt:new Date().toISOString(),sourceRoot:relationship.sourceRoot||{type,id:sourceId,occurredAt},...(relationship.amendment?{amendment:relationship.amendment}:{}),baseVersions:Object.fromEntries(Object.keys(profileFields).map(k=>[k,current.profileFieldMeta?.[k]?.revision||0])),context:Object.fromEntries(Object.keys(profileFields).filter(k=>current[k]!=null).map(k=>[k,current[k]]))};
+ const input={text,occurredAt,actor,explicitFields,...(type==='customer_message'?{purchaseIntentVersion:PURCHASE_INTENT_VERSION}:{}),profilePolicyVersion:AI_PROFILE_POLICY,insightsVersion:CUSTOMER_INSIGHTS_VERSION,recordedAt:new Date().toISOString(),sourceRoot:relationship.sourceRoot||{type,id:sourceId,occurredAt},...(relationship.amendment?{amendment:relationship.amendment}:{}),baseVersions:Object.fromEntries(Object.keys(profileFields).map(k=>[k,current.profileFieldMeta?.[k]?.revision||0])),context:Object.fromEntries(Object.keys(profileFields).filter(k=>current[k]!=null).map(k=>[k,current[k]]))};
  await c.query("INSERT INTO crm_ai_extractions(id,lead_id,source_type,source_id,source_revision,input_hash,contract_version,input,status) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,'pending') ON DUPLICATE KEY UPDATE id=id",[randomUUID(),leadId,type,sourceId,sourceRevision,hash,EXTRACTION_VERSION,input]);
 }
 /** A cue requests a second AI review; it never supplies a city value or an adoption decision. */
@@ -33,12 +34,19 @@ export async function extractWithAI(text:string,context:any,request:typeof fetch
  const {runtimeProviders}=await import('./aiServiceConfig.ts');
  const providers=(providersOverride||await runtimeProviders()).map(p=>({...p,name:p.model}));
  for(const p of providers){if(!p.key)continue;try{
-  let actualModel=p.name;
+  let actualModel=p.name,purchaseIntent:ReturnType<typeof validatePurchaseIntent>;
   const ask=async(review=false)=>{
-   const instruction=extractionInstruction+(context?.profilePolicyVersion===AI_PROFILE_POLICY?'\n'+aiProfileInstruction:'')+(supportsCustomerInsights(context?.insightsVersion)?'\n'+customerInsightsInstruction+(context?.insightsVersion===CUSTOMER_INSIGHTS_VERSION?'\n'+classEquipmentInstruction:''):'')+'\n'+stageEventInstruction+'\n'+naturalRequestInstruction+(review?'\nCoverage review: the prior pass omitted city. Inspect SOURCE again ONLY for customer residence/city statements, including staff reporting customer speech. Return the same JSON schema. Preserve the exact quote, subject, negation, uncertainty, past/future and change wording. Do not infer a move, adopt a value or use CONTEXT as evidence. Return city field observations only.':'');
-   const response=await request(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:context,SOURCE:text})}],response_format:{type:'json_object'},...modelParameters(p.name,supportsCustomerInsights(context?.insightsVersion)?4800:2400,0,p.reasoningEffort)}),signal:AbortSignal.timeout(30000)});
+   const {purchaseIntent:dialogue,...sourceContext}=context||{};
+   const assessIntent=!review&&dialogue?.version===PURCHASE_INTENT_VERSION;
+   const instruction=extractionInstruction+(context?.profilePolicyVersion===AI_PROFILE_POLICY?'\n'+aiProfileInstruction:'')+(supportsCustomerInsights(context?.insightsVersion)?'\n'+customerInsightsInstruction+(context?.insightsVersion===CUSTOMER_INSIGHTS_VERSION?'\n'+classEquipmentInstruction:''):'')+'\n'+stageEventInstruction+'\n'+naturalRequestInstruction+(assessIntent?'\n'+purchaseIntentInstruction:'')+(review?'\nCoverage review: the prior pass omitted city. Inspect SOURCE again ONLY for customer residence/city statements, including staff reporting customer speech. Return the same JSON schema. Preserve the exact quote, subject, negation, uncertainty, past/future and change wording. Do not infer a move, adopt a value or use CONTEXT as evidence. Return city field observations only.':'');
+   const response=await request(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:assessIntent?context:sourceContext,SOURCE:text})}],response_format:{type:'json_object'},...modelParameters(p.name,supportsCustomerInsights(context?.insightsVersion)?4800:2400,0,p.reasoningEffort)}),signal:AbortSignal.timeout(30000)});
    if(!response.ok)throw Error('provider');const body=await response.json();actualModel=body.model||p.name;if(body.choices?.[0]?.finish_reason==='length')throw Error('truncated');
-   return validateExtraction(JSON.parse(body.choices?.[0]?.message?.content||''),text);
+   const parsed=JSON.parse(body.choices?.[0]?.message?.content||'');
+   if(!assessIntent||!parsed)return validateExtraction(parsed,text);
+   const {purchaseIntent:proposedIntent,...observations}=parsed;
+   const validated=validateExtraction(observations,text);
+   purchaseIntent=validatePurchaseIntent(proposedIntent,dialogue);
+   return validated;
   };
   const observations=await ask();
   let coverageReview:any=null;
@@ -47,7 +55,7 @@ export async function extractWithAI(text:string,context:any,request:typeof fetch
    if(!recovered.length)throw Error('city_coverage_incomplete');
    observations.push(...recovered);coverageReview={field:'city',reviewed:true,recovered:recovered.length};
   }
-  return {observations,model:actualModel,coverageReview};
+  return {observations,model:actualModel,coverageReview,purchaseIntent};
  }catch(e){/* Invalid output, missing coverage and provider errors retry through the configured provider chain. No source or credentials in logs. */
   log.warn('ai.extraction_provider_failed',{model:p.name,error:e as Error});}}
  throw Error('结构化提取暂不可用，原文已保存');
@@ -67,7 +75,9 @@ export async function processExtractionBatch(provider=extractWithAI,onError:(e:u
    insightContext={insightsVersion:job.input.insightsVersion,dimensionCatalog:extractionDimensionCatalog(catalog),customerInsights:Object.fromEntries(Object.entries(profile.aiInsights||{}).map(([key,v]:any)=>[key,{value:v.value,status:v.status,basis:v.basis}]))};
    await pool.query('UPDATE crm_ai_extractions SET input=:p2 WHERE id=:p1',[job.id,job.input]);
   }
-  const output=await provider(job.input.text,{profile:job.input.context,linkedRecord:job.input.amendment||null,profilePolicyVersion:job.input.profilePolicyVersion,...insightContext});
+  const purchaseIntent=job.source_type==='customer_message'&&job.input.purchaseIntentVersion===PURCHASE_INTENT_VERSION?
+    await loadPurchaseIntentContext(pool,job.lead_id,job.source_id):undefined;
+  const output=await provider(job.input.text,{purchaseIntent,profile:job.input.context,linkedRecord:job.input.amendment||null,profilePolicyVersion:job.input.profilePolicyVersion,...insightContext});
   output.observations=validateExtraction({observations:output.observations.map(({start,end,decision,reason,...v}:any)=>v)},job.input.text);
  await tx((c:any)=>applyExtractionOutput(c,job,output));
  }catch(e){onError(e);await pool.query("UPDATE crm_ai_extractions SET status=IF(attempts>=3,'failed','retry'),error_code='extraction_unavailable',lease_until=UTC_TIMESTAMP(6)+INTERVAL 30 SECOND WHERE id=:p1",[job.id]);}}
@@ -153,7 +163,9 @@ export async function applyExtractionOutput(c:any,job:any,output:any){
   }
  }
  // Only the new contract can emit AI-derived requests; never replay old queued sources or corrections.
- const actions=naturalRequestActions(observations);
+ // The recommendation is an internal review cue. Explicit handoff and trial requests keep their own workflows.
+ const actions=naturalRequestActions(observations).filter(action=>
+  job.input.purchaseIntentVersion!==PURCHASE_INTENT_VERSION||action!=='enrollment');
  if(job.contract_version===EXTRACTION_VERSION&&!job.input.amendment&&actions.length){
   const {ensureFollowup}=await import('./followup.ts');
   if(job.source_type==='customer_message'){
@@ -169,5 +181,5 @@ export async function applyExtractionOutput(c:any,job:any,output:any){
  const result={eventId,observations,assessmentReferences,sourceRoot:extractionRoot(job),amendment:job.input.amendment||null,sourceType:job.source_type,sourceId:job.source_id,contractVersion:job.contract_version,model:output.model,occurredAt:job.input.occurredAt,originalText:job.input.text,interpretationVersion:'crm-evidence-v2',...(output.coverageReview?{coverageReview:output.coverageReview}:{}),summary:'从原文提取的结构化信息，不代表已执行行动'};
  await fact(c,job.lead_id,'information.extracted','ai',result,eventId);
  await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[job.lead_id,next]);
- await c.query("UPDATE crm_ai_extractions SET status='completed',output=:p2,model=:p3,completed_at=UTC_TIMESTAMP(6),lease_until=NULL,error_code=NULL WHERE id=:p1",[job.id,result,output.model]);return result;
+ await c.query("UPDATE crm_ai_extractions SET status='completed',output=:p2,model=:p3,completed_at=UTC_TIMESTAMP(6),lease_until=NULL,error_code=NULL WHERE id=:p1",[job.id,{...result,...(job.source_type==='customer_message'&&job.input.purchaseIntentVersion===PURCHASE_INTENT_VERSION&&output.purchaseIntent?{purchaseIntent:output.purchaseIntent}:{})},output.model]);return result;
 }

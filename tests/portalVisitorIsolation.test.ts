@@ -15,6 +15,13 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
   t.after(async()=>{await new Promise<void>(r=>server.close(()=>r()));await pool.end();});
   async function request(path:string,cookie='',body?:any,scope?:string) { const r=await fetch(base+path,{method:body?'POST':'GET',headers:{cookie,'Content-Type':'application/json',...(scope?{'X-Visitor-Scope':scope}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]||cookie}; }
   const A=await request('/api/portal/session'), B=await request('/api/portal/session');assert.notEqual(A.data.cacheScope,B.data.cacheScope);
+  const widget=await request('/api/portal/conversations',A.cookie,{source:'homepage_widget'},A.data.cacheScope);
+  assert.equal(widget.status,200);
+  const referencePath='/api/portal/conversations/'+widget.data.conversationId+'?view=reference';
+  const ownedReference=await request(referencePath,A.cookie,undefined,A.data.cacheScope);
+  assert.equal(ownedReference.status,200);
+  assert.deepEqual(ownedReference.data,{conversation:{id:widget.data.conversationId,source:'homepage_widget'}});
+  assert.equal((await request(referencePath,B.cookie,undefined,B.data.cacheScope)).status,404);
   const attempt=newHskAttempt('express',randomUUID());attempt.completedAt=new Date().toISOString();
   const saved=await request('/api/portal/assessments',A.cookie,{attempt,lang:'en'},A.data.cacheScope);assert.equal(saved.status,200);
   assert.equal((await request('/api/portal/assessments',B.cookie,undefined,B.data.cacheScope)).data.results.length,0);

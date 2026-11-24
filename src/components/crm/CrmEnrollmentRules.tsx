@@ -1,3 +1,4 @@
+import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {useEffect,useId,useRef,useState} from 'react';
 import {Save} from 'lucide-react';
 import {CrmPageAction} from './CrmPageAction';
@@ -10,7 +11,7 @@ import type {CrmLanguage} from '../../utils/crmLanguage';
 import {enrollmentBusinessDayLimit,enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRuleDefaults,enrollmentRuleFields,
   type EnrollmentRuleField,type EnrollmentRules} from '../../utils/enrollmentRules';
 
-type Feedback='saved'|'load-error'|'load-denied'|'save-error'|'conflict';
+type Feedback='load-error'|'load-denied'|'save-error'|'conflict';
 const endpoint='/api/crm/enrollment/rules';
 const asDraft=(rules:typeof enrollmentRuleDefaults)=>Object.fromEntries(
   enrollmentRuleFields.map(key=>[key,String(rules[key])]),
@@ -69,7 +70,7 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
     setDraft(asDraft(rules));
     setPending(undefined);
     setShowSaved(false);
-    setFeedback('saved');
+    setFeedback(undefined);
   }
   async function save() {
     if(!saved||!dirty||inFlight.current||pending||feedback==='conflict') return;
@@ -112,22 +113,19 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
   }
 
   const controlsDisabled=busy||!!pending;
-  return <AdminForm lang={lang} className="crm-enrollment-rules" data-theme={isLight?'light':'dark'}
+  return <section className="crm-enrollment-rules" data-admin-form="" data-theme={isLight?'light':'dark'}>
+    <AdminForm lang={lang}
     onSubmit={(event:React.FormEvent)=>{event.preventDefault();void save();}}>
-    <header className="admin-edit-header" data-theme={isLight?'light':'dark'}>
-      <div className="admin-edit-title">
-        <h2 ref={heading} tabIndex={-1}>{t('Enrollment rules','Aturan pendaftaran','报名规则')}{saved&&<AdminRequiredNote inline lang={lang}/>}</h2>
-      </div>
-      {saved&&<div className="crm-ops-actions">
+    <AdminTopicHeader isLight={isLight} headingRef={heading}
+      title={<>{t('Enrollment rules','Aturan pendaftaran','报名规则')}{saved&&<AdminRequiredNote inline lang={lang}/>}</>}
+      subtitle={t('Set shared rules for payments, transfers, refunds and email verification. Existing deadlines stay in effect.',
+        'Atur aturan umum untuk pembayaran, pindah kelas, pengembalian dana, dan verifikasi email. Tenggat yang sudah tercatat tetap berlaku.',
+        '统一设置付款、转班、退款及邮箱验证规则。已生成的截止时间沿用原记录。')}
+      actions={saved&&
         <CrmPageAction type="submit" icon={Save} variant="primary" label={t('Save','Simpan','保存')}
           disabled={!dirty||controlsDisabled||feedback==='conflict'}/>
-      </div>}
-    </header>
+      }/>
     <div className="crm-enrollment-rules-body" data-admin-stack>
-      <p className="crm-work-muted">{t(
-        'Applies to all classes. Deadlines already recorded stay in effect.',
-        'Berlaku untuk semua kelas. Tenggat yang sudah tercatat tetap berlaku.',
-        '适用于所有班次。已生成的截止时间按原记录执行。')}</p>
       {!saved&&<AdminListState lang={lang}
         state={feedback==='load-error'?'error':feedback==='load-denied'?'denied':'loading'}
         message={feedback==='load-error'?t('Could not load enrollment rules.','Aturan pendaftaran gagal dimuat.','无法读取报名规则。'):undefined}
@@ -178,14 +176,14 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
           <small id={fieldHelp+'-'+key}>{t(`Default ${enrollmentRuleDefaults[key]} · range 1–${enrollmentEmailRuleLimits[key]}`,`Standar ${enrollmentRuleDefaults[key]} · rentang 1–${enrollmentEmailRuleLimits[key]}`,`默认 ${enrollmentRuleDefaults[key]}，可设为 1–${enrollmentEmailRuleLimits[key]}`)}</small>
         </AdminField>)}
       </AdminFormSection>}
-      {saved&&<CrmEnrollmentBank lang={lang} isLight={isLight} active={active} onDraftChange={setBankDirty}/>}
       {feedback==='conflict'&&<CrmSaveFeedback state="error" lang={lang}>{t('Another employee updated these rules. Review the saved time limits before applying your draft.','Aturan diperbarui oleh staf lain. Periksa tenggat tersimpan sebelum menyimpan draf.','其他员工已更新报名规则。请核对已保存的期限，再决定是否保存当前草稿。')} <button type="button" className="crm-work-link" onClick={()=>void load(true)}>{t('Review saved rules','Periksa aturan tersimpan','核对已保存规则')}</button></CrmSaveFeedback>}
       {saved&&dirty&&!busy&&!pending&&feedback!== 'conflict'&&<CrmSaveFeedback state={feedback==='save-error'?'error':'dirty'} lang={lang}/>}
       {busy&&<CrmSaveFeedback state="saving" lang={lang}/>}
       {pending&&!busy&&<CrmSaveFeedback state="unknown" lang={lang}>{checkState==='missing'?t('No result yet. Your draft is retained.','Hasil belum ditemukan. Draf disimpan.','暂未查到这次操作的结果，草稿已保留。'):
         checkState==='error'?t('Unable to check the result. Your draft is retained.','Hasil belum dapat diperiksa. Draf disimpan.','暂时无法查询结果，草稿已保留。'):
         t('Save outcome unknown.','Hasil penyimpanan belum diketahui.','暂未确认是否保存成功。')} <button type="button" className="crm-work-link" onClick={()=>void checkResult()}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></CrmSaveFeedback>}
-      {feedback==='saved'&&!dirty&&<CrmSaveFeedback state="saved" lang={lang}/>}
     </div>
-  </AdminForm>;
+    </AdminForm>
+    {saved&&<CrmEnrollmentBank lang={lang} isLight={isLight} active={active} onDraftChange={setBankDirty}/>}
+  </section>;
 }

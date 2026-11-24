@@ -1,3 +1,5 @@
+import {AdminSavedReadError} from '../AdminFormLayout';
+import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {Plus} from 'lucide-react';
 import {CrmPageAction} from './CrmPageAction';
 import {useEffect,useRef,useState} from 'react';
@@ -32,7 +34,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  const [catalog,setCatalog]=useState<Catalog>(),[read,setRead]=useState<'loading'|'ready'|'denied'|'error'>('loading');
  const {filters,change,clear}=useEnrollmentSettingsFilters('templates',{search:'',level:'',quote:'',format:'',teacher:'',sort:'course'});
  const [draft,setDraft]=useState<TemplateDraft>(),[manualName,setManualName]=useState(false),[dirty,setDirty]=useState(false);
- const [discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[saved,setSaved]=useState(false),[error,setError]=useState('');
+ const [discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[awaitingSavedRead,setAwaitingSavedRead]=useState(false),[error,setError]=useState('');
  const [pending,setPending]=useState<string>();
  const [deleting,setDeleting]=useState<{item:EnrollmentTemplate;requestId:string}>();
  const [deleteUnknown,setDeleteUnknown]=useState(false);
@@ -55,7 +57,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      if([401,403].includes(response.status)){setCatalog(undefined);setRead('denied');return;}
      if(!response.ok)throw Error();
      const value=await response.json();
-     if(!controller.signal.aborted){setCatalog(value);setRead('ready');}
+     if(!controller.signal.aborted){setCatalog(value);setRead('ready');setAwaitingSavedRead(false);}
    }catch{if(!controller.signal.aborted)setRead('error');}
  };
  useEffect(()=>{void load();return ()=>request.current?.abort();},[]);
@@ -107,7 +109,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
    if(!item&&!newCourse)return;
    const seed:TemplateDraft=item??{id:crypto.randomUUID(),revision:0,name:'',courseId,format:'',teacherType:'',
      minimumPaid:0,capacity:0,standardUnitPrice:null,saleUnitPrice:null};
-   setDraft({...seed,name:item?.name??auto(seed)});setManualName(!!item&&item.name!==auto(item));setError('');setSaved(false);setDirty(false);
+   setDraft({...seed,name:item?.name??auto(seed)});setManualName(!!item&&item.name!==auto(item));setError('');setDirty(false);
  };
  useEffect(()=>{
    if(!createFromCourse){openedFromCourse.current=undefined;return;}
@@ -137,9 +139,10 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
    else setDraft(undefined);
  };
  const complete=async()=>{
+   setDraft(undefined);setPending(undefined);setDirty(false);onDraftChange?.(false);
    if(quoteEdit){quoteEdit.onReturn();return;}
+   setAwaitingSavedRead(true);
    await load();
-   setDraft(undefined);setPending(undefined);setDirty(false);setSaved(true);onDraftChange?.(false);
  };
  const save=async(e:React.FormEvent)=>{
    e.preventDefault();
@@ -220,8 +223,10 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  const ready=!!catalog&&read!=='denied';
  const titleActions=<AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={read==='loading'} onClick={()=>void load()}/>;
  return <div className="crm-course-catalog">
-     {!quoteEdit&&<><header className="admin-edit-header"><div className="admin-edit-title"><h2>{title}</h2></div><div className="crm-ops-actions">{titleActions}
-       <CrmPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></div></header>
+     {!quoteEdit&&<><AdminTopicHeader title={title} isLight={isLight}
+       subtitle={t('Set class size, teacher type and tuition for each course’s class templates.','Atur ukuran kelas, jenis pengajar, dan biaya pada templat setiap kursus.','按课程维护建班模板，设置人数、教师类型和报价。')}
+       actions={<>{titleActions}
+       <CrmPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></>}/>
      {ready&&filterControls}
      {ready&&<EnrollmentSettingsListSummary lang={lang} count={visible.length} total={catalog.templates.length}
        filtered={!!(filters.search||filters.level||filters.format||filters.teacher||filters.quote)} onClear={clear}>
@@ -259,15 +264,15 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
                {t('Create class','Buat kelas','创建班次')}
              </AdminRowAction>}
              {!referencedTemplates.has(item.id)&&<AdminRowAction disabled={read!=='ready'} onClick={()=>{
-               setDeleteError('');setDeleteUnknown(false);setDeleted(false);setSaved(false);
+               setDeleteError('');setDeleteUnknown(false);setDeleted(false);
                setDeleting({item,requestId:crypto.randomUUID()});
              }}>{t('Delete','Hapus','删除')}</AdminRowAction>}
            </div></td>
          </tr>;
        })}
      </AdminListTable>}
-   {(read!=='ready'||!visible.length)&&<AdminListState lang={lang} state={read==='ready'?'empty':read} onRetry={()=>void load()}/>}
-   {saved&&!draft&&<CrmSaveFeedback lang={lang} state="saved"/>}
+   {(read!=='ready'||!visible.length)&&!(awaitingSavedRead&&read==='error')&&<AdminListState lang={lang} state={read==='ready'?'empty':read} onRetry={()=>void load()}/>}
+   {awaitingSavedRead&&read==='error'&&<AdminSavedReadError lang={lang} onRetry={()=>void load()}/>}
    {deleted&&<CrmSaveFeedback lang={lang} state="saved">{t('Template deleted.','Templat dihapus.','模板已删除。')}</CrmSaveFeedback>}
    {deleting&&<AdminConfirmation light={isLight} danger busy={busy}
      title={t('Delete class template?','Hapus templat kelas?','删除班型模板？')}

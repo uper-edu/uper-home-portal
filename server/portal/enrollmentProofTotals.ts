@@ -4,8 +4,12 @@ type Proof={
   verified:number|string;matched:number|string;
 };
 
+export function isEnrollmentProofAmount(amount:unknown):amount is number {
+  return typeof amount==='number'&&Number.isSafeInteger(amount)&&amount>=1&&amount<=1_000_000_000;
+}
+
 export function proofTransferDetails(amount:unknown,reference:unknown) {
-  if(amount!==undefined&&(typeof amount!=='number'||!Number.isSafeInteger(amount)||amount<1||amount>1_000_000_000))throw Error('Invalid declared amount');
+  if(amount!==undefined&&!isEnrollmentProofAmount(amount))throw Error('Invalid declared amount');
   if(reference!==undefined&&typeof reference!=='string')throw Error('Invalid declared reference');
   const bankReference=typeof reference==='string'?reference.trim().toUpperCase():undefined;
   if(bankReference&&bankReference.length>120)throw Error('Invalid declared reference');

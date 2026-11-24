@@ -5,7 +5,7 @@ import { enrollmentPreviewOrigin } from '../../src/utils/enrollmentAssistance.ts
 export { enrollmentPreviewOrigin };
 
 export function portalPublicOrigin(env=process.env){
-  const configured=env.PORTAL_PUBLIC_ORIGIN ?? env.PORTAL_ENROLLMENT_PUBLIC_ORIGIN;
+  const configured=env.PORTAL_PUBLIC_ORIGIN;
   if(!configured)return undefined;
   try {
     const url=new URL(configured);
@@ -47,10 +47,16 @@ type Facts = {language:unknown; salutation?:string; class?:string; firstLesson?:
   targetWeeklySchedule?:EnrollmentWeeklySchedule; targetMinutes?:number;
   targetFormat?:string; targetPeriod?:string; targetSchedule?:string; replyBy?:string; sendBy?:string; orderState?:string};
 const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-const official='https://uperedu.com';
 const supportWhatsApp='https://wa.me/6281116612062';
+export const enrollmentEmailWhatsAppPath='/api/enrollment/support/whatsapp';
 
-export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts) {
+export function enrollmentEmailWhatsAppDestination(text:unknown) {
+  const url=new URL(supportWhatsApp);
+  if(typeof text==='string'&&text.length<=1000&&text.trim())url.searchParams.set('text',text);
+  return url.toString();
+}
+
+export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts,env=process.env) {
   const language=facts.language==='zh'||facts.language==='id'?facts.language:'en';
   const tr=(copy:Copy)=>copy[language==='zh'?0:language==='id'?2:1];
   const amount=(value?:number)=>value===undefined?'':formatCurrency(value,language);
@@ -219,13 +225,15 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts) {
       detail(['报名编号','Enrollment reference','Kode pendaftaran'],facts.orderId),
     ]:[]),
   ].filter(Boolean).join('\n');
-  const contactUrl=supportWhatsApp+'?text='+encodeURIComponent(supportMessage);
-  const foot=[
-    [tr(['官网','Website','Situs web']),official],
-    [tr(['课程报名','Course enrollment','Pendaftaran kelas']),official+'/enrollment?lang='+language],
-    [tr(['WhatsApp 联系我们','Contact us on WhatsApp','Hubungi kami via WhatsApp']),contactUrl],
-  ];
-  const url=!otp&&facts.url?.startsWith('/')&&!facts.url.startsWith('//')?(portalPublicOrigin()??enrollmentPreviewOrigin)+facts.url:undefined;
+  const origin=portalPublicOrigin(env)??(env.PORTAL_ENV==='test'||env.PORTAL_ENV==='prod'?undefined:enrollmentPreviewOrigin);
+  const foot=origin?[
+    [tr(['官网','Website','Situs web']),origin+'/?lang='+language],
+    [tr(['课程报名','Course enrollment','Pendaftaran kelas']),origin+'/enrollment?lang='+language],
+    [tr(['课程咨询','Course advice','Konsultasi kelas']),origin+'/chat?lang='+language],
+    [tr(['WhatsApp 联系我们','Contact us on WhatsApp','Hubungi kami via WhatsApp']),
+      origin+enrollmentEmailWhatsAppPath+'?'+new URLSearchParams({text:supportMessage})],
+  ]:[];
+  const url=origin&&!otp&&facts.url?.startsWith('/')&&!facts.url.startsWith('//')?origin+facts.url:undefined;
   const codeMinutes=facts.codeMinutes??enrollmentRuleDefaults.emailCodeMinutes;
   const paragraphs=[
     ...(otp?[tr([`验证码 ${codeMinutes} 分钟内有效，请勿转发。若非本人操作，可忽略。`,`The code expires in ${codeMinutes} ${codeMinutes===1?'minute':'minutes'}. Keep it private. If you did not request it, ignore this email.`,`Kode berlaku ${codeMinutes} menit. Jangan bagikan kode ini kepada siapa pun. Abaikan email ini jika Anda tidak memintanya.`])]:[]),
@@ -234,6 +242,7 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts) {
   const code=otp?facts.code:undefined;
   const opening=tr(intro[kind]);
   const text=[greeting,opening,code,...paragraphs,url? action+' '+url:'',closing+'\n'+signing,...foot.map(([label,link])=>label+' '+link)].filter(Boolean).join('\n\n');
-  const html=`<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head><body style="margin:0;background:#f2f7f6;color:#17263d;font:16px/1.55 Arial,sans-serif"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:20px 12px"><table role="presentation" width="100%" style="max-width:580px;background:#fff;border:1px solid #dbe7e3;border-radius:16px"><tr><td style="padding:26px"><p style="color:#08776a;font-size:20px;font-weight:bold;margin:0">UPER Education</p><p style="margin:20px 0 14px">${escape(greeting)}</p><p>${escape(opening)}</p>${code?`<p style="font-size:30px;letter-spacing:5px;font-weight:bold">${escape(code)}</p>`:''}${paragraphs.map(p=>`<p>${escape(p)}</p>`).join('')}${url?`<p style="margin:26px 0"><a href="${escape(url)}" style="display:inline-block;padding:11px 18px;background:#08776a;color:#fff;border-radius:8px;text-decoration:none">${escape(action)}</a></p>`:''}<p>${escape(closing)}<br>${escape(signing)}</p><p style="border-top:1px solid #dbe7e3;padding-top:12px;font-size:13px">${foot.map(([label,link])=>`<a style="color:#08776a" href="${escape(link)}">${escape(label)}</a>`).join(' &nbsp;·&nbsp; ')}</p></td></tr></table></td></tr></table></body></html>`;
+  const footer=foot.length?`<p style="border-top:1px solid #dbe7e3;padding-top:12px;font-size:13px">${foot.map(([label,link])=>`<a style="color:#08776a" href="${escape(link)}">${escape(label)}</a>`).join(' &nbsp;·&nbsp; ')}</p>`:'';
+  const html=`<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head><body style="margin:0;background:#f2f7f6;color:#17263d;font:16px/1.55 Arial,sans-serif"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:20px 12px"><table role="presentation" width="100%" style="max-width:580px;background:#fff;border:1px solid #dbe7e3;border-radius:16px"><tr><td style="padding:26px"><p style="color:#08776a;font-size:20px;font-weight:bold;margin:0">UPER Education</p><p style="margin:20px 0 14px">${escape(greeting)}</p><p>${escape(opening)}</p>${code?`<p style="font-size:30px;letter-spacing:5px;font-weight:bold">${escape(code)}</p>`:''}${paragraphs.map(p=>`<p>${escape(p)}</p>`).join('')}${url?`<p style="margin:26px 0"><a href="${escape(url)}" style="display:inline-block;padding:11px 18px;background:#08776a;color:#fff;border-radius:8px;text-decoration:none">${escape(action)}</a></p>`:''}<p>${escape(closing)}<br>${escape(signing)}</p>${footer}</td></tr></table></td></tr></table></body></html>`;
   return {subject,html,text,language};
 }

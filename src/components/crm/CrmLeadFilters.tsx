@@ -1,4 +1,5 @@
 import {metricSelectionLabel} from '../../utils/crmLeadAnalytics';
+import {humanCommunicationLabel} from '../../utils/crmInteractionLabels';
 import { useState } from "react";
 import { SlidersHorizontal, X, ChevronDown } from "lucide-react";
 import { CrmRecordFilters, CrmRecordSearch } from "./CrmRecordWorkspace";
@@ -54,12 +55,15 @@ export function CrmLeadFilters({
     lang === "zh" ? zh : lang === "id" ? crmId(en) : en;
   const update = (patch: Partial<LeadFilters>) => onChange({ ...f, ...patch });
   const dimLabel = (k: Dimension) =>
+    k === "communication"&&lang==='id' ? 'Komunikasi dengan staf' :
+    k === "stage"&&lang==='id' ? 'Riwayat tahap penjualan' :
     k === "connect"
       ? t("Latest sales contact result", "最近销售联系结果")
       : k === "situation"
         ? t("Contact overview", "联系概况")
         : t(filterDimensions[k].en, filterDimensions[k].zh);
   const optionLabel = (k: Dimension, v: string) => {
+    if(k==='communication'&&(v==='established'||v==='unrecorded'))return humanCommunicationLabel(v,lang);
     const o = filterDimensions[k].options.find((o) => o[0] === v);
     return o ? t(o[1], o[2]) : v;
   };
@@ -176,7 +180,7 @@ export function CrmLeadFilters({
             lang={lang}
             isLight={isLight}
           />
-          {selectDimension("stage", f, update, "crm-filter-stage")}
+          {selectDimension("communication", f, update, "crm-filter-stage")}
           <div className="crm-filter-task">
             <CrmSingleSelect
               label={t("First contact requirement", "首次联系")}

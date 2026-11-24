@@ -1,951 +1,207 @@
-import {lookupPromotion} from '../utils/promotionLookup';
+import {useEffect,useId,useRef,useState,type FormEvent} from 'react';
+import {chooseText,type HskLanguage} from '../data/hskAssessment';
 import {trackEvent} from '../utils/analytics';
-import {RegistrationSaveError,registrationSaveText,hasPendingRegistration,pendingRegistrationDraft} from '../services/registrationSave';
+import {questionnaireOptions} from '../utils/crmQuestionnaire';
+import {validContactPhone,contactPhoneText,CONTACT_PHONE_ERROR} from '../utils/contactPhone';
+import {validContactEmail,contactEmailText,CONTACT_EMAIL_ERROR} from '../utils/contactEmail';
+import {hasPendingRegistration,pendingRegistrationDraft,RegistrationSaveError,registrationSaveText} from '../services/registrationSave';
+import {readVisitorContact,subscribeVisitorContact} from '../services/visitorContact';
 import {visitorScope} from '../services/visitorScope';
-import {validContactEmail, contactEmailText, CONTACT_EMAIL_ERROR} from "../utils/contactEmail";
-import {validContactPhone, contactPhoneText, CONTACT_PHONE_ERROR} from "../utils/contactPhone";
-import React, { useState, useEffect, useId, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import {canonicalCampaignId} from '../utils/organicCampaign';
-import { 
-  User, 
-  Phone, 
-  Mail, 
-  Target, 
-  Award, 
-  MapPin, 
-  Sparkles, 
-  Check,
-  HelpCircle, 
-  Globe2,
-  Languages
-} from 'lucide-react';
-import { 
-  LeadProfile, 
-  CurrentStatusType, 
-  GoalType, 
-  ReportedLevelType, 
-  CityType, 
-  ModeType, 
-  BuyingSignalType, 
-  HookType, 
-  HookContextType, 
-  determineLevelState, 
-  calculateLeadTier 
-} from '../types/leadSystem';
+import {
+  chatRegistrationAnswers,chatRegistrationStepForPending,readChatRegistrationDraft,withoutChatRegistrationContact,writeChatRegistrationDraft,
+  type ChatRegistrationDraft,type ChatRegistrationStep,
+} from '../services/chatRegistrationDraft';
+import {StandaloneChatDialog} from './StandaloneChatChrome';
+import {ContactPhoneInput} from './ContactPhoneInput';
+import type {LeadProfile} from '../types/leadSystem';
 
-interface GFormOnboardingModalProps {
-  onComplete: (profile: LeadProfile, lang: 'en' | 'id' | 'zh',options?:{queryOnly?:boolean;retryOriginal?:boolean}) => void | Promise<void>;
-  isOpen: boolean;
-  initialLang?: 'en' | 'id' | 'zh';
-  onConsultFirst?: (lang: 'en' | 'id' | 'zh') => void;
+type RegistrationOptions={queryOnly?:boolean;retryOriginal?:boolean};
+type Props={
+  isOpen:boolean;
+  initialLang?:HskLanguage;
+  profile?:LeadProfile|null;
+  onConsultFirst?:(language:HskLanguage)=>void;
+  onComplete:(answers:object,language:HskLanguage,options:RegistrationOptions,step:ChatRegistrationStep)=>void|Promise<void>;
+};
+type OptionKey=keyof typeof questionnaireOptions;
+const translatedOptions:Record<OptionKey,readonly (readonly [string,string])[]>={
+  currentStatus:[['职场在职员工','Karyawan'],['应届毕业生','Lulusan baru'],['在读大学生','Mahasiswa'],
+    ['高中在读学生','Siswa SMA'],['教师或学校员工','Guru atau staf sekolah'],['其他','Lainnya']],
+  goal:[['赴中国工作','Bekerja di Tiongkok'],['在印尼中资或合资企业工作','Bekerja di perusahaan Tiongkok atau usaha patungan di Indonesia'],
+    ['赴华留学或申请奖学金','Kuliah di Tiongkok atau beasiswa'],['准备 HSK 考试','Persiapan ujian HSK'],
+    ['提高中文沟通能力','Meningkatkan kemampuan Mandarin'],['其他','Lainnya']],
+  reportedLevel:[['零基础','Pemula dari nol'],['学过一点','Pemula'],['不确定','Belum yakin'],
+    ['HSK 1','HSK 1'],['HSK 2','HSK 2'],['HSK 3','HSK 3'],['HSK 4+','HSK 4+']],
+  city:[['雅加达','Jakarta'],['其他城市','Kota lain']],
+  mode:[['线下','Tatap muka'],['线上','Online'],['不确定','Belum yakin']],
+  buyingSignal:[['学费','Biaya kursus'],['上课时间','Jadwal kelas'],['适合的级别','Level yang sesuai'],['暂无','Belum ada']],
+};
+
+export default function GFormOnboardingModal({isOpen,...props}:Props) {
+  return isOpen?<ChatRegistrationForm {...props}/>:null;
 }
 
-export default function GFormOnboardingModal({ 
-  onComplete, 
-  isOpen,
-  initialLang = 'en',
-  onConsultFirst,
-}: GFormOnboardingModalProps) {
-  const [lang, setLang] = useState<'en' | 'id' | 'zh'>(initialLang);
-  const titleId = useId();
+function ChatRegistrationForm({initialLang='en',profile,onConsultFirst,onComplete}:Omit<Props,'isOpen'>) {
+  const [owner]=useState(visitorScope);
+  const [pending]=useState(()=>{try{return pendingRegistrationDraft(owner,sessionStorage);}catch{return null;}});
+  const [lang,setLang]=useState<HskLanguage>(()=>pending?.language==='zh'||pending?.language==='en'||pending?.language==='id'?pending.language:initialLang);
+  const [step,setStep]=useState<ChatRegistrationStep>(()=>pending?chatRegistrationStepForPending(pending):profile?'preferences':'contact');
+  const [draft,setDraft]=useState<ChatRegistrationDraft>(()=>pending??{...readVisitorContact(owner),...readChatRegistrationDraft(owner)});
   useEffect(()=>{
-    if(isOpen)setLang(initialLang);
-  },[isOpen,initialLang]);
-
-  // Extract URL parameters automatically
-  const [urlParams, setUrlParams] = useState<{
-    entry: string;
-    campaign: string;
-    placement: string;
-    hook: HookType;
-    context: HookContextType;
-  }>({
-    entry: 'organic',
-    campaign: 'organic',
-    placement: 'website',
-    hook: 'hsk_assessment',
-    context: 'website'
-  });
-
-  const [campaignMeta, setCampaignMeta] = useState<{
-    id: string;
-    name: string;
-    nameEn: string;
-    venue?: string;
-    city?: string;
-    startDate?: string;
-    startTime?: string;
-  } | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const sp = new URLSearchParams(window.location.search);
-      const urlLang = sp.get('lang');
-      const explicitLanguage = urlLang === 'id' || urlLang === 'zh' || urlLang === 'en';
-      if (explicitLanguage) setLang(urlLang);
-      if (sp.has('p')) {
-        let active = true;
-        void Promise.resolve(lookupPromotion(sp)).then(result => {
-          if (!active) return;
-          if (result?.state !== 'verified') {
-            setUrlParams(prev => ({...prev, entry:'unverified_source', placement:'unrecorded'}));
-            return;
-          }
-          const link = result.promotion;
-          if (!explicitLanguage) setLang(link.language);
-          setUrlParams(prev => ({...prev, entry:link.source, campaign:link.campaignCode, placement:link.medium}));
-          fetch(`/api/campaigns/${encodeURIComponent(link.campaignCode)}`)
-            .then(response => response.ok ? response.json() : null)
-            .then(data => {
-              const c = data?.campaign;
-              if (active && c) setCampaignMeta({id:c.id, name:c.name, nameEn:c.nameEn, venue:c.venue, city:c.city, startDate:c.startDate, startTime:c.startTime});
-            }).catch(() => {});
-          fetch(`/api/campaigns/${encodeURIComponent(link.campaignCode)}/impression`, {method:'POST'}).catch(() => {});
-        });
-        return () => { active = false; };
-      }
-
-    }
-  }, []);
-
-  // Form Fields - All initialized to null / empty (NO default selections)
-  const [fullName, setFullName] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [email, setEmail] = useState('');
-  const [currentStatus, setCurrentStatus] = useState<CurrentStatusType | null>(null);
-  const [parentContact, setParentContact] = useState('');
-  
-  const [selectedGoals, setSelectedGoals] = useState<GoalType[]>([]);
-  const [reportedLevel, setReportedLevel] = useState<ReportedLevelType | null>(null);
-  const nextLabel = {en:'Start consultation',zh:'开始咨询',id:'Mulai konsultasi'}[lang];
-  const [city, setCity] = useState<CityType | null>(null);
-  const [cityDetail, setCityDetail] = useState('');
-  const [mode, setMode] = useState<ModeType | null>(null);
-  
-  const [selectedBuyingSignals, setSelectedBuyingSignals] = useState<BuyingSignalType[]>([]);
-  const [errorMsg, setErrorMsg] = useState('');
-
-  const handleToggleGoal = (id: GoalType) => {
-    setSelectedGoals(prev => 
-      prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
-    );
-  };
-
-  const handleToggleBuyingSignal = (id: BuyingSignalType) => {
-    setSelectedBuyingSignals(prev => 
-      prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]
-    );
-  };
-
-  // Step wizard for effortless mobile completion
-  const [step, setStep] = useState<1 | 2>(1);
-
-  const phoneRef = useRef<HTMLInputElement>(null);
-  const [phoneTouched, setPhoneTouched] = useState(false);
-  const [phoneRejected, setPhoneRejected] = useState(false);
-  const emailRef = useRef<HTMLInputElement>(null);
-  const [emailTouched, setEmailTouched] = useState(false);
-  const [emailRejected, setEmailRejected] = useState(false);
-  const [contactFocusRequest, setContactFocusRequest] = useState<{field: 'phone' | 'email'} | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [saveUnknown,setSaveUnknown]=useState(()=>{try{return hasPendingRegistration(visitorScope(),window.sessionStorage);}catch{return false;}});
-  useEffect(()=>{
-    let original:Record<string,any>|null=null;try{original=pendingRegistrationDraft(visitorScope(),window.sessionStorage);}catch{}
-    if(!original)return;
-    const language=['zh','en','id'].includes(original.language)?original.language:initialLang;
-    setLang(language);setFullName(original.fullName||'');setWhatsapp(original.whatsapp||'');setEmail(original.email||'');setCurrentStatus(original.currentStatus||null);setParentContact(original.parentContact||'');
-    setSelectedGoals(original.goals||[]);setReportedLevel(original.reportedLevel||null);setCity(original.city||null);setCityDetail(original.cityDetail||'');setMode(original.mode||null);setSelectedBuyingSignals(original.buyingSignals||[]);setStep(2);setErrorMsg(registrationSaveText('unknown',language));
-  },[]);
-  const querySavedResult=async(retryOriginal=false)=>{
-    if(submitInFlight.current)return;trackEvent('questionnaire_save_result',{operation:'registration',status:'attempt'});submitInFlight.current=true;setSubmitting(true);
-    try{await onComplete({} as LeadProfile,lang,retryOriginal?{retryOriginal:true}:{queryOnly:true});setSaveUnknown(false);}
-    catch(error){const state=error instanceof RegistrationSaveError?error.state:'unknown';trackEvent('questionnaire_save_result',{operation:'registration',status:state});setSaveUnknown(state!=='failed');setErrorMsg(registrationSaveText(state,lang));}
-    finally{submitInFlight.current=false;setSubmitting(false);}
-  };
-  const submitInFlight = useRef(false);
-  const phoneText = contactPhoneText(lang);
-  const phoneInvalid = phoneRejected || (phoneTouched && !validContactPhone(whatsapp));
-  const emailText = contactEmailText(lang);
-  const emailInvalid = emailRejected || (emailTouched && !validContactEmail(email));
-  useEffect(() => {
-    if (step === 1 && contactFocusRequest) (contactFocusRequest.field === 'phone' ? phoneRef : emailRef).current?.focus();
-  }, [step, contactFocusRequest]);
-  const rejectPhone = () => {
-    setErrorMsg(''); setPhoneTouched(true); setStep(1); setContactFocusRequest({field: 'phone'});
-  };
-
-  const rejectEmail = () => {
-    setErrorMsg(''); setEmailTouched(true); setStep(1); setContactFocusRequest({field: 'email'});
-  };
-
-  const analyticsStarted=useRef(false),analyticsStepBegan=useRef(Date.now());
-  useEffect(()=>{if(isOpen)trackEvent('questionnaire_view',{language:lang});},[isOpen]);
-  useEffect(()=>{if(isOpen){analyticsStepBegan.current=Date.now();trackEvent('questionnaire_step_view',{step,language:lang});}},[isOpen,step]);
-  const recordValidation=()=>trackEvent('questionnaire_validation_error',{step,reason:'validation',language:lang});
-  if (!isOpen) return null;
-
-  const handleNextStep = () => {
-    trackEvent('questionnaire_step_next',{step,status:'attempt',language:lang,duration_ms:Date.now()-analyticsStepBegan.current});
-    if(!fullName.trim()||phoneRejected||!validContactPhone(whatsapp)||emailRejected||!validContactEmail(email)||!currentStatus)recordValidation();
-    if (!fullName.trim()) {
-      setErrorMsg(
-        lang === 'en' 
-          ? 'Please enter your full name.' 
-          : lang === 'zh' 
-          ? '请填写您的完整姓名。' 
-          : 'Mohon isi nama lengkap Anda.'
-      );
-      return;
-    }
-    if (phoneRejected || !validContactPhone(whatsapp)) {
-      rejectPhone();
-      return;
-    }
-    if (emailRejected || !validContactEmail(email)) {rejectEmail(); return;}
-    if (!currentStatus) {
-      setErrorMsg(
-        lang === 'en'
-          ? 'Please select your current status.'
-          : lang === 'zh'
-          ? '请选择您的当前身份状态。'
-          : 'Mohon pilih status Anda saat ini.'
-      );
-      return;
-    }
-    setErrorMsg('');
-    setStep(2);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitInFlight.current) return;
-    trackEvent('questionnaire_submit',{step,status:'attempt',language:lang});
-    if(phoneRejected||!validContactPhone(whatsapp)||emailRejected||!validContactEmail(email)||!selectedGoals.length||!reportedLevel||!city||!mode||!currentStatus)recordValidation();
-    if (phoneRejected || !validContactPhone(whatsapp)) {rejectPhone(); return;}
-    if (emailRejected || !validContactEmail(email)) {rejectEmail(); return;}
-
-    if (selectedGoals.length === 0) {
-      setErrorMsg(
-        lang === 'en'
-          ? 'Please select at least one reason for learning Mandarin.'
-          : lang === 'zh'
-          ? '请至少选择一项学习中文的主要目标。'
-          : 'Mohon pilih minimal satu tujuan belajar Mandarin Anda.'
-      );
-      return;
-    }
-    if (!reportedLevel) {
-      setErrorMsg(
-        lang === 'en'
-          ? 'Please select your current Mandarin level.'
-          : lang === 'zh'
-          ? '请选择您当前的中文水平基础。'
-          : 'Mohon pilih tingkat Mandarin Anda saat ini.'
-      );
-      return;
-    }
-    if (!city) {
-      setErrorMsg(
-        lang === 'en'
-          ? 'Please select which city you are currently in.'
-          : lang === 'zh'
-          ? '请选择您目前所在的城市。'
-          : 'Mohon pilih kota tempat tinggal Anda.'
-      );
-      return;
-    }
-    if (!mode) {
-      setErrorMsg(
-        lang === 'en'
-          ? 'Please select your preferred class format.'
-          : lang === 'zh'
-          ? '请选择期望的上课形式。'
-          : 'Mohon pilih format kelas pilihan Anda.'
-      );
-      return;
-    }
-
-    const effectiveBuyingSignal = selectedBuyingSignals[0] || 'None yet';
-    if (!currentStatus) { setErrorMsg(lang==='zh'?'请选择您的当前身份状态。':lang==='id'?'Pilih status Anda saat ini.':'Please select your current status.'); setStep(1); return; }
-    const effectiveCurrentStatus = currentStatus;
-    const effectiveGoal = selectedGoals[0];
-    const effectiveLevel = reportedLevel;
-    const effectiveCity = city;
-    const effectiveMode = mode;
-
-    const levelState = determineLevelState(effectiveLevel);
-    const tierResult = calculateLeadTier({
-      buyingSignal: effectiveBuyingSignal,
-      currentStatus: effectiveCurrentStatus,
-      goal: effectiveGoal,
-      levelState,
-      city: effectiveCity,
-      mode: effectiveMode,
-      assessmentDone: false,
-      trialAttended: false
+    if(step!=='contact'||pending)return;
+    return subscribeVisitorContact(owner,contact=>{
+      const saved=readChatRegistrationDraft(owner);
+      setDraft(current=>({...current,fullName:contact.fullName,email:contact.email,whatsapp:contact.whatsapp,...saved}));
     });
+  },[owner,step,pending]);
+  const [submitting,setSubmitting]=useState(false);
+  const [saveUnknown,setSaveUnknown]=useState(()=>{
+    try{return hasPendingRegistration(owner,sessionStorage);}catch{return hasPendingRegistration(owner);}
+  });
+  const [error,setError]=useState<RegistrationSaveError['state']>();
+  const [phoneRejected,setPhoneRejected]=useState(false);
+  const [emailRejected,setEmailRejected]=useState(false);
+  const [phoneTouched,setPhoneTouched]=useState(false);
+  const [emailTouched,setEmailTouched]=useState(false);
+  const phone=useRef<HTMLInputElement>(null),email=useRef<HTMLInputElement>(null);
+  const inflight=useRef(false);
+  const started=useRef(false);
+  useEffect(()=>{trackEvent('questionnaire_view',{language:lang});},[]);
+  useEffect(()=>{trackEvent('questionnaire_step_view',{step:step==='contact'?1:2,language:lang});},[step]);
+  const id=useId();
+  const t=(zh:string,en:string,id:string)=>chooseText(lang,zh,en,id);
+  const phoneCopy=contactPhoneText(lang),emailCopy=contactEmailText(lang);
+  const invalidPhone=phoneRejected||phoneTouched&&!validContactPhone(draft.whatsapp??'');
+  const invalidEmail=emailRejected||emailTouched&&!validContactEmail(draft.email??'');
+  const optional=t('选填','Optional','Opsional');
 
-    const leadData: LeadProfile = {
-      entryPoint: urlParams.entry,
-      campaign: urlParams.campaign,
-      placement: urlParams.placement,
-      hookType: urlParams.hook,
-      hookContext: urlParams.context,
-      submittedAt: new Date().toISOString(),
-
-      fullName: fullName.trim(),
-      whatsapp: whatsapp.trim(),
-      email: email.trim(),
-      currentStatus: effectiveCurrentStatus,
-      parentContact: effectiveCurrentStatus === 'High school student' ? parentContact.trim() : undefined,
-
-      goal: effectiveGoal,
-      goals: selectedGoals,
-      reportedLevel: effectiveLevel,
-      levelState,
-      city: effectiveCity,
-      cityDetail: effectiveCity === 'Other' ? cityDetail.trim() : undefined,
-      mode: effectiveMode,
-
-      buyingSignal: effectiveBuyingSignal,
-      buyingSignals: selectedBuyingSignals,
-      nextStepInterest: 'hsk_assessment',
-
-      tier: tierResult.tier,
-      flag: tierResult.flag,
-      tierSource: 'predicted'
-    };
-
-    submitInFlight.current = true;
-    setSubmitting(true);
-    setErrorMsg('');
-    try {
-      await onComplete(leadData, lang);
-    } catch (error) {
-      trackEvent('questionnaire_save_result',{status:error instanceof RegistrationSaveError?error.state:'unknown',operation:'registration'});
-      if(error instanceof RegistrationSaveError&&error.state==='failed')setSaveUnknown(false);
-      if (error instanceof Error && error.message === CONTACT_PHONE_ERROR) {
-        setPhoneRejected(true); rejectPhone();
-      } else if (error instanceof Error && error.message === CONTACT_EMAIL_ERROR) {
-        setEmailRejected(true); rejectEmail();
-      } else {
-        const state=error instanceof RegistrationSaveError?error.state:'unknown';
-        setSaveUnknown(state!=='failed');setErrorMsg(registrationSaveText(state,lang));
-      }
-    } finally {
-      submitInFlight.current = false; setSubmitting(false);
+  function change(patch:Partial<ChatRegistrationDraft>){
+    if(!started.current){
+      started.current=true;
+      trackEvent('questionnaire_start',{step:step==='contact'?1:2,language:lang});
     }
-  };
+    const next={...draft,...patch};
+    setDraft(next);
+    writeChatRegistrationDraft(owner,{...readChatRegistrationDraft(owner),...patch});
+  }
+  function toggle(field:'goals'|'buyingSignals',value:string){
+    const current=draft[field]??[];
+    const next=(current as string[]).includes(value)?current.filter(item=>item!==value):[...current,value];
+    if(field==='buyingSignals'&&value==='None yet')change({buyingSignals:(next.includes(value)?[value]:[])});
+    else change({[field]:field==='buyingSignals'?next.filter(item=>item!=='None yet'):next});
+  }
+  async function submit(options:RegistrationOptions={}){
+    if(inflight.current||owner!==visitorScope())return;
+    if(step==='contact'&&!options.queryOnly&&!options.retryOriginal){
+      if(!validContactPhone(draft.whatsapp??'')||phoneRejected){setPhoneTouched(true);phone.current?.focus();return;}
+      if(!validContactEmail(draft.email??'')||emailRejected){setEmailTouched(true);email.current?.focus();return;}
+    }
+    inflight.current=true;setSubmitting(true);setError(undefined);
+    trackEvent('questionnaire_submit',{step:step==='contact'?1:2,status:'attempt',language:lang});
+    try{
+      await onComplete(chatRegistrationAnswers(draft,step),lang,options,step);
+      setSaveUnknown(false);
+      if(step==='contact'){
+        const remaining=withoutChatRegistrationContact(readChatRegistrationDraft(owner));
+        setDraft(remaining);
+        writeChatRegistrationDraft(owner,remaining);
+        setStep('preferences');
+      }else writeChatRegistrationDraft(owner,{});
+    }catch(cause){
+      if(cause instanceof Error&&cause.message===CONTACT_PHONE_ERROR){
+        setSaveUnknown(false);setPhoneRejected(true);phone.current?.focus();
+      }else if(cause instanceof Error&&cause.message===CONTACT_EMAIL_ERROR){
+        setSaveUnknown(false);setEmailRejected(true);email.current?.focus();
+      }else{
+        const status=cause instanceof RegistrationSaveError?cause.state:'unknown';
+        setSaveUnknown(status!=='failed');setError(status);
+        trackEvent('questionnaire_save_result',{operation:'registration',status});
+      }
+    }finally{inflight.current=false;setSubmitting(false);}
+  }
+  function select(field:'reportedLevel'|'currentStatus'|'city'|'mode',label:string){
+    return <label className="chat-profile-field">{label}
+      <select value={draft[field]??''} onChange={event=>change({[field]:event.target.value||undefined})}>
+        <option value="">{t('请选择','Select','Pilih')}</option>
+        {questionnaireOptions[field].map((value,index)=><option key={value} value={value}>
+          {t(translatedOptions[field][index][0],value,translatedOptions[field][index][1])}
+        </option>)}
+      </select>
+    </label>;
+  }
+  function choices(field:'goal'|'buyingSignal',label:string){
+    const key=field==='goal'?'goals':'buyingSignals';
+    return <fieldset className="chat-profile-choices"><legend>{label}</legend>
+      {questionnaireOptions[field].map((value,index)=><label key={value}>
+        <input type="checkbox" checked={(draft[key] as string[]|undefined)?.includes(value)===true} onChange={()=>toggle(key,value)}/>
+        {t(translatedOptions[field][index][0],value,translatedOptions[field][index][1])}
+      </label>)}
+    </fieldset>;
+  }
+  const title=step==='contact'?t('留下联系方式','Add contact details','Tambahkan kontak'):t('补充学习资料','Add learning preferences','Tambahkan preferensi belajar');
+  const returnLabel=step==='contact'?t('先咨询','Chat first','Konsultasi dulu'):t('以后再补','Add later','Isi nanti');
+  const close=()=>onConsultFirst?.(lang);
+  const handleSubmit=(event:FormEvent)=>{event.preventDefault();void submit();};
+  const hasPreferences=Object.values(withoutChatRegistrationContact(draft)).some(value=>Array.isArray(value)?value.length>0:Boolean(value));
 
-  return (
-    <div translate="no" lang={lang === 'zh' ? 'zh-CN' : lang} className="notranslate fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md overflow-y-auto">
-      <motion.div 
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        initial={{ opacity: 0, scale: 0.96, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto"
-      >
-        {/* Header Banner */}
-        <div className="bg-gradient-to-r from-slate-900 via-primary-950 to-primary-900 text-white p-5 sm:p-6 relative">
-          <div className="flex items-center justify-between mb-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-300 uppercase tracking-widest bg-primary-800/40 px-2.5 py-1 rounded-full border border-primary-500/20">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              {lang==='zh'?'UPER学习者资料':lang==='id'?'Profil pembelajar UPER':'UPER Learner Profile'}
-            </span>
-
-            {/* Language Switcher */}
-            <div className="flex items-center bg-slate-800/90 rounded-full p-0.5 border border-slate-700 text-xs">
-              <button
-                type="button"
-                onClick={() => setLang('en')}
-                className={`px-2 py-0.5 rounded-full transition-all font-semibold ${
-                  lang === 'en' ? 'bg-primary-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                EN
-              </button>
-              <button
-                type="button"
-                onClick={() => setLang('id')}
-                className={`px-2 py-0.5 rounded-full transition-all font-semibold ${
-                  lang === 'id' ? 'bg-primary-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                ID
-              </button>
-              <button
-                type="button"
-                onClick={() => setLang('zh')}
-                className={`px-2 py-0.5 rounded-full transition-all font-semibold ${
-                  lang === 'zh' ? 'bg-primary-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                中文
-              </button>
+  return <StandaloneChatDialog title={title} closeLabel={t('关闭资料登记','Close registration','Tutup pendaftaran')} onClose={close}
+    locked={submitting} wide>
+    <div translate="no" lang={lang==='zh'?'zh-CN':lang} className="notranslate chat-profile" data-chat-registration={step}>
+      <div className="chat-profile-intro">
+        <p>{step==='contact'?t('保存联系方式后可继续咨询。你也可以先提问。','Save your contact details to continue with your profile, or ask a question first.','Simpan kontak untuk melanjutkan profil, atau tanyakan dulu.'):
+          t('按需补充，帮助我们给出更合适的建议。','Add anything that would help us tailor our advice.','Tambahkan informasi agar saran kami lebih sesuai.')}</p>
+        {step==='contact'&&<div className="chat-profile-languages" aria-label={t('语言','Language','Bahasa')}>
+          {(['en','id','zh'] as const).map(value=><button key={value} type="button" onClick={()=>setLang(value)} aria-pressed={lang===value}>
+            {value==='zh'?'中文':value.toUpperCase()}
+          </button>)}
+        </div>}
+      </div>
+      {(error||saveUnknown)&&<p className="chat-assessment-review" role="status">{registrationSaveText(error??'unknown',lang)}</p>}
+      <form onSubmit={handleSubmit}>
+        <fieldset disabled={submitting||saveUnknown} className="chat-profile-fields">
+          {step==='contact'? <>
+            <label className="chat-profile-field">{t('姓名','Full name','Nama lengkap')}
+              <input name="fullName" required autoComplete="name" maxLength={200} value={draft.fullName??''} onChange={event=>change({fullName:event.target.value})}/>
+            </label>
+            <div className="chat-profile-field">
+              <label htmlFor={id+'-phone-input'}>{t('WhatsApp 号码','WhatsApp number','Nomor WhatsApp')}</label>
+              <ContactPhoneInput id={id+'-phone-input'} language={lang} name="whatsapp" required ref={phone} value={draft.whatsapp??''}
+                onBlur={()=>setPhoneTouched(true)} aria-invalid={invalidPhone} aria-describedby={id+'-phone'}
+                onValueChange={whatsapp=>{setPhoneRejected(false);change({whatsapp});}}/>
+              <small id={id+'-phone'} role={invalidPhone?'alert':undefined}>{invalidPhone?phoneCopy.error:t('可输入本地号码或粘贴完整国际号码。','Enter a local number or paste a full international number.','Masukkan nomor lokal atau tempel nomor internasional lengkap.')}</small>
             </div>
-          </div>
-
-          {campaignMeta && !['organic', 'social-bio'].includes(canonicalCampaignId(campaignMeta.id)) && (
-            <div className="mb-3 p-2.5 bg-emerald-500/15 border border-emerald-400/30 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-200">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-emerald-500/25 text-emerald-300 font-bold text-[10px] uppercase tracking-wider">
-                  {lang === 'zh' ? '专属活动通道' : lang === 'en' ? 'Event Channel' : 'Saluran Khusus Acara'}
-                </span>
-                <span className="font-semibold text-white">
-                  {lang === 'zh' ? campaignMeta.name : (campaignMeta.nameEn || campaignMeta.name)}
-                </span>
-              </div>
-              {campaignMeta.venue && (
-                <span className="text-[11px] text-emerald-300/80">
-                  📍 {campaignMeta.venue}
-                </span>
-              )}
-            </div>
-          )}
-
-          <h2 id={titleId} className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            <span>{lang === 'zh' ? (step === 1 ? '个人基本信息登记' : '学习目标与当前中文基础') : lang === 'id' ? (step === 1 ? 'Informasi Pribadi & Kontak' : 'Tujuan Belajar & Tingkat Bahasa') : (step === 1 ? 'Personal Information' : 'Learning Goals & Mandarin Level')}</span>
-          </h2>
-
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
-            {lang === 'en' && (step === 1 
-              ? "Share your details so we can tailor the consultation to you."
-              : "Choose what you want to ask about. You can take the placement assessment from the chat when you’re ready.")}
-            {lang === 'id' && (step === 1 
-              ? 'Isi informasi Anda agar kami dapat menyesuaikan konsultasi dengan kebutuhan Anda.'
-              : 'Pilih topik yang ingin Anda tanyakan. Anda bisa mengikuti tes penempatan dari chat saat siap.')}
-            {lang === 'zh' && (step === 1 
-              ? '填写基本资料，获取更符合你需求的课程建议。'
-              : '选好你关注的问题，提交后可直接咨询。需要定学习起点时，可从对话页进入摸底测验。')}
-          </p>
-          {onConsultFirst&&<button type="button" disabled={submitting||saveUnknown} onClick={()=>onConsultFirst(lang)}
-            className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-primary-100 underline underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-200 disabled:opacity-50">
-            {lang==='zh'?'先咨询':lang==='id'?'Konsultasi dulu':'Chat first'}
-          </button>}
-
-          {/* Progress Bar */}
-          <div className="w-full bg-slate-700/50 h-1.5 rounded-full mt-4 overflow-hidden">
-            <div 
-              className="bg-primary-400 h-full transition-all duration-300"
-              style={{ width: step === 1 ? '50%' : '100%' }}
-            />
-          </div>
+            <label className="chat-profile-field">{t('邮箱','Email','Email')}
+              <input name="email" required type="email" ref={email} autoComplete="email" maxLength={254} value={draft.email??''}
+                onBlur={()=>setEmailTouched(true)} aria-invalid={invalidEmail} aria-describedby={id+'-email'}
+                onChange={event=>{setEmailRejected(false);change({email:event.target.value});}}/>
+              <small id={id+'-email'} role={invalidEmail?'alert':undefined}>{invalidEmail?emailCopy.error:emailCopy.help}</small>
+            </label>
+          </>:<>
+            {choices('goal',t('学习目标','Learning goals','Tujuan belajar'))}
+            {select('reportedLevel',t('中文基础','Mandarin level','Level Mandarin'))}
+            {select('mode',t('上课方式','Class format','Cara belajar'))}
+            <details className="chat-profile-extra" open={draft.buyingSignals?.length||draft.city||draft.currentStatus?true:undefined}>
+              <summary>{t('更多学习偏好','More preferences','Preferensi tambahan')} <small>{optional}</small></summary>
+              {choices('buyingSignal',t('想了解什么？','What would you like to know?','Apa yang ingin Anda ketahui?'))}
+              {select('currentStatus',t('当前身份','Current status','Status saat ini'))}
+              {draft.currentStatus==='High school student'&&<label className="chat-profile-field">{t('家长联系方式','Parent contact','Kontak orang tua')}
+                <input maxLength={160} value={draft.parentContact??''} onChange={event=>change({parentContact:event.target.value})}/></label>}
+              {select('city',t('所在城市','City','Kota'))}
+              {draft.city==='Other'&&<label className="chat-profile-field">{t('城市名称','City name','Nama kota')}
+                <input maxLength={160} value={draft.cityDetail??''} onChange={event=>change({cityDetail:event.target.value})}/></label>}
+            </details>
+          </>}
+        </fieldset>
+        <div className="chat-dialog-actions">
+          <button type="button" onClick={close} disabled={submitting}>{returnLabel}</button>
+          {saveUnknown?<><button type="button" disabled={submitting} onClick={()=>void submit({queryOnly:true})}>{t('核对保存结果','Check save result','Periksa hasil simpan')}</button>
+            {pendingRegistrationDraft(owner)&&<button type="button" className="chat-primary" disabled={submitting} onClick={()=>void submit({retryOriginal:true})}>{t('重试原提交','Retry original submission','Coba kembali kiriman awal')}</button>}</>:
+            <button className="chat-primary" type="submit" disabled={submitting||step==='preferences'&&!hasPreferences}>
+              {submitting?t('保存中…','Saving…','Menyimpan…'):step==='contact'?t('保存联系方式','Save contact details','Simpan kontak'):
+                t('保存学习资料','Save learning preferences','Simpan preferensi')}
+            </button>}
         </div>
-
-        <form onChangeCapture={()=>{if(!analyticsStarted.current){analyticsStarted.current=true;trackEvent('questionnaire_start',{step,language:lang});}}} onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-          {errorMsg && (
-            <div role="status" className={`p-3 border rounded-xl text-xs font-medium flex items-center gap-2 ${saveUnknown?'bg-amber-50 border-amber-200 text-amber-800':'bg-rose-50 border-rose-200 text-rose-700'}`}>
-              <HelpCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          <fieldset disabled={submitting||saveUnknown} className="min-w-0">
-          {step === 1 ? (
-            /* ================= STEP 1: Basic Identity ================= */
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  {lang === 'en' ? "1. What's your full name?" : lang === 'zh' ? '1. 您的全名 / Full Name' : '1. Nama Lengkap / Full Name'} <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder={lang === 'zh' ? '例如：张三 / Budi Santoso' : lang === 'en' ? 'e.g. Budi Santoso / Kevin Tan' : 'Contoh: Budi Santoso'}
-                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="onboarding-whatsapp" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  {lang === 'en' ? '2. WhatsApp number (Active)' : lang === 'zh' ? '2. WhatsApp 电话号码 (用于接收方案)' : '2. Nomor WhatsApp (Aktif)'} <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
-                  <input
-                    type="tel"
-                    required
-                    id="onboarding-whatsapp"
-                    ref={phoneRef}
-                    inputMode="tel"
-                    autoComplete="tel"
-                    aria-invalid={phoneInvalid}
-                    aria-describedby={phoneInvalid ? "onboarding-phone-help onboarding-phone-error" : "onboarding-phone-help"}
-                    value={whatsapp}
-                    onChange={(e) => {setWhatsapp(e.target.value); setPhoneRejected(false);}}
-                    onBlur={() => setPhoneTouched(true)}
-                    placeholder={lang === 'zh' ? '例如：+62 812-3456-7890 / 0812...' : lang === 'id' ? 'Contoh: +62 812-3456-7890 / 0812...' : 'e.g. +62 812-3456-7890 / 0812...'}
-                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900"
-                  />
-                </div>
-                <p id="onboarding-phone-help" className="text-xs text-slate-500 mt-1">{phoneText.help}</p>
-                {phoneInvalid && <p id="onboarding-phone-error" role="alert" className="text-xs text-rose-700 mt-1">{phoneText.error}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="onboarding-email" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  {lang === 'en' ? "3. What's your email address?" : lang === 'zh' ? '3. 电子邮箱 / Email Address' : '3. Alamat Email'} <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
-                  <input
-                    type="email"
-                    required
-                    id="onboarding-email"
-                    ref={emailRef}
-                    autoComplete="email"
-                    inputMode="email"
-                    aria-invalid={emailInvalid}
-                    aria-describedby={emailInvalid ? "onboarding-email-help onboarding-email-error" : "onboarding-email-help"}
-                    value={email}
-                    onChange={(e) => {setEmail(e.target.value); setEmailRejected(false);}}
-                    onBlur={() => setEmailTouched(true)}
-                    placeholder="name@example.com"
-                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white text-slate-900"
-                  />
-                </div>
-                <p id="onboarding-email-help" className="text-xs text-slate-500 mt-1">{emailText.help}</p>
-                {emailInvalid && <p id="onboarding-email-error" role="alert" className="text-xs text-rose-700 mt-1">{emailText.error}</p>}
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  {lang === 'en' ? '4. What is your current status?' : lang === 'zh' ? '4. 当前身份状态' : '4. Status Anda Saat Ini'} <span className="text-rose-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-                  {[
-                    { 
-                      id: 'University student', 
-                      en: 'University student', 
-                      id_id: 'Mahasiswa (Uni Student)', 
-                      zh: '在读大学生' 
-                    },
-                    { 
-                      id: 'Fresh graduate', 
-                      en: 'Fresh graduate', 
-                      id_id: 'Lulusan Baru (Fresh Grad)', 
-                      zh: '应届毕业生' 
-                    },
-                    { 
-                      id: 'Working professional', 
-                      en: 'Working professional', 
-                      id_id: 'Karyawan (Professional)', 
-                      zh: '职场在职员工' 
-                    },
-                    { 
-                      id: 'High school student', 
-                      en: 'High school student', 
-                      id_id: 'Siswa SMA (High School)', 
-                      zh: '高中在读学生' 
-                    },
-                    { 
-                      id: 'Teacher or school staff', 
-                      en: 'Teacher or school staff', 
-                      id_id: 'Guru / Staf Sekolah', 
-                      zh: '教师 / 学校教职工' 
-                    },
-                    { 
-                      id: 'Other', 
-                      en: 'Other', 
-                      id_id: 'Lainnya', 
-                      zh: '其他' 
-                    }
-                  ].map((s) => (
-                    <button
-                      type="button"
-                      key={s.id}
-                      onClick={() => setCurrentStatus(s.id as CurrentStatusType)}
-                      className={`p-2.5 text-left rounded-xl border transition-all ${
-                        currentStatus === s.id 
-                          ? 'border-primary-600 bg-primary-50/60 text-primary-950 font-semibold ring-1 ring-primary-500' 
-                          : 'border-slate-200 bg-slate-50/50 text-slate-700 hover:bg-slate-100/60'
-                      }`}
-                    >
-                      {lang === 'en' ? s.en : lang === 'zh' ? s.zh : s.id_id}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {currentStatus === 'High school student' && (
-                <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl">
-                  <label className="block text-xs font-bold text-amber-900 mb-1">
-                    {lang === 'en' ? "Parent Contact (Optional)" : "Kontak Orang Tua / Wali (Opsional)"}
-                  </label>
-                  <input
-                    type="text"
-                    value={parentContact}
-                    onChange={(e) => setParentContact(e.target.value)}
-                    placeholder={lang === 'zh' ? "家长姓名与WhatsApp号码" : lang === 'en' ? "Parent's Name & WhatsApp" : "Nama & Nomor WhatsApp Orang Tua"}
-                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 outline-none text-slate-800"
-                  />
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleNextStep}
-                className="w-full mt-2 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-sm shadow-md shadow-primary-600/20 transition-all flex items-center justify-center gap-2"
-              >
-                <span>{lang === 'en' ? 'Next: Goals & Level' : lang === 'zh' ? '下一步：目标与基础' : 'Lanjut ke Tujuan & Level'}</span>
-              </button>
-            </div>
-          ) : (
-            /* ================= STEP 2: Goal, Level, City & Priorities ================= */
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Target className="w-3.5 h-3.5 text-primary-600" />
-                    {lang === 'en' 
-                      ? '5. What is your main reason for learning Mandarin?' 
-                      : lang === 'zh' 
-                      ? '5. 学习中文的主要目标' 
-                      : '5. Tujuan Utama Belajar Mandarin'} <span className="text-rose-500">*</span>
-                  </span>
-                  <span className="text-[10px] font-normal text-slate-400">
-                    {lang === 'en' ? '(Select all that apply)' : lang === 'zh' ? '(可多选)' : '(Bisa pilih lebih dari 1)'}
-                  </span>
-                </label>
-                <div className="space-y-1.5">
-                  {[
-                    { 
-                      id: 'Work at a Chinese or China-Indonesia joint venture company in Indonesia', 
-                      en: 'Work at a Chinese or China-Indonesia JV company in Indonesia', 
-                      id_id: 'Bekerja di Perusahaan Cina / JV di Indonesia', 
-                      zh: '印尼本地中资 / 合资企业就业 (职场中文)' 
-                    },
-                    { 
-                      id: 'Study in China or scholarship', 
-                      en: 'Study in China or obtain a full scholarship', 
-                      id_id: 'Kuliah di Cina / Beasiswa Penuh (Scholarship)', 
-                      zh: '赴华留学 / 申请全额奖学金' 
-                    },
-                    { 
-                      id: 'Work in China', 
-                      en: 'Work in China directly', 
-                      id_id: 'Bekerja Langsung di Tiongkok', 
-                      zh: '直接赴华工作发展' 
-                    },
-                    { 
-                      id: 'Prepare for HSK certification', 
-                      en: 'Prepare for official HSK certification', 
-                      id_id: 'Sertifikasi Resmi HSK (Exam Prep)', 
-                      zh: '考取 HSK 官方等级证书 (备考冲刺)' 
-                    },
-                    { 
-                      id: 'Improve my Mandarin skills', 
-                      en: 'Improve general Mandarin communication skills', 
-                      id_id: 'Mengasah Percakapan Bahasa Sehari-hari', 
-                      zh: '提升日常中文口语与听说技能' 
-                    }
-                  ].map((g) => {
-                    const isSelected = selectedGoals.includes(g.id as GoalType);
-                    return (
-                      <button
-                        type="button"
-                        key={g.id}
-                        onClick={() => handleToggleGoal(g.id as GoalType)}
-                        className={`w-full p-2.5 text-left rounded-xl border text-xs transition-all flex items-center justify-between cursor-pointer ${
-                          isSelected 
-                            ? 'border-primary-600 bg-primary-50/80 text-primary-950 font-semibold ring-1 ring-primary-500' 
-                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className="leading-snug">{lang === 'en' ? g.en : lang === 'zh' ? g.zh : g.id_id}</span>
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ml-2 transition-all ${
-                          isSelected 
-                            ? 'bg-primary-600 border-primary-600 text-white' 
-                            : 'border-slate-300 bg-white'
-                        }`}>
-                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-primary-600" />
-                  {lang === 'en' ? '6. What is your current Mandarin level?' : lang === 'zh' ? '6. 您当前的中文水平基础' : '6. Tingkat Mandarin Anda Saat Ini'} <span className="text-rose-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {[
-                    { 
-                      id: 'Complete beginner', 
-                      badge: 'Zero',
-                      titleEn: 'Complete beginner (no Mandarin at all)', 
-                      titleZh: '零基础（完全未接触过中文）',
-                      descEn: 'Never studied Mandarin before',
-                      descZh: '零基础，从未接触过中文'
-                    },
-                    { 
-                      id: 'Beginner', 
-                      badge: 'Pre-1',
-                      titleEn: 'Beginner — basic words, never took HSK', 
-                      titleZh: '入门进阶 — 会一些拼音/基础词汇',
-                      descEn: 'Knows some Pinyin / basic words, unsure of level',
-                      descZh: '掌握一些基础词汇/拼音，未考过 HSK'
-                    },
-                    { 
-                      id: 'HSK 1', 
-                      badge: 'HSK 1',
-                      titleEn: 'Passed HSK 1', 
-                      titleZh: '已通过 / 达到 HSK 1 级',
-                      descEn: 'Approx. 150 vocabulary words',
-                      descZh: '已掌握约 150 核心词汇'
-                    },
-                    { 
-                      id: 'HSK 2', 
-                      badge: 'HSK 2',
-                      titleEn: 'Passed HSK 2', 
-                      titleZh: '已通过 / 达到 HSK 2 级',
-                      descEn: 'Approx. 300 vocabulary words',
-                      descZh: '已掌握约 300 核心词汇'
-                    },
-                    { 
-                      id: 'HSK 3', 
-                      badge: 'HSK 3',
-                      titleEn: 'Passed HSK 3', 
-                      titleZh: '已通过 / 达到 HSK 3 级',
-                      descEn: 'Approx. 600 vocabulary words',
-                      descZh: '已掌握约 600 核心词汇'
-                    },
-                    { 
-                      id: 'HSK 4+', 
-                      badge: 'HSK 4+',
-                      titleEn: 'HSK 4 or above (Advanced)', 
-                      titleZh: '已达到 HSK 4 级或以上（进阶流利）',
-                      descEn: 'Capable of fluent academic & business dialogue',
-                      descZh: '具备流利学术与商务听说读写能力'
-                    }
-                  ].map((lvl) => (
-                    <button
-                      type="button"
-                      key={lvl.id}
-                      onClick={() => setReportedLevel(lvl.id as ReportedLevelType)}
-                      className={`p-2.5 sm:p-3 text-left rounded-xl border transition-all flex items-center gap-2.5 cursor-pointer ${
-                        reportedLevel === lvl.id 
-                          ? 'border-primary-600 bg-primary-50/80 text-primary-950 font-semibold ring-1 ring-primary-500 shadow-2xs' 
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className={`w-11 h-7 rounded-lg shrink-0 flex items-center justify-center text-[11px] font-mono font-bold tracking-tight border ${
-                        reportedLevel === lvl.id
-                          ? 'bg-primary-600 text-white border-primary-600'
-                          : 'bg-slate-100 text-slate-600 border-slate-200'
-                      }`}>
-                        {lvl.badge}
-                      </div>
-                      <div className="flex flex-col items-start text-left min-w-0 flex-1 justify-center">
-                        <span className="font-semibold text-xs text-slate-800 leading-snug block text-left">
-                          {lang === 'zh' ? lvl.titleZh : lvl.titleEn}
-                        </span>
-                        <span className="text-[10px] text-slate-500 mt-0.5 leading-snug block text-left">
-                          {lang === 'zh' ? lvl.descZh : lvl.descEn}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Question 7: Location & Learning Mode Preference */}
-              <div className="p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200/90 space-y-3.5">
-                {/* 7a. City Location */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-primary-600" />
-                    <span>
-                      {lang === 'en' ? '7. Which city are you currently in?' : lang === 'zh' ? '7. 您目前所在的城市' : '7. Kota Tempat Tinggal'}
-                    </span>
-                    <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      { 
-                        id: 'Jakarta', 
-                        en: 'Jakarta Area (Jabodetabek)', 
-                        zh: '雅加达及周边地区（大雅加达）', 
-                        idLang: 'Jakarta & Jabodetabek' 
-                      },
-                      { 
-                        id: 'Other', 
-                        en: 'Other Cities / Outside Jabodetabek', 
-                        zh: '外岛/其他省市/海外', 
-                        idLang: 'Luar Jabodetabek / Kota Lain' 
-                      }
-                    ].map((c) => {
-                      const isSelected = city === c.id;
-                      return (
-                        <button
-                          type="button"
-                          key={c.id}
-                          onClick={() => setCity(c.id as CityType)}
-                          className={`p-2.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer ${
-                            isSelected
-                              ? 'border-primary-600 bg-primary-50/80 text-primary-950 shadow-xs ring-1 ring-primary-500'
-                              : 'border-slate-200 bg-white/70 text-slate-700 hover:bg-white hover:border-slate-300'
-                          }`}
-                        >
-                          <span className="leading-snug">{lang === 'zh' ? c.zh : lang === 'id' ? c.idLang : c.en}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 7b. Preferred Class Format */}
-                <div className="pt-2 border-t border-slate-200/80">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <Globe2 className="w-3.5 h-3.5 text-primary-600" />
-                    <span>
-                      {lang === 'en' ? 'Preferred Class Format' : lang === 'zh' ? '期望的上课形式' : 'Format Kelas Pilihan'}
-                    </span>
-                    <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {[
-                      {
-                        id: 'Offline',
-                        en: 'Offline Class (Campus)',
-                        zh: '线下校区面授班',
-                        idLang: 'Kelas Tatap Muka (Offline)'
-                      },
-                      {
-                        id: 'Online',
-                        en: 'Live Online (Zoom)',
-                        zh: '在线互动直播课',
-                        idLang: 'Online Interaktif (Zoom)'
-                      },
-                      {
-                        id: 'Not sure',
-                        en: 'Flexible / Need Advice',
-                        zh: '灵活 / 待顾问建议',
-                        idLang: 'Fleksibel / Belum Pasti'
-                      }
-                    ].map((m) => {
-                      const isSelected = mode === m.id;
-                      return (
-                        <button
-                          type="button"
-                          key={m.id}
-                          onClick={() => setMode(m.id as ModeType)}
-                          className={`p-2.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer ${
-                            isSelected
-                              ? 'border-primary-600 bg-primary-50/80 text-primary-950 shadow-xs ring-1 ring-primary-500'
-                              : 'border-slate-200 bg-white/70 text-slate-700 hover:bg-white hover:border-slate-300'
-                          }`}
-                        >
-                          <span className="leading-snug">{lang === 'zh' ? m.zh : lang === 'id' ? m.idLang : m.en}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                  <span>
-                    {lang === 'en' 
-                      ? '8. What would you like to know more about?'
-                      : lang === 'zh'
-                      ? '8. 您目前最关心想了解的内容'
-                      : '8. Hal yang Ingin Anda Ketahui Lebih Lanjut'}
-                  </span>
-                  <span className="text-[10px] font-normal text-slate-400">
-                    {lang === 'en' ? '(Select all that apply)' : lang === 'zh' ? '(可多选)' : '(Bisa pilih lebih dari 1)'}
-                  </span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {[
-                    { 
-                      id: 'Asked price', 
-                      en: 'Class fees & payment plans', 
-                      zh: '课程学费与付款方案',
-                      idLang: 'Biaya kelas & skema cicilan'
-                    },
-                    { 
-                      id: 'Asked schedule', 
-                      en: 'Schedule & start dates', 
-                      zh: '开班排期与上课时间',
-                      idLang: 'Jadwal & tanggal mulai kelas'
-                    },
-                    { 
-                      id: 'Which level is right', 
-                      en: 'Which level is right for me', 
-                      zh: '我适合从哪个班级起步',
-                      idLang: 'Rekomendasi level yang cocok'
-                    },
-                    { 
-                      id: 'None yet', 
-                      en: 'General inquiry for now', 
-                      zh: '暂无特殊需求，先咨询',
-                      idLang: 'Konsultasi umum terlebih dahulu'
-                    }
-                  ].map((bs) => {
-                    const isSelected = selectedBuyingSignals.includes(bs.id as BuyingSignalType);
-                    return (
-                      <button
-                        type="button"
-                        key={bs.id}
-                        onClick={() => handleToggleBuyingSignal(bs.id as BuyingSignalType)}
-                        className={`p-2.5 text-left rounded-xl border text-xs transition-all flex items-center justify-between cursor-pointer ${
-                          isSelected 
-                            ? 'border-primary-600 bg-primary-50/80 text-primary-950 font-semibold ring-1 ring-primary-500' 
-                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className="leading-snug">{lang === 'zh' ? bs.zh : lang === 'id' ? bs.idLang : bs.en}</span>
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ml-2 transition-all ${
-                          isSelected 
-                            ? 'bg-primary-600 border-primary-600 text-white' 
-                            : 'border-slate-300 bg-white'
-                        }`}>
-                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="w-1/3 py-3 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl font-bold text-xs"
-                >
-                  {lang === 'en' ? 'Back' : lang === 'zh' ? '上一步' : 'Kembali'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-2/3 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-primary-600/25 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <span>{submitting ? (lang === 'zh' ? '正在保存…' : lang === 'id' ? 'Menyimpan…' : 'Saving…') : nextLabel}</span>
-                </button>
-              </div>
-            </div>
-          )}
-          </fieldset>
-          {saveUnknown&&<div role="status" className="flex flex-wrap gap-2">
-            <button type="button" disabled={submitting} onClick={()=>querySavedResult()} className="px-4 py-2 rounded-xl bg-primary-600 text-white text-sm focus-visible:outline-2">{lang==='zh'?'核对保存结果':lang==='id'?'Periksa hasil':'Check save result'}</button>
-            <button type="button" disabled={submitting} onClick={()=>querySavedResult(true)} className="px-4 py-2 rounded-xl border border-slate-300 text-sm focus-visible:outline-2">{lang==='zh'?'使用原提交重试':lang==='id'?'Ulangi kiriman awal':'Retry original submission'}</button>
-          </div>}
-        </form>
-      </motion.div>
+      </form>
     </div>
-  );
+  </StandaloneChatDialog>;
 }

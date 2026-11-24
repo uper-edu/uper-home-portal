@@ -40,7 +40,8 @@ export async function enrollmentRefundReceiptFunds(c:Client,id:string) {
 
 async function sameLearnerOrders(c:Client,order:any,level:string) {
   // Never infer sibling identity from a shared family email or telephone alone.
-  if(typeof order.data?.name!=='string'||!order.data.name.trim()||!normalizeContactPhone(order.data.phone))return [];
+  const phone = normalizeContactPhone(order.data?.phone);
+  if(typeof order.data?.name!=='string'||!order.data.name.trim()||!phone)return [];
   await lockIdentityRegistry(c);
   const rows=(await c.query(`SELECT o.id,o.created_at,o.data,o.state,o.price,o.received,b.state AS class_state
     FROM enrollment_customer_records root
@@ -57,21 +58,25 @@ async function sameLearnerOrders(c:Client,order:any,level:string) {
         AND o.received<o.price AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6))))
     ORDER BY o.created_at,o.id`,[order.id,order.email,level])).rows;
   return rows.filter(row=>typeof row.data?.name==='string'&&enrollmentLearnerNameKey(row.data.name)===enrollmentLearnerNameKey(order.data.name)
-    &&normalizeContactPhone(row.data.phone)===normalizeContactPhone(order.data.phone));
+    &&normalizeContactPhone(row.data.phone)===phone);
 }
 
-export async function applyEnrollmentPaymentCredits(c:Client,current:LockedOrder,lockOrder:LockOrder) {
+/** Report whether the caller should refresh its copy of the triggering order. */
+export async function applyEnrollmentPaymentCredits(c:Client,current:LockedOrder,lockOrder:LockOrder):Promise<boolean> {
   const {order,cohort}=current;
   const sources=order.state==='expired';
-  if(!sources&&!payable.includes(order.state))return;
+  if(!sources&&!payable.includes(order.state))return false;
   const related=await sameLearnerOrders(c,order,cohort.data.level);
-  if(!related.some(row=>row.id===order.id))return;
+  if(!related.some(row=>row.id===order.id))return false;
+  let needsReadback=false;
   const expired=related.filter(row=>row.state==='expired'&&Number(row.received)>0&&(sources?row.id===order.id:row.created_at<order.created_at));
   for(const prior of expired){
     const candidates=related.filter(row=>payable.includes(row.state)&&row.created_at>prior.created_at);
     if(candidates.length!==1||(!sources&&candidates[0].id!==order.id))continue;
     const source=sources?current:await lockOrder(c,prior.id);
     const target=await lockOrder(c,candidates[0].id);
+    // The target lock can expire a reservation even when no funds move.
+    if(!sources)needsReadback=true;
     if(source.order.state!=='expired'||target.cohort.state!=='published'||!payable.includes(target.order.state))continue;
     let balance=Math.min(Number(source.order.received),Number(target.order.price)-Number(target.order.received));
     if(balance<=0)continue;
@@ -92,5 +97,7 @@ export async function applyEnrollmentPaymentCredits(c:Client,current:LockedOrder
     const toData={...target.order.data,creditIn:Number(target.order.data.creditIn??0)+applied};
     const received=Number(target.order.received)+applied;
     await updateEnrollmentPayment(c,target,received,received>=target.order.price?'paid':'partial',toData);
+    needsReadback=true;
   }
+  return needsReadback;
 }

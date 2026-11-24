@@ -14,7 +14,8 @@ export function validContactEmail(value: unknown, required = true): boolean {
   const labels = domain.split(".");
   if (labels.length < 2 || domain.length > 253) return false;
   if (!labels.every(label => label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label))) return false;
-  return /^[a-z]{2,63}$/i.test(labels.at(-1)!) || /^xn--[a-z0-9-]+$/i.test(labels.at(-1)!);
+  const suffix = labels[labels.length - 1];
+  return /^[a-z]{2,63}$/i.test(suffix) || /^xn--[a-z0-9-]+$/i.test(suffix);
 }
 
 export function contactEmailText(language: string) {

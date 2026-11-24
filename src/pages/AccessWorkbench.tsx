@@ -1,6 +1,9 @@
+import '../components/crm/crm-detail-workspace.css';
+import {IntegrationCredentialsOverview,resolveIntegrationTopic,type IntegrationTopic} from '../components/IntegrationCredentials';
 import {EnrollmentMailWorkspace} from '../components/EnrollmentMailWorkspace';
 import {SystemAccessGuide} from '../components/SystemAccessGuide';
 import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
+import {AdminPageHeader} from '../components/admin/AdminPageHeader';
 import {CrmPageAction} from '../components/crm/CrmPageAction';
 import {AdminConfirmation} from '../components/admin/AdminConfirmation';
 import {AdminDisclosure} from '../components/admin/AdminDisclosure';
@@ -8,28 +11,27 @@ import {AdminEditor} from '../components/admin/AdminEditor';
 import {AdminSearchField} from '../components/admin/AdminSearchField';
 import {CrmContentNav,CrmDiscardDialog} from '../components/crm/CrmDetailWorkspace';
 import {LarkEmployeeBinding} from '../components/LarkEmployeeBinding';
-import {AdminFormSection,AdminFormFeedback,AdminFormGrid} from '../components/AdminFormLayout';
-import {AiServicePanel} from '../components/AiServicePanel';
+import {AdminFormSection,AdminFormFeedback,AdminFormGrid,AdminSavedReadError} from '../components/AdminFormLayout';
 import {isAiAdministrator} from '../utils/aiServicePolicy';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import {AdminField,firstMissingAdminField} from '../components/AdminForm';
 import {PageMetadata} from '../components/PageMetadata';
 import { managementRequest, pendingAccessOperations } from "../utils/accessOperationClient";
 import { AccessOperationStatus } from "../components/AccessOperationStatus";
-import {AdminSecondaryActions} from "../components/admin/AdminRecordActions";
 import { AccessSafetyPanel, canUseAccessRecovery } from "../components/AccessSafetyPanel";
 import {AdminListState,AdminListTable} from '../components/admin/AdminList';
 import {AdminRecordEntry,AdminRowAction} from '../components/admin/AdminListControl';
 import {AdminRecordHeader} from '../components/admin/AdminRecordHeader';
-import {AdminDetailActions,AdminRecordFilters,AdminRecordRow,AdminRecordSidebar,AdminRecordSidebarToggle,AdminRecordTitle} from '../components/admin/AdminRecordWorkspace';
+import {AdminDetailActions,AdminRecordFilters,AdminRecordRow,AdminRecordSidebar,AdminRecordTitle,useAdminRecordSidebarLayout} from '../components/admin/AdminRecordWorkspace';
 import {AdminStatus} from '../components/AdminStatus';
 import {containPaneKeys,recordSplitMinWidth} from '../components/adminScroll';
 import {useCrmShellHeight,useRecordScrollMode} from '../components/crm/CrmDetailWorkspace';
-import '../components/crm/crm-detail-workspace.css';
 import '../components/crm/crm-record-workspace.css';
+import '../components/admin-workspace.css';
+import '../components/crm/crm-operations-workspace.css';
 import { accessError } from "../utils/accessLanguage";
 import { Fragment, type MouseEvent, useEffect, useRef, useState } from "react";
-import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail } from "lucide-react";
+import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail, KeyRound } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
 import { AdminHeader, adminText } from "../components/AdminHeader";
@@ -50,8 +52,8 @@ const moduleIcons = {
   audit: Users,
   guide: BookOpen,
   test: FlaskConical,
-  ai: FlaskConical,
   mail: Mail,
+  credentials: KeyRound,
 };
 type User = {
   id: string;
@@ -79,10 +81,14 @@ function systemLocation(href:string, employeeId:string) {
     url.searchParams.set('tab','users');
     if(!url.searchParams.get('user'))url.searchParams.set('user',employeeId);
   }
+  if(url.searchParams.get('tab')==='ai'){
+    url.searchParams.set('tab','credentials');
+    url.searchParams.set('credentialTopic','llm');
+  }
   const tab=url.searchParams.get('tab')||'users';
   return {
     href:url.pathname+url.search,
-    tab:Object.hasOwn(moduleIcons,tab)||tab==='recovery'||tab==='restore-review'?tab:'users',
+    tab:Object.hasOwn(moduleIcons,tab)||tab==='restore-review'?tab:'users',
     params:url.searchParams,
   };
 }
@@ -126,9 +132,12 @@ export function AccessWorkspace({
   const [discarding, setDiscarding] = useState(false);
   const [recoveryDraft,setRecoveryDraft]=useState(false);
   const [recoveryBusy,setRecoveryBusy]=useState(false);
+  const [integrationDraft,setIntegrationDraft]=useState(false);
+  const [integrationBusy,setIntegrationBusy]=useState(false);
   const [larkDirty,setLarkDirty]=useState(false);
   const [larkDraft,setLarkDraft]=useState<any>(undefined);
   const [initialLocation] = useState(()=>systemLocation(window.location.href,employee.id));
+  const [integrationTopic,setIntegrationTopic]=useState(()=>resolveIntegrationTopic(initialLocation.params.get('credentialTopic')));
   const [mailView,setMailView]=useState<'accounts'|'pool'>(initialLocation.params.get('mailView')==='pool'?'pool':'accounts');
   const [mailRecordId,setMailRecordId]=useState(initialLocation.params.get(mailView==='pool'?'mailPool':'mailAccount')??'');
   const [mailReturnPool,setMailReturnPool]=useState(initialLocation.params.get('mailFromPool')??'');
@@ -141,6 +150,9 @@ export function AccessWorkspace({
     [busy, setBusy] = useState(false),
     [saving, setSaving] = useState(false),
     [audit, setAudit] = useState<any[]>([]);
+  const pendingSaveId=useRef<string|undefined>(undefined);
+  const [savedReadFailed,setSavedReadFailed]=useState(false);
+  const [signInNoticeUserId,setSignInNoticeUserId]=useState<string|null>(null);
   const [user, setUser] = useState<any>(null),
     [role, setRole] = useState<Role | null>(null),
     [why, setWhy] = useState(""),
@@ -175,8 +187,8 @@ export function AccessWorkspace({
   },[initialLocation]);
   const pendingNavigation=useRef<(()=>void)|undefined>(undefined);
   const listPosition=useRef<{module:string;id:string;top:number}|undefined>(undefined);
-  const listSearch=useRef<HTMLInputElement>(null),railSearch=useRef<HTMLInputElement>(null);
-  const recordHeading=useRef<HTMLHeadingElement>(null),sidebarToggle=useRef<HTMLButtonElement>(null);
+  const listSearch=useRef<HTMLInputElement>(null);
+  const recordHeading=useRef<HTMLHeadingElement>(null);
   useEffect(()=>{
     const media=window.matchMedia(`(min-width: ${recordSplitMinWidth}px)`);
     const sync=()=>{setWide(media.matches);if(media.matches)setShowRecords(false);};
@@ -209,14 +221,23 @@ export function AccessWorkspace({
     try {
       setData(await api());
       setReadDenied(false);
+      setSavedReadFailed(false);
+      return true;
     } catch (e) {
       const failure=e as Error&{status?:number};
       if(failure.status===401||failure.status===403){setReadDenied(true);setData(null);resetEditor();}
       setErr(failure.message);
+      return false;
     }
   };
   useEffect(()=>{const refresh=()=>{void load();};window.addEventListener('uper-lark-changed',refresh);return()=>window.removeEventListener('uper-lark-changed',refresh);},[employee.id]);
-  const operationResolved = () => {
+  const operationResolved = (receipt:Parameters<NonNullable<React.ComponentProps<typeof AccessOperationStatus>['onResolved']>>[0]) => {
+    const editorPath=user?'/users'+(user.id?'/'+user.id:''):role?'/roles/'+role.id:undefined;
+    if(receipt.state==='committed'&&receipt.operationId===pendingSaveId.current&&editorPath&&receipt.url==='/api/admin/access'+editorPath&&
+      (user?receipt.body?.user?.id:typeof receipt.body?.revision==='number')){
+      void finishSave(receipt.body);
+      return true;
+    }
     setErr("");
     void api()
       .then((current) => {
@@ -244,7 +265,7 @@ export function AccessWorkspace({
         .then(setAudit)
         .catch((e) => setErr(e.message));
   }, [tab]);
-  const recoveryView=tab==='recovery'||tab==='restore-review';
+  const recoveryView=tab==='restore-review';
   const editorHasDraft = Boolean(user || role) && (dirty || larkDirty || why.length > 0 || password.length > 0);
   const refreshAccess = async () => {
     if (refreshing.current || busy || editorHasDraft) return;
@@ -265,14 +286,14 @@ export function AccessWorkspace({
   };
   useEffect(() => {
     const protect = (e: BeforeUnloadEvent) => {
-      if (editorHasDraft||recoveryDraft||recoveryBusy) {
+      if (editorHasDraft||recoveryDraft||recoveryBusy||integrationDraft||integrationBusy) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
-  }, [editorHasDraft,recoveryDraft,recoveryBusy]);
+  }, [editorHasDraft,recoveryDraft,recoveryBusy,integrationDraft,integrationBusy]);
   const close = () => {
     if (busy) return;
     if (editorHasDraft) {
@@ -282,6 +303,7 @@ export function AccessWorkspace({
     resetEditor();
   };
   const resetEditor = () => {
+    pendingSaveId.current=undefined;
     setLarkDirty(false);
     setLarkDraft(undefined);
     setLarkValidation("");
@@ -304,6 +326,7 @@ export function AccessWorkspace({
     const {tab:nextTab,params,href:canonical}=systemLocation(href,employee.id);
     if(href!==canonical)window.history.replaceState(window.history.state,'',canonical);
     setTab(nextTab);
+    setIntegrationTopic(resolveIntegrationTopic(params.get('credentialTopic')));
     setMailView(params.get('mailView')==='pool'?'pool':'accounts');
     setMailRecordId(params.get(params.get('mailView')==='pool'?'mailPool':'mailAccount')??'');
     setMailReturnPool(params.get('mailFromPool')??'');
@@ -318,10 +341,13 @@ export function AccessWorkspace({
     applyLocation(href);
   };
   const requestNavigation=(action:()=>void)=>{
-    if(busy||recoveryBusy)return;
-    if(editorHasDraft||recoveryDraft){pendingNavigation.current=action;setDiscarding(true);return;}
+    if(busy||recoveryBusy||integrationBusy)return;
+    if(editorHasDraft||recoveryDraft||integrationDraft){pendingNavigation.current=action;setDiscarding(true);return;}
     if(user||role)resetEditor();
     action();
+  };
+  const navigateIntegrationTopic=(next:IntegrationTopic)=>{
+    if(next!==integrationTopic)proceedNavigation('/system?tab=credentials&credentialTopic='+next);
   };
   const navigateRecord=(module:string,id:string,assignedRole?:string)=>{
     if(!recordId&&id&&module===tab){
@@ -341,14 +367,16 @@ export function AccessWorkspace({
     const onPop=()=>{
       const destination=window.location.pathname+window.location.search;
       if(destination===locationRef.current)return;
-      if(editorHasDraft||busy||recoveryDraft||recoveryBusy){
+      if(tab==='credentials'&&systemLocation(destination,employee.id).tab==='credentials'){
+        applyLocation(destination);
+      }else if(editorHasDraft||busy||recoveryDraft||recoveryBusy||integrationDraft||integrationBusy){
         window.history.pushState(window.history.state,'',locationRef.current);
         requestNavigation(()=>{window.history.replaceState(window.history.state,'',destination);applyLocation(destination);});
       }else requestNavigation(()=>applyLocation(destination));
     };
     window.addEventListener('popstate',onPop);
     return ()=>window.removeEventListener('popstate',onPop);
-  },[editorHasDraft,busy,recoveryDraft,recoveryBusy,user,role]);
+  },[editorHasDraft,busy,recoveryDraft,recoveryBusy,integrationDraft,integrationBusy,user,role,tab,employee.id]);
   useEffect(()=>{
     const frame=requestAnimationFrame(()=>{
       if(recordId){recordHeading.current?.focus({preventScroll:true});return;}
@@ -419,6 +447,27 @@ export function AccessWorkspace({
     setDirty(true);
     setPreview(null);
   };
+  const finishSave = async (result:{user?:Omit<User,'effective'>;revision?:number;signInRequired?:boolean}={}) => {
+    setNotice("");
+    if(user){
+      const savedUser=result.user;
+      if(savedUser){
+        setData(previous=>previous&&{...previous,users:previous.users.map(row=>
+          row.id===savedUser.id?{...row,...savedUser}:row)});
+        if(!user.id)proceedNavigation(recordHref('users',savedUser.id,roleFilter));
+      }
+      if(user.id)setSignInNoticeUserId(result.signInRequired===true?user.id:null);
+    }else if(role&&typeof result.revision==='number'){
+      const savedRole={...role,revision:result.revision};
+      setData(previous=>previous&&{...previous,roles:previous.roles.some(row=>row.id===role.id)
+        ?previous.roles.map(row=>row.id===role.id?savedRole:row):[...previous.roles,savedRole]});
+      if(!recordId)proceedNavigation(recordHref('roles',role.id));
+    }
+    resetEditor();
+    setLatest(null);
+    if(!await load())setSavedReadFailed(true);
+    window.dispatchEvent(new Event("uper-access-changed"));
+  };
   const save = async () => {
     if (busy) return;
     if(larkDirty && !larkDraft){setLarkValidation(t("Look up the Lark identity first, or clear the input.","Cari identitas Lark dahulu atau kosongkan input.","请先查询核对Lark身份，或清空查询输入。"));return;}
@@ -428,35 +477,27 @@ export function AccessWorkspace({
     setBusy(true);
     setSaving(true);
     setErr("");
+    const path=user?'/users'+(user.id?'/'+user.id:''):role?'/roles/'+role.id:undefined;
+    const operationUrl='/api/admin/access'+path;
+    const previousOperation=pendingAccessOperations(employee.id).find(operation=>operation.url===operationUrl);
     try {
-      if (user)
-        await api(user.id ? "/users/" + user.id : "/users", {
+      let result;
+      if (user) {
+        result=await api(user.id ? "/users/" + user.id : "/users", {
           ...user,
           reason: why,
           temporaryPassword: password,
           ...(larkDraft?{larkBinding:larkDraft}:{}),
         });
-      else if (role) {
+      } else if (role) {
         if (!preview) throw Error("access_preview_required");
-        await api("/roles/" + role.id, { ...role, reason: why });
+        result=await api("/roles/" + role.id, { ...role, reason: why });
       }
-      setDirty(false);
-      setLarkDirty(false);setLarkDraft(undefined);
-      setUser(null);
-      setRole(null);
-      setPassword("");
-      setPreview(null);
-      setWhy("");
-      setNotice(
-        t(
-          "Saved. Affected sessions were revoked; sign in again if required. Customer ownership is unchanged.",
-          "Tersimpan. Sesi terkait dicabut; login kembali jika diperlukan. Kepemilikan pelanggan tidak berubah.",
-          "已保存，受影响会话已撤销；需要时请重新登录。客户归属没有改变。",
-        ),
-      );
-      await load();
-      window.dispatchEvent(new Event("uper-access-changed"));
+      await finishSave(result);
     } catch (e) {
+      if(!previousOperation){
+        pendingSaveId.current=pendingAccessOperations(employee.id).find(operation=>operation.url===operationUrl)?.operationId;
+      }
       setErr((e as Error).message);
     } finally {
       setBusy(false);
@@ -494,6 +535,14 @@ export function AccessWorkspace({
     system: ["Access administration", "Administrasi akses", "权限管理"],
   };
   const auditLabels: Record<string, [string, string, string]> = {
+    "access.integration.set": ["Credential setup checked","Pengaturan kredensial diperiksa","已记录凭证设置核验"],
+    "access.integration.stage": ["Credential candidate saved","Kredensial calon disimpan","候选凭证已保存"],
+    "access.integration.import": ["Legacy credential imported","Kredensial lama diimpor","已导入旧凭证"],
+    "access.integration.verify": ["Credential verification recorded","Verifikasi kredensial dicatat","已记录凭证核验"],
+    "access.integration.activate": ["Credential activated","Kredensial diaktifkan","凭证已启用"],
+    "access.integration.revoke": ["Credential revoked","Kredensial dicabut","凭证已撤销"],
+    "access.integration.lark_settings": ["Lark application settings saved","Pengaturan aplikasi Lark disimpan","已保存 Lark 应用设置"],
+    "access.integration.delegate": ["Credential operators updated","Operator kredensial diperbarui","凭证操作人已更新"],
     "ai.configuration": ["AI model configuration", "Konfigurasi model AI", "AI模型配置"],
     "access.recovery.emergency_authorize": [
       "Emergency recovery authorization recorded",
@@ -524,6 +573,11 @@ export function AccessWorkspace({
       "Staff handover updated",
       "Serah terima staf diperbarui",
       "人员交接已更新",
+    ],
+    "access.restore.bootstrap_administrator": [
+      "Restore administrator password initialized",
+      "Kata sandi administrator pemulihan disiapkan",
+      "已设置恢复复核管理员的临时密码",
     ],
     "access.restore.review": [
       "Restored authorization reviewed",
@@ -617,7 +671,10 @@ export function AccessWorkspace({
       (!userTab || !roleFilter || ('loginId' in r && r.roles.includes(roleFilter)));
   }).sort((a,b)=>userTab?Number(b.id===employee.id)-Number(a.id===employee.id):0);
   const recordListState=err?'error':data?'empty':'loading';
-  const narrowRail=!wide&&showRecords;
+  const recordLayout=useAdminRecordSidebarLayout({id:'access-records',lang,persistent:wide,
+    listOpen:showRecords,setListOpen:setShowRecords,
+    back:{label:userTab?t('Back to users','Kembali ke pengguna','返回用户列表'):t('Back to roles','Kembali ke peran','返回角色列表'),
+      href:recordHref(tab,'',userTab?roleFilter:undefined),onClick:event=>openRecord(event,tab,'')}});
   const searchControl=<AdminSearchField inputRef={listSearch} label={searchLabel} value={query} onChange={setQuery}/>;
   const filterControls=<>
     <CrmSingleSelect lang={lang} isLight={isLight} label={statusLabel} value={statusFilter} onChange={setStatusFilter}
@@ -667,13 +724,13 @@ export function AccessWorkspace({
         navigation={
           <>
             {[
-              ["ai", "AI services", "Layanan AI", "AI服务配置"],
               ["users", "Users & access", "Pengguna & akses", "用户与权限"],
               ["mail", "Email configuration", "Konfigurasi email", "邮件配置"],
+              ["credentials", "Integrations", "Integrasi", "集成配置"],
               ["guide", "Guide", "Panduan", "使用指南"],
               ["test", "Test environment & accounts", "Lingkungan uji & akun", "测试环境和账号"],
             ]
-              .filter((a) => a[0] !== "ai" || isAiAdministrator(employee))
+              .filter((a) => a[0] !== "credentials" || isAiAdministrator(employee))
               .filter((a) => a[0] !== "mail" || canUseAccessRecovery(employee))
               .filter((a) => a[0] !== "test" || data?.testDirectoryAvailable)
               .map((a) => {
@@ -683,7 +740,9 @@ export function AccessWorkspace({
                     type="button"
                     key={a[0]}
                     aria-current={(a[0]==='users'?(isAccessTab(tab)||recoveryView):tab===a[0])?"page":undefined}
-                    onClick={()=>{if(a[0]!=='users'||!isAccessTab(tab))navigateRecord(a[0],'');}}
+                    onClick={()=>{if(a[0]!=='users'||!isAccessTab(tab)){
+                      if(a[0]!=='credentials'||tab!=='credentials')navigateRecord(a[0],'');
+                    }}}
                   >
                     <Icon size={16} aria-hidden="true" />
                     {a[col + 1]}
@@ -693,18 +752,17 @@ export function AccessWorkspace({
           </>
         }
       />
-      <main id="access-main" className="access-main" tabIndex={-1}>
+      <main id="access-main" className="access-main admin-workspace-main" tabIndex={-1}>
         <AccessOperationStatus
           actor={employee.id}
           lang={lang}
           onResolved={operationResolved}
         />
         <AccessSafetyPanel actor={employee} lang={lang} isLight={isLight}
-          view={tab==='recovery'?'recovery':tab==='restore-review'?'review':undefined}
+          view={tab==='restore-review'?'review':undefined}
           onReview={()=>navigateRecord('restore-review','')}
           onReturn={()=>requestNavigation(()=>{
             proceedNavigation(recordHref('users'));
-            requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('.access-recovery-menu button')?.focus());
           })}
           onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>
         {discarding&&!user&&!role&&<CrmDiscardDialog lang={lang} isLight={isLight}
@@ -716,33 +774,16 @@ export function AccessWorkspace({
             action?.();
           }}/>}
 
-        {tab==='ai'&&isAiAdministrator(employee)&&can('access.read')&&!readDenied
-          ?<AiServicePanel lang={lang} isLight={isLight} renderHeading={refresh=><div className="admin-page-toolbar">
-            <div><h1>{t("System management", "Manajemen sistem", "系统管理")}</h1>
-              <p>{t("Manage AI models across consultation and CRM.","Kelola model AI untuk konsultasi dan CRM.","管理咨询及CRM共用的AI服务。")}</p></div>
-            <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")} secondary={refresh}/>
-          </div>}/>
-          :tab!=='guide'&&tab!=='mail'&&!recoveryView&&(!recordTab||!recordId)&&<div className="admin-page-toolbar">
-          <div>
-            <h1>{tab === "ai" ? t("System management", "Manajemen sistem", "系统管理") : t("Users & access", "Pengguna & akses", "用户与权限")}</h1>
-            <p>
-              {tab === "ai" ? t("Manage AI models across consultation and CRM.","Kelola model AI untuk konsultasi dan CRM.","管理咨询及CRM共用的AI服务。") : t(
-                "Manage staff responsibilities and access without changing customer ownership.",
-                "Kelola tanggung jawab dan akses staf tanpa mengubah kepemilikan pelanggan.",
-                "管理员工职责和权限，不改变客户归属。",
-              )}
-            </p>
-          </div>
-          {can("access.read") && tab !== "ai" && (tab!=='audit'||can('access.audit')) && (
+        {isAccessTab(tab)&&(!recordTab||!recordId)&&<AdminPageHeader
+          title={t("Users & access", "Pengguna & akses", "用户与权限")}
+          subtitle={tab==='audit'
+            ?t('Review changes to employee accounts, roles, and permissions.','Tinjau perubahan akun staf, peran, dan izin.','查询员工账号、角色和权限的变更记录。')
+            :tab==='roles'
+              ?t('Manage role permissions and preview the impact of changes.','Kelola izin peran dan pratinjau dampak perubahan.','管理角色权限，预览调整对员工的影响。')
+              :t('Manage employee accounts and review their effective access.','Kelola akun staf dan tinjau akses yang berlaku.','管理员工账号，核对各账号的生效权限。')}
+          actions={can("access.read") && (tab!=='audit'||can('access.audit')) && (
             <AdminDetailActions label={t("Page actions", "Tindakan halaman", "页面操作")}
               secondary={<>
-                {isAccessTab(tab)&&canUseAccessRecovery(employee)&&<div className="access-recovery-menu">
-                  <AdminSecondaryActions alwaysMenu appearance="header" label={t('More actions','Tindakan lain','更多操作')}>
-                    <AdminRowAction href={recordHref('recovery')} onClick={event=>openRecord(event,'recovery','')}>
-                      {t('Administrator recovery','Pemulihan administrator','管理员恢复')}
-                    </AdminRowAction>
-                  </AdminSecondaryActions>
-                </div>}
                 <AdminRefreshAction label={t("Refresh", "Segarkan", "刷新")}
                 loading={isRefreshing} disabled={busy || editorHasDraft}
                 onClick={() => void refreshAccess()}/>
@@ -751,8 +792,7 @@ export function AccessWorkspace({
                 <CrmPageAction icon={Plus} variant="primary"
                   label={userTab?t('Add user','Tambah pengguna','新增用户'):t('Add role','Tambah peran','新增角色')}
                   onClick={()=>userTab?openUser(null):openRole(null)}/>}/>
-          )}
-        </div>}
+          )}/>}
         {!can("access.read")||readDenied ? (
           <p role="alert">
             {t(
@@ -763,7 +803,8 @@ export function AccessWorkspace({
           </p>
         ) : (
           <>
-            {err && !user && !role && (
+            {savedReadFailed&&!user&&!role&&<AdminSavedReadError lang={lang} busy={isRefreshing} onRetry={()=>void refreshAccess()}/>}
+            {err && !savedReadFailed && !user && !role && (
               <p role="alert" className="access-error">
                 {errorText}
               </p>
@@ -778,12 +819,17 @@ export function AccessWorkspace({
               <p role="status">{t("Loading…", "Memuat…", "加载中…")}</p>
             )}
             {tab === 'test' && data?.testDirectoryAvailable && <TestEnvironmentPanel lang={lang}/>}
-            {tab==='mail'&&<EnrollmentMailWorkspace lang={lang} isLight={isLight} admin allowed={canUseAccessRecovery(employee)}
+            {tab==='credentials'&&(isAiAdministrator(employee)?<IntegrationCredentialsOverview lang={lang} isLight={isLight}
+              topic={integrationTopic} onTopicChange={navigateIntegrationTopic} onDraftChange={setIntegrationDraft} onBusyChange={setIntegrationBusy}/>:
+              <AdminListState lang={lang} state="denied"/>)}
+            {tab==='mail'&&!canUseAccessRecovery(employee)&&<AdminListState lang={lang} state="denied"/>}
+            {tab==='mail'&&canUseAccessRecovery(employee)&&<EnrollmentMailWorkspace lang={lang} isLight={isLight} admin allowed
+              canManageCredentials={isAiAdministrator(employee)}
               view={mailView} recordId={mailRecordId} returnPoolId={mailReturnPool} onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}
               onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>}
             {tab==='guide'&&<SystemAccessGuide lang={lang} canAudit={can('access.audit')}
               canAi={isAiAdministrator(employee)} canTest={!!data?.testDirectoryAvailable}
-              canRecover={canUseAccessRecovery(employee)} shellHeight={shellHeight}
+              shellHeight={shellHeight}
               onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}/>}
             {recordTab && <section className="access-record-workspace crm-detail-root" data-theme={isLight?"light":"dark"} style={{"--crm-shell-height":shellHeight+"px"} as React.CSSProperties} aria-label={listTitle}>
               {!recordId && <div className="access-record-toolbar">
@@ -804,27 +850,27 @@ export function AccessWorkspace({
               </AdminListTable>}
               {!recordId&&!records.length&&<AdminListState lang={lang} state={recordListState} onRetry={refreshAccess}/>}
               {recordId&&<div className="access-record-split" data-record-detail="true" data-record-scroll={scrollMode}>
-                {narrowRail&&<div className="crm-record-navigation">
-                  <AdminRecordSidebarToggle controls="access-records" expanded label={t('Return to details','Kembali ke detail','返回详情')}
-                    onClick={()=>{setShowRecords(false);requestAnimationFrame(()=>sidebarToggle.current?.focus());}}/>
-                </div>}
-                <AdminRecordSidebar id="access-records" title={listTitle} count={records.length} selectedId={recordId}
-                  hidden={!wide&&!narrowRail} busy={isRefreshing} busyLabel={t('Refreshing…','Memuat ulang…','正在刷新…')}
+                {recordLayout.listNavigation}
+                <AdminRecordSidebar {...recordLayout.sidebar} title={listTitle} count={records.length} selectedId={recordId}
+                  busy={isRefreshing} busyLabel={t('Refreshing…','Memuat ulang…','正在刷新…')}
                   filters={<AdminRecordFilters lang={lang} count={Number(Boolean(statusFilter))+Number(userTab&&Boolean(roleFilter))}
-                    search={<AdminSearchField inputRef={railSearch} label={searchLabel} value={query} onChange={setQuery}/>}>{filterControls}</AdminRecordFilters>}
+                    search={<AdminSearchField label={searchLabel} value={query} onChange={setQuery}/>}>{filterControls}</AdminRecordFilters>}
                   note={selectedRecord&&!records.includes(selectedRecord)?t('The open record is outside the current filters.','Rekaman terbuka di luar filter saat ini.','当前记录不在筛选结果中，详情仍保留。'):undefined}
                   empty={!records.length?<AdminListState lang={lang} compact state={recordListState} onRetry={refreshAccess}/>:undefined}>
                   {records.map(r=><AdminRecordRow key={r.id} selected={recordId===r.id} name={recordName(r)} title={recordName(r)}
-                    href={recordHref(tab,r.id,userTab?roleFilter:undefined)} onClick={event=>openRecord(event,tab,r.id)} meta={<>{recordMeta(r)} · {recordStatus(r)}</>}/>)}
+                    href={recordHref(tab,r.id,userTab?roleFilter:undefined)} onClick={event=>openRecord(event,tab,r.id)}
+                    meta={<span className="access-record-sidebar-meta">
+                      <span className="access-record-sidebar-id" title={recordMeta(r)}>{recordMeta(r)}</span>
+                      {recordStatus(r)}
+                    </span>}/>)}
                 </AdminRecordSidebar>
-                <article className="crm-detail-panel access-record-detail" hidden={narrowRail}>
-                  <AdminRecordHeader back={{label:userTab?t('Back to users','Kembali ke pengguna','返回用户列表'):t('Back to roles','Kembali ke peran','返回角色列表'),onClick:()=>navigateRecord(tab,'')}}
+                <article className="crm-detail-panel access-record-detail" hidden={recordLayout.listOnly}>
+                  <AdminRecordHeader back={recordLayout.headerBack}
                     title={<AdminRecordTitle title={selectedRecord?recordName(selectedRecord):listTitle} titleRef={recordHeading}
                       status={selectedRecord&&recordStatus(selectedRecord)} meta={selectedRecord&&recordMeta(selectedRecord)}/>}
                     actions={<AdminDetailActions label={t('Record actions','Tindakan rekaman','记录操作')}
                       secondary={<>
-                        {!wide&&<AdminRecordSidebarToggle ref={sidebarToggle} controls="access-records" expanded={false}
-                          label={t('Show records','Tampilkan rekaman','查看记录列表')} onClick={()=>{setShowRecords(true);requestAnimationFrame(()=>railSearch.current?.focus());}}/>}
+                        {recordLayout.browseAction}
                         <AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={isRefreshing} disabled={busy||editorHasDraft} onClick={()=>void refreshAccess()}/>
                       </>}
                       primary={selectedRecord&&('loginId' in selectedRecord
@@ -834,6 +880,10 @@ export function AccessWorkspace({
                         :can('access.roles')&&<CrmPageAction icon={Pencil} variant="primary" label={t('Edit role','Edit peran','编辑角色')}
                           onClick={()=>openRole(selectedRecord)}/>)}/>}/>
                   <div className="crm-detail-body access-record-body" data-admin-scroll="detail" tabIndex={0} onKeyDown={containPaneKeys}>
+                    {signInNoticeUserId&&signInNoticeUserId===selectedRecord?.id&&<div className="access-user-signin">
+                      <AdminFormFeedback state="saved" lang={lang}>{t('This user needs to sign in again.','Pengguna ini perlu masuk kembali.','该用户需要重新登录。')}</AdminFormFeedback>
+                      <button type="button" onClick={()=>setSignInNoticeUserId(null)}>{t('Dismiss','Tutup','关闭提示')}</button>
+                    </div>}
                     {selectedRecord?'loginId' in selectedRecord?<><section>
                       <h2>{t('Account information','Informasi akun','账号信息')}</h2>
                       <dl className="access-record-facts">
@@ -945,7 +995,7 @@ export function AccessWorkspace({
               onResolved={operationResolved}
             />
             {saving&&<AdminFormFeedback state="saving" lang={lang}/>}
-            {err&&<AdminFormFeedback state={hasPendingResult?'unknown':'error'} lang={lang}>{errorText}</AdminFormFeedback>}
+            {err&&<AdminFormFeedback state={hasPendingResult?'unknown':'error'} lang={lang}>{hasPendingResult&&user?.id?undefined:errorText}</AdminFormFeedback>}
             {larkValidation&&larkDirty&&!larkDraft&&<AdminFormFeedback state="error" lang={lang}>{larkValidation}</AdminFormFeedback>}
             {err && err!=="admin_required_missing" && (
               <button

@@ -346,10 +346,10 @@ export function createAnalyticsClient(options: {
     promotion_kind: context.promotion_kind || null,
     entry_point: context.entry_point || null,
   });
-  const track = (event: string, params: Record<string, unknown> = {}) => {
+  const track = (event: string, params: Record<string, unknown> = {}, captured?:AnalyticsParams) => {
     try {
       if (!options.id || !ANALYTICS_EVENTS.has(event)) return false;
-      const context = options.context();
+      const context = captured ?? options.context();
       options.send("event", event, {
         ...context,
         ...attribution(context),

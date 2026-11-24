@@ -5,7 +5,7 @@
 ## 授权与隔离
 
 - 日常先由另一位有效System Administrator使用现有账号管理功能重置密码；恢复不添加CRM／CMS业务角色。Robert与Ethan作为两位模拟完整管理员验证；真实公司环境仍须明确审查授权，不自动提升其他账号。
-- 离线维护使用独立0600环境文件，保留 `PORTAL_DEPLOYMENT=company-trial`、`NODE_ENV=production`、`APP_ENV=production`、`TRIAL_DATASET=synthetic`、原目标域名及可信TLS配置，另加 `ACCESS_RECOVERY_MAINTENANCE=true`、`PORTAL_WORKER_ENABLED=false`。不能用APP_ENV=test或本地3000切换标志绕过门禁。该维护文件不能用于启动应用。
+- 离线维护使用独立0600环境文件，保留 `PORTAL_DEPLOYMENT=company-trial`、`NODE_ENV=production`、`APP_ENV=production`、`TRIAL_DATASET=synthetic`、原目标域名及可信TLS配置，另加 `ACCESS_RECOVERY_MAINTENANCE=true`。不能用APP_ENV=test或本地3000切换标志绕过门禁。该维护文件不能用于启动应用。
 - 在线签发仍须当前完整管理员、原因、已有稳定账号、明确启用／恢复系统权限范围、一小时有效的签名许可。恢复到新库时绑定准确库名及备份SHA256；密钥、许可签名及新密码不进入日志、Git或报告。没有有效预授权时，仅可信主机操作员可凭独立可信授权清单及分开保存的校验值、外部审批人／编号准备应急许可；目标须原本是清单中的完整管理员，不能选普通Sales。
 - 维护操作员仍须停止应用和全部工作进程，并明确传入 `--services-stopped`。公司应用终身持有数据库运行锁，改密／应急签发在同一数据库锁下执行；应用未停时恢复拒绝，维护未结束时应用不能启动。凭据变更与运行锁位于同一个MySQL会话，连接故障导致事务回滚／锁释放；重试须先查持久结果。
 - 公司应用只能在单实例内运行通知工作进程，独立本地worker脚本拒绝公司模式。应用运行锁检查失败时退出；不能仅检查维护容器的localhost端口来宣称另一容器已停。外部持有数据库管理员权限的人及非标准脚本仍属于公司主机治理边界，不能由该锁认证身份。

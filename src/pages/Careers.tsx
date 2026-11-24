@@ -31,6 +31,10 @@ import {
 import { SEO } from '../components/SEO';
 import { trackFormSubmit } from '../utils/analytics';
 import { useDesignStyle } from '../utils/theme';
+import {addRouteTranslations} from '../i18n';
+import translations from '../i18n/locales/routes/careers.json';
+
+addRouteTranslations('careers', translations);
 
 interface Job {
   id: string;

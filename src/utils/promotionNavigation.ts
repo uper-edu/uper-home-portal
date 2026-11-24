@@ -51,6 +51,21 @@ export function promotionJourneyUrl(target: string, input: URLSearchParams, entr
   return url.pathname + url.search + url.hash;
 }
 
+export function promotionEntryUrl(target: '/enrollment' | '/chat' | '/link', input: URLSearchParams, language: PublicPromotion['language'], entry?: PromotionEntryPoint) {
+  const {p,invalid}=promotionIdentity(input);
+  const chosen=input.get('lang');
+  // A quick click must not make the provisional UI language an explicit override.
+  if (p && !invalid && chosen===null) return promotionJourneyUrl(target,input,entry);
+  const nextLanguage=chosen==='en'||chosen==='id'||chosen==='zh'?chosen:language;
+  const destination = `${target}?lang=${nextLanguage}`;
+  return promotionJourneyUrl(destination,input,entry);
+}
+
+export function linkHubReturnUrl(input: URLSearchParams, language: PublicPromotion['language']) {
+  if (promotionEntryPoint(input.get('entry_point')) !== 'linkhub') return undefined;
+  return promotionEntryUrl('/link',input,language);
+}
+
 export function isWebsitePromotion(id: string) {
   return evergreenLinks.some(link => link.id === id && link.source === 'website');
 }

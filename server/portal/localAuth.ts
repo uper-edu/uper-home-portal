@@ -5,18 +5,13 @@ import { projectEmployee } from "../../src/utils/accessControl.ts";
 import crypto from "node:crypto";
 import { validMutationOrigin } from "./accessTransport.ts";
 import { restoreState } from "./accessRecoveryState.ts";
-import { promisify } from "node:util";
+import {hashPassword,passwordChangeKey,scrypt} from "./staffCredentials.ts";
+export {hashPassword,passwordChangeKey} from "./staffCredentials.ts";
 import type { Express, Request, Response } from "express";
 import { pool, tx } from "./store.ts";
 import type { Employee } from "./identity.ts";
-const scrypt = promisify(crypto.scrypt);
 const cookie = () => `uper_crm_session_${process.env.PORT || "3000"}`;
 export const accountSeeds = accessDefaults.accounts as [string, string[]][];
-export async function hashPassword(password: string) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const key = (await scrypt(password, salt, 64)) as Buffer;
-  return salt + ":" + key.toString("hex");
-}
 async function matches(password: string, encoded: string) {
   const [salt, key] = encoded.split(":");
   if (!salt || !key) return false;
@@ -39,7 +34,6 @@ const token = (req: Request) =>
     ?.slice(cookie().length + 1);
 const digest = (value: string) =>
   crypto.createHash("sha256").update(value).digest("hex");
-export const passwordChangeKey=(id:string)=>'pw:'+digest(id).slice(0,29);
 export async function localEmployee(req: Request) {
   const t = token(req);
   if (!t || !/^[a-f0-9]{64}$/.test(t)) return null;
@@ -60,7 +54,10 @@ export async function localEmployee(req: Request) {
 }
 /** Restrict temporary-password sessions before any CRM, CMS or administration routes. */
 export function passwordChangeGate(req:any,res:any,next:any){
- if(!token(req)||(req.method==='GET'&&/^\/crm\/auth\/operations\/[a-zA-Z0-9_-]{16,100}$/.test(req.path))||['/crm/auth/me','/crm/auth/login','/crm/auth/logout','/crm/auth/password'].includes(req.path))return next();
+ const operationQuery = req.method === 'GET' && /^\/crm\/auth\/operations\/[a-zA-Z0-9_-]{16,100}$/.test(req.path);
+ const passwordOperationClose = req.method === 'POST' && req.body?.url === '/api/crm/auth/password' &&
+   /^\/crm\/auth\/operations\/[a-zA-Z0-9_-]{16,100}\/close$/.test(req.path);
+ if(!token(req)||operationQuery||passwordOperationClose||['/crm/auth/me','/crm/auth/login','/crm/auth/logout','/crm/auth/password'].includes(req.path))return next();
  localEmployee(req).then(e=>e?.passwordChangeRequired?res.status(403).json({error:'password_change_required'}):next()).catch(()=>res.status(503).json({error:'Authentication service unavailable'}));
 }
 export async function localDirectory() {
