@@ -7,7 +7,7 @@ import { formatCurrency } from '../utils/currency';
 import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
 import type {AftercareCourse} from '../utils/enrollmentAftercare';
 import {nextPaymentClockDelay,paymentMinuteMs} from '../utils/enrollmentPaymentClock';
-import { EnrollmentJoiningNote } from './EnrollmentSupport';
+import {EnrollmentJoiningNote} from './EnrollmentJoiningNote';
 import {hasEnrollmentBankPlaceholder,type EnrollmentBank} from '../utils/enrollmentBank';
 import {enrollmentProofAccept,enrollmentProofSelectionIssue} from '../utils/enrollmentProofFile';
 

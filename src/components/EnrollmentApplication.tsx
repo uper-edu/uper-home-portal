@@ -26,7 +26,7 @@ import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
 import { formatCurrency } from '../utils/currency';
 import type { PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { readEnrollmentAftercare, type EnrollmentAftercare } from '../utils/enrollmentAftercare';
-import { enrollmentSupportPath } from './EnrollmentSupport';
+import {enrollmentSupportPath} from '../utils/enrollmentSupportNavigation';
 import { EnrollmentModuleBoundary, lazyEnrollmentModule } from './EnrollmentModuleBoundary';
 import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
 import { interestOption, waitlistStates } from '../utils/enrollmentInterestCopy';

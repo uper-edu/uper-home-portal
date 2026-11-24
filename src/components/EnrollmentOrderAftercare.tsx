@@ -7,7 +7,7 @@ import { formatCurrency } from '../utils/currency';
 import {enrollmentClassTitle,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import type { EnrollmentOrder } from './EnrollmentPayment';
-import { enrollmentSupportPath } from './EnrollmentSupport';
+import {enrollmentSupportPath} from '../utils/enrollmentSupportNavigation';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
 import type { AftercareCourse as Course, EnrollmentAftercare } from '../utils/enrollmentAftercare';
 

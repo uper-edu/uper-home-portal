@@ -1,8 +1,9 @@
 import {useState,type MouseEventHandler,type ReactNode} from 'react';
 import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
+import type {EnrollmentSupportTopic} from '../utils/enrollmentSupportNavigation';
 import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
-import { enrollmentFixedLessonDuration,enrollmentInstant,enrollmentPrivateLessonTitle,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
+import { enrollmentFixedLessonDuration,enrollmentPrivateLessonTitle,enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import {formatCurrency} from '../utils/currency';
 import type {PublicEnrollmentAppointment} from '../services/enrollmentClassDetails';
 import {EnrollmentClassName} from './EnrollmentClassName';
@@ -57,23 +58,7 @@ const topics = {
       'Jika sudah mendaftar, siapkan nomor pendaftaran. Sampaikan kelas atau jadwal yang ingin Anda tanyakan.',
     ],
   },
-} satisfies Record<string,{title:Copy;instructions:Copy}>;
-
-export function enrollmentSupportPath(topic: keyof typeof topics, language: InterestLanguage) {
-  return '/enrollment/help/'+topic+'?lang='+language;
-}
-
-export function EnrollmentJoiningNote({firstLesson,now,language}:{
-  firstLesson?:string;now:number;language:InterestLanguage;
-}) {
-  const lessonTime=enrollmentInstant(firstLesson);
-  if(!lessonTime||now<lessonTime.valueOf())return null;
-  return <p>{interestText(language,[
-    '已到原定首课时间。','The scheduled first lesson time has arrived.','Waktu sesi pertama yang dijadwalkan sudah tiba.',
-  ])}{' '}<EnrollmentJourneyLink className="enrollment-quiet" stepEntry="enrollment-joining-help" to={enrollmentSupportPath('advisor',language)}>{interestText(language,[
-    '联系销售确认上课安排','Contact our team to confirm how to join','Hubungi tim kami untuk memastikan cara bergabung',
-  ])}</EnrollmentJourneyLink></p>;
-}
+} satisfies Record<EnrollmentSupportTopic,{title:Copy;instructions:Copy}>;
 
 export function EnrollmentSupport({topic,language,level,appointment:selection,appointmentState,onAppointmentRetry,period,format,offline,returnAction,backAction,registrationLink}:{
   topic:string;language:InterestLanguage;level?:string;appointment?:PublicEnrollmentAppointment;
