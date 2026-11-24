@@ -161,6 +161,8 @@ export default function ChatWorkspace({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const lastMessage=messages[messages.length-1];
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const initialInputFocusHandled = useRef(false);
   const [isTyping, setIsTyping] = useState(false);
   const [{language:lang}, setChatLanguage] = useState(()=>({
     language:chatLanguage(initialContext?.preferredLanguage ?? initialLanguage,window.location.search),
@@ -586,6 +588,54 @@ export default function ChatWorkspace({
   const t=(zh:string,en:string,id:string)=>chooseText(lang,zh,en,id);
   const replyCheckFailure=t('暂时无法查询回复，请重试。','The reply could not be checked. Try again.','Balasan belum dapat diperiksa. Coba lagi.');
   const emptyChat=!messages.length&&!thread?.messages.length&&!isTyping;
+  const conversationId=thread?.conversationId;
+  useEffect(()=>{
+    if(presentation!=='page'||!active||!conversationId||initialInputFocusHandled.current)return;
+    initialInputFocusHandled.current=true;
+    if(!emptyChat||threadId||fromEnrollment||isTakingAssessment||showOnboardingModal||report||confirm||
+      document.hidden||document.activeElement!==document.body||readChatInputDraft(owner,conversationId)||
+      !window.matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine)').matches)return;
+    inputRef.current?.focus({preventScroll:true});
+  },[presentation,active,conversationId,emptyChat,threadId,fromEnrollment,isTakingAssessment,showOnboardingModal,report,confirm,owner]);
+
+  useEffect(()=>{
+    const page=pageRef.current;
+    const viewport=window.visualViewport;
+    if(presentation!=='page'||!active||!conversationId||!page||!viewport||
+      !window.matchMedia('(pointer: coarse)').matches)return;
+    let frame=0;
+    const syncViewport=()=>{
+      cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(()=>{
+        if(viewport.scale!==1){
+          page.style.removeProperty('--chat-visible-height');
+          delete page.dataset.chatKeyboard;
+          return;
+        }
+        const visibleHeight=viewport.height+viewport.offsetTop-page.getBoundingClientRect().top;
+        page.style.setProperty('--chat-visible-height',Math.round(visibleHeight)+'px');
+        const keyboardOpen=document.activeElement===inputRef.current&&
+          document.documentElement.clientHeight-viewport.height>120;
+        if(keyboardOpen)page.dataset.chatKeyboard='open';
+        else delete page.dataset.chatKeyboard;
+      });
+    };
+    syncViewport();
+    viewport.addEventListener('resize',syncViewport);
+    viewport.addEventListener('scroll',syncViewport);
+    page.addEventListener('focusin',syncViewport);
+    page.addEventListener('focusout',syncViewport);
+    return ()=>{
+      cancelAnimationFrame(frame);
+      viewport.removeEventListener('resize',syncViewport);
+      viewport.removeEventListener('scroll',syncViewport);
+      page.removeEventListener('focusin',syncViewport);
+      page.removeEventListener('focusout',syncViewport);
+      page.style.removeProperty('--chat-visible-height');
+      delete page.dataset.chatKeyboard;
+    };
+  },[presentation,active,conversationId]);
+
   useEffect(()=>{
     const flow=flowRef.current;
     if(!active||isTakingAssessment||!flow||typeof ResizeObserver!=='function')return;
@@ -699,7 +749,7 @@ export default function ChatWorkspace({
   </div>;
   const ConversationRegion = embedded ? 'div' : 'main';
   return (
-    <div className="standalone-chat-page font-sans" data-chat-presentation={presentation} data-chat-conversation={thread.conversationId}>
+    <div ref={pageRef} className="standalone-chat-page font-sans" data-chat-presentation={presentation} data-chat-conversation={thread.conversationId}>
       {showMetadata&&<PageMetadata lang={lang}/>}
       {showOnboardingModal&&<Suspense fallback={<LearningProfileLoadNotice lang={lang} onClose={()=>consultFirst(lang)}/>}>
         <GFormOnboardingModal isOpen onComplete={handleOnboardingComplete} initialLang={lang} profile={profile} onConsultFirst={consultFirst}/>
@@ -819,7 +869,11 @@ export default function ChatWorkspace({
 
       {!isTakingAssessment && <footer inert={showOnboardingModal}>
         <ChatComposer language={lang} conversationId={thread.conversationId} onSend={()=>void handleSendMessage()} busy={busy} inputRef={inputRef} compact={compact}
-          placeholder={emptyChat?t('直接提问，例如：零基础学中文要多久？','Ask a question, such as where to start as a beginner','Tanya langsung, misalnya cara mulai sebagai pemula'):t('继续提问…','Ask a follow-up…','Tanya lagi…')}>
+          placeholder={emptyChat
+            ?presentation==='page'
+              ?t('问课程、学费或测评','Ask about courses, fees or tests','Tanya kelas, biaya, atau tes')
+              :t('直接提问，例如：零基础学中文要多久？','Ask a question, such as where to start as a beginner','Tanya langsung, misalnya cara mulai sebagai pemula')
+            :t('继续提问…','Ask a follow-up…','Tanya lagi…')}>
           {chatFailed && <p role="alert" className="text-sm">{chooseText(lang,'对话同步失败。','Conversation could not sync.','Percakapan gagal disinkronkan.')} <button type="button" className="underline" onClick={refreshChat}>{chooseText(lang,'重试','Retry','Coba lagi')}</button></p>}
         </ChatComposer>
       </footer>}
