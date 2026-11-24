@@ -55,13 +55,18 @@ test('course introductions retain supported translations and reject malformed pu
 });
 
 test('HSK 2 through 4 presets preserve each translated outcome and both HSK 4 stages',()=>{
-  const [hsk2,hsk3,hsk4]=enrollmentCoursePresets.slice(1).map(course=>course.config.teaching.introduction);
+  const [hsk1,hsk2,hsk3,hsk4]=enrollmentCoursePresets.map(course=>course.config.teaching.introduction);
   for(const introduction of [hsk2,hsk3,hsk4]){
     assert.ok(introduction);
     assert.deepEqual(parseEnrollmentCourseIntroduction(introduction),introduction);
     assert.deepEqual(Object.keys(introduction),['en','id','zh']);
   }
   for(const language of ['en','id','zh'] as const){
+    const sharedResources=hsk1?.[language]?.practice?.split('\n').slice(1);
+    assert.equal(sharedResources?.length,3);
+    for(const introduction of [hsk2,hsk3,hsk4]){
+      assert.deepEqual(introduction?.[language]?.practice?.split('\n').slice(-3),sharedResources);
+    }
     assert.equal(hsk2?.[language]?.outcomes?.split('\n').length,10);
     assert.equal(hsk3?.[language]?.outcomes?.split('\n').length,10);
     const stages=hsk4?.[language]?.stages;

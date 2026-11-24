@@ -77,3 +77,5 @@
 [HSK 2](../../src/data/system-defaults/hsk2-course-introduction.json) 和 [HSK 3](../../src/data/system-defaults/hsk3-course-introduction.json) 分别保留原稿的七项学习成果和三项进阶价值。[HSK 4](../../src/data/system-defaults/hsk4-course-introduction.json) 以一门课呈现两个可展开的阶段。4A、4B 各保留五项学习成果、三项进阶价值和三项教材重点。课程目标与教材全册数据各自注明。教学内容可在管理端按语言页签编辑，HSK 4 在同一课程内选择阶段。
 
 教材数据由出版社的第 2、3 册说明及第 4 册教师用书核实。4B 保留高校、CSC 奖学金与就业方向，申请资格以目标项目的语言和其他条件为准。[第 2 册](https://www.blcup.com/EnPInfo/index/391) · [第 3 册](https://www.blcup.com/EnPInfo/index/234) · [第 4 册教师用书](https://file.purpleculture.net/file/pdfpreview/9787561945490.pdf) · [中国政府奖学金院校要求示例](https://study.cqu.edu.cn/info/1387/2793.htm)
+
+HSK 1–4 的「怎么学、怎么练」均列出教材线上练习、HSK 模拟试题和课堂录像。HSK 4 将这三项放在课程总览，4A 和 4B 分别保留各自的专项练习。
