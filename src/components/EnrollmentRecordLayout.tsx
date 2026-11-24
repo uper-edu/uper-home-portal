@@ -17,6 +17,21 @@ export function EnrollmentPriceSaving({amount,standardPrice,language}:{
   ])}</span>;
 }
 
+export function EnrollmentStatusBadge({status,tone,announceStatus=false}: {
+  status:string;tone:EnrollmentStatusTone;announceStatus?:boolean;
+}) {
+  return <span className="enrollment-status" data-state={tone} role={announceStatus?'status':undefined}>{status}</span>;
+}
+
+export function EnrollmentClassSummaryHeading({title,status,tone='pending',announceStatus=false}: {
+  title:string;status?:string;tone?:EnrollmentStatusTone;announceStatus?:boolean;
+}) {
+  return <div className="enrollment-detail-heading">
+    <h2 className="enrollment-class-heading"><EnrollmentClassName title={title}/></h2>
+    {status&&<EnrollmentStatusBadge status={status} tone={tone} announceStatus={announceStatus}/>}
+  </div>;
+}
+
 export function EnrollmentIntakeSummary({title,detail,amount,label,language}:{
   title:string;detail:string;amount:number;label:string;language:InterestLanguage;
 }) {
@@ -79,10 +94,7 @@ export function EnrollmentRecordSummary({title,status,tone='pending',schedule,te
   const t=(copy:readonly [string,string,string])=>enrollmentCopy(language,copy);
   const firstDate=enrollmentInstant(firstLesson);
   return <header className="enrollment-record-summary">
-    <div className="enrollment-detail-heading">
-      <h2 className="enrollment-class-heading"><EnrollmentClassName title={title}/></h2>
-      {status&&<span className="enrollment-status" data-state={tone} role="status">{status}</span>}
-    </div>
+    <EnrollmentClassSummaryHeading title={title} status={status} tone={tone} announceStatus/>
     <EnrollmentDetailFields fields={[
       [t(['授课教师','Teacher','Pengajar']),enrollmentTeacherLabel(teacherType,language)],
       [t(['首课时间','First class','Pertemuan pertama']),firstDate&&<time dateTime={firstDate.toISOString()}>

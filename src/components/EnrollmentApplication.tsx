@@ -1,4 +1,5 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
+import {EnrollmentContactFields} from './EnrollmentContactFields';
 import {createBrowserUuid} from '../utils/browserUuid';
 import {visitorScope} from '../services/visitorScope';
 import {preloadEnrollmentNavigation,readEnrollmentClassDetails,type PublicEnrollmentAppointment} from '../services/enrollmentClassDetails';
@@ -221,7 +222,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const setPhone=(value:string)=>{updatePhone(value);saveDraft({phone:value});};
   const {ContactPhoneInput, EnrollmentDemandForm, rememberVisitorContact} = intakeTools ?? {};
   const phoneField = useEnrollmentPhoneField(language,phone,intakeTools?.phoneValidation);
-  const phoneError = phoneField.error && <small className="enrollment-form-error" role="alert" id={phoneField.errorId}>{phoneField.error}</small>;
+
   const [priority,updatePriority] = useState(savedDraft.priority??true);
   const setPriority=(value:boolean)=>{updatePriority(value);saveDraft({priority:value});};
   const [savedEmailDraft]=useState(()=>{
@@ -1302,20 +1303,17 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     </div>}
     {personOption}
     {(!canSummarize||editingContact)&&<>
-      <label className="enrollment-field">{learnerLabel}
-        <input required maxLength={120} autoComplete="name" readOnly={applicationDraftLocked} value={name} onChange={event=>setName(event.target.value)}
-          placeholder={t(['输入学员姓名','Enter learner name','Masukkan nama siswa'])}/>
-      </label>
-      {forAnother&&sessionAddress&&sessionAddress!==currentEmail&&<button type="button" className="enrollment-record-link"
-        disabled={applicationDraftLocked} onClick={()=>editEmail(sessionAddress)}>
-        {t(['使用我的已验证邮箱收通知','Use my verified email for updates','Gunakan email terverifikasi saya untuk pemberitahuan'])}
-      </button>}
-      {emailField}
-      <div className="enrollment-field">
-        <label htmlFor={phoneField.errorId+'-input'}>{phoneLabel}</label>
-        {ContactPhoneInput&&<ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required
-          readOnly={applicationDraftLocked} value={phone} onValueChange={setPhone}/>}{phoneError}
-      </div>
+      <EnrollmentContactFields nameLabel={learnerLabel} nameLabelClassName="enrollment-field"
+        nameInput={{autoComplete:'name',readOnly:applicationDraftLocked,value:name,onChange:event=>setName(event.target.value),
+          placeholder:t(['输入学员姓名','Enter learner name','Masukkan nama siswa'])}}
+        phoneLabel={phoneLabel} PhoneInput={ContactPhoneInput} phoneField={phoneField}
+        phoneInput={{language,readOnly:applicationDraftLocked,value:phone,onValueChange:setPhone}}>
+        {forAnother&&sessionAddress&&sessionAddress!==currentEmail&&<button type="button" className="enrollment-record-link"
+          disabled={applicationDraftLocked} onClick={()=>editEmail(sessionAddress)}>
+          {t(['使用我的已验证邮箱收通知','Use my verified email for updates','Gunakan email terverifikasi saya untuk pemberitahuan'])}
+        </button>}
+        {emailField}
+      </EnrollmentContactFields>
       {!privateLesson&&(!applicationClass||emailConfirmed)&&codeField}
     </>}
   </div>;
@@ -1988,16 +1986,16 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       <EnrollmentJourneyLink to={mineLink+'&tab=waitlist'}>{t(['查看我的候补','View my waitlist','Lihat daftar tunggu saya'])}</EnrollmentJourneyLink></>
     : hasNoSeat ? <form onSubmit={event=>{event.preventDefault();void join();}}>
       <h2>{joinText}</h2>
-      <label>{t(['学员姓名','Learner name','Nama siswa'])}<input required maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>
-      <div className="enrollment-field"><label htmlFor={phoneField.errorId+'-input'}>{phoneLabel}</label>
-        {ContactPhoneInput&&<ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required value={phone} onValueChange={setPhone}/>}{phoneError}</div>
+      <EnrollmentContactFields nameLabel={learnerLabel} nameInput={{value:name,onChange:event=>setName(event.target.value)}}
+        phoneLabel={phoneLabel} PhoneInput={ContactPhoneInput} phoneField={phoneField}
+        phoneInput={{language,value:phone,onValueChange:setPhone}}/>
       <p>{t(['有空位时可以自行申请。','Apply when a seat becomes available.','Daftar saat kursi tersedia.'])}</p>
       <button className="enrollment-action" type="submit" disabled={busy}>{t(['确认加入候补','Confirm waitlist entry','Konfirmasi daftar tunggu'])}</button>
     </form> : <form onSubmit={event=>{event.preventDefault();void apply();}}>
       <h2>{applyText}</h2>
-      <label>{t(['学员姓名','Learner name','Nama siswa'])}<input required maxLength={120} value={name} onChange={event=>setName(event.target.value)}/></label>
-      <div className="enrollment-field"><label htmlFor={phoneField.errorId+'-input'}>{phoneLabel}</label>
-        {ContactPhoneInput&&<ContactPhoneInput {...phoneField.inputProps} id={phoneField.errorId+'-input'} language={language} required value={phone} onValueChange={setPhone}/>}{phoneError}</div>
+      <EnrollmentContactFields nameLabel={learnerLabel} nameInput={{value:name,onChange:event=>setName(event.target.value)}}
+        phoneLabel={phoneLabel} PhoneInput={ContactPhoneInput} phoneField={phoneField}
+        phoneInput={{language,value:phone,onValueChange:setPhone}}/>
       <label><input type="checkbox" checked={priority} onChange={event=>setPriority(event.target.checked)}/> {t(['优先安排顺延或转班方案','Prioritize rescheduling or transfer options','Utamakan opsi penjadwalan ulang atau pindah kelas'])}</label>
       <p>{t(['财务核实足额到账后，报名才算成功。','Enrollment is confirmed after Finance verifies full payment.','Pendaftaran berhasil setelah pembayaran penuh diverifikasi.'])}</p>
       <button className="enrollment-action" type="submit" disabled={busy}>{t(['提交申请','Submit application','Kirim pendaftaran'])}</button>

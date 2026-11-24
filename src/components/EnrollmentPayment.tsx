@@ -1,4 +1,5 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
+import {EnrollmentStatusBadge} from './EnrollmentRecordLayout';
 import {enrollmentOrderTone,type EnrollmentClosureReason} from '../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
@@ -144,10 +145,10 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       {cohort&&<p>{[enrollmentTeacherLabel(cohort.teacherType,language),start&&(cohort.opened?t(start+'开课','Starts '+start,'Mulai '+start):t('首课 '+start,'First session '+start,'Pertemuan pertama '+start))].filter(Boolean).join(' · ')}</p>}
       {schedule&&<p>{schedule}</p>}
       {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={serverNow} language={language}/>}
-      {title&&status&&<p className="enrollment-payment-status"><span className="enrollment-status"
-        data-state={enrollmentOrderTone(order.status,{restored:order.restored,classCancelled:existingTransferOnly,needsAction:order.status==='partial'&&hasBalance})}>
-        {status}
-      </span></p>}
+      {title&&status&&<p className="enrollment-payment-status">
+        <EnrollmentStatusBadge status={status}
+          tone={enrollmentOrderTone(order.status,{restored:order.restored,classCancelled:existingTransferOnly,needsAction:order.status==='partial'&&hasBalance})}/>
+      </p>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}
       {!!order.creditIn&&<p>{t('旧订单已冲抵','Credit applied from an earlier order','Dana pesanan sebelumnya yang digunakan')} · {formatCurrency(order.creditIn,language)}</p>}
     </div>
