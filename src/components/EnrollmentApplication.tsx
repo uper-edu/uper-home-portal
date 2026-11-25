@@ -58,6 +58,7 @@ function isOrderView<T extends Partial<Order>>(receipt:T|null|undefined,orderId:
     typeof receipt.restored==='boolean'&&Number.isFinite(receipt.received);
 }
 type OrderSummary = Order & {level:string;firstLesson:string;classCancelled?:boolean;updatedAt?:string;needsPayment?:boolean;invitation?:{id:string;deadline:string}};
+type EnrollmentListCard = {key:string;active:boolean;completed?:boolean;updatedAt?:string|null;needsAction:boolean;card:ReactNode};
 type AssistedApplication={id:string;name:string;quote:{level:string;format:string;firstLesson:string;schedule:string;price:number};
   createdAt:string;expiresAt:string;active:boolean};
 type ApplicationClass = { title: string; schedule: string; price: number; detailsPath: string; listPath: string; fromWaitlist?: string };
@@ -1568,6 +1569,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const teacher = enrollmentTeacherLabel(course?.teacherType,language);
     const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(row.closureReason==='learner_cancelled'?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:enrollmentStatuses[row.status]);
     const active = orderIsActive(row);
+    const completed = !row.classCancelled&&(row.status==='paid'||row.restored);
     const payable = row.status==='awaiting_payment'&&!row.classCancelled;
     const key='order-'+row.id;
     const primary=row.invitation
@@ -1576,7 +1578,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         : row.status==='partial'&&row.needsPayment
           ? recordEntry(key+'-balance',orderPath(row.id),t(['查看补款','View balance','Lihat sisa tagihan']),true)
           : undefined;
-    return {key,active,updatedAt:row.updatedAt,needsAction:active&&!!(row.invitation||row.needsPayment),card:
+    return {key,active,completed,updatedAt:row.updatedAt,needsAction:active&&!!(row.invitation||row.needsPayment),card:
       <EnrollmentListRecord category={t(['报名申请','Application','Pendaftaran'])} title={recordTitle(key,orderPath(row.id),classTitle(row.level,row.firstLesson,row.classId))}
         status={status} tone={enrollmentOrderTone(row.status,{restored:row.restored,classCancelled:row.classCancelled,needsAction:!!primary})} primary={primary}>
         {row.invitation&&<p>{t(['待答复转班邀请','Transfer invitation awaiting reply','Undangan pindah kelas menunggu jawaban'])} · {paymentDeadline(row.invitation.deadline)}</p>}
@@ -1764,9 +1766,10 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       </EnrollmentListRecord>,
     };
   });
-  const records = showRecordList ? sortEnrollmentRecords([...orderCards,...assistedCards,...waitlistCards,...demandCards]) : [];
+  const records:EnrollmentListCard[] = showRecordList ? sortEnrollmentRecords([...orderCards,...assistedCards,...waitlistCards,...demandCards]) : [];
   const actionableRecords = records.filter(record=>record.active&&record.needsAction);
-  const activeRecords = records.filter(record=>record.active&&!record.needsAction);
+  const activeRecords = records.filter(record=>record.active&&!record.needsAction&&!record.completed);
+  const completedRecords = records.filter(record=>record.active&&!record.needsAction&&record.completed);
   const pastRecords = records.filter(record=>!record.active);
   const editingProof = payment && !!canUpload &&
     (params.get('proof')==='upload'||!!pendingProof||!!file||!!proofTransfer.amount||!!proofTransfer.reference||!!proofTransfer.transferId);
@@ -2005,6 +2008,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       {([
         [actionableRecords,['需要你处理','Action needed','Perlu tindakan']],
         [activeRecords,['进行中','In progress','Sedang berlangsung']],
+        [completedRecords,['已完成','Completed','Selesai']],
       ] as const).map(([group,label])=>!!group.length&&<section className="enrollment-records" key={label[1]}>
         <h2 className="enrollment-history-title">{t(label)}</h2>
         {group.map(item=><div key={item.key}>{item.card}</div>)}
