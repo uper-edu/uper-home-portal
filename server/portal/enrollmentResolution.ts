@@ -3,6 +3,7 @@ import type { Employee } from './identity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
 import { isCrmManager } from '../../src/utils/crmOutreach.ts';
 import { enrollmentClosureReason, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
+import { parseEnrollmentCancellation } from '../../src/utils/enrollmentCancellation.ts';
 import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { invalid, operation } from './trustWorkflow.ts';
@@ -150,12 +151,14 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       if(order.state!=='awaiting_payment'||Number(order.received)!==0||Number(order.upload_active)||
         (await c.query('SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1',[id])).rows.length)
         invalid('enrollment_cancel_not_available',409);
+      const cancellation=parseEnrollmentCancellation(q.body);
+      if(!cancellation)invalid('enrollment_cancel_reason_invalid');
       await c.query(`UPDATE enrollment_orders SET state='ended',data=JSON_SET(data,'$.closureReason','learner_cancelled'),
         activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p1`,[id]);
       await releaseInvites(c,id);
       await reconcileWaitlist(c,cohort,await takenSeats(c,cohort.id));
       await c.query("INSERT INTO portal_audit(actor,action,data) VALUES('learner','enrollment.order.cancel',:p1)",
-        [{orderId:id,classId:cohort.id,closureReason:'learner_cancelled'}]);
+        [{orderId:id,classId:cohort.id,closureReason:'learner_cancelled',cancellation}]);
       return {orderId:id,state:'ended',closureReason:'learner_cancelled'};
     });
     r.json(result);

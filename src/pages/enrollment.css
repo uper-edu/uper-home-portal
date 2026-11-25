@@ -897,6 +897,22 @@
 .enrollment-cancel-dialog::backdrop { background:rgb(15 30 40 / 45%); }
 .enrollment-cancel-dialog h2 { margin:0 0 12px; }
 .enrollment-cancel-dialog p { margin:0 0 16px; }
+.enrollment-cancel-reasons { min-inline-size:0; padding:0; margin:0 0 12px; border:0; }
+.enrollment-cancel-reasons legend { padding:0; font-weight:650; }
+.enrollment-cancel-reasons p { margin:4px 0; color:var(--enrollment-muted); font-size:13px; }
+.enrollment-cancel-reasons label { display:flex; align-items:center; gap:10px; min-height:44px; cursor:pointer; }
+.enrollment-cancel-reasons input { flex:none; width:18px; height:18px; accent-color:var(--enrollment-accent); }
+.enrollment-cancel-note { margin-block-end:16px; }
+.enrollment-cancel-note textarea {
+  width:100%;
+  min-height:56px;
+  border:1px solid var(--enrollment-border);
+  border-radius:8px;
+  padding:7px 10px;
+  font-size:16px;
+  font-weight:450;
+  resize:vertical;
+}
 .enrollment-cancel-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:12px; }
 
 

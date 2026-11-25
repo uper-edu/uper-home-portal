@@ -15,6 +15,7 @@ import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import type {EnrollmentIntakeTools} from './EnrollmentIntake';
 import { enrollmentCopy, enrollmentClassTitle,enrollmentFixedLessonDuration,enrollmentPrivateLessonTitle, enrollmentScheduleLabel, enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof, enrollmentOrderTone, enrollmentStatuses } from '../utils/enrollmentOrderStatus';
+import { enrollmentCancellationNoteLimit, enrollmentCancellationReasons, parseEnrollmentCancellation, type EnrollmentCancellationReason } from '../utils/enrollmentCancellation';
 import {enrollmentProofUploadTimeout,prepareEnrollmentProofFile} from '../utils/enrollmentProofFile';
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { ArrowLeft, ChevronDown, ChevronRight, CircleCheck } from 'lucide-react';
@@ -41,6 +42,13 @@ import {SocialProfileIcon,socialProfiles} from './SocialProfileIcon';
 
 type Language = 'zh' | 'en' | 'id';
 type Copy = readonly [string, string, string];
+const cancellationReasonCopy: Record<EnrollmentCancellationReason, Copy> = {
+  schedule_conflict: ['上课时间不合适', 'The class time does not work for me', 'Jadwal kelas tidak cocok'],
+  budget: ['课程费用超出预算', 'The course is over my budget', 'Biaya kursus di luar anggaran saya'],
+  different_class: ['想选择其他班次或课程', 'I prefer a different class or course', 'Saya memilih kelas atau kursus lain'],
+  payment_difficulty: ['付款遇到困难', 'I had trouble paying', 'Saya mengalami kendala pembayaran'],
+  plans_changed: ['学习计划有变', 'My study plans changed', 'Rencana belajar saya berubah'],
+};
 const EnrollmentOrderAftercare = lazyEnrollmentModule(() => import('./EnrollmentOrderAftercare').then(module => module.EnrollmentOrderAftercare));
 const EnrollmentOrderResult = lazyEnrollmentModule(() => import('./EnrollmentOrderResult').then(module => module.EnrollmentOrderResult));
 
@@ -319,6 +327,9 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     return ()=>window.removeEventListener('online',onOnline);
   },[]);
   const cancelDialog=useRef<HTMLDialogElement>(null);
+  const keepEnrollmentButton=useRef<HTMLButtonElement>(null);
+  const [cancellationReasons,setCancellationReasons]=useState<EnrollmentCancellationReason[]>([]);
+  const [cancellationNote,setCancellationNote]=useState('');
   const base = '/api/enrollment';
   function updateProofTransfer(next:typeof proofTransfer) {
     setProofTransfer(next);
@@ -1193,6 +1204,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     enrollment_demand_previous_unconfirmed:['上次提交还未确认。请先重试上次提交，你刚修改的内容会保留为草稿。','Your previous submission is unconfirmed. Retry it first. Your edits will stay in your draft.','Pengiriman sebelumnya belum dikonfirmasi. Coba kirim ulang terlebih dahulu. Perubahan tetap tersimpan sebagai draf.'],
     enrollment_interest_unconfirmed:['暂时无法确认提交结果。可在「我的报名」查看，或用相同信息重试。','We could not confirm the submission. Check My enrollments or retry with the same details.','Pengiriman belum dapat dikonfirmasi. Periksa Pendaftaran saya atau coba lagi dengan data yang sama.'],
     ...enrollmentCodeRequestErrors,
+    enrollment_cancel_reason_invalid:['请选择取消原因，或填写不超过 300 字的说明。','Select a cancellation reason or enter up to 300 characters.','Pilih alasan pembatalan atau masukkan keterangan hingga 300 karakter.'],
     enrollment_cancel_not_available:['当前报名无法自行取消。请刷新核对是否已提交凭证、已到账或已超时。','This enrollment can no longer be canceled here. Refresh to check whether a proof was submitted, payment was verified, or the deadline passed.','Pendaftaran ini tidak lagi bisa dibatalkan di sini. Muat ulang untuk memeriksa bukti, pembayaran, atau tenggat.'],
     enrollment_invalid_code:['验证码无效或已过期。','The code is invalid or expired.','Kode tidak berlaku atau kedaluwarsa.'],
     enrollment_email_verification_unconfirmed:['暂时无法确认邮箱验证结果。请重试验证，或重新获取验证码。','We could not confirm email verification. Try verifying again or request a new code.','Verifikasi email belum dapat dikonfirmasi. Coba verifikasi lagi atau minta kode baru.'],
@@ -1247,12 +1259,23 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const paymentBar=mine&&order?.status==='awaiting_payment'&&!order.restored;
   const canUpload = order && order.status!=='paid_cancelled' && allowsEnrollmentProof(order.status,order.closureReason) && !order.restored;
   const cancelable=!payment&&order?.status==='awaiting_payment'&&order.received===0;
-  const openCancellation=()=>{if(cancelable){setError('');cancelDialog.current?.showModal();}};
-  const cancelEnrollment=()=>order&&void run(async()=>{
-    await enrollmentPost(base+'/orders/'+encodeURIComponent(order.id)+'/cancel',{});
-    cancelDialog.current?.close();
-    await getOrder(order.id);
-  });
+  const cancellation=parseEnrollmentCancellation({reasons:cancellationReasons,note:cancellationNote});
+  function openCancellation() {
+    if(!cancelable)return;
+    setError('');
+    setCancellationReasons([]);
+    setCancellationNote('');
+    cancelDialog.current?.showModal();
+    keepEnrollmentButton.current?.focus({preventScroll:true});
+  }
+  function cancelEnrollment() {
+    if(!order||!cancelable||!cancellation)return;
+    void run(async()=>{
+      await enrollmentPost(base+'/orders/'+encodeURIComponent(order.id)+'/cancel',cancellation,recordsEmail.current);
+      cancelDialog.current?.close();
+      await getOrder(order.id);
+    });
+  }
   const status = order && t(order.restored ? ['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan'] : enrollmentStatuses[order.status]);
   const emailLabel=t(['电子邮箱','Email address','Alamat email']);
   const sendLabel=t(sendingCode?['正在发送…','Sending…','Mengirim…']:
@@ -1832,13 +1855,34 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         onClick={()=>void retryRecordsRead()}>{t(['重试读取记录','Retry loading records','Coba muat ulang catatan'])}</button>}
     </p>}
     {showEmailIdentity&&!detailIdentity&&compactEmailIdentity}
-    <dialog key={orderId} className="enrollment-cancel-dialog" ref={cancelDialog} aria-labelledby="enrollment-cancel-title" onCancel={event=>{if(busy)event.preventDefault();}}>
+    <dialog key={orderId} className="enrollment-cancel-dialog" ref={cancelDialog} aria-labelledby="enrollment-cancel-title" aria-describedby="enrollment-cancel-effect" onCancel={event=>{if(busy)event.preventDefault();}}>
       <h2 id="enrollment-cancel-title">{t(['取消这笔报名？','Cancel this enrollment?','Batalkan pendaftaran ini?'])}</h2>
-      <p>{t(['取消后，付款入口会关闭，席位会释放。如果你已经转账，请先提交凭证。','Canceling closes the payment link and releases your seat. If you already transferred the money, submit the proof first.','Pembatalan menutup pembayaran dan melepas kursi. Jika sudah transfer, kirim bukti terlebih dahulu.'])}</p>
+      <p id="enrollment-cancel-effect">{t(['取消后，付款入口会关闭，席位会释放。如果你已经转账，请先提交凭证。','Canceling closes the payment link and releases your seat. If you already transferred the money, submit the proof first.','Pembatalan menutup pembayaran dan melepas kursi. Jika sudah transfer, kirim bukti terlebih dahulu.'])}</p>
+      <fieldset className="enrollment-cancel-reasons" disabled={busy} aria-describedby="enrollment-cancel-reason-hint">
+        <legend>{t(['取消原因','Reason for canceling','Alasan pembatalan'])}</legend>
+        <p id="enrollment-cancel-reason-hint">{t([
+          '可多选，也可以只填写下方的补充说明。',
+          'Select any reasons that apply, or write your own below.',
+          'Pilih semua alasan yang sesuai, atau tulis alasan Anda di bawah.',
+        ])}</p>
+        {enrollmentCancellationReasons.map(reason=><label key={reason}>
+          <input type="checkbox" checked={cancellationReasons.includes(reason)}
+            onChange={event=>{
+              const checked=event.currentTarget.checked;
+              setCancellationReasons(previous=>checked?[...previous,reason]:previous.filter(value=>value!==reason));
+            }}/>
+          {t(cancellationReasonCopy[reason])}
+        </label>)}
+      </fieldset>
+      <label className="enrollment-field enrollment-cancel-note">
+        {t(['补充说明','Additional details','Keterangan tambahan'])}
+        <textarea rows={2} maxLength={enrollmentCancellationNoteLimit} disabled={busy}
+          value={cancellationNote} onChange={event=>setCancellationNote(event.currentTarget.value)}/>
+      </label>
       {error&&<p role="alert">{message}</p>}
       <div className="enrollment-cancel-actions">
-        <button type="button" className="enrollment-quiet" autoFocus disabled={busy} onClick={()=>cancelDialog.current?.close()}>{t(['保留报名','Keep enrollment','Pertahankan pendaftaran'])}</button>
-        <button type="button" className="enrollment-primary" disabled={busy} onClick={cancelEnrollment}>{t(['确认取消','Confirm cancellation','Konfirmasi pembatalan'])}</button>
+        <button ref={keepEnrollmentButton} type="button" className="enrollment-quiet" disabled={busy} onClick={()=>cancelDialog.current?.close()}>{t(['保留报名','Keep enrollment','Pertahankan pendaftaran'])}</button>
+        <button type="button" className="enrollment-primary" disabled={busy||!cancellation} onClick={cancelEnrollment}>{t(['确认取消','Confirm cancellation','Konfirmasi pembatalan'])}</button>
       </div>
     </dialog>
     {!showPaymentForm&&proofFeedback}
