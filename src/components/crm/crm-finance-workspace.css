@@ -4,6 +4,8 @@
 .crm-finance-table{--admin-list-table-min:1024px}
 .crm-finance-table td:first-child{min-width:140px}.crm-finance-table td:nth-child(2){min-width:120px}.crm-finance-table td strong{font-weight:500}
 .crm-finance-amount{white-space:nowrap}.crm-finance-date{min-width:150px}.crm-finance-status{white-space:nowrap;font-size:13px}.crm-finance-status[data-tone=warning]{color:var(--admin-warning)}.crm-finance-status[data-tone=info]{color:var(--admin-info)}.crm-finance-status[data-tone=success]{color:var(--admin-success)}.crm-finance-status[data-tone=neutral]{color:var(--admin-muted)}
+.crm-finance-workspace .crm-list-number[data-finance-tone=success]{color:var(--admin-success)}
+.crm-finance-workspace .crm-list-number[data-finance-tone=warning]{color:var(--admin-warning)}
 .crm-finance-table th:last-child{text-align:center}.crm-finance-row-actions{display:flex;justify-content:center;gap:8px;white-space:nowrap}.crm-finance-row-actions button{min-height:40px;font-size:14px}.crm-finance-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px}.crm-finance-pagination>div{display:flex;gap:8px}.crm-finance-empty{padding:24px;margin:0;color:var(--admin-muted)}.crm-finance-workspace :is(input,button):focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
 @media(max-width:600px){.crm-finance-search{width:100%}.crm-finance-row-actions button{min-height:44px}}
 

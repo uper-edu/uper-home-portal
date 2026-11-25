@@ -22,7 +22,7 @@ import { enrollmentOpportunityReturnPath } from '../../utils/crmEnrollmentOpport
 import { formatCrmEventTime,validateLocalInstant,viewerTimeZone } from '../../utils/crmOperatingTime';
 import { AdminField,AdminForm,AdminRequiredNote } from '../AdminForm';
 import {enrollmentReceivingAccountMaxLength,type EnrollmentReceivingAccount} from '../../utils/enrollmentBank';
-import { AdminFormFeedback,AdminSavedReadError } from '../AdminFormLayout';
+import { AdminFormFeedback,AdminFormSection,AdminFormSummary,AdminSavedReadError } from '../AdminFormLayout';
 import { AdminDisclosure } from '../admin/AdminDisclosure';
 import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
 import type {EnrollmentFinanceProgress,EnrollmentFinanceTransfer} from '../../utils/enrollmentLearnerPayments';
@@ -116,6 +116,9 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
   const receiptTrigger=useRef<HTMLButtonElement>(null);
   const receiptHeading=useRef<HTMLHeadingElement>(null);
   const receiptError=useRef<HTMLParagraphElement>(null);
+  const lookupInput=useRef<HTMLInputElement>(null);
+  const bankOrderSummary=useRef<HTMLDivElement>(null);
+  const lookupFormId=useId();
   const receiptFormId=useId();
   const receivingAccountId=useId();
   const existingReceiptControlId=useId();
@@ -133,7 +136,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
   const busy=receiptOperation.busy||refundBusy;
   const [savedDetailRead,setSavedDetailRead]=useState<string|null>(null);
   const [savedListRead,setSavedListRead]=useState(false);
-  const [discard,setDiscard]=useState<{destination?:string}>();
+  const [discard,setDiscard]=useState<{destination?:string;receipt?:boolean}>();
   useEffect(()=>{onRefreshingChange(loading);return()=>onRefreshingChange(false);},[loading,onRefreshingChange]);
   useEffect(()=>{onDirty(dirty);return ()=>onDirty(false);},[dirty,onDirty]);
   useEffect(()=>{onBusy(busy);return ()=>onBusy(false);},[busy,onBusy]);
@@ -245,7 +248,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
     ?t('未填写金额','Amount not provided','Nominal tidak diisi'):formatCurrency(amount,lang);
   const unmatchedReceipts=row?.receipts.filter(receipt=>row.unmatchedReferences?.includes(receipt.reference))??[];
   const existingReceipt=unmatchedReceipts.find(receipt=>receipt.reference===existingReceiptChoice);
-  const transferProofs=reviewTransfer&&!bankLookup
+  const transferProofs=bankLookup?[]:reviewTransfer
     ?(row?.proofs??[]).filter(proof=>reviewTransfer.proofIds.includes(proof.id))
     :row?.proofs?.length?row.proofs:row?.proofId?[{id:row.proofId,mime:row.proofMime}]:[];
   const receivingAccountLabel=t('实际收款账户','Actual receiving account','Rekening penerima aktual');
@@ -275,16 +278,33 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
   useLayoutEffect(()=>{
     if(editingReceipt&&detailError)receiptError.current?.focus();
   },[editingReceipt,detailError]);
+  useLayoutEffect(()=>{
+    if(bankLookup&&row?.id)bankOrderSummary.current?.focus({preventScroll:true});
+  },[bankLookup,row?.id]);
   const lookupLabel=t('登记无凭证来款','Record a transfer without proof','Catat transfer tanpa bukti');
   const verifyTransferLabel=t('核验此笔','Verify this transfer','Verifikasi transfer ini');
-  const recordReceiptLabel=bankLookup?lookupLabel:t('登记此笔实际到账','Record this verified receipt','Catat penerimaan terverifikasi ini');
+  const recordReceiptLabel=bankLookup?t('填写到账信息','Enter receipt details','Isi detail penerimaan')
+    :t('登记此笔实际到账','Record this verified receipt','Catat penerimaan terverifikasi ini');
+  const lookupPending=bankLookup&&!!orderId&&!details&&!detailError;
+  const cancelLabel=t('取消','Cancel','Batal');
   const receiptActions=editingReceipt?<>
-    <button type="button" className="crm-work-button" disabled={busy} onClick={cancelReceipt}>{t('取消','Cancel','Batal')}</button>
+    <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{
+      if(bankLookup&&dirty)setDiscard({receipt:true});
+      else cancelReceipt();
+    }}>{cancelLabel}</button>
     <button type="submit" form={receiptFormId} className="crm-work-button" data-primary disabled={busy||!!receiptOperation.pending}>
       {existingReceipt?t('确认关联','Link receipt','Tautkan penerimaan'):t('保存到账','Save receipt','Simpan penerimaan')}
     </button>
   </>:canRecord&&!recoveringReceipt?<button type="button" ref={receiptTrigger} className="crm-work-button" data-primary
     disabled={savedDetailRead===orderId} onClick={()=>startReceipt()}>{bankLookup?lookupLabel:verifyTransferLabel}</button>:undefined;
+  const bankActions=bankLookup&&!editingReceipt?<>
+    <button type="button" className="crm-work-button" disabled={busy} onClick={()=>requestClose()}>
+      {manualSaved?t('完成','Done','Selesai'):cancelLabel}
+    </button>
+    {row?receiptActions:<button type="submit" className="crm-work-button" data-primary form={lookupFormId} disabled={lookupPending}>
+      {lookupPending?t('正在查找…','Finding order…','Mencari pesanan…'):t('查找订单','Find order','Cari pesanan')}
+    </button>}
+  </>:receiptActions;
   const hasResults=Boolean(list?.orders.length);
   const showProgress=status==='all';
   return <section className="crm-finance-workspace" aria-label={paymentWorkspaceLabel('enrollment',lang)}>
@@ -313,15 +333,17 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
         {list.orders.map(order=>{
           const {progress}=order;
           const transferId=order.transfer?.id??progress?.nextTransferId;
+          const outstanding=['paid_cancelled','expired','ended','refunding','refunded'].includes(order.status)
+            ?null:Math.max(0,order.price-order.received);
           return <tr key={order.transfer?.id??order.id}>
           <td><AdminRecordEntry onClick={()=>open(order.id,order.transfer?.id)}
             aria-label={t('查看核款订单','View payment order','Lihat pesanan pembayaran')+' · '+order.name+' · '+order.id.slice(0,8)}>{order.name}</AdminRecordEntry>
             <small title={order.id}>{t('订单','Order','Pesanan')} · {order.id.slice(0,8)}</small></td>
           <td><strong>{className(order)}</strong><small>{formatCrmEventTime(order.firstLessonAt).slice(0,16)}</small></td>
           <td className="crm-list-number">{formatCurrency(order.price,lang)}</td>
-          <td className="crm-list-number">{formatCurrency(order.received,lang)}</td>
-          <td className="crm-list-number">{['paid_cancelled','expired','ended','refunding','refunded'].includes(order.status)?
-            '—':formatCurrency(Math.max(0,order.price-order.received),lang)}</td>
+          <td className="crm-list-number" data-finance-tone={order.received>0?'success':undefined}>{formatCurrency(order.received,lang)}</td>
+          <td className="crm-list-number" data-finance-tone={outstanding!==null&&outstanding>0?'warning':undefined}>
+            {outstanding===null?'—':formatCurrency(outstanding,lang)}</td>
           <td><CrmListStatus tone={enrollmentListTone(order.status)}>{statusLabel(order.status)}</CrmListStatus>
             {order.hasProof&&order.status==='expired'&&<small>{t('有转账凭证','Transfer proof on file','Bukti transfer tersedia')}</small>}</td>
           {showProgress&&<td>{progress?<><strong>{t(`已申报 ${progress.reported} 笔`,
@@ -350,39 +372,59 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
       {list&&list.total>list.pageSize&&<AdminListPagination lang={lang} page={list.page}
         pageCount={Math.ceil(list.total/list.pageSize)} busy={loading} onPageChange={setPage}/>}
     </>}
-    {(orderId||bankLookup)&&<CrmOperationLayer title={row?.name??(bankLookup?lookupLabel:t('报名核款详情','Enrollment payment details','Detail pembayaran pendaftaran'))}
-      context={row?className(row):undefined} navigation={row&&sourceBack&&<AdminRecordBack target={{
+    {(orderId||bankLookup)&&<CrmOperationLayer title={bankLookup?lookupLabel:row?.name??t('报名核款详情','Enrollment payment details','Detail pembayaran pendaftaran')}
+      context={row&&!bankLookup?className(row):undefined} navigation={row&&!bankLookup&&sourceBack&&<AdminRecordBack target={{
         label:rosterBack?t('返回班次名单','Back to class roster','Kembali ke daftar siswa'):t('返回商机列表','Back to opportunities','Kembali ke daftar peluang'),
         onClick:()=>requestClose(sourceBack),disabled:busy,
       }}/>}
-      lang={lang} isLight={isLight} customerContext={false} busy={busy} onClose={()=>requestClose(rosterBack)} footer={receiptActions}>
-    {bankLookup&&!row&&<AdminForm lang={lang} onSubmit={event=>{
+      lang={lang} isLight={isLight} customerContext={false} busy={busy}
+      onClose={()=>requestClose(bankLookup?undefined:rosterBack)} footer={bankActions}>
+    {bankLookup&&!row&&<AdminForm id={lookupFormId} lang={lang} className="crm-form-layout" onSubmit={event=>{
       event.preventDefault();
+      if(lookupPending)return;
       const id=lookupNumber.trim().toLowerCase();
       if(!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/.test(id)){
         setDetailError(t('请输入完整报名编号。','Enter the complete enrollment order number.','Masukkan nomor pendaftaran lengkap.'));
+        lookupInput.current?.focus();
         return;
       }
       setDetails(undefined);setDetailError('');
       if(id===orderId)setRefresh(value=>value+1);
       else setOrderId(id);
     }}>
-      <AdminField required>
-        {t('报名编号','Enrollment order number','Nomor pendaftaran')}
-        <input className="admin-text-input" value={lookupNumber} onChange={event=>setLookupNumber(event.target.value)} required autoComplete="off" maxLength={50}/>
-      </AdminField>
-      <p>{t('请根据银行账单确认来款，并核对订单归属。','Confirm the receipt on the bank statement and check the order it belongs to.','Pastikan dana masuk di mutasi bank dan cocokkan pesanannya.')}</p>
-      <AdminPageAction label={t('查找订单','Find order','Cari pesanan')} icon={Landmark} type="submit" variant="primary" disabled={!!orderId&&!details&&!detailError}/>
+      <AdminFormSection title={<>{t('定位报名订单','Find the enrollment order','Temukan pesanan pendaftaran')} <AdminRequiredNote lang={lang} inline/></>}
+        description={t('根据银行账单确认来款，再查找对应的报名订单。','Confirm the transfer on the bank statement and find the corresponding enrollment order.','Pastikan dana masuk di mutasi bank, lalu cari pesanan pendaftaran yang sesuai.')}>
+        <AdminField required>
+          {t('报名编号','Enrollment order number','Nomor pendaftaran')}
+          <input ref={lookupInput} className="admin-text-input" value={lookupNumber} readOnly={lookupPending}
+            onChange={event=>{setLookupNumber(event.target.value);setDetailError('');setDetails(undefined);setOrderId(null);}}
+            required autoComplete="off" maxLength={50}/>
+        </AdminField>
+        {detailError&&<AdminFormFeedback state="error" lang={lang}>{detailError}</AdminFormFeedback>}
+        {lookupPending&&<p role="status">{t('正在查找报名订单…','Finding the enrollment order…','Mencari pesanan pendaftaran…')}</p>}
+        {details?.id===orderId&&<AdminFormFeedback state="error" lang={lang}>
+          {t('未找到此报名订单，请核对完整编号。','No enrollment order found. Check the complete order number.','Pesanan tidak ditemukan. Periksa nomor lengkapnya.')}
+        </AdminFormFeedback>}
+      </AdminFormSection>
     </AdminForm>}
     <div className="crm-enrollment-finance-detail" onChange={()=>setDirty(true)}>
-    {detailError&&!editingReceipt&&(savedDetailRead!==null&&savedDetailRead===orderId
+    {detailError&&!editingReceipt&&(!bankLookup||row)&&(savedDetailRead!==null&&savedDetailRead===orderId
       ?<AdminSavedReadError lang={lang} onRetry={()=>setRefresh(value=>value+1)}/>:<p role="alert">{detailError}</p>)}
-    {orderId&&!details&&!detailError&&<p role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
-    {details?.id===orderId&&!row&&<p>{bankLookup
-      ?t('未找到此报名订单，请核对完整编号。','No enrollment order found. Check the complete order number.','Pesanan tidak ditemukan. Periksa nomor lengkapnya.')
-      :t('该报名订单暂不可核款。','This enrollment order is unavailable for verification.','Pesanan ini belum dapat diverifikasi.')}</p>}
+    {!bankLookup&&orderId&&!details&&!detailError&&<p role="status">{t('正在加载…','Loading…','Memuat…')}</p>}
+    {!bankLookup&&details?.id===orderId&&!row&&<p>{t('该报名订单暂不可核款。','This enrollment order is unavailable for verification.','Pesanan ini belum dapat diverifikasi.')}</p>}
     {row&&<article className="crm-course-catalog">
-      <dl className="crm-opportunity-summary crm-enrollment-finance-summary">
+      {bankLookup?<div ref={bankOrderSummary} tabIndex={-1}>
+        <AdminFormSummary title={t('核对报名订单','Confirm enrollment order','Periksa pesanan pendaftaran')} fields={[
+          [t('学员姓名','Learner name','Nama siswa'),row.name],
+          [t('班次','Class','Kelas'),className(row)],
+          [t('报名编号','Order number','Nomor pendaftaran'),row.id,'wide'],
+          [t('核款状态','Payment status','Status pembayaran'),<CrmListStatus tone={enrollmentListTone(row.status)}>{statusLabel(row.status)}</CrmListStatus>],
+          [t('应收','Amount due','Tagihan'),formatCurrency(row.price,lang)],
+          [t('已核实实收','Verified receipts','Penerimaan terverifikasi'),formatCurrency(row.received,lang)],
+          [row.received>row.price?t('超收金额','Overpayment','Kelebihan pembayaran'):t('未收余额','Outstanding','Sisa tagihan'),
+            formatCurrency(Math.abs(row.price-row.received),lang)],
+        ]}/>
+      </div>:<dl className="crm-opportunity-summary crm-enrollment-finance-summary">
         <div><dt>{t('报名编号','Order number','Nomor pendaftaran')}</dt><dd>{row.id}</dd></div>
         <div><dt>{t('核款状态','Payment status','Status pembayaran')}</dt><dd>{statusLabel(row.status)}</dd></div>
         <div><dt>{t('应收','Amount due','Tagihan')}</dt><dd>{formatCurrency(row.price,lang)}</dd></div>
@@ -390,7 +432,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
         {row.received>row.price
           ?<div><dt>{t('超收金额','Overpayment','Kelebihan pembayaran')}</dt><dd>{formatCurrency(row.received-row.price,lang)}</dd></div>
           :<div><dt>{t('未收余额','Outstanding','Sisa tagihan')}</dt><dd>{formatCurrency(row.price-row.received,lang)}</dd></div>}
-      </dl>
+      </dl>}
       {row.opened&&<p className="crm-work-muted">{t('已确认开班','Class confirmed','Kelas dikonfirmasi')}</p>}
       {manualSaved&&<AdminFormFeedback lang={lang} state="saved">{t('银行来款已登记。','Bank receipt recorded.','Dana masuk telah dicatat.')}</AdminFormFeedback>}
       {!bankLookup&&reviewTransfer&&<>
@@ -410,7 +452,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
       {!!transferProofs.length&&<div ref={reviewHeading} tabIndex={-1} className="crm-list-review-target">
         <EnrollmentProofs key={row.id+':'+(reviewTransfer?.id??'all')} proofs={transferProofs} lang={lang} isLight={isLight}/>
       </div>}
-      {!!row.receipts?.length&&<section className="crm-enrollment-finance-receipts">
+      {!!row.receipts?.length&&(!bankLookup||!editingReceipt)&&<section className="crm-enrollment-finance-receipts">
         <h3>{t('已核实收款流水','Verified receipt history','Riwayat penerimaan terverifikasi')}</h3>
         <ul className="crm-course-records">{row.receipts.map(receipt=><li key={receipt.reference}>
           <strong>{formatCurrency(receipt.amount,lang)}</strong> · <time dateTime={receipt.settledAt}>{formatCrmEventTime(receipt.settledAt)}</time>
@@ -418,7 +460,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
           <p>{t('银行流水号','Bank reference','Nomor referensi bank')} · {receipt.reference}</p>
         </li>)}</ul>
       </section>}
-      {!!row.credits?.length&&<AdminDisclosure heading={t('订单冲抵记录','Order payment credit history','Riwayat penggunaan dana antar pesanan')}>
+      {!!row.credits?.length&&(!bankLookup||!editingReceipt)&&<AdminDisclosure heading={t('订单冲抵记录','Order payment credit history','Riwayat penggunaan dana antar pesanan')}>
         <ul className="crm-course-records">{row.credits.map(credit=><li key={credit.id}>
           <strong>{credit.direction==='in'
             ?t('旧单款项冲抵本单','Applied from an earlier order','Dana dari pesanan sebelumnya')
@@ -515,6 +557,11 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
     </article>}
     </div>
     </CrmOperationLayer>}
-    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(undefined)} onDiscard={()=>closeOrder(discard.destination)}/>}
+    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(undefined)} onDiscard={()=>{
+      if(discard.receipt){
+        setDiscard(undefined);
+        cancelReceipt();
+      }else closeOrder(discard.destination);
+    }}/>}
   </section>;
 }
