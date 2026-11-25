@@ -6,14 +6,17 @@ import {cmsMediaConfiguration} from '../../cloud/mysql/cms-media-storage.mjs';
 import {larkSettings,larkSettingsTarget,type LarkSettings} from './larkSettings.ts';
 
 const normalizeChatCompletionUrl = (url: string) => url.replace(/\/v1\/?$/, '/v1/chat/completions');
-export const aiCredentialUrl = (provider: string, env = process.env) => normalizeChatCompletionUrl(
+export const aiCredentialProviders = ['openai', 'deepseek', 'anthropic'] as const;
+export const aiCredentialUrl = (provider: string, env = process.env) => provider === 'anthropic'
+  ? 'https://api.anthropic.com/v1/messages'
+  : normalizeChatCompletionUrl(
   provider === 'deepseek'
     ? env.DEEPSEEK_API_BASE_URL || 'https://api.deepseek.com/chat/completions'
     : env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1/chat/completions',
 );
 export const aiCredentialTarget = (provider: string) => credentialTarget([provider, aiCredentialUrl(provider)]);
 export const legacyAiCredential = (provider: string, env = process.env) => {
-  const key = provider === 'deepseek' ? env.DEEPSEEK_API_KEY : env.OPENAI_API_KEY;
+  const key = provider === 'anthropic' ? env.ANTHROPIC_API_KEY : provider === 'deepseek' ? env.DEEPSEEK_API_KEY : env.OPENAI_API_KEY;
   return key ? {key} : undefined;
 };
 

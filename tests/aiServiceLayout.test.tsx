@@ -17,6 +17,14 @@ test('model configuration is immediately editable and provider credentials have 
  assert.equal((html.match(/<details/g)||[]).length,4);
  assert.doesNotMatch(html,/<details[^>]*\sopen|data-editor="drawer"|当前生效配置/);
 });
+test('Claude selections display in the shared model controls with independent effort fields',()=>{
+ const selection={primary:'claude-haiku-5-5',fallback:'claude-sonnet-5-5'};
+ const html=render({selection,data:{...data,models:[...data.models,...Object.values(selection)]}});
+ assert.match(html,/claude-haiku-5-5/);
+ assert.match(html,/claude-sonnet-5-5/);
+ assert.match(html,/主模型推理强度/);
+ assert.match(html,/备用模型推理强度/);
+});
 test('editing has one test-and-save action and unknown activation replaces it with result lookup',()=>{
  const editing={selection:{...selection,fallback:'deepseek-chat'}};
  const html=render(editing);

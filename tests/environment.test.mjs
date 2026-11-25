@@ -12,9 +12,10 @@ test('environment selection never falls back to .env or mixes dev and test crede
  fs.writeFileSync(path.join(directory,'.env'),'MYSQL_TRIAL_URL=mysql://legacy:legacy@wrong/legacy\nVITE_LABEL=legacy');
  fs.writeFileSync(path.join(directory,'.env.dev'),'PORTAL_ENV=dev\nMYSQL_TRIAL_URL=mysql://dev:synthetic@localhost/uper_local_crm\nVITE_LABEL=local');
  fs.writeFileSync(path.join(directory,'.env.test'),'PORTAL_ENV=test\nMYSQL_TRIAL_URL=mysql://trial:synthetic@mysql/uper_trial_home\nVITE_LABEL=cloud');
- const env={PATH:'/safe',MYSQL_TRIAL_URL:'mysql://stale:stale@wrong/stale',OPENAI_API_KEY:'synthetic-stale-secret',TRIAL_MODEL_STUB:'true',PORTAL_LOCAL_CUTOVER:'true'};
+ const env={PATH:'/safe',MYSQL_TRIAL_URL:'mysql://stale:stale@wrong/stale',OPENAI_API_KEY:'synthetic-stale-secret',ANTHROPIC_API_KEY:'synthetic-stale-anthropic-secret',TRIAL_MODEL_STUB:'true',PORTAL_LOCAL_CUTOVER:'true'};
  loadPortalEnvironment({env,directory,target:'test'});
  assert.match(env.MYSQL_TRIAL_URL,/@mysql\/uper_trial_home$/);assert.equal(env.OPENAI_API_KEY,undefined);assert.equal(env.TRIAL_MODEL_STUB,undefined);assert.equal(env.PORTAL_LOCAL_CUTOVER,undefined);assert.equal(env.PATH,'/safe');
+ assert.equal(env.ANTHROPIC_API_KEY,undefined);
  assert.deepEqual(frontendEnvironment('test',directory),{VITE_LABEL:'cloud'});
  assert.throws(()=>readEnvironment('prod',directory),/Missing/);
 });

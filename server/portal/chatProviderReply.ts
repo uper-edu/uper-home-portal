@@ -1,6 +1,6 @@
 import {chatTokenUsage,type ChatTokenUsage} from './chatTokenUsage.ts';
-import type {ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
-import {modelParameters} from './modelParameters.ts';
+import {isClaudeModel} from '../../src/utils/aiModelSelection.ts';
+import {acceptedModel, claudeFinishReason, claudeTextBlock, decodeAiMessage, requestAiReply, type AiProvider} from './aiProviderRequest.ts';
 
 type ReplyProgress = { content: string; model?: string };
 type ProviderCall = {
@@ -8,10 +8,45 @@ type ProviderCall = {
   model?: string; usage: ChatTokenUsage; elapsedMs: number;
 };
 
-async function readReply(response: Response, onProgress: (progress: ReplyProgress) => void, onUsage: (value: unknown)=>void) {
+export async function readAiReply(response: Response, onProgress: (progress: ReplyProgress) => void,
+  onUsage: (value: unknown)=>void, requestedModel?: string) {
   if (!response.ok) throw Error(`Provider HTTP ${response.status}`);
   const streamed = response.headers.get("content-type")?.includes("text/event-stream") === true;
   let content = "", model: string | undefined, finish: string | undefined, done = false;
+  const claude = requestedModel !== undefined && isClaudeModel(requestedModel);
+  let claudeUsage: {input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number} = {};
+  function recordClaudeUsage(update: typeof claudeUsage | undefined) {
+    claudeUsage = {...claudeUsage, ...update};
+    const {input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens} = claudeUsage;
+    onUsage({
+      prompt_tokens: input_tokens === undefined ? undefined : input_tokens + (cache_read_input_tokens ?? 0) + (cache_creation_input_tokens ?? 0),
+      completion_tokens: output_tokens,
+      prompt_cache_miss_tokens: input_tokens === undefined ? undefined : input_tokens + (cache_creation_input_tokens ?? 0),
+      prompt_tokens_details: {cached_tokens: cache_read_input_tokens, cache_write_tokens: cache_creation_input_tokens},
+    });
+  }
+  const acceptClaudeEvent = (payload: any) => {
+    switch (payload.type) {
+      case 'message_start':
+        model = payload.message?.model;
+        if (typeof model !== 'string' || !acceptedModel(requestedModel!, model)) throw Error('model_mismatch');
+        recordClaudeUsage(payload.message.usage);
+        break;
+      case 'content_block_start':
+        content += claudeTextBlock(payload.content_block);
+        break;
+      case 'content_block_delta':
+        if (payload.delta?.type === 'text_delta' && typeof payload.delta.text === 'string') content += payload.delta.text;
+        break;
+      case 'message_delta':
+        if (payload.delta?.stop_reason) finish = claudeFinishReason(payload.delta.stop_reason);
+        recordClaudeUsage(payload.usage);
+        break;
+      case 'message_stop': done = true; break;
+      case 'error': throw Error('Claude stream error');
+    }
+    onProgress({content, model});
+  };
   const accept = (payload: any) => {
     if (payload.usage) onUsage(payload.usage);
     if (payload.error) throw Error("Provider response error");
@@ -37,8 +72,9 @@ async function readReply(response: Response, onProgress: (progress: ReplyProgres
           buffer = buffer.slice(index + 1);
           if (!line.startsWith("data:")) continue;
           const data = line.slice(5).trim();
-          if (data === "[DONE]") { done = true; continue; }
-          accept(JSON.parse(data));
+          if (!claude && data === "[DONE]") { done = true; continue; }
+          if (claude) acceptClaudeEvent(JSON.parse(data));
+          else accept(JSON.parse(data));
         }
         if (next.done) break;
       }
@@ -46,13 +82,18 @@ async function readReply(response: Response, onProgress: (progress: ReplyProgres
       reader.releaseLock();
     }
   } else {
-    accept(await response.json());
+    const payload = await response.json();
+    if (claude) {
+      ({content, finish, model} = decodeAiMessage(payload, requestedModel));
+      recordClaudeUsage(payload.usage);
+      onProgress({content, model});
+    } else accept(payload);
   }
 
   if (finish === "length") throw Error("Answer truncated");
-  if (streamed && !done) throw Error("Missing provider stream end marker");
+  if (streamed && (!done || claude && (!model || !finish))) throw Error("Missing provider stream end marker");
   if (finish && finish !== "stop") throw Error(`Provider stopped with finish_reason: ${finish}`);
-  return { streamed, content };
+  return { streamed, content, model };
 }
 
 export async function readChatProviderReply(
@@ -61,6 +102,7 @@ export async function readChatProviderReply(
   onProgress: (progress: ReplyProgress) => void,
   onBlankStreamRetry: () => Promise<void>,
   onCall?: (call: ProviderCall)=>void,
+  requestedModel?: string,
 ) {
   const readCall = async (stream: boolean, retry: boolean) => {
     const start = Date.now();
@@ -68,10 +110,10 @@ export async function readChatProviderReply(
     let usage = chatTokenUsage(null);
     let status: ProviderCall['status'] = 'error';
     try {
-      const response = await readReply(await send(stream), progress => {
+      const response = await readAiReply(await send(stream), progress => {
         model = progress.model;
         onProgress(progress);
-      }, raw => { usage = chatTokenUsage(raw); });
+      }, raw => { usage = chatTokenUsage(raw); }, requestedModel);
       status = response.content.trim() ? 'received' : 'blank';
       return response;
     } finally {
@@ -94,13 +136,7 @@ export async function readChatProviderReply(
   if (!retry.content.trim()) throw Error("Blank provider reply after non-stream retry");
 }
 
-type ChatProvider = {
-  model: string;
-  provider: string;
-  key?: string;
-  url: string;
-  reasoningEffort?: ReasoningEffort;
-};
+type ChatProvider = AiProvider & {provider: string};
 type ChatMessage = {role: string; content: string};
 type ChatCallPurpose = 'consultation'|'reference'|'language_correction'|'turn_language'|'local_schedule';
 type ChatAttempt = {
@@ -130,21 +166,8 @@ export async function runChatProviderAttempts(
       actualModel: provider.model,
       async request(purpose, messages, tokens = 1200) {
         const signal = AbortSignal.timeout(90000);
-        const send = (stream: boolean) => fetchReply(provider.url, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${provider.key}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: provider.model,
-            messages,
-            response_format: {type: 'json_object'},
-            ...modelParameters(provider.model, tokens, undefined, provider.reasoningEffort),
-            stream,
-            ...(stream ? {stream_options: {include_usage: true}} : {}),
-          }),
-          signal,
+        const send = (stream: boolean) => requestAiReply(fetchReply, provider, messages, {
+          tokens, stream, includeUsage: true, signal, quick: purpose === 'turn_language' || purpose === 'local_schedule',
         });
         await readChatProviderReply(send, provider.provider === 'deepseek',
           ({content, model}) => {
@@ -157,6 +180,7 @@ export async function runChatProviderAttempts(
             attempt.actualModel = provider.model;
           },
           call => handlers.call(attempt, purpose, call),
+          provider.model,
         );
       },
     };

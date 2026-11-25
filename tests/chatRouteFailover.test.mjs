@@ -30,8 +30,9 @@ const modules = new Map([
   `],
   ['/server/portal/aiServiceConfig.ts',`
     export const runtimeProviders = async db => {
-      if (db!==globalThis[Symbol.for('uper.chatRouteFailover')].leasedClient) throw Error('Chat must use its leased connection for provider settings');
-      return [
+      const fixture = globalThis[Symbol.for('uper.chatRouteFailover')];
+      if (db!==fixture.leasedClient) throw Error('Chat must use its leased connection for provider settings');
+      return fixture.providers ?? [
       {model:'gpt-6-luna',provider:'openai',key:'mock-primary',url:'https://primary.invalid',reasoningEffort:'medium'},
       {model:'deepseek-v4-pro',provider:'deepseek',key:'mock-backup',url:'https://backup.invalid'},
       ];
@@ -74,10 +75,10 @@ function sse(content, done = true) {
     (done ? 'data: [DONE]\n\n' : ''), {headers:{'Content-Type':'text/event-stream'}});
 }
 
-function mountFixture(t, bothFail = false) {
+function mountFixture(t, bothFail = false, providers) {
   const priorHistory=[],messages=[],attempts=[],events=[],logs=[],calls=[],sqlTrace=[];
   const fixture = {
-    events,logs,released:0,checkouts:0,sequence:0,referenceReads:[],poolReads:[],
+    events,logs,providers,released:0,checkouts:0,sequence:0,referenceReads:[],poolReads:[],
     async query(sql,args = []) {
       if (sql.startsWith('SELECT GET_LOCK')) return {rows:[{acquired:fixture.busy?0:1}]};
       if (sql.startsWith('SELECT * FROM messages')) return {rows:messages.filter(row=>row.requestId===args[1])};
@@ -144,11 +145,35 @@ function mountFixture(t, bothFail = false) {
     const target = new URL(url).hostname;
     assert.ok(['primary.invalid','backup.invalid'].includes(target));
     const body = JSON.parse(init.body);
-    const instruction = body.messages[0].content;
+    const instruction = body.system ?? body.messages[0].content;
     const purpose = instruction.startsWith('Identify only the response language.') ? 'language'
       : instruction.startsWith('Extract only the relevant time basis') ? 'schedule' : 'answer';
     calls.push([target,purpose,body.stream]);
     await fixture.providerGate;
+    if (body.model.startsWith('claude-')) {
+      assert.equal(init.headers['anthropic-version'],'2023-06-01');
+      assert.equal(init.headers['x-api-key'],target==='primary.invalid'?'mock-primary':'mock-backup');
+      assert.equal(init.headers.Authorization,undefined);
+      assert.ok(body.messages.every(message=>['user','assistant'].includes(message.role)));
+      assert.equal(body.messages.at(-1).role,'user');
+      assert.equal(body.response_format,undefined);
+      assert.equal(body.thinking.type,purpose==='answer'?'adaptive':target==='primary.invalid'?'disabled':'between_tools');
+      const data=purpose==='language'?{current:'en',requested:null}:purpose==='schedule'?{basis:'wib',basisEvidence:null}:recommendation;
+      const content=JSON.stringify(data), split=Math.floor(content.length/2);
+      const events=[
+        {type:'message_start',message:{model:body.model,usage:{input_tokens:30,cache_read_input_tokens:20,output_tokens:1}}},
+        {type:'content_block_delta',delta:{type:'thinking_delta',thinking:'private thinking'}},
+        {type:'content_block_delta',delta:{type:'text_delta',text:content.slice(0,split)}},
+      ];
+      if(target==='primary.invalid'&&purpose==='answer')events.push({type:'error',error:{type:'overloaded_error'}});
+      else events.push(
+        {type:'content_block_delta',delta:{type:'text_delta',text:content.slice(split)}},
+        {type:'message_delta',delta:{stop_reason:'end_turn'},usage:{output_tokens:15}},
+        {type:'message_stop'},
+      );
+      return new Response(events.map(event=>`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''),
+        {headers:{'Content-Type':'text/event-stream'}});
+    }
     if (purpose === 'answer') {fixture.modelHistory=body.messages.slice(1);fixture.modelInstruction=instruction;}
     if (purpose === 'language') return response({current:'en',requested:null},body.model);
     if (purpose === 'schedule') return response({basis:'wib',basisEvidence:null},body.model);
@@ -174,6 +199,30 @@ function mountFixture(t, bothFail = false) {
   }
   return {fixture,send,messages,attempts,events,logs,calls,sqlTrace,priorHistory};
 }
+
+test('Claude native streams preserve verified class cards when Haiku fails over to Sonnet', async t => {
+  const {send,calls,logs,attempts}=mountFixture(t,false,[
+    {model:'claude-haiku-5-5',provider:'anthropic',key:'mock-primary',url:'https://primary.invalid'},
+    {model:'claude-sonnet-5-5',provider:'anthropic',key:'mock-backup',url:'https://backup.invalid'},
+  ]);
+  const {packets}=await send();
+  const final=packets.at(-1);
+  assert.equal(final.status,'completed');
+  assert.equal(final.modelUsed,'claude-sonnet-5-5');
+  assert.deepEqual(final.enrollment.rows.map(row=>row.id),[classId]);
+  assert.match(final.reply,/875,000/);
+  assert.ok(packets.some(packet=>packet.reset));
+  assert.ok(!JSON.stringify(packets).includes('private thinking'));
+  assert.deepEqual(attempts.map(row=>[row.model,row.error]),[
+    ['claude-haiku-5-5','Claude stream error'],['claude-sonnet-5-5',undefined],
+  ]);
+  assert.deepEqual(calls,[
+    ['primary.invalid','language',true],['primary.invalid','answer',true],
+    ['backup.invalid','language',true],['backup.invalid','answer',true],['backup.invalid','schedule',true],
+  ]);
+  const answer=logs.find(log=>log.event==='chat.token_usage'&&log.role==='fallback'&&log.purpose==='consultation');
+  assert.deepEqual([answer.usage.input,answer.usage.cached,answer.usage.output],[50,20,15]);
+});
 
 test('Chat publishes only the validated backup reply and preserves class guidance and replay', async t => {
   const {send,messages,attempts,calls,logs,fixture,sqlTrace} = mountFixture(t);

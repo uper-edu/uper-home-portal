@@ -14,8 +14,8 @@ import {fact} from './trustWorkflow.ts';
 import {extractionFamily,extractionRoot} from '../../src/utils/crmExtractionEvidence.ts';
 import {sameProfileValue} from '../../src/utils/crmFieldValues.ts';
 import {supportsCourseBudget} from '../../src/utils/crmBudget.ts';
-import type {ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
-import {modelParameters} from './modelParameters.ts';
+import {isClaudeModel} from '../../src/utils/aiModelSelection.ts';
+import {decodeAiMessage,requestAiReply,type AiProvider} from './aiProviderRequest.ts';
 import {log} from '../logger.ts';
 import {loadPurchaseIntentContext,PURCHASE_INTENT_VERSION,purchaseIntentInstruction,validatePurchaseIntent} from './purchaseIntentSuggestions.ts';
 /** Called in the original source transaction. Technical processing only; never a sales task or notification. */
@@ -30,18 +30,24 @@ export function needsResidenceReview(text:string,observations:any[]){
  if(/我(?:作为|是)?销售|销售(?:本人|自己)|as (?:a )?sales/i.test(text)&&!/客户(?:说|表示)?(?:长期居住地是|目前住在|现在住在|住在|现居|常住|已经搬到)/.test(text))return false;
  return !observations.some(o=>o.kind==='field'&&o.field==='city')&&/(?:居住地(?:是|为)?|住在|现居|常住|搬到|tinggal(?:\s+di)?|domisili(?:\s+di)?|lives?\s+in|living\s+in|resides?\s+in|moved\s+to).{0,12}(?:雅加达|万隆|泗水|Jakarta|Bandung|Surabaya)/i.test(text);
 }
-export async function extractWithAI(text:string,context:any,request:typeof fetch=fetch,providersOverride?:Array<{model:string;key?:string;url:string;reasoningEffort?:ReasoningEffort}>){
+export async function extractWithAI(text:string,context:any,request:typeof fetch=fetch,providersOverride?:AiProvider[]){
  const {runtimeProviders}=await import('./aiServiceConfig.ts');
- const providers=(providersOverride||await runtimeProviders()).map(p=>({...p,name:p.model}));
+ const providers=providersOverride||await runtimeProviders();
  for(const p of providers){if(!p.key)continue;try{
-  let actualModel=p.name,purchaseIntent:ReturnType<typeof validatePurchaseIntent>;
+  let actualModel=p.model,purchaseIntent:ReturnType<typeof validatePurchaseIntent>;
   const ask=async(review=false)=>{
    const {purchaseIntent:dialogue,...sourceContext}=context||{};
    const assessIntent=!review&&dialogue?.version===PURCHASE_INTENT_VERSION;
    const instruction=extractionInstruction+(context?.profilePolicyVersion===AI_PROFILE_POLICY?'\n'+aiProfileInstruction:'')+(supportsCustomerInsights(context?.insightsVersion)?'\n'+customerInsightsInstruction+(context?.insightsVersion===CUSTOMER_INSIGHTS_VERSION?'\n'+classEquipmentInstruction:''):'')+'\n'+stageEventInstruction+'\n'+naturalRequestInstruction+(assessIntent?'\n'+purchaseIntentInstruction:'')+(review?'\nCoverage review: the prior pass omitted city. Inspect SOURCE again ONLY for customer residence/city statements, including staff reporting customer speech. Return the same JSON schema. Preserve the exact quote, subject, negation, uncertainty, past/future and change wording. Do not infer a move, adopt a value or use CONTEXT as evidence. Return city field observations only.':'');
-   const response=await request(p.url,{method:'POST',headers:{Authorization:'Bearer '+p.key,'Content-Type':'application/json'},body:JSON.stringify({model:p.name,messages:[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:assessIntent?context:sourceContext,SOURCE:text})}],response_format:{type:'json_object'},...modelParameters(p.name,supportsCustomerInsights(context?.insightsVersion)?4800:2400,0,p.reasoningEffort)}),signal:AbortSignal.timeout(30000)});
-   if(!response.ok)throw Error('provider');const body=await response.json();actualModel=body.model||p.name;if(body.choices?.[0]?.finish_reason==='length')throw Error('truncated');
-   const parsed=JSON.parse(body.choices?.[0]?.message?.content||'');
+   const response=await requestAiReply(request,p,[{role:'system',content:instruction},{role:'user',content:JSON.stringify({CONTEXT:assessIntent?context:sourceContext,SOURCE:text})}],{
+    tokens:supportsCustomerInsights(context?.insightsVersion)?4800:2400,temperature:0,signal:AbortSignal.timeout(30000),
+   });
+   if(!response.ok)throw Error('provider');
+   const reply=decodeAiMessage(await response.json(),p.model);
+   actualModel=reply.model;
+   if(reply.finish==='length')throw Error('truncated');
+   if(isClaudeModel(p.model)&&reply.finish!=='stop')throw Error('provider');
+   const parsed=JSON.parse(reply.content);
    if(!assessIntent||!parsed)return validateExtraction(parsed,text);
    const {purchaseIntent:proposedIntent,...observations}=parsed;
    const validated=validateExtraction(observations,text);
@@ -57,7 +63,7 @@ export async function extractWithAI(text:string,context:any,request:typeof fetch
   }
   return {observations,model:actualModel,coverageReview,purchaseIntent};
  }catch(e){/* Invalid output, missing coverage and provider errors retry through the configured provider chain. No source or credentials in logs. */
-  log.warn('ai.extraction_provider_failed',{model:p.name,error:e as Error});}}
+  log.warn('ai.extraction_provider_failed',{model:p.model,error:e as Error});}}
  throw Error('结构化提取暂不可用，原文已保存');
 }
 let running=false;

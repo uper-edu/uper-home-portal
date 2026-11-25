@@ -100,7 +100,7 @@ export function loadPortalEnvironment({ env = process.env, directory = process.c
     }
     // Selection is explicit: stale variables inherited from another local environment must not win.
     for (const key of Object.keys(env)) {
-      if (portalEnvironmentKey(key) !== 'PORTAL_PACKAGE_ENV' && /^(PORTAL_|MYSQL_|ACCESS_|TRIAL_|LARK_|OPENAI_|DEEPSEEK_|APP_ENV$|APP_URL$|PLATFORM_MODE$|NODE_ENV$|PORT$|MOCK_EMPLOYEE_ID$|DEFAULT_AI_PROVIDER$)/.test(portalEnvironmentKey(key))) delete env[key];
+      if (portalEnvironmentKey(key) !== 'PORTAL_PACKAGE_ENV' && /^(PORTAL_|MYSQL_|ACCESS_|TRIAL_|LARK_|OPENAI_|DEEPSEEK_|ANTHROPIC_|APP_ENV$|APP_URL$|PLATFORM_MODE$|NODE_ENV$|PORT$|MOCK_EMPLOYEE_ID$|DEFAULT_AI_PROVIDER$)/.test(portalEnvironmentKey(key))) delete env[key];
     }
     Object.assign(env, values);
     env.PORTAL_ENV_FILE = file;

@@ -691,6 +691,7 @@ export function IntegrationCredentialsOverview({lang,isLight,topic,onTopicChange
               headers={[t('Provider','Penyedia','供应商'),credentialStatus,t('Actions','Tindakan','操作')]}>
               <IntegrationCredentialControl kind="ai" resource="openai" rowLabel="OpenAI" lang={lang} isLight={isLight}/>
               <IntegrationCredentialControl kind="ai" resource="deepseek" rowLabel="DeepSeek" lang={lang} isLight={isLight}/>
+              <IntegrationCredentialControl kind="ai" resource="anthropic" rowLabel="Anthropic (Claude)" lang={lang} isLight={isLight}/>
             </AdminListTable>
           </AdminFormSection>
         </AiServicePanel>

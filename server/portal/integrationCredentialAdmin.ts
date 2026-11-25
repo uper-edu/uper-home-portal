@@ -10,7 +10,7 @@ import {
   type CredentialClient, type CredentialKind, type CredentialValues, type Slot, type CredentialVerificationFailure,
 } from './integrationCredentials.ts';
 import {
-  aiCredentialTarget, cosCredentialTarget, groupCredentialTarget,
+  aiCredentialProviders, aiCredentialTarget, cosCredentialTarget, groupCredentialTarget,
   legacyAiCredential, legacyCosCredential, legacyGaCredential, legacyGroupCredential,
   legacyLarkAppCredential, smtpCredentialTarget, validGroupCredential, verifySmtpCredential,
 } from './integrationCredentialTargets.ts';
@@ -37,7 +37,7 @@ async function targetFor(db: CredentialClient, slot: Slot, lock=false): Promise<
   const id = slot.resource;
   switch (slot.type) {
     case 'ai': {
-      if (!['openai','deepseek'].includes(id)) return fail(404,'credential_not_found');
+      if (!aiCredentialProviders.some(provider=>provider===id)) return fail(404,'credential_not_found');
       const {current} = await aiState(db);
       const model = [current.primary, current.fallback, ...aiModels].find(value => providerFor(value).provider === id)!;
       return {id: aiCredentialTarget(id), legacy: () => legacyAiCredential(id), fields: ['key'], context: [id,model],
