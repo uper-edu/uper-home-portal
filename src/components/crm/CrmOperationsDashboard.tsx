@@ -1,0 +1,840 @@
+import {useEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
+import {ArrowUpRight,Maximize,Minimize} from 'lucide-react';
+import {AdminContentNav} from '../admin/AdminContentNav';
+import {AdminPageHeader} from '../admin/AdminPageHeader';
+import {AdminPageAction} from '../admin/AdminPageAction';
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
+import {AdminDateField} from '../admin/AdminDateField';
+import {AdminDisclosure} from '../admin/AdminDisclosure';
+import {dashboardAdSpendScale,dashboardFormats,dashboardLandingPages,dashboardLevels,dashboardPath,dashboardPeriods,dashboardScopes,dashboardTopics,readDashboardFilters,
+  type DashboardAdSpend,type DashboardCash,type DashboardEconomicsRow,type DashboardFilters,type DashboardLandingPage,type DashboardMovementPage,
+  type DashboardSnapshot,type DashboardSource,type DashboardSources,type DashboardTeaching,type DashboardTeachingRow,type DashboardTopic,
+  type DashboardTraffic,type DashboardTrafficChannel} from '../../utils/crmOperationsDashboard';
+import type {AccessEmployee} from '../../utils/accessControl';
+import type {CrmLanguage} from '../../utils/crmLanguage';
+import {enrollmentClassManagementPath,enrollmentClassShortfall,type EnrollmentClassSummary} from '../../utils/crmEnrollmentManagement';
+import {enrollmentClassTitle} from '../../utils/enrollmentCatalog';
+import {formatCrmEventTime,formatCrmOperatingTime} from '../../utils/crmOperatingTime';
+import {formatCurrency} from '../../utils/currency';
+import {dashboardLabel,type DashboardWord} from './crmOperationsDashboardText';
+import './crm-operations-dashboard.css';
+
+type Translate=(key:DashboardWord)=>string;
+const languageTag={zh:'zh-CN',en:'en-GB',id:'id-ID'} as const;
+const financePath='/crm?tab=payments&paymentView=enrollment';
+const salesPath='/crm?tab=leads';
+const cashComponents=['received','refunded','returned','net'] as const;
+type CashComponent=typeof cashComponents[number];
+const readLocation=()=>{
+  const p=new URLSearchParams(window.location.search);
+  return {topic:dashboardTopics.find(topic=>topic===p.get('dashboardTopic'))??'overview',filter:readDashboardFilters(p)};
+};
+const filterDefaults=readDashboardFilters(new URLSearchParams());
+const periodOptions:DashboardWord[]=['month','week','days','custom'];
+const sameDate=(a:string,b:string)=>a===b?a:a+' – '+b;
+const formatWib=(at:string)=>formatCrmOperatingTime(at,'Asia/Jakarta');
+const landingTitle=(key:DashboardLandingPage,t:Translate)=>key==='unknown'?t('unknownLanding'):key==='other'?t('otherLanding'):'/'+key;
+const gaSourceTitle=(row:DashboardTrafficChannel,t:Translate)=>{
+  if(row.source==='(direct)')return t('directTraffic');
+  return [row.source,row.medium].filter(value=>value!=='(not set)'&&value!=='(none)').join(' · ')||t('unattributed');
+};
+const gaDates=(data:DashboardTraffic)=>sameDate(data.from,data.to)+' · WIB';
+const gaFreshness=(data:DashboardTraffic,t:Translate)=>t('gaSnapshotTime')+' '+formatWib(data.fetchedAt)+' WIB';
+const gaCoverage=(data:DashboardTraffic,t:Translate)=>t('gaDaysCovered')+' '+data.coveredDays+' / '+data.expectedDays;
+
+function useDashboard(url:string,accessKey:string,enabled:boolean,polling:boolean,revision:number){
+  const key=url+'|'+accessKey;
+  const [state,setState]=useState<{key:string;snapshot?:DashboardSnapshot;error?:number}>({key:''});
+  const [loading,setLoading]=useState(enabled);
+  useEffect(()=>{
+    if(!enabled)return;
+    const controller=new AbortController();
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    const read=async()=>{
+      setLoading(true);
+      try{
+        const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+        if(!response.ok){
+          if(!controller.signal.aborted)setState(prior=>({key,error:response.status,
+            snapshot:response.status>=500&&prior.key===key?prior.snapshot:undefined}));
+          return;
+        }
+        const snapshot:DashboardSnapshot=await response.json();
+        if(!controller.signal.aborted)setState({key,snapshot});
+      }catch{
+        if(!controller.signal.aborted)setState(prior=>({key,error:503,snapshot:prior.key===key?prior.snapshot:undefined}));
+      }finally{
+        if(!controller.signal.aborted){
+          setLoading(false);
+          if(polling)timer=setTimeout(()=>void read(),60_000);
+        }
+      }
+    };
+    void read();
+    return ()=>{controller.abort();if(timer)clearTimeout(timer);};
+  },[key,url,enabled,polling,revision]);
+  return {...(enabled&&state.key===key?state:{}),loading:enabled&&(loading||state.key!==key)};
+}
+
+function Panel({title,children,aside,className=''}:{title:string;children:ReactNode;aside?:ReactNode;className?:string}){
+  return <section className={'ops-dash-panel '+className}>
+    <header><h2>{title}</h2>{aside}</header>
+    {children}
+  </section>;
+}
+
+function Table({headers,children}:{headers:string[];children:ReactNode}){
+  return <div className="ops-dash-table-scroll"><table>
+    <thead><tr>{headers.map(header=><th scope="col" key={header}>{header}</th>)}</tr></thead>
+    <tbody>{children}</tbody>
+  </table></div>;
+}
+
+function Link({href,children,onNavigate}:{href:string;children:ReactNode;onNavigate?:(href:string)=>void}){
+  return <a className="ops-dash-link" href={href} onClick={event=>{
+    if(!onNavigate||event.defaultPrevented||event.button||event.ctrlKey||event.altKey||event.shiftKey||event.metaKey)return;
+    event.preventDefault();onNavigate(href);
+  }}>{children}<ArrowUpRight aria-hidden="true" size={15}/></a>;
+}
+
+function NumberCard({label,value,note,onClick}:{label:string;value:ReactNode;note?:ReactNode;onClick?:()=>void}){
+  const contents=<><span className="ops-dash-kpi-label">{label}{onClick&&<ArrowUpRight size={15} aria-hidden="true"/>}</span>
+    <strong>{value}</strong>{note&&<small>{note}</small>}</>;
+  return onClick?<button type="button" className="ops-dash-kpi" onClick={onClick}>{contents}</button>:
+    <article className="ops-dash-kpi">{contents}</article>;
+}
+
+function Trend({title,series,comparison,display,t,onDay,maximum}:{title:string;series:{date:string;value:number}[];
+  comparison?:{date:string;value:number}[];display:(value:number)=>string;t:Translate;onDay?:(date:string)=>void;maximum?:number}){
+  const [active,setActive]=useState('');
+  if(!series.length)return <Panel title={title}><p>{t('noSamples')}</p></Panel>;
+  const values=[...series.map(row=>row.value),...(comparison?.map(row=>row.value)??[])];
+  const min=Math.min(0,...values),max=Math.max(1,maximum??0,...values);
+  const baseline=-min/(max-min)*100;
+  const bar=(value:number)=>({height:Math.abs(value)/(max-min)*100+'%',
+    bottom:(value<0?(value-min)/(max-min)*100:baseline)+'%'});
+  const activeRow=series.find(row=>row.date===active);
+  const activePrevious=comparison?.[series.findIndex(row=>row.date===active)];
+  return <Panel title={title} aside={activeRow&&<span>{activeRow.date} · {display(activeRow.value)}
+    {activePrevious&&' · '+t('previous')+' '+activePrevious.date+' · '+display(activePrevious.value)}</span>}>
+    <div className="ops-dash-trend" aria-hidden={!onDay}>
+      <div className="ops-dash-baseline" style={{bottom:baseline+'%'}} aria-hidden="true"/>
+      {series.map((row,index)=>{
+        const previous=comparison?.[index];
+        const value=<><span className="ops-dash-trend-bar" style={bar(row.value)}
+          data-negative={row.value<0||undefined}/>
+          {previous&&<span className="ops-dash-trend-bar previous" style={bar(previous.value)}
+            data-negative={previous.value<0||undefined}/>}</>;
+        const label=row.date+' · '+display(row.value)+(previous?' · '+t('previous')+' '+previous.date+' · '+display(previous.value):'');
+        return onDay?<button type="button" key={row.date} className="ops-dash-trend-slot" data-active={active===row.date||undefined}
+          tabIndex={active===row.date||!active&&index===0?0:-1} title={label} aria-label={label}
+          onKeyDown={event=>{
+            const next=event.key==='ArrowRight'?event.currentTarget.nextElementSibling:event.key==='ArrowLeft'?event.currentTarget.previousElementSibling:null;
+            if(next instanceof HTMLButtonElement){event.preventDefault();next.focus();}
+          }} onClick={()=>{setActive(row.date);onDay(row.date);}} onFocus={()=>setActive(row.date)} onMouseEnter={()=>setActive(row.date)}>{value}</button>:
+          <span key={row.date} className="ops-dash-trend-slot" title={label}
+            onMouseEnter={()=>setActive(row.date)}>{value}</span>;
+      })}
+    </div>
+    <div className="ops-dash-axis" aria-hidden="true"><span>{series[0].date}</span><span>{series.at(-1)?.date}</span></div>
+    {comparison&&<p className="ops-dash-caption"><i aria-hidden="true"/> {t('period')} <i className="previous" aria-hidden="true"/> {t('previous')}</p>}
+    <AdminDisclosure heading={t('showData')} density="compact">
+      <Table headers={[t('date'),t('period'),...(comparison?[t('previous')]:[])]}>
+        {series.map((row,index)=><tr key={row.date}><th scope="row">{row.date}</th><td>{display(row.value)}</td>
+          {comparison&&<td>{comparison[index]?comparison[index].date+' · '+display(comparison[index].value):'—'}</td>}</tr>)}
+      </Table>
+    </AdminDisclosure>
+  </Panel>;
+}
+
+function Capacity({row,t}:{row:EnrollmentClassSummary;t:Translate}){
+  const held=Math.max(0,row.occupied-row.counts.paid);
+  const width=(count:number)=>Math.min(100,100*count/Math.max(1,row.capacity))+'%';
+  return <>
+    <div className="ops-dash-capacity" aria-hidden="true">
+      <i style={{width:width(row.counts.paid)}}/><i className="reserved" style={{width:width(Math.min(held,Math.max(0,row.capacity-row.counts.paid))),left:width(row.counts.paid)}}/>
+      {row.minimumPaid>0&&<i className="goal" style={{left:width(row.minimumPaid)}}/>}
+    </div>
+    <small>{t('openingGoal')} {row.counts.paid} / {row.minimumPaid} · {t('held')} {held} · {t('available')} {row.available}</small>
+  </>;
+}
+
+function Upcoming({rows,t,lang,limited,onNavigate}:{rows:EnrollmentClassSummary[];t:Translate;lang:CrmLanguage;limited?:boolean;onNavigate?:(href:string)=>void}){
+  return <Panel title={t('nextClasses')} aside={<span>{t('last14')}</span>} className="ops-dash-upcoming">
+    {rows.length?<ul>{(limited?rows.slice(0,3):rows).map(row=>{
+      const gap=enrollmentClassShortfall(row);
+      return <li key={row.id}>
+        <div className="ops-dash-class-head">
+          {onNavigate?<Link href={enrollmentClassManagementPath(row.id)} onNavigate={onNavigate}>{enrollmentClassTitle(row,lang)}</Link>:<strong>{enrollmentClassTitle(row,lang)}</strong>}
+          <span className="ops-dash-tag" data-tone={gap?'warning':'success'}>
+            {gap?<>{t('missingSeats')} <b>{gap}</b></>:row.status==='opened'?t('openingDone'):t('openingGoal')}
+          </span>
+        </div>
+        <p className="ops-dash-subvalue">{t('classStart')} · {formatWib(row.firstLessonAt)} WIB</p>
+        <Capacity row={row} t={t}/>
+      </li>;
+    })}</ul>:<p>{t('noSamples')}</p>}
+  </Panel>;
+}
+
+function Queue({data,t,wallboard=false,onNavigate}:{data:DashboardSnapshot;t:Translate;wallboard?:boolean;onNavigate?:(href:string)=>void}){
+  const rows:[DashboardWord,number|undefined,string?,string?][]=[
+    ['review',data.queue?.pending,financePath,data.queue?.oldest?t('oldest')+' · '+formatCrmEventTime(data.queue.oldest):undefined],
+    ['pendingRefund',data.queue?.refunds,financePath],
+    ['overdue',data.followup?.overdue,salesPath],
+  ];
+  return <Panel title={t('queue')} className="ops-dash-queue">
+    <ul>{rows.map(([key,value,url,note])=><li key={key}>
+      <strong data-tone={value&&key==='overdue'?'danger':value?'warning':undefined}>{value??'—'}</strong>
+      <div>{url&&value!==undefined&&!wallboard?<Link href={url} onNavigate={url===financePath?onNavigate:undefined}>{t(key)}</Link>:<span>{t(key)}</span>}
+        {value===undefined?<small>{t('denied')}</small>:note&&!wallboard?<small>{note}</small>:null}
+      </div>
+    </li>)}</ul>
+  </Panel>;
+}
+
+function sourceTitle(row:DashboardSource,t:Translate){
+  if(row.kind==='verified')return row.source+' · '+row.medium+(row.campaignCode?' · '+row.campaignCode:'');
+  if(row.kind==='website')return t('websiteOnly');
+  if(row.kind==='campaign')return row.campaignCode?t('campaignOnly')+' · '+row.campaignCode:t('campaignOnly');
+  return t('unattributed');
+}
+
+function OverviewTrends({data,t,lang,onDay}:{data:DashboardSnapshot;t:Translate;lang:CrmLanguage;
+  onDay:(topic:'sales'|'finance',date:string)=>void}){
+  const count=new Intl.NumberFormat(languageTag[lang]);
+  const paid=(rows:DashboardSnapshot['trend'])=>rows.map(row=>({date:row.date,value:row.paid}));
+  const currency=(amount:number)=>formatCurrency(amount,lang);
+  const amounts=(rows:DashboardSnapshot['trend'],kind:'received'|'refunded')=>
+    rows.flatMap(row=>row.cash?[{date:row.date,value:row.cash[kind]}]:[]);
+  const sharedMaximum=Math.max(1,...[...data.trend,...data.compareTrend].flatMap(row=>row.cash?[row.cash.received,row.cash.refunded]:[]));
+  return <div className="ops-dash-trend-stack">
+    <Trend title={t('trend')} series={paid(data.trend)} comparison={paid(data.compareTrend)}
+      display={value=>count.format(value)} t={t} onDay={date=>onDay('sales',date)}/>
+    {data.cash&&<div className="ops-dash-grid">
+      {(['received','refunded'] as const).map(kind=><Trend key={kind} title={t(kind==='received'?'receiptTrend':'refundTrend')}
+        series={amounts(data.trend,kind)} comparison={amounts(data.compareTrend,kind)} maximum={sharedMaximum}
+        display={currency} t={t} onDay={date=>onDay('finance',date)}/>)}
+    </div>}
+  </div>;
+}
+
+type ChangeDimension='level'|'format'|'source';
+type ChangeMeasure='paid'|'net';
+function OverviewChanges({data,t,lang,isLight,dimension,measure,onDimension,onMeasure,onGroup}:{data:DashboardSnapshot;t:Translate;
+  lang:CrmLanguage;isLight:boolean;dimension:ChangeDimension;measure:ChangeMeasure;
+  onDimension:(value:ChangeDimension)=>void;onMeasure:(value:ChangeMeasure)=>void;
+  onGroup:(dimension:'level'|'format',value:string,measure:ChangeMeasure)=>void}){
+  const count=new Intl.NumberFormat(languageTag[lang]);
+  const effectiveMeasure=data.cash?measure:'paid';
+  const rows=dimension==='level'?data.contributions.map(row=>({...row,key:row.level,label:row.level||t('unclassified')})):
+    dimension==='format'?data.formatContributions.map(row=>({...row,key:row.format,
+      label:row.format==='standard'||row.format==='small'?t(row.format):row.format||t('unclassified')})):
+      data.channelContributions.map(row=>({...row,key:row.source.key,label:sourceTitle(row.source,t)}));
+  const value=(row:typeof rows[number])=>effectiveMeasure==='net'?row.net??0:row.paid;
+  const previous=(row:typeof rows[number])=>effectiveMeasure==='net'?row.previousNet??0:row.previousPaid;
+  const difference=(row:typeof rows[number])=>value(row)-previous(row);
+  const display=(amount:number)=>effectiveMeasure==='net'?formatCurrency(amount,lang):count.format(amount);
+  const change=(amount:number)=>amount>0?'+'+display(amount):display(amount);
+  const linkable=(value:string)=>dimension==='level'?dashboardLevels.some(level=>level===value):
+    dimension==='format'&&dashboardFormats.some(format=>format===value);
+  return <Panel title={t('changeDrivers')}>
+    <div className="ops-dash-filters">
+      <AdminSingleSelect label={t('groupBy')} value={dimension} lang={lang} isLight={isLight}
+        options={[{value:'level',label:t('level')},{value:'format',label:t('format')},{value:'source',label:t('byOrderSource')}]}
+        onChange={choice=>onDimension(choice as ChangeDimension)}/>
+      {data.cash&&<AdminSingleSelect label={t('changeMeasure')} value={effectiveMeasure} lang={lang} isLight={isLight}
+        options={[{value:'paid',label:t('paid')},{value:'net',label:t('net')}]}
+        onChange={choice=>onMeasure(choice as ChangeMeasure)}/>}
+    </div>
+    {rows.length?<Table headers={[t(dimension),t('period'),t('previous'),t('versus')]}>
+      {rows.sort((a,b)=>Math.abs(difference(b))-Math.abs(difference(a))||a.label.localeCompare(b.label)).map(row=><tr key={row.key}>
+        <th scope="row">{dimension!=='source'&&linkable(row.key)?<button type="button" className="ops-dash-link"
+          onClick={()=>onGroup(dimension,row.key,effectiveMeasure)}>{row.label}<ArrowUpRight aria-hidden="true" size={15}/></button>:row.label}</th>
+        <td>{display(value(row))}</td><td>{display(previous(row))}</td><td><strong>{change(difference(row))}</strong></td>
+      </tr>)}
+    </Table>:<p>{t('noSamples')}</p>}
+    {dimension==='source'&&<p className="ops-dash-caption">{t('orderSourceChangeBasis')}</p>}
+  </Panel>;
+}
+
+function entryTitle(value:string,t:Translate){
+  const labels:Record<string,string>={website:t('webEntry'),homepage_widget:t('homeChat'),direct:t('directEntry'),linkhub:'/link',
+    ai_chat:'/chat',whatsapp:'WhatsApp',unknown:t('unattributed')};
+  return labels[value]??value;
+}
+function wallboardSourceRows(rows:DashboardSources[]){
+  const grouped=new Map<string,DashboardSources>();
+  for(const row of rows){
+    if(!row.first)continue;
+    const key=row.kind==='verified'?JSON.stringify([row.source,row.medium]):row.kind;
+    const total=grouped.get(key)??{...row,key,campaignCode:undefined,first:0};
+    total.first+=row.first;
+    grouped.set(key,total);
+  }
+  return [...grouped.values()].sort((a,b)=>b.first-a.first||a.key.localeCompare(b.key));
+}
+function sourceCoverage(rows:DashboardSources[],metric:'orders'|'first'){
+  return rows.reduce((coverage,row)=>{
+    coverage.total+=row[metric];
+    if(row.kind==='verified')coverage.verified+=row[metric];
+    return coverage;
+  },{total:0,verified:0});
+}
+function WallboardSources({data,t}:{data:DashboardSnapshot;t:Translate}){
+  const traffic=data.traffic;
+  const compact=wallboardSourceRows(data.latestSources);
+  const ranked=compact.filter(row=>row.kind==='verified');
+  const visibleSources=traffic?2:3;
+  const details=[...ranked.slice(0,visibleSources),...compact.filter(row=>row.kind!=='verified')];
+  const other=ranked.slice(visibleSources).reduce((sum,row)=>sum+row.first,0);
+  const best=Math.max(1,other,...details.map(row=>row.first));
+  const visualCount=(count:number)=><span className="ops-dash-source-value">
+    <i aria-hidden="true"><b style={{width:count/best*100+'%'}}/></i>{count}
+  </span>;
+  return <Panel title={t('sourceTable')} aside={<span>{sameDate(data.trafficPeriod.from,data.trafficPeriod.to)} · WIB</span>} className="ops-dash-sources">
+    <Table headers={[t('source'),t('first')]}>
+      {!details.length&&<tr><th scope="row">{t('noSamples')}</th><td>0</td></tr>}
+      {details.map(row=><tr key={row.key}>
+        <th scope="row"><span className="ops-dash-tv-source-name" title={sourceTitle(row,t)}>{sourceTitle(row,t)}</span></th>
+        <td>{visualCount(row.first)}</td>
+      </tr>)}
+      {other>0&&<tr><th scope="row">{t('otherSources')}</th><td>{visualCount(other)}</td></tr>}
+    </Table>
+    {traffic?<div className="ops-dash-tv-entries">
+      <strong>{t('sessions')} · {gaDates(traffic)}</strong>
+      {traffic.channels.slice(0,3).map(row=><span className="ops-dash-tv-ga-channel" key={JSON.stringify([row.source,row.medium])}>
+        <span className="ops-dash-tv-source-name" title={gaSourceTitle(row,t)}>{gaSourceTitle(row,t)}</span> <b>{row.sessions}</b>
+      </span>)}
+      <span className="ops-dash-tv-traffic-period">{gaFreshness(traffic,t)}</span>
+      <span className="ops-dash-tv-traffic-period">{dashboardLandingPages.map(key=>
+        <span key={key}>{landingTitle(key,t)} <b>{traffic.landings[key]}</b></span>)}</span>
+    </div>:<p className="ops-dash-caption">{t('trafficGap')}</p>}
+    {data.latestEntries.length>0&&<div className="ops-dash-tv-entries">
+      <span>{t('recentEntries')}</span>
+      {data.latestEntries.slice(0,3).map(({entry,count})=><span key={entry}>{entryTitle(entry,t)} <b>{count}</b></span>)}
+    </div>}
+  </Panel>;
+}
+
+function AcquisitionSources({data,t,lang,canManageCampaigns}:{data:DashboardSnapshot;t:Translate;lang:CrmLanguage;canManageCampaigns:boolean}){
+  const orderCoverage=sourceCoverage(data.sources,'orders');
+  const firstCoverage=sourceCoverage(data.sources,'first');
+  const previous=new Map(data.compareSources.filter(row=>row.first).map(row=>[row.key,row]));
+  const labels=new Map([...previous,...data.sources.filter(row=>row.first).map(row=>[row.key,row] as const)]);
+  const current=new Map(data.sources.map(row=>[row.key,row.first]));
+  const first=[...labels.values()].map(row=>({row,current:current.get(row.key)??0,previous:previous.get(row.key)?.first??0}))
+    .sort((a,b)=>b.current-a.current||b.previous-a.previous||a.row.key.localeCompare(b.row.key));
+  const orders=data.sources.filter(row=>row.orders).sort((a,b)=>b.orders-a.orders||a.key.localeCompare(b.key));
+  const percent=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
+  const name=(row:DashboardSources)=>{
+    const label=sourceTitle(row,t);
+    return canManageCampaigns&&row.campaignId?<Link href={'/crm?tab=campaigns&campaign='+encodeURIComponent(row.campaignId)}>{label}</Link>:label;
+  };
+  const totals=(coverage:ReturnType<typeof sourceCoverage>)=>
+    <b>{coverage.verified} / {coverage.total}{coverage.total>0&&' · '+percent.format(coverage.verified/coverage.total)}</b>;
+  return <div className="ops-dash-grid">
+    <Panel title={t('byOrderSource')} className="ops-dash-sources">
+      {orders.length?<Table headers={[t('source'),t('orders'),t('sevenDayConversion')]}>
+        {orders.map(row=><tr key={row.key}>
+          <th scope="row">{name(row)}</th><td>{row.orders}</td>
+          <td>{row.mature?<>{percent.format(row.paidWithinWindow/row.mature)} <small className="ops-dash-subvalue">({row.paidWithinWindow}/{row.mature})</small></>:'—'}</td>
+        </tr>)}
+      </Table>:<p>{t('noSamples')}</p>}
+      <p className="ops-dash-caption">{t('sourceCoverage')} {totals(orderCoverage)}</p>
+      <p className="ops-dash-caption">{t('sourceCohortBasis')}</p>
+    </Panel>
+    <Panel title={t('byFirstSource')} aside={canManageCampaigns?<Link href="/crm?tab=campaigns&campaignArea=sources">{t('sourceReview')}</Link>:undefined}>
+      {first.length?<Table headers={[t('source'),t('firstThisPeriod'),t('firstPreviousPeriod')]}>
+        {first.map(({row,current,previous})=><tr key={row.key}>
+          <th scope="row">{name(row)}</th><td>{current}</td><td>{previous}</td>
+        </tr>)}
+      </Table>:<p>{t('noSamples')}</p>}
+      <p className="ops-dash-caption">{t('sourceCoverage')} {totals(firstCoverage)}</p>
+      {data.current.identityUnknown>0&&<p className="ops-dash-caption">{t('missingIdentity')} · {data.current.identityUnknown}</p>}
+    </Panel>
+  </div>;
+}
+
+function AcquisitionTraffic({data,t,filtered}:{data:DashboardTraffic|null|undefined;t:Translate;filtered:boolean}){
+  const other=data?.otherChannels;
+  return <Panel title={t('sessions')} aside={data?<span>{gaDates(data)}</span>:undefined}>
+    {data?<>
+      <Table headers={[t('source'),...dashboardLandingPages.map(key=>landingTitle(key,t)),t('sessionCount')]}>
+        <tr><th scope="row">{t('trafficTotal')}</th>{dashboardLandingPages.map(key=><td key={key}>{data.landings[key]}</td>)}<td>{data.sessions}</td></tr>
+        {data.channels.map(row=><tr key={JSON.stringify([row.source,row.medium])}>
+          <th scope="row">{gaSourceTitle(row,t)}</th>{dashboardLandingPages.map(key=><td key={key}>{row.landings[key]}</td>)}<td>{row.sessions}</td>
+        </tr>)}
+        {other&&<tr><th scope="row">{t('otherSources')}</th>
+          {dashboardLandingPages.map(key=><td key={key}>{other.landings[key]}</td>)}<td>{other.sessions}</td>
+        </tr>}
+      </Table>
+      <p className="ops-dash-caption">{gaCoverage(data,t)} · {gaFreshness(data,t)}</p>
+      {data.coveredDays<data.expectedDays&&<p className="ops-dash-caption">{t('gaPartial')}</p>}
+      {data.devices?<AdminDisclosure heading={t('sessionsByDevice')} density="compact">
+        {data.devices.rows.length?<Table headers={[t('device'),...dashboardLandingPages.map(key=>landingTitle(key,t)),t('sessionCount')]}>
+          {data.devices.rows.map(row=><tr key={row.device}>
+            <th scope="row">{row.device==='unknown'?t('unknownDevice'):row.device==='other'?t('otherDevice'):t(row.device)}</th>
+            {dashboardLandingPages.map(key=><td key={key}>{row.landings[key]}</td>)}<td>{row.sessions}</td>
+          </tr>)}
+        </Table>:<p>{t('noSamples')}</p>}
+        <p className="ops-dash-caption">{t('gaDaysCovered')} {data.devices.coveredDays} / {data.expectedDays}</p>
+      </AdminDisclosure>:<p className="ops-dash-caption">{t('deviceGap')}</p>}
+    </>:<p className="ops-dash-caption">{t('trafficGap')}</p>}
+    {filtered&&<p className="ops-dash-caption">{t('gaSiteScope')}</p>}
+  </Panel>;
+}
+
+function AcquisitionAdSpend({data,t,lang,filtered}:{data:DashboardAdSpend|null;t:Translate;lang:CrmLanguage;filtered:boolean}){
+  const money=(amount:number,currency:string)=>formatCurrency(amount/dashboardAdSpendScale,lang,currency);
+  const percent=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
+  return <Panel title={t('adSpend')} aside={data?<span>{sameDate(data.from,data.to)} · WIB</span>:undefined}>
+    {data?<>
+      <Table headers={[t('adCurrency'),t('adSpend'),t('adMapped'),t('adUnmapped')]}>
+        {data.currencies.map(row=><tr key={row.currency}>
+          <th scope="row">{row.currency}</th><td>{money(row.amount,row.currency)}</td>
+          <td>{money(row.mapped,row.currency)} {row.amount>0&&<small className="ops-dash-subvalue">({percent.format(row.mapped/row.amount)})</small>}</td>
+          <td>{money(row.amount-row.mapped,row.currency)}</td>
+        </tr>)}
+      </Table>
+      {data.campaigns.length>0&&<AdminDisclosure heading={t('adCampaignBreakdown')} density="compact">
+        <Table headers={[t('adExternalCampaign'),t('adAccount'),t('adPromotion'),t('adSpend')]}>
+          {data.campaigns.map(row=><tr key={JSON.stringify([row.platform,row.accountId,row.currency,row.campaignId,row.mapping?.promotionId,row.mapping?.campaignId])}>
+            <th scope="row">{row.name}{row.name!==row.campaignId&&<small className="ops-dash-subvalue"> · {row.campaignId}</small>}</th>
+            <td>{row.platform} · {row.accountId}</td>
+            <td>{row.mapping?<Link href={'/crm?tab=campaigns&campaign='+encodeURIComponent(row.mapping.campaignId)}>
+              {row.mapping.campaignCode} · {row.mapping.promotionId}</Link>:t('adNotMapped')}</td>
+            <td>{money(row.amount,row.currency)}</td>
+          </tr>)}
+        </Table>
+      </AdminDisclosure>}
+      <AdminDisclosure heading={t('adCoverage')} density="compact">
+        <Table headers={[t('adAccount'),t('adCurrency'),t('gaDaysCovered'),t('gaSnapshotTime')]}>
+          {data.accounts.map(row=><tr key={JSON.stringify([row.platform,row.accountId,row.currency])}>
+            <th scope="row">{row.platform} · {row.accountId}</th><td>{row.currency}</td>
+            <td>{row.days} / {data.expectedDays}</td><td>{formatWib(row.asOf)} WIB</td>
+          </tr>)}
+        </Table>
+      </AdminDisclosure>
+      <p className="ops-dash-caption">{t('adCoverageNote')}</p>
+    </>:<p className="ops-dash-caption">{t('adEmpty')}</p>}
+    {filtered&&<p className="ops-dash-caption">{t('adAccountScope')}</p>}
+    <p className="ops-dash-caption">{t('adCacPending')}</p>
+  </Panel>;
+}
+
+function Finance({data,filter,lang,t,onNavigate}:{data:DashboardSnapshot;filter:DashboardFilters;lang:CrmLanguage;t:Translate;onNavigate:(href:string)=>void}){
+  const [kind,setKind]=useState<CashComponent>('net');
+  const [day,setDay]=useState('');
+  const [page,setPage]=useState(1);
+  const [result,setResult]=useState<{panelKey:string;data?:DashboardMovementPage;error?:boolean}>();
+  const cash=data.cash;
+  const params=new URLSearchParams(dashboardPath('finance',day?{...filter,period:'custom',from:day,to:day}:filter).split('?')[1]);
+  params.set('page',String(page));
+  if(kind!=='net')params.set('kind',kind);
+  const panelKey=params.toString()+'|'+data.asOf;
+  useEffect(()=>{
+    if(!cash)return;
+    const controller=new AbortController();
+    fetch('/api/crm/operations-dashboard/cash?'+panelKey.split('|')[0],{signal:controller.signal,cache:'no-store'})
+      .then(response=>{if(!response.ok)throw Error();return response.json();})
+      .then(value=>{if(!controller.signal.aborted)setResult({panelKey,data:value});})
+      .catch(()=>{if(!controller.signal.aborted)setResult({panelKey,error:true});});
+    return ()=>controller.abort();
+  },[panelKey,Boolean(cash)]);
+  if(!cash)return <Panel title={t('finance')}><p>{t('denied')}</p></Panel>;
+  const report=result?.panelKey===panelKey?result:undefined;
+  const money=(n:number)=>formatCurrency(n,lang);
+  const valuation=cash.current;
+  const [received,refunded,returned]=[valuation.received,valuation.refunded,valuation.returned];
+  const low=Math.min(0,received-refunded,valuation.net);
+  const high=Math.max(1,received,valuation.net);
+  const starts=[0,received,received-refunded,0];
+  const changes=[received,-refunded,returned,valuation.net];
+  return <>
+    <Panel title={t('finance')} aside={<Link href={financePath} onNavigate={onNavigate}>{t('financeLink')}</Link>}>
+      <div className="ops-dash-waterfall">
+        {cashComponents.map((item,index)=>{
+          const amount=changes[index],start=starts[index];
+          return <button key={item} type="button" aria-pressed={kind===item} onClick={()=>{setKind(item);setDay('');setPage(1);}}>
+            <span className="ops-dash-float" aria-hidden="true"><i data-negative={amount<0||undefined}
+              style={{bottom:(Math.min(start,start+amount)-low)/(high-low)*100+'%',height:Math.max(1,Math.abs(amount)/(high-low)*100)+'%'}}/></span>
+            <span>{t(item)}</span><strong>{money(amount)}</strong>
+          </button>;
+        })}
+      </div>
+      <p className="ops-dash-caption">{t('netDefinition')}</p>
+    </Panel>
+    {data.queue&&<>
+      <div className="ops-dash-kpis compact">
+        <NumberCard label={t('receivable')} value={money(data.queue.receivable)}/>
+        <NumberCard label={t('refundAmount')} value={money(data.queue.refundOutstanding)}/>
+        <NumberCard label={t('review')} value={data.queue.pending}/>
+      </div>
+      <Panel title={t('financeAging')}>
+        <Table headers={[t('financeAging'),t('ageUnder24'),t('ageUnder72'),t('ageAtLeast72'),t('ageUnknown')]}>
+          {([
+            ['review',data.queue.reviewAges],
+            ['pendingRefund',data.queue.refundAges],
+          ] as const).map(([label,ages])=><tr key={label}>
+            <th scope="row">{t(label)}</th>
+            <td>{ages.under24}</td><td>{ages.under72}</td><td>{ages.atLeast72}</td><td>{ages.unknown}</td>
+          </tr>)}
+        </Table>
+        <p className="ops-dash-caption">{t('financeAgingBasis')}</p>
+      </Panel>
+    </>}
+    <Trend title={t('financeTrend')} series={data.trend.map(row=>({date:row.date,value:row.cash?.net??0}))}
+      display={money} t={t} onDay={value=>{setDay(value);setKind('net');setPage(1);}}/>
+    <Panel title={t('movements')+' · '+t(kind)} aside={day&&<button type="button" className="crm-work-button" onClick={()=>{setDay('');setPage(1);}}>{day} · {t('clear')}</button>}>
+      {report?.data?.rows.length?<Table headers={[t('order'),t('movementReference'),t('recordedAt'),t('settledAt'),t('type'),t('amount')]}>
+        {report.data.rows.map(row=><tr key={row.kind+':'+row.reference}>
+          <th scope="row"><Link href={financePath+'&enrollmentOrder='+encodeURIComponent(row.orderId)} onNavigate={onNavigate}>{row.orderId}</Link></th>
+          <td>{row.reference}</td><td>{formatCrmEventTime(row.at)}</td><td>{row.settledAt?formatCrmEventTime(row.settledAt):'—'}</td>
+          <td>{t(row.kind)}</td><td>{money(row.kind==='refunded'?-row.amount:row.amount)}</td>
+        </tr>)}
+      </Table>:<p role={report?.error?'alert':'status'}>{report?.error?t('error'):report?t('noSamples'):t('load')}</p>}
+      <div className="ops-dash-pagination">
+        <button type="button" className="crm-work-button" disabled={page===1} onClick={()=>setPage(page-1)}>{t('previousPage')}</button>
+        <button type="button" className="crm-work-button" disabled={!report?.data?.more} onClick={()=>setPage(page+1)}>{t('nextPage')}</button>
+      </div>
+    </Panel>
+  </>;
+}
+
+function Wallboard({data,lang,t,stale}:{data:DashboardSnapshot;lang:CrmLanguage;t:Translate;stale:boolean}){
+  const board=useRef<HTMLDivElement>(null);
+  const [full,setFull]=useState(false);
+  useEffect(()=>{
+    const changed=()=>setFull(document.fullscreenElement===board.current);
+    document.addEventListener('fullscreenchange',changed);
+    return ()=>document.removeEventListener('fullscreenchange',changed);
+  },[]);
+  const toggle=async()=>{
+    try{
+      if(document.fullscreenElement===board.current)await document.exitFullscreen();
+      else await board.current?.requestFullscreen();
+    }catch{setFull(false);}
+  };
+  const {verified,total}=sourceCoverage(data.latestSources,'first');
+  const rate=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
+  return <div className="ops-dash-tv-outer" ref={board} data-fullscreen={full||undefined}>
+    <div className="ops-dash-tv">
+      <header><div><span>UPER</span> <strong>{t('wallboard')}</strong></div>
+        <div><time dateTime={data.asOf}>{formatWib(data.asOf)} WIB</time>
+          <AdminPageAction label={t(full?'closeFullscreen':'fullscreen')} icon={full?Minimize:Maximize} onClick={()=>void toggle()}/></div>
+      </header>
+      <div className="ops-dash-kpis">
+        {data.traffic?
+          <NumberCard label={t('sessions')} value={new Intl.NumberFormat(languageTag[lang]).format(data.traffic.sessions)}
+            note={gaCoverage(data.traffic,t)}/>:
+          <NumberCard label={t('sourceCoverage')} value={total?rate.format(verified/total):'—'}
+            note={t('recentDays')+' · '+verified+' / '+total}/>}
+        <NumberCard label={t('todayPaid')} value={data.today.paid}/>
+        <NumberCard label={t('todayNet')} value={data.cash?formatCurrency(data.cash.today.net,lang):'—'} note={!data.cash?t('denied'):undefined}/>
+        <NumberCard label={t('monthFirst')} value={data.current.first}/>
+      </div>
+      <div className="ops-dash-grid">
+        <WallboardSources data={data} t={t}/>
+        <Upcoming rows={data.upcoming} t={t} lang={lang} limited/>
+      </div>
+      <Queue data={data} t={t} wallboard/>
+      <footer role="status">{stale?t('stale'):t('asOf')+' · '+formatWib(data.asOf)+' WIB'}</footer>
+    </div>
+  </div>;
+}
+
+function AcquisitionReservations({outcomes,t,lang,isLight}:{outcomes:DashboardSnapshot['reservationOutcomes'];
+  t:Translate;lang:CrmLanguage;isLight:boolean}){
+  const [group,setGroup]=useState<'entries'|'languages'>('entries');
+  const rows=outcomes[group];
+  const languageLabels:Record<string,string>={en:'English',id:'Bahasa Indonesia',zh:'中文'};
+  const rate=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
+  const observing=rows.reduce((sum,row)=>sum+row.observing,0);
+  const timingUnknown=rows.reduce((sum,row)=>sum+row.timingUnknown,0);
+  return <Panel title={t('reservationOutcomes')}>
+    <div className="ops-dash-filters">
+      <AdminSingleSelect label={t('groupBy')} value={group} lang={lang} isLight={isLight}
+        options={[{value:'entries',label:t('entry')},{value:'languages',label:t('reservationLanguage')}]}
+        onChange={value=>setGroup(value==='languages'?'languages':'entries')}/>
+    </div>
+    {rows.length?<Table headers={[t(group==='entries'?'entry':'reservationLanguage'),t('orders'),t('paymentEligible'),
+      t('proofInWindow'),t('paidAfterProof'),t('paidWithoutPriorProof'),t('sevenDayConversion')]}>
+      {rows.map(row=><tr key={row.key}>
+        <th scope="row">{group==='entries'?entryTitle(row.key,t):languageLabels[row.key]??t('unknownReservationLanguage')}</th>
+        <td>{row.orders}</td><td>{row.eligible}</td><td>{row.proof}</td><td>{row.paidAfterProof}</td><td>{row.paidWithoutPriorProof}</td>
+        <td>{row.eligible?rate.format((row.paidAfterProof+row.paidWithoutPriorProof)/row.eligible):'—'}</td>
+      </tr>)}
+    </Table>:<p>{t('noSamples')}</p>}
+    <p className="ops-dash-caption">{t('reservationOutcomeBasis')}</p>
+    {observing>0&&<p className="ops-dash-caption">{t('observing')} · {observing}</p>}
+    {timingUnknown>0&&<p className="ops-dash-caption">{t('missingTime')} · {timingUnknown}</p>}
+  </Panel>;
+}
+
+function Acquisition({data,t,lang,isLight,canManageCampaigns,filtered}:{data:DashboardSnapshot;t:Translate;lang:CrmLanguage;
+  isLight:boolean;canManageCampaigns:boolean;filtered:boolean}){
+  const {current}=data;
+  const cohorts:[DashboardWord,number][]=[['completedWindow',current.mature],['paidInTime',current.paidWithinWindow],['observing',current.observing]];
+  return <>
+    <AcquisitionTraffic data={data.traffic} t={t} filtered={filtered}/>
+    {canManageCampaigns&&<AcquisitionAdSpend data={data.adSpend??null} t={t} lang={lang} filtered={filtered}/>}
+    <AcquisitionSources data={data} t={t} lang={lang} canManageCampaigns={canManageCampaigns}/>
+    <AcquisitionReservations outcomes={data.reservationOutcomes} t={t} lang={lang} isLight={isLight}/>
+    <div className="ops-dash-grid">
+      <Panel title={t('funnel')}>
+        <ul className="ops-dash-stages">{cohorts.map(([label,value])=><li key={label}><span>{t(label)}</span><strong>{value}</strong>
+          <i aria-hidden="true" style={{width:100*value/Math.max(1,current.mature,current.observing)+'%'}}/></li>)}</ul>
+        {current.timingUnknown>0&&<p className="ops-dash-caption">{t('missingTime')} · {current.timingUnknown}</p>}
+      </Panel>
+      <Panel title={t('orderStates')}>
+        <Table headers={[t('demandStatus'),t('orders')]}>
+          {(['awaiting','proof','partial','expired','cancelled'] as const).map(key=><tr key={key}>
+            <th scope="row">{t(key)}</th><td>{key==='proof'?current.review:current[key]}</td>
+          </tr>)}
+        </Table>
+      </Panel>
+    </div>
+    <Panel title={t('paymentCohorts')}>
+      {data.cohorts?.length?<Table headers={[t('cohortWeek'),t('orders'),t('oneDay'),t('threeDays'),t('sevenDays')]}>
+        {data.cohorts.map(row=><tr key={row.week}>
+          <th scope="row">{row.week}</th><td>{row.orders}</td>
+          {row.windows.map(window=><td key={window.days}><span className="ops-dash-cohort"
+            style={{'--ops-cohort':(window.observed?Math.round(window.confirmed/window.observed*42):0)+'%'} as CSSProperties}>
+            {window.observed?window.confirmed+' / '+window.observed:'—'}
+          </span></td>)}
+        </tr>)}
+      </Table>:<p>{t('noSamples')}</p>}
+      <p className="ops-dash-caption">{t('cohortBasis')}</p>
+    </Panel>
+  </>;
+}
+
+function Sales({data,t}:{data:DashboardSnapshot;t:Translate}){
+  return <>
+    <div className="ops-dash-kpis compact">
+      <NumberCard label={t('openContact')} value={data.followup?.open??'—'} note={!data.followup?t('denied'):undefined}/>
+      <NumberCard label={t('overdue')} value={data.followup?.overdue??'—'} note={!data.followup?t('denied'):undefined}/>
+      <NumberCard label={t('assistOffers')} value={data.assists.confirmed+' / '+data.assists.offered}/>
+    </div>
+    <Panel title={t('mode')} aside={<Link href={salesPath}>{t('followup')}</Link>}>
+      <Table headers={[t('type'),t('paid')]}>{(['self','assisted','staff','unclassified'] as const).map(key=>
+        <tr key={key}><th scope="row">{t(key)}</th><td>{data.current[key]}</td></tr>)}</Table>
+    </Panel>
+  </>;
+}
+
+function Classes({data,filter,t,lang,onNavigate}:{data:DashboardSnapshot;filter:DashboardFilters;t:Translate;lang:CrmLanguage;onNavigate:(href:string)=>void}){
+  const demand=data.demand?.filter(row=>row.state!=='withdrawn'&&(!filter.level||row.level===filter.level)&&(!filter.format||row.format===filter.format));
+  const format=(value:string)=>value==='standard'||value==='small'?t(value):value==='one-on-one'?t('oneToOne'):value||'—';
+  const timeLabel=(value:string)=>value==='weekday-evening'?t('weekday'):value==='weekend'||value==='mixed'?t(value):value||'—';
+  const breakdown=new Map<string,{level:string;period:string;supply:number;requests:number;waitlist:number}>();
+  for(const row of [...data.upcoming,...demand??[]]){
+    const key=[row.level,row.period].join('|');
+    const group=breakdown.get(key)??{level:row.level,period:row.period,supply:0,requests:0,waitlist:0};
+    if('counts' in row){group.supply+=row.available;group.waitlist+=row.counts.waiting;}
+    else group.requests+=row.count;
+    breakdown.set(key,group);
+  }
+  return <>
+    <Upcoming rows={data.upcoming} t={t} lang={lang} onNavigate={onNavigate}/>
+    <Panel title={t('supplyDemand')}>
+      {breakdown.size?<Table headers={[t('level'),t('schedule'),t('available'),t('waitlist'),t('demandCount')]}>
+        {[...breakdown.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([key,row])=><tr key={key}>
+          <th scope="row">{row.level||'—'}</th><td>{timeLabel(row.period)}</td><td>{row.supply}</td><td>{row.waitlist}</td><td>{demand?row.requests:'—'}</td>
+        </tr>)}
+      </Table>:<p>{t('noSamples')}</p>}
+    </Panel>
+    <Panel title={t('demand')} aside={<Link href="/crm?tab=enrollment-management" onNavigate={onNavigate}>{t('enrollment')}</Link>}>
+      {demand?.length?<Table headers={[t('level'),t('format'),t('schedule'),t('demandStatus'),t('demandCount')]}>
+        {demand.map(row=><tr key={[row.level,row.format,row.period,row.state].join('|')}>
+          <th scope="row">{row.level||'—'}</th><td>{format(row.format)}</td><td>{timeLabel(row.period)}</td>
+          <td>{row.state==='confirmed'?t('confirmedSchedule'):row.format==='one-on-one'?t('awaitingSchedule'):t('active')}</td><td>{row.count}</td>
+        </tr>)}
+      </Table>:<p>{t(demand?'noSamples':'denied')}</p>}
+    </Panel>
+  </>;
+}
+
+function teachingCohort(row:DashboardTeachingRow,t:Translate,onNavigate:(href:string)=>void){
+  const label=row.level+' · '+t(row.format==='one-on-one'?'oneToOne':row.format);
+  return row.kind==='class'?<Link href={enrollmentClassManagementPath(row.referenceId)} onNavigate={onNavigate}>{label}</Link>:label;
+}
+
+function Teaching({data,t,lang,allowed,onNavigate}:{data:DashboardTeaching|null|undefined;t:Translate;lang:CrmLanguage;
+  allowed:boolean;onNavigate:(href:string)=>void}){
+  if(!allowed)return <Panel title={t('teaching')}><p>{t('denied')}</p></Panel>;
+  if(!data)return <Panel title={t('teaching')}><p>{t('teachingGap')}</p><p className="ops-dash-caption">{t('teachingRules')}</p></Panel>;
+  const totals=data.cohorts.reduce((sum,row)=>({
+    lessons:sum.lessons+row.lessons,minutes:sum.minutes+row.minutes,rosterLessons:sum.rosterLessons+row.rosterLessons,
+    expected:sum.expected+row.expected,recorded:sum.recorded+row.recorded,present:sum.present+row.present,
+  }),{lessons:0,minutes:0,rosterLessons:0,expected:0,recorded:0,present:0});
+  const percent=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
+  const rate=(part:number,total:number)=>total?percent.format(part/total):'—';
+  const tally=(part:number,total:number)=>part+' / '+total;
+  return <>
+    <div className="ops-dash-kpis compact">
+      <NumberCard label={t('delivery')} value={totals.lessons} note={totals.minutes+' · '+t('lessonMinutes')}/>
+      <NumberCard label={t('attendanceRate')} value={rate(totals.present,totals.recorded)} note={tally(totals.present,totals.recorded)}/>
+      <NumberCard label={t('registerCoverage')} value={rate(totals.recorded,totals.expected)} note={tally(totals.recorded,totals.expected)}/>
+    </div>
+    <Panel title={t('delivery')} aside={<span>{sameDate(data.from,data.to)} · WIB</span>}>
+      <Table headers={[t('className'),t('delivery'),t('rosterCoverage'),t('attendanceRate'),t('registerCoverage'),t('gaDaysCovered')]}>
+        {data.cohorts.map(row=><tr key={row.kind+':'+row.referenceId}>
+          <th scope="row">{teachingCohort(row,t,onNavigate)} <small className="ops-dash-subvalue">· {row.referenceId}</small></th>
+          <td>{row.lessons} · {row.minutes} {t('lessonMinutes')}</td><td>{tally(row.rosterLessons,row.lessons)}</td>
+          <td>{rate(row.present,row.recorded)} <small className="ops-dash-subvalue">({tally(row.present,row.recorded)})</small></td>
+          <td>{rate(row.recorded,row.expected)} <small className="ops-dash-subvalue">({tally(row.recorded,row.expected)})</small></td>
+          <td>{tally(row.days,data.expectedDays)}</td>
+        </tr>)}
+      </Table>
+      <p className="ops-dash-caption">{t('teachingCoverage')} {tally(totals.rosterLessons,totals.lessons)} · {t('gaSnapshotTime')} {formatWib(data.asOf)} WIB</p>
+    </Panel>
+    <Panel title={t('completion')}><p>{t('teachingRules')}</p></Panel>
+  </>;
+}
+
+function CourseEconomics({data,t,lang,allowed,onNavigate}:{data:DashboardTeaching<DashboardEconomicsRow>|null|undefined;
+  t:Translate;lang:CrmLanguage;allowed:boolean;onNavigate:(href:string)=>void}){
+  if(!allowed)return <Panel title={t('economics')}><p>{t('denied')}</p></Panel>;
+  if(!data)return <Panel title={t('economics')}><p>{t('costGap')}</p></Panel>;
+  const money=(value:number|null)=>value===null?'—':formatCurrency(value,lang);
+  return <Panel title={t('economics')} aside={<span>{sameDate(data.from,data.to)} · WIB</span>}>
+    <Table headers={[t('className'),t('costCoverage'),t('directCost'),t('deliveredRevenue'),t('allDirectCost'),t('deliveredContribution'),t('gaDaysCovered')]}>
+      {data.cohorts.map(row=><tr key={row.kind+':'+row.referenceId}>
+        <th scope="row">{teachingCohort(row,t,onNavigate)} <small className="ops-dash-subvalue">· {row.referenceId}</small></th>
+        <td>{row.costedLessons} / {row.lessons}</td><td>{money(row.teacherCost)}</td>
+        <td>{money(row.revenue)}</td><td>{money(row.directCost)}</td><td>{money(row.contribution)}</td><td>{row.days} / {data.expectedDays}</td>
+      </tr>)}
+    </Table>
+    <p className="ops-dash-caption">{t('costCoverageNote')} · {t('gaSnapshotTime')} {formatWib(data.asOf)} WIB</p>
+  </Panel>;
+}
+
+export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation}:{actor:AccessEmployee;lang:CrmLanguage;isLight:boolean;
+  onNavigate:(href:string)=>void;onLocation:(url:string)=>void}){
+  const sections=dashboardScopes(actor);
+  const [location,setLocation]=useState(readLocation);
+  const {topic,filter}=location;
+  const t:Translate=key=>dashboardLabel(lang,key);
+  const [draft,setDraft]=useState(()=>({from:filter.from,to:filter.to}));
+  const [revision,setRevision]=useState(0);
+  const [changeDimension,setChangeDimension]=useState<ChangeDimension>('level');
+  const [changeMeasure,setChangeMeasure]=useState<ChangeMeasure>('paid');
+  const heading=useRef<HTMLHeadingElement>(null);
+  const outputTopic=topic==='wallboard';
+  const reportTopic=outputTopic||topic==='acquisition'||topic==='teaching'||topic==='economics';
+  const query=dashboardPath(reportTopic?topic:'overview',outputTopic?filterDefaults:filter).split('?')[1];
+  const accessKey=[sections.finance,sections.operations,sections.followup,sections.marketing].join('|');
+  const data=useDashboard('/api/crm/operations-dashboard?'+query,accessKey,sections.view,outputTopic,revision);
+  const snapshot=data.snapshot;
+  useEffect(()=>{
+    const restore=()=>{const current=readLocation();setLocation(current);setDraft({from:current.filter.from,to:current.filter.to});};
+    window.addEventListener('popstate',restore);
+    return ()=>window.removeEventListener('popstate',restore);
+  },[]);
+  const choose=(nextTopic:DashboardTopic,next:DashboardFilters=filter)=>{
+    const href=dashboardPath(nextTopic,next);
+    window.history.pushState(window.history.state,'',href);
+    onLocation(window.location.href);
+    setLocation({topic:nextTopic,filter:next});
+    if(next.from!==filter.from||next.to!==filter.to)setDraft({from:next.from,to:next.to});
+    if(nextTopic!==topic)requestAnimationFrame(()=>heading.current?.focus({preventScroll:true}));
+  };
+  const chooseLink=(href:string)=>{
+    const search=new URL(href,window.location.origin).searchParams;
+    choose(dashboardTopics.find(v=>v===search.get('dashboardTopic'))??'overview');
+  };
+  const openRange=(period:typeof dashboardPeriods[number])=>{
+    const from=period==='custom'?filter.from||snapshot?.period.from||formatWib(new Date().toISOString()).slice(0,10):'';
+    const to=period==='custom'?filter.to||snapshot?.period.to||from:'';
+    setDraft({from,to});
+    choose(topic,{...filter,period,from,to});
+  };
+  const status=data.error===401||data.error===403?'denied':data.error===400?'rejected':snapshot?'stale':'error';
+  const content=<>
+    <AdminPageHeader title={t('dashboard')} subtitle={snapshot?t('asOf')+' · '+formatWib(snapshot.asOf)+' WIB':'WIB'}
+      headingRef={heading} actions={sections.view&&<AdminRefreshAction label={t('refresh')} loading={data.loading} onClick={()=>setRevision(v=>v+1)}/>}/>
+    {sections.view&&<AdminContentNav label={t('dashboard')} onNavigate={chooseLink}
+      items={dashboardTopics.map(key=>({href:dashboardPath(key,filter),label:t(key),current:key===topic}))}/>}
+    {sections.view&&!outputTopic&&<div className="ops-dash-filters">
+      <AdminSingleSelect label={t('period')} value={filter.period} lang={lang} isLight={isLight}
+        options={dashboardPeriods.map((value,index)=>({value,label:t(periodOptions[index])}))}
+        onChange={value=>openRange(value as DashboardFilters['period'])}/>
+      <AdminSingleSelect label={t('level')} value={filter.level} lang={lang} isLight={isLight}
+        options={[{value:'',label:t('allLevels')},...dashboardLevels.map(value=>({value,label:value}))]}
+        onChange={value=>choose(topic,{...filter,level:value as DashboardFilters['level']})}/>
+      <AdminSingleSelect label={t('format')} value={filter.format} lang={lang} isLight={isLight}
+        options={[{value:'',label:t('allFormats')},...dashboardFormats.map(value=>({value,label:t(value)}))]}
+        onChange={value=>choose(topic,{...filter,format:value as DashboardFilters['format']})}/>
+      {filter.period==='custom'&&<form onSubmit={event=>{event.preventDefault();choose(topic,{...filter,...draft});}}>
+        <AdminDateField label={t('start')} value={draft.from} lang={lang} onChange={from=>setDraft(v=>({...v,from}))}/>
+        <AdminDateField label={t('end')} value={draft.to} lang={lang} onChange={to=>setDraft(v=>({...v,to}))}/>
+        <button type="submit" className="crm-work-button" disabled={!draft.from||!draft.to||draft.from>draft.to}>{t('apply')}</button>
+      </form>}
+      {(filter.period!=='month'||filter.level||filter.format)&&<button type="button" className="crm-work-button" onClick={()=>choose(topic,filterDefaults)}>{t('clear')}</button>}
+    </div>}
+    {!sections.view?<p className="ops-dash-feedback" role="alert">{t('denied')}</p>:
+      data.error?<p className="ops-dash-feedback" role="alert">{t(status)}</p>:!snapshot?<p className="ops-dash-feedback" role="status">{t('load')}</p>:null}
+  </>;
+  const selected=snapshot?sameDate(snapshot.period.from,snapshot.period.to):'';
+  const comparison=snapshot?sameDate(snapshot.period.compareFrom,snapshot.period.compareTo):'';
+  const money=(value:number)=>formatCurrency(value,lang);
+  const numeric=new Intl.NumberFormat(languageTag[lang]);
+  const count=(n:number)=>numeric.format(n);
+  const formatRate=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
+  const rate=snapshot?.current.mature?snapshot.current.paidWithinWindow/snapshot.current.mature:null;
+  const earlierRate=snapshot?.compare.mature?snapshot.compare.paidWithinWindow/snapshot.compare.mature:null;
+  const points=rate!==null&&earlierRate!==null?(rate-earlierRate)*100:null;
+  const pointChange=points===null?'':' · '+t('versus')+' '+new Intl.NumberFormat(languageTag[lang],
+    {signDisplay:'exceptZero',maximumFractionDigits:1}).format(points)+' '+t('percentagePoints');
+  const change=(n:number,render:(value:number)=>string=count)=>t('versus')+' · '+(n>0?'+':'')+render(n);
+
+  function panels(data:DashboardSnapshot){
+    if(topic==='acquisition')return <Acquisition data={data} t={t} lang={lang} isLight={isLight} filtered={Boolean(filter.level||filter.format)}
+      canManageCampaigns={sections.marketing}/>;
+    if(topic==='sales')return <Sales data={data} t={t}/>;
+    if(topic==='classes')return <Classes data={data} filter={filter} t={t} lang={lang} onNavigate={onNavigate}/>;
+    if(topic==='finance')return <Finance key={query} data={data} filter={filter} lang={lang} t={t} onNavigate={onNavigate}/>;
+    if(topic==='teaching')return <Teaching data={data.teaching} t={t} lang={lang} allowed={sections.operations} onNavigate={onNavigate}/>;
+    if(topic==='economics')return <CourseEconomics data={data.economics} t={t} lang={lang}
+      allowed={sections.operations&&sections.finance} onNavigate={onNavigate}/>;
+    return <>
+      <div className="ops-dash-kpis">
+        <NumberCard label={t('first')} value={count(data.current.first)} note={change(data.current.first-data.compare.first)} onClick={()=>choose('acquisition')}/>
+        <NumberCard label={t('paid')} value={count(data.current.paid)} note={change(data.current.paid-data.compare.paid)} onClick={()=>choose('sales')}/>
+        <NumberCard label={t('net')} value={data.cash?money(data.cash.current.net):'—'}
+          note={data.cash?change(data.cash.current.net-data.cash.compare.net,money):t('denied')} onClick={data.cash?()=>choose('finance'):undefined}/>
+        <NumberCard label={t('rate')} value={rate===null?'—':formatRate.format(rate)}
+          note={data.current.paidWithinWindow+' / '+data.current.mature+' · '+t('completedWindow')+pointChange} onClick={()=>choose('acquisition')}/>
+      </div>
+      <div className="ops-dash-grid ops-dash-overview-grid">
+        <OverviewTrends key={query} data={data} t={t} lang={lang}
+          onDay={(target,date)=>choose(target,{...filter,period:'custom',from:date,to:date})}/>
+        <Upcoming rows={data.upcoming} t={t} lang={lang} limited onNavigate={onNavigate}/>
+      </div>
+      <Queue data={data} t={t} onNavigate={onNavigate}/>
+      <OverviewChanges data={data} t={t} lang={lang} isLight={isLight} dimension={changeDimension} measure={changeMeasure}
+        onDimension={setChangeDimension} onMeasure={setChangeMeasure}
+        onGroup={(dimension,value,measure)=>choose(measure==='net'?'finance':'sales',
+          dimension==='level'?{...filter,level:value as DashboardFilters['level']}:{...filter,format:value as DashboardFilters['format']})}/>
+      <AdminDisclosure heading={t('guide')} density="compact">
+        <ul className="ops-dash-plain-list">
+          <li>{t('trafficExplain')}</li><li>{t('netDefinition')}</li>
+          <li>{t('missingIdentity')} · {data.current.identityUnknown}</li>
+          <li>{t('missingTime')} · {data.current.timingUnknown}</li>
+        </ul>
+      </AdminDisclosure>
+    </>;
+  }
+  return <section className="ops-dash" aria-label={t('dashboard')}>
+    {content}
+    {snapshot&&sections.view&&<>
+      {!outputTopic&&<p className="ops-dash-period">{selected} · WIB <span>{t('previous')} {comparison}</span></p>}
+      <div className="ops-dash-content" aria-busy={data.loading}>
+        {outputTopic?<Wallboard data={snapshot} lang={lang} t={t} stale={Boolean(data.error)} />:panels(snapshot)}
+      </div>
+    </>}
+  </section>;
+}

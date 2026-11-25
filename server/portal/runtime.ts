@@ -10,6 +10,7 @@ import { mountEnrollmentManagement } from './enrollmentManagement.ts';
 import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
 import {enrollmentSessionCookie,portalVisitorCookie,portalVisitorToken} from './enrollmentVisitorSession.ts';
 import { mountEnrollmentApplication } from './enrollmentApplication.ts';
+import { mountOperationsDashboard } from './operationsDashboard.ts';
 import { attachEnrollmentOpportunitySummaries } from './enrollmentCrm.ts';
 import { enrollmentNeedsNoSalesClaim } from '../../src/utils/crmEnrollment.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
@@ -395,6 +396,7 @@ export async function mountPortal(app: Express) {
   mountEnrollmentCatalog(app, { wrap, staff });
   mountEnrollmentManagement(app, wrap, staff);
   mountEnrollmentApplication(app, { wrap, staff, visitor });
+  mountOperationsDashboard(app, wrap, staff);
   mountEnrollmentMail(app,{wrap,staff});
   startEnrollmentMail();
   mountAccessOperations(app);

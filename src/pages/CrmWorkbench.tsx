@@ -14,6 +14,7 @@ import {CrmEnrollmentSettings} from '../components/crm/CrmEnrollmentSettings';
 import {canViewEnrollmentManagement} from '../utils/crmEnrollmentManagement';
 import {enrollmentNeedsNoSalesClaim} from '../utils/crmEnrollment';
 import {CrmEnrollmentFinance} from '../components/crm/CrmEnrollmentFinance';
+import {dashboardScopes} from '../utils/crmOperationsDashboard';
 import {canVerifyPayments} from '../utils/crmPaymentWorklist';
 import {defaultCrmModule} from '../utils/crmLanding';
 import '../components/crm/crm-courses.css';
@@ -116,7 +117,7 @@ import { LeadActivity } from "../components/LeadAttention";
 import { projectPendingTasks } from "../utils/crmTaskPresentation";
 import { CrmNextTaskSummary } from "../components/crm/CrmNextTaskSummary";
 import NotificationCenter from "../components/NotificationCenter";
-import React, { useState, useEffect, useMemo, useRef, useLayoutEffect, useCallback } from "react";
+import React, { lazy,Suspense,useState, useEffect, useMemo, useRef, useLayoutEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { safeStorage } from "../utils/safeStorage";
 import {
@@ -196,6 +197,7 @@ import {
 } from "../components/crm/CrmPolicySettings";
 import { CrmUserGuide } from "../components/crm/CrmUserGuide";
 import { CrmCampaignHub } from "../components/crm/CrmCampaignHub";
+const CrmOperationsDashboard=lazy(()=>import('../components/crm/CrmOperationsDashboard').then(m=>({default:m.CrmOperationsDashboard})));
 // Unified Global Stage Master Dictionary
 export default function CrmWorkbench() {
   const enrollmentNotice=new URLSearchParams(window.location.search).get('tab')==='enrollment';
@@ -229,6 +231,7 @@ function CrmWorkspace({
   const canManage = employee.permissions.includes("notifications.manage") || employee.permissions.includes("crm.operations.manage") || employee.permissions.includes("notifications.read");
   const canAssign = employee.permissions.includes("crm.assign");
   const canFinance = canVerifyPayments(employee);
+  const canDashboard = dashboardScopes(employee).view;
   const canEnrollmentManagement=canViewEnrollmentManagement(employee);
   const canEnrollmentSupport=employee.permissions.includes("crm.read")&&employee.permissions.includes("crm.followup");
   const [rulesDirty,setRulesDirty]=useState(false);
@@ -247,7 +250,7 @@ function CrmWorkspace({
   const promotionQueue = useCrmQueueSummary("promotion", canManageCampaigns ? employee.id : undefined);
   const [financeDirty,setFinanceDirty]=useState(false);
   const [crmModule, setCrmModule] = useState<
-    "leads" | "opportunities" | "campaigns" | "policy" | "docs" | "payments" | "enrollment-management" | "enrollment-aftercare" | "enrollment-settings"
+    "leads" | "opportunities" | "campaigns" | "policy" | "docs" | "payments" | "enrollment-management" | "enrollment-aftercare" | "enrollment-settings" | "dashboard"
   >(() => {
     try {
       if (/^#(?:crm-guide-|chapter-)/.test(window.location.hash)) return "docs";
@@ -256,7 +259,7 @@ function CrmWorkspace({
       if(tab==="enrollment-settings"||isLegacyEnrollmentSettings(params))return "enrollment-settings";
       if(!tab&&(params.has('lead')||params.has('digestJob')))return 'leads';
       if (
-        tab === "docs" || tab === "payments" || tab === "opportunities" ||
+        tab === "docs" || tab === "payments" || tab === "opportunities" || tab==="dashboard" ||
         (tab === "policy" && canManage) ||
         tab === "enrollment-management" || (tab === "enrollment-aftercare" && canEnrollmentSupport) ||
         tab === "leads" ||
@@ -555,6 +558,7 @@ function CrmWorkspace({
   const changeModule = (module: typeof crmModule) => {
     const finish = () => {leadRouteVersion.current++;const url=new URL(window.location.href);url.searchParams.set("tab",module);
       if(crmModule==="enrollment-settings")for(const key of ["policyTopic","enrollmentClass","enrollmentReturn"])url.searchParams.delete(key);
+      if(module!=="dashboard")for(const key of [...url.searchParams.keys()])if(key.startsWith('dashboard'))url.searchParams.delete(key);
       if(module!=="opportunities")url.searchParams.delete("opportunity");if(module!=="enrollment-management"||crmModule!==module){url.searchParams.delete("classId");url.searchParams.delete("classStatus");}if(module!==crmModule&&(crmModule==="policy"||module==="policy")){url.searchParams.delete("policyTopic");url.searchParams.delete("enrollmentClass");url.searchParams.delete("job");url.searchParams.delete("deliveryState");url.searchParams.delete("deliveryPage");}if(module!=="payments")for(const key of ["paymentLead","paymentEntry","paymentProject","paymentAction","paymentView","enrollmentOrder","opportunityReturn"])url.searchParams.delete(key);else if(crmModule!==module)url.searchParams.set("paymentView","enrollment");url.searchParams.delete("leadArea");setLeadAnalysis(false);if(module!=="leads"){url.searchParams.delete("lead");url.searchParams.delete("leadView");}if(module!=="campaigns"){url.searchParams.delete("campaign");url.searchParams.delete("campaignView");}url.hash="";window.history.pushState({},"",url);lastWorkspaceUrl.current=url.href;if(module==="payments")setEnrollmentPaymentView(isEnrollmentPaymentView(url.searchParams));if(module==="policy")setConfigurationLocation(url.search);setCrmModule(module);};
     const proceed=()=>{if(discardDraft(finish))finish();};
     if(crmModule==="campaigns"&&module!==crmModule&&!window.dispatchEvent(new CustomEvent("crm-campaign-before-leave",{cancelable:true,detail:{proceed}})))return;
@@ -563,7 +567,8 @@ function CrmWorkspace({
   const changeContentPage=(href:string)=>{
     const url=new URL(href,window.location.origin);
     const module=url.searchParams.get('tab');
-    if(module!=='payments'&&module!=='enrollment-management'&&module!=='enrollment-aftercare'&&module!=='enrollment-settings')return;
+    if(module!=='payments'&&module!=='enrollment-management'&&module!=='enrollment-aftercare'&&module!=='enrollment-settings'&&module!=='dashboard')return;
+    if(module==='dashboard'&&!canDashboard)return;
     if(module==='payments'){
       if(!canFinance)return;
       const current=new URLSearchParams(window.location.search);
@@ -626,6 +631,7 @@ function CrmWorkspace({
         if(module==="payments"){setEnrollmentPaymentView(isEnrollmentPaymentView(params));setCrmModule("payments");return;}
         if(module==="campaigns"){setCrmModule("campaigns");return;}
         if(module==="opportunities"){setCrmModule("opportunities");return;}
+        if(module==="dashboard"){setCrmModule("dashboard");return;}
         if(module==="enrollment-management"){setCrmModule(module);return;}
         if(module==="enrollment-settings"){setConfigurationLocation(params.toString());setCrmModule(module);return;}
         if(module==="enrollment-aftercare"){setCrmModule(canEnrollmentSupport?module:defaultCrmModule(employee));return;}
@@ -1446,6 +1452,7 @@ function CrmWorkspace({
       <a className="admin-skip-link" href="#crm-main">{lang==='zh'?'跳到工作区':lang==='id'?'Lewati ke ruang kerja':'Skip to workspace'}</a>
       <AdminHeader workspace="crm" employee={employee} lang={lang} setLang={setLang} isLight={isLight} toggleTheme={toggleTheme}
         navigation={<>
+          {canDashboard&&<button type="button" aria-current={crmModule==="dashboard"?"page":undefined} onClick={()=>changeModule("dashboard")}><BarChart3 size={16}/>{adminText(lang,"Operations dashboard","Dasbor operasional","经营看板")}</button>}
           <button type="button" aria-current={crmModule === "campaigns" ? "page" : undefined} onClick={() => changeModule("campaigns")}><Target size={16}/>{t("Marketing Campaigns", "营销活动中心")}<CrmQueueCount queue="promotion" count={promotionQueue.data?.pendingCount} lang={lang}/></button>
           <button type="button" aria-current={crmModule === "leads" ? "page" : undefined} onClick={() => changeModule("leads")}><Users size={16}/>{adminText(lang,"Customers","Pelanggan","客户")}<CrmQueueCount queue="identity" count={identityQueue?.pendingCount} lang={lang}/></button>
           <button type="button" aria-current={crmModule === "opportunities" ? "page" : undefined} onClick={()=>changeModule("opportunities")}><Target size={16}/>{adminText(lang,"Opportunities","Peluang","商机")}</button>
@@ -1480,7 +1487,11 @@ function CrmWorkspace({
                   onClick={() => void fetchLeads()}
                 />
               </>}/>}
-        {crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} actorId={employee.id} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : (crmModule === "enrollment-management" || crmModule === "enrollment-aftercare") ? <CrmEnrollmentManagement lang={lang} isLight={isLight} employee={employee} employees={employees} canSupport={canEnrollmentSupport} aftercare={crmModule==="enrollment-aftercare"} onNavigate={changeContentPage}/> : crmModule === "enrollment-settings" ? (
+        {crmModule === "dashboard" ? <Suspense fallback={<p role="status">{adminText(lang,'Loading dashboard','Memuat dasbor','正在读取经营看板')}</p>}>
+          <CrmOperationsDashboard key={employee.id} lang={lang} isLight={isLight} actor={employee}
+            onNavigate={changeContentPage} onLocation={url=>{lastWorkspaceUrl.current=url;}}/>
+          </Suspense> :
+          crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} actorId={employee.id} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : (crmModule === "enrollment-management" || crmModule === "enrollment-aftercare") ? <CrmEnrollmentManagement lang={lang} isLight={isLight} employee={employee} employees={employees} canSupport={canEnrollmentSupport} aftercare={crmModule==="enrollment-aftercare"} onNavigate={changeContentPage}/> : crmModule === "enrollment-settings" ? (
           <CrmEnrollmentSettings lang={lang} isLight={isLight} allowed={canManageOperations}
             params={new URLSearchParams(configurationLocation)} rulesDirty={rulesDirty}
             onRulesDraftChange={setRulesDirty} onEditorDraftChange={setEnrollmentSettingsEditorDirty} onNavigate={changeContentPage}/>

@@ -32,7 +32,7 @@ function bucket(state:string):EnrollmentRosterState {
   return enrollmentRosterStates.some(item=>item===state)?state as EnrollmentRosterState:'history';
 }
 
-async function summaries(c:Client,actor:Employee,scope:Scope,id:string|null){
+export async function readEnrollmentManagementSummaries(c:Client,actor:Employee,scope:Scope,id:string|null){
   const rows=(await c.query(`WITH activity AS (${activity}),
     counts AS (SELECT class_id,state,COUNT(*) AS amount FROM activity GROUP BY class_id,state),
     historical_access AS (
@@ -104,7 +104,7 @@ export function mountEnrollmentManagement(app:Express,wrap:Wrap,staff:(q:Request
     if(!Object.values(scope).some(Boolean))invalid('enrollment_management_forbidden',403);
     const id=q.params.id===undefined?null:String(q.params.id);
     const data=await tx(async c=>{
-      const classes=await summaries(c,actor,scope,id);
+      const classes=await readEnrollmentManagementSummaries(c,actor,scope,id);
       if(!id)return {classes};
       const cohort=classes[0];
       if(!cohort)invalid('enrollment_management_class_not_found',404);

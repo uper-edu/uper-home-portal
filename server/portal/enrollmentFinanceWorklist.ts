@@ -28,7 +28,7 @@ export async function readEnrollmentFinanceProgress(c:Client,orders:{
   }));
 }
 
-export async function readEnrollmentFinanceWorklist(c:Client,search:string,page:number,pageSize:number) {
+async function readPendingEnrollmentTransfers(c:Client,search:string) {
   // Canonical roots bound the lookup. The shared evidence matcher resolves legacy aliases and supplements.
   const candidates:Candidate[]=(await c.query(`SELECT o.id,o.state,o.price,o.received,o.data,o.data->>'$.name' AS name,
       e.state AS class_state,e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,
@@ -64,8 +64,19 @@ export async function readEnrollmentFinanceWorklist(c:Client,search:string,page:
       }
     }
   }
+  return queue;
+}
+
+export async function readEnrollmentFinanceWorklist(c:Client,search:string,page:number,pageSize:number) {
+  const queue=await readPendingEnrollmentTransfers(c,search);
   queue.sort((a,b)=>Number(!a.reviewDueAt)-Number(!b.reviewDueAt)||(a.reviewDueAt??'').localeCompare(b.reviewDueAt??'')||
     a.proofAt.localeCompare(b.proofAt)||a.id.localeCompare(b.id)||a.transfer.id.localeCompare(b.transfer.id));
   const actualPage=page>1&&(page-1)*pageSize>=queue.length?1:page;
   return {orders:queue.slice((actualPage-1)*pageSize,actualPage*pageSize),page:actualPage,pageSize,total:queue.length};
+}
+
+export async function readEnrollmentFinancePendingSummary(c:Client){
+  const pending=await readPendingEnrollmentTransfers(c,'');
+  const oldest=pending.reduce<string|null>((date,row)=>!date||row.proofAt<date?row.proofAt:date,null);
+  return {pending:pending.length,oldest,submittedAt:pending.map(row=>row.proofAt)};
 }

@@ -16,7 +16,7 @@ export function portalEnvironmentKey(key) {
 // Ignore both spellings in old environment files before checking for conflicts.
 const retiredPortalSettings = new Set(['PORTAL_WORKER_ENABLED', 'PORTAL_CREDENTIAL_PROVIDER_CHECKS']);
 
-function normalizePortalEnvironment(values) {
+export function normalizePortalEnvironment(values) {
   const normalized = {...values};
   for (const [key, value] of Object.entries(values)) {
     const runtimeKey = portalEnvironmentKey(key);
