@@ -121,12 +121,27 @@ export function EnrollmentDetailFields({fields,heading}:{
   </>;
 }
 
-export function EnrollmentDetailSection({title,fields}:{
-  title:string;fields:ReadonlyArray<EnrollmentDetailField>;
+export function EnrollmentDetailSection({title,fields,action}:{
+  title:string;fields:ReadonlyArray<EnrollmentDetailField>;action?:ReactNode;
 }) {
   return <section className="enrollment-detail-section">
-    <h2 className="enrollment-record-section-title">{title}</h2>
+    {action?<div className="enrollment-detail-heading">
+      <h2 className="enrollment-record-section-title">{title}</h2>{action}
+    </div>:<h2 className="enrollment-record-section-title">{title}</h2>}
     <EnrollmentDetailFields fields={fields}/>
+  </section>;
+}
+
+export function EnrollmentRecordStatus({label,status,tone,fields,description}:{
+  label:string;status:string;tone:EnrollmentStatusTone;fields?:ReadonlyArray<EnrollmentDetailField>;description?:ReactNode;
+}) {
+  return <section className="enrollment-record-status" aria-label={label}>
+    <div className="enrollment-record-status-heading">
+      <h3 className="enrollment-record-section-title">{label}</h3>
+      <EnrollmentStatusBadge status={status} tone={tone} announceStatus/>
+    </div>
+    {fields&&<EnrollmentDetailFields fields={fields}/>}
+    {description}
   </section>;
 }
 
@@ -145,14 +160,8 @@ export function EnrollmentRecordSummary({title,status,tone='pending',schedule,te
     t(['班次信息','Class information','Informasi kelas']));
   return <header className="enrollment-record-summary">
     <EnrollmentClassSummaryHeading title={title} status={statusSection?undefined:status} tone={tone} announceStatus/>
-    {statusSection&&status&&<section className="enrollment-record-status" aria-label={statusLabel}>
-      <div className="enrollment-record-status-heading">
-        <h3 className="enrollment-record-section-title">{statusLabel}</h3>
-        <EnrollmentStatusBadge status={status} tone={tone} announceStatus/>
-      </div>
-      {statusSection.fields&&<EnrollmentDetailFields fields={statusSection.fields}/>}
-      {statusSection.description}
-    </section>}
+    {statusSection&&status&&<EnrollmentRecordStatus label={statusLabel} status={status} tone={tone}
+      fields={statusSection.fields} description={statusSection.description}/>}
     <EnrollmentDetailFields heading={courseHeading} fields={[
       [t(['授课教师','Teacher','Pengajar']),enrollmentTeacherLabel(teacherType,language)],
       [t(['首课时间','First class','Pertemuan pertama']),firstDate&&<time dateTime={firstDate.toISOString()}>

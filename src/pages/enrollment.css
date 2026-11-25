@@ -1005,11 +1005,19 @@
 .enrollment-cancel-options input { flex: none; width: 18px; height: 18px; accent-color: var(--enrollment-accent); }
 .enrollment-cancel-note textarea { min-height: 64px; border-color: var(--enrollment-border); font-size: 16px; resize: vertical; }
 .enrollment-cancel-content .enrollment-form-error { margin: 0; }
-.enrollment-cancel-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.enrollment-cancel-actions, .enrollment-demand-editor-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .enrollment-cancel-actions { padding: 12px 20px; border-top: 1px solid var(--enrollment-border); }
 .enrollment-cancel-actions .enrollment-primary:not(:disabled) { background: #9b2b25; }
 .enrollment-cancel-actions .enrollment-primary:not(:disabled):hover { background: #7c231f; }
 .enrollment-cancel-dialog :is(button, input, textarea):focus-visible { outline: 2px solid var(--enrollment-accent); outline-offset: 2px; }
+.enrollment-demand-detail > .enrollment-record-status { border-block-end: 0; }
+.enrollment-demand-detail .enrollment-detail-heading { align-items: center; }
+.enrollment-demand-detail .enrollment-detail-actions:has(> .enrollment-detail-action-link:only-child) { border-block-start: 1px solid var(--enrollment-border); }
+.enrollment-demand-matches { margin: 0; padding: 0; list-style: none; }
+.enrollment-demand-matches li { display: grid; gap: 4px; padding-block: 8px; }
+.enrollment-demand-matches li + li { border-block-start: 1px solid var(--enrollment-border); }
+.enrollment-demand-matches a { min-block-size: 44px; }
+.enrollment-demand-matches p { color: var(--enrollment-muted); }
 @media (max-width: 600px) {
   .enrollment-cancel-dialog {
     inset: auto 0 0;

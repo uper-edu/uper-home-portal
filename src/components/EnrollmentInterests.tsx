@@ -8,9 +8,10 @@ import { PublicSingleSelect } from './PublicSingleSelect';
 import { demandFormats, demandLevels, demandPeriods, parseDemand, type DemandCriteria, type DemandItem } from '../utils/enrollmentInterests';
 import {interestOption,interestText,type InterestLanguage} from '../utils/enrollmentInterestCopy';
 
-export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy, awaitingCode, emailVerified, contact, draft, privateLesson=false, summary, verification }: {
+export function EnrollmentDemandForm({ language, initial, prefill, onSave, onCancel, busy, awaitingCode, emailVerified, contact, draft, privateLesson=false, summary, verification }: {
   language:InterestLanguage; initial?:DemandItem; prefill?:DemandCriteria;
   onSave:(record:{id:string;revision:number;criteria:DemandCriteria;name?:string})=>void;
+  onCancel?:()=>void;
   contact?:{name:string;phone:string;fields:ReactNode;checkPhone:()=>boolean};
   draft?:{owner:string;key:string};
   busy:boolean; awaitingCode?:boolean; emailVerified?:boolean;
@@ -82,6 +83,9 @@ export function EnrollmentDemandForm({ language, initial, prefill, onSave, busy,
         : emailVerified
         ?['保存选课需求','Save course preferences','Simpan preferensi kursus']
         :['验证并保存需求','Verify and save preferences','Verifikasi dan simpan preferensi'])}</button>
+    </div> : onCancel ? <div className="enrollment-demand-editor-actions">
+      <button className="enrollment-outline" type="button" disabled={busy} onClick={onCancel}>{t(['取消修改','Cancel editing','Batalkan perubahan'])}</button>
+      <button className="enrollment-primary" type="submit" disabled={busy}>{t(['保存需求','Save preferences','Simpan preferensi'])}</button>
     </div> : <button className="enrollment-action" type="submit" disabled={busy}>{t(['保存需求','Save preferences','Simpan preferensi'])}</button>}
   </form>;
 }

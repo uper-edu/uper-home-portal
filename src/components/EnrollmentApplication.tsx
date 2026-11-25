@@ -16,6 +16,7 @@ import type {EnrollmentIntakeTools} from './EnrollmentIntake';
 import { enrollmentCopy, enrollmentClassTitle,enrollmentFixedLessonDuration,enrollmentPrivateLessonTitle, enrollmentScheduleLabel, enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof, enrollmentOrderTone, enrollmentStatuses } from '../utils/enrollmentOrderStatus';
 import type {EnrollmentCancellationFeedback} from '../utils/enrollmentCancellation';
+import {enrollmentPhoneDisplay} from '../utils/enrollmentInterests';
 import {EnrollmentCancellationDialog,type EnrollmentCancellationKind} from './EnrollmentCancellationDialog';
 import {enrollmentProofUploadTimeout,prepareEnrollmentProofFile} from '../utils/enrollmentProofFile';
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
@@ -23,7 +24,7 @@ import { ArrowLeft, ChevronDown, ChevronRight, CircleCheck } from 'lucide-react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {EnrollmentEmailIdentity,maskEnrollmentEmail} from './EnrollmentEmailIdentity';
 import {enrollmentOrderReturnParam,EnrollmentJourneyLink,useEnrollmentJourneyState,useEnrollmentRecordReturn} from './EnrollmentJourneyLink';
-import {EnrollmentContactInformation,EnrollmentDetailActions,EnrollmentDetailFields,EnrollmentIntakeSummary,EnrollmentListRecord,EnrollmentOrderInformation,EnrollmentPriceActions,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
+import {EnrollmentContactInformation,EnrollmentDetailActions,EnrollmentDetailFields,EnrollmentDetailSection,EnrollmentIntakeSummary,EnrollmentListRecord,EnrollmentOrderInformation,EnrollmentPriceActions,EnrollmentRecordActions,EnrollmentRecordStatus,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
 import {promotionJourneyUrl} from '../utils/promotionNavigation';
 import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
 import { formatCurrency } from '../utils/currency';
@@ -79,7 +80,7 @@ function focusPrivateConfirmation(node:HTMLHeadingElement|null) {
   node?.focus();
 }
 
-function focusAppointmentEditor(node:HTMLDivElement|null) {
+function focusPreferencesEditor(node:HTMLElement|null) {
   node?.focus();
 }
 
@@ -196,6 +197,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   }
   const [editDemand,setEditDemand] = useState<DemandItem>();
   const appointmentEditButton=useRef<HTMLButtonElement>(null);
+  const demandEditButton=useRef<HTMLButtonElement>(null);
   const [joined,setJoined] = useState(false);
   const [lastSeatWaitlist,setLastSeatWaitlist] = useState<{id:string;classId:string;email:string;waiting:boolean}>();
   const [savedDemand,setSavedDemand] = useState<DemandReceipt>();
@@ -1735,7 +1737,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
             {t(['WhatsApp 约课','Open WhatsApp','Buka WhatsApp'])}
           </a>
         </EnrollmentDetailActions>}
-        {canEdit&&EnrollmentDemandForm&&editing&&<div className="enrollment-record" tabIndex={-1} ref={focusAppointmentEditor}>
+        {canEdit&&EnrollmentDemandForm&&editing&&<div className="enrollment-record" tabIndex={-1} ref={focusPreferencesEditor}>
           <EnrollmentDemandForm key={row.id+':'+row.revision} language={language} initial={row} busy={busy} onSave={savePreferences} privateLesson/>
           <button type="button" className="enrollment-record-link" disabled={busy} onClick={()=>{
             setEditDemand(undefined);
@@ -1744,40 +1746,55 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         </div>}
       </div>;
     }
-    return <div className="enrollment-interest-detail">
-      <EnrollmentRecordSummary language={language} title={demandTitle(row)} status={demandStatus(row)} tone={!active?'full':row.matches.length?'confirmed':'progress'}>
-        <EnrollmentDetailFields fields={[[t(['补充说明','Notes','Catatan']),row.criteria.notes]]}/>
-      </EnrollmentRecordSummary>
-      {row.state!=='withdrawn' ? <>
-        {row.matches.map(match=>{
-          const schedule = enrollmentScheduleLabel(recordClasses.get(match.id),language);
-          return <article className="enrollment-record" key={match.id}>
-          <small>{t(['匹配班次','Matching class','Kelas yang cocok'])}</small>
-          <h2 className="enrollment-class-heading"><EnrollmentClassName title={classTitle(match.level,match.firstLesson,match.id)}/></h2>
-          {schedule && <p>{schedule}</p>}
-          {row.matches.length>1&&<EnrollmentJourneyLink className="enrollment-record-link" to={classFromRecord(match.id,'fromDemand',row.id)}
-            onClick={preloadRecordDestination}>
-            {t(['查看匹配班次','View matching class','Lihat kelas yang cocok'])}<ChevronRight size={15} aria-hidden="true"/>
-          </EnrollmentJourneyLink>}
-          </article>;
-        })}
-        {!!row.matches.length&&<p className="enrollment-journey-note">{t(['申请时以实际空位为准。','Availability is checked when you apply.','Ketersediaan diperiksa saat Anda mendaftar.'])}</p>}
-        {active&&editDemand?.id!==row.id&&<EnrollmentRecordActions
-          tertiary={<button type="button" className="enrollment-quiet enrollment-order-cancel" disabled={busy} onClick={()=>openWithdrawal(row)}>
-            {t(['撤回需求','Withdraw request','Tarik permintaan'])}
-          </button>}
-          secondary={<button type="button" className="enrollment-outline" disabled={busy} onClick={()=>setEditDemand(row)}>
-            {t(['修改需求','Edit preferences','Ubah preferensi'])}
-          </button>}
-          primary={row.matches.length===1&&<EnrollmentJourneyLink className="enrollment-primary" to={classFromRecord(row.matches[0].id,'fromDemand',row.id)}
-          onClick={preloadRecordDestination}>{t(['查看匹配班次','View matching class','Lihat kelas yang cocok'])}</EnrollmentJourneyLink>}/>}
-        {EnrollmentDemandForm&&editDemand?.id===row.id&&<div className="enrollment-record">
-          <EnrollmentDemandForm key={row.id+':'+row.revision} language={language} initial={row} busy={busy} onSave={savePreferences}/>
-          <button type="button" className="enrollment-record-link" disabled={busy} onClick={()=>setEditDemand(undefined)}>{t(['取消修改','Cancel editing','Batalkan perubahan'])}</button>
-        </div>}
-      </> : <>
-        <p>{t(['这条需求停止匹配，之后不会收到它的新班通知。','This request is no longer matched and won’t send updates about new classes.','Permintaan ini tidak lagi dicocokkan dan tidak akan mengirim kabar kelas baru.'])}</p>
-      </>}
+    const editing=editDemand?.id===row.id;
+    const matches=active?row.matches:[];
+    const matchLabel=t(['查看匹配班次','View matching class','Lihat kelas yang cocok']);
+    const detailPath=(classId:string)=>classFromRecord(classId,'fromDemand',row.id);
+    return <div className="enrollment-interest-detail enrollment-demand-detail">
+      <EnrollmentRecordStatus label={t(['需求状态','Request status','Status permintaan'])} status={demandStatus(row)}
+        tone={!active?'full':matches.length?'confirmed':'progress'} description={<p>{t(!active
+          ? ['这条需求已停止匹配，之后不会收到它的新班通知。','We’ve stopped matching this request and sending updates about new classes.','Pencocokan dan pemberitahuan kelas baru untuk permintaan ini telah dihentikan.']
+          : matches.length
+            ? ['可查看匹配班次。申请时以实际空位为准。','Review the matching classes. Availability is checked when you apply.','Lihat kelas yang cocok. Ketersediaan diperiksa saat Anda mendaftar.']
+            : ['找到符合需求的班次后，我们会通知你。','We’ll let you know when a class matches your preferences.','Kami akan memberi kabar jika ada kelas yang cocok dengan preferensi Anda.'])}</p>}/>
+      <EnrollmentDetailSection title={t(['选课偏好','Course preferences','Preferensi kursus'])}
+        action={active&&!editing&&<button ref={demandEditButton} type="button" className="enrollment-quiet enrollment-detail-field-action"
+          aria-label={t(['修改需求','Edit preferences','Ubah preferensi'])} disabled={busy} onClick={()=>setEditDemand(row)}>
+          {t(['修改','Edit','Ubah'])}
+        </button>}
+        fields={[
+          [t(['级别','Level','Level']),interestOption(language,row.criteria.level)],
+          [t(['偏好时段','Preferred times','Waktu pilihan']),interestOption(language,row.criteria.period)],
+          [t(['班型','Class type','Jenis kelas']),interestOption(language,row.criteria.format)],
+          [t(['补充说明','Notes','Catatan']),row.criteria.notes],
+        ]}/>
+      {active&&editing&&EnrollmentDemandForm&&<section className="enrollment-detail-section" tabIndex={-1} ref={focusPreferencesEditor}>
+        <EnrollmentDemandForm key={row.id+':'+row.revision} language={language} initial={row} busy={busy} onSave={savePreferences}
+          onCancel={()=>{setEditDemand(undefined);requestAnimationFrame(()=>demandEditButton.current?.focus());}}/>
+      </section>}
+      <EnrollmentContactInformation title={t(['联系信息','Contact information','Informasi kontak'])} language={language}
+        verifiedEmail={recordsEmail.current} phoneDisplay={enrollmentPhoneDisplay(row.criteria.phone)}/>
+      {matches.length>0&&<section className="enrollment-detail-section" aria-labelledby="enrollment-demand-matches">
+        <h2 id="enrollment-demand-matches" className="enrollment-record-section-title">{t(['匹配班次','Matching classes','Kelas yang cocok'])}</h2>
+        <ul className="enrollment-demand-matches">
+          {matches.map(match=>{
+            const title=<EnrollmentClassName title={classTitle(match.level,match.firstLesson,match.id)}/>;
+            const schedule=enrollmentScheduleLabel(recordClasses.get(match.id),language);
+            return <li key={match.id}>
+              <h3 className="enrollment-class-heading">{matches.length===1?title:
+                <EnrollmentJourneyLink className="enrollment-record-title-link" to={detailPath(match.id)} onClick={preloadRecordDestination}>
+                  {title}<ChevronRight size={15} aria-hidden="true"/>
+                </EnrollmentJourneyLink>}</h3>
+              {schedule&&<p>{schedule}</p>}
+            </li>;
+          })}
+        </ul>
+      </section>}
+      {active&&!editing&&<EnrollmentDetailActions secondaryLink={<button type="button" className="enrollment-quiet enrollment-order-cancel"
+        disabled={busy} onClick={()=>openWithdrawal(row)}>{t(['撤回需求','Withdraw request','Tarik permintaan'])}</button>}>
+        {matches.length===1&&<EnrollmentJourneyLink className="enrollment-primary" to={detailPath(matches[0].id)}
+          onClick={preloadRecordDestination}>{matchLabel}</EnrollmentJourneyLink>}
+      </EnrollmentDetailActions>}
     </div>;
   }
   const waitlistCards = (showRecordList&&(tab==='all'||tab==='waitlist')?interests?.waitlist??[]:[]).map(row => {
