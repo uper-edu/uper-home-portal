@@ -1,4 +1,6 @@
 import React from 'react';import test from 'node:test';import assert from 'node:assert/strict';import {renderToStaticMarkup} from 'react-dom/server';import {AiServiceContent} from '../src/components/AiServicePanel';import{testAndSaveAi}from'../src/utils/aiServiceSubmit';
+import {AiSupplierCatalog} from '../src/components/AiSupplierCatalog';
+import type {AiSupplierView} from '../src/utils/aiSupplier';
 const selection={primary:'gpt-6.2-sol',fallback:'deepseek-v4-pro'},noop=()=>{};
 const data={current:selection,previous:{primary:'gpt-4o',fallback:'deepseek-chat'},models:['gpt-6.2-sol','deepseek-v4-pro','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','deepseek-chat'],keys:{openai:true,deepseek:true},attempts:[{model:'TEST-ACTUAL',ok:true,at:'2026-10-28T07:00:00Z'}],extractions:[],history:[]};
 const render=(extra:any={})=>renderToStaticMarkup(<AiServiceContent lang="zh" isLight data={data} selection={selection} check={null} busy={false} notice="" unresolved={false}
@@ -24,6 +26,19 @@ test('Claude selections display in the shared model controls with independent ef
  assert.match(html,/claude-sonnet-5-5/);
  assert.match(html,/主模型推理强度/);
  assert.match(html,/备用模型推理强度/);
+});
+test('supplier catalog shows exact template models before credentials and only selected models after adding',()=>{
+ const catalog=(suppliers:AiSupplierView[])=>renderToStaticMarkup(<AiSupplierCatalog lang="zh" isLight data={{...data,suppliers}}
+  refresh={async()=>undefined} onDraftChange={noop} onBusyChange={noop} disabled={false}
+  renderCredential={(id,label,info)=><tr key={id}><td>{label}{info}</td><td/><td/></tr>}/>);
+ const empty=catalog([]);
+ assert.match(empty,/Anthropic \(Claude\).*claude-haiku-5-5.*claude-sonnet-5-5.*未添加/);
+ assert.match(empty,/MiniMax.*MiniMax-M3\.1-Flash.*未添加/);
+ const added=catalog([{id:'anthropic',name:'Anthropic (Claude)',models:['claude-haiku-5-5'],enabled:false,registered:true,credentialReady:false,inUse:false}]);
+ assert.match(added,/Anthropic \(Claude\).*claude-haiku-5-5.*待配置凭证/);
+ assert.doesNotMatch(added,/claude-sonnet-5-5/);
+ const miniMaxEnabled=catalog([{id:'minimax',name:'MiniMax',models:['MiniMax-M3.1-Flash'],enabled:true,registered:true,credentialReady:true,inUse:false}]);
+ assert.ok(miniMaxEnabled.indexOf('Anthropic (Claude)')<miniMaxEnabled.indexOf('MiniMax-M3.1-Flash'));
 });
 test('editing has one test-and-save action and unknown activation replaces it with result lookup',()=>{
  const editing={selection:{...selection,fallback:'deepseek-chat'}};

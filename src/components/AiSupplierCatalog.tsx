@@ -16,6 +16,7 @@ import {AdminSingleSelect} from './admin/AdminSingleSelect';
 type Action = 'add'|'enable'|'disable';
 type Operation = {id: AiSupplierId; action: Action; name?: string; models?: readonly string[]};
 const defaultModels=(id:AiSupplierId)=>aiSupplierTemplates[id].models.length===1?aiSupplierTemplates[id].models[0]:'all';
+const modelNames=(models:readonly string[])=><small>{models.join(' · ')}</small>;
 
 export function AiSupplierCatalog({data, refresh, lang, isLight, onDraftChange, onBusyChange, disabled, renderCredential}: {
   data?: AiServiceData; refresh: () => Promise<AiServiceData|undefined>; lang: CrmLanguage; isLight: boolean;
@@ -33,10 +34,11 @@ export function AiSupplierCatalog({data, refresh, lang, isLight, onDraftChange, 
   const [notice,setNotice] = useState('');
   const [pending,setPending] = useState<Operation>();
   const running = useRef(false);
+  const initialTemplate = useRef<AiSupplierId>('anthropic');
   const suppliers = data?.suppliers ?? [];
   const availableTemplates=aiSupplierIds.filter(id=>!suppliers.some(row=>row.id===id));
   const template=aiSupplierTemplates[templateId];
-  const dirty = adding&&(templateId!==availableTemplates[0]||name!==template.name||choice!==defaultModels(templateId));
+  const dirty = adding&&(templateId!==initialTemplate.current||name!==template.name||choice!==defaultModels(templateId));
   useEffect(()=>{onDraftChange(dirty);return ()=>onDraftChange(false);},[dirty,onDraftChange]);
   useEffect(()=>{onBusyChange(busy);return ()=>onBusyChange(false);},[busy,onBusyChange]);
 
@@ -110,19 +112,37 @@ export function AiSupplierCatalog({data, refresh, lang, isLight, onDraftChange, 
     if(!isAiSupplierId(id)||!availableTemplates.includes(id))return;
     setTemplateId(id);setName(aiSupplierTemplates[id].name);setChoice(defaultModels(id));
   };
+  const openTemplate=(id:AiSupplierId)=>{
+    initialTemplate.current=id;chooseTemplate(id);setNotice('');setAdding(true);
+  };
+  const addBlocked=disabled||busy||!!pending;
   const modelOptions=template.models.map(model=>({value:model,label:model}));
   const modelsLabel=t('Models','Model','模型');
   const templateLabel=t('Provider template','Templat penyedia','供应商模板');
   return <AdminFormSection title={title} variant="card" actions={data&&availableTemplates.length>0&&<AdminPageAction label={add} icon={Plus}
-    aria-haspopup="dialog" disabled={disabled||busy||!!pending} onClick={()=>{chooseTemplate(availableTemplates[0]);setNotice('');setAdding(true);}}/>}>
+    aria-haspopup="dialog" disabled={addBlocked} onClick={()=>openTemplate(availableTemplates[0])}/>}>
     <AdminListTable className="llm-credentials-table" label={title}
       headers={[t('Provider','Penyedia','供应商'),t('Credential status','Status kredensial','凭证状态'),t('Actions','Tindakan','操作')]}>
       {renderCredential('openai','OpenAI')}
       {renderCredential('deepseek','DeepSeek')}
-      {suppliers.map(row=>row.id==='minimax'&&!row.registered?<tr key={row.id}>
-        <td><strong>{row.name}</strong></td><td colSpan={2}>{t('Legacy gateway is in use. Switch models before adding a direct credential.',
-          'Gateway lama sedang digunakan. Ganti model sebelum menambahkan kredensial langsung.','旧网关正在使用中。请先切换模型，再添加 MiniMax 直连。')}</td>
-      </tr>:renderCredential(row.id,row.name,row.registered&&<div>{status(row)}</div>,rowActions(row)))}
+      {data&&aiSupplierIds.map(id=>{
+        const row=suppliers.find(item=>item.id===id);
+        if(row?.id==='minimax'&&!row.registered)return <tr key={id}>
+          <td><strong>{row.name}</strong><div>{modelNames(row.models)}</div></td>
+          <td colSpan={2}>{t('Legacy gateway is in use. Switch models before adding a direct credential.',
+            'Gateway lama sedang digunakan. Ganti model sebelum menambahkan kredensial langsung.','旧网关正在使用中。请先切换模型，再添加 MiniMax 直连。')}</td>
+        </tr>;
+        if(row)return renderCredential(id,row.name,<>
+          <div>{modelNames(row.models)}</div>{row.registered&&<div>{status(row)}</div>}
+        </>,rowActions(row));
+        const item=aiSupplierTemplates[id];
+        return <tr key={id}>
+          <td><strong>{item.name}</strong><div>{modelNames(item.models)}</div></td>
+          <td>{t('Not added','Belum ditambahkan','未添加')}</td>
+          <td><AdminRowAction aria-haspopup="dialog" aria-label={t(`Add ${item.name}`,`Tambah ${item.name}`,`添加 ${item.name}`)}
+            disabled={addBlocked} onClick={()=>openTemplate(id)}>{t('Add','Tambah','添加')}</AdminRowAction></td>
+        </tr>;
+      })}
     </AdminListTable>
     {!adding&&<>{feedback}{reloadAction}</>}
     {adding&&<AdminEditor title={add} lang={lang} light={isLight} required busy={busy} responsiveForm onClose={closeForm}
@@ -139,7 +159,9 @@ export function AiSupplierCatalog({data, refresh, lang, isLight, onDraftChange, 
       <AdminField as="div" required><label htmlFor="ai-supplier-models">{modelsLabel}</label>
         <AdminSingleSelect controlId="ai-supplier-models" label={modelsLabel} value={choice} onChange={setChoice}
           options={modelOptions.length===1?modelOptions:[{value:'all',label:t('All template models','Semua model templat','模板内全部模型')},...modelOptions]}
-          lang={lang} isLight={isLight} required disabled={busy}/></AdminField>
+          lang={lang} isLight={isLight} required disabled={busy}/>
+        {choice==='all'&&modelNames(template.models)}
+      </AdminField>
       {feedback}
     </AdminEditor>}
     {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)}
