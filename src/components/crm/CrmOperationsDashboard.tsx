@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
 import {ArrowUpRight,Maximize,Minimize} from 'lucide-react';
+import {AdminTopicFrame} from '../AdminTopicFrame';
 import {AdminContentNav} from '../admin/AdminContentNav';
 import {AdminPageHeader} from '../admin/AdminPageHeader';
 import {AdminPageAction} from '../admin/AdminPageAction';
@@ -734,17 +735,17 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
     window.addEventListener('popstate',restore);
     return ()=>window.removeEventListener('popstate',restore);
   },[]);
-  const choose=(nextTopic:DashboardTopic,next:DashboardFilters=filter)=>{
+  const choose=(nextTopic:DashboardTopic,next:DashboardFilters=filter,focusHeading=true)=>{
     const href=dashboardPath(nextTopic,next);
     window.history.pushState(window.history.state,'',href);
     onLocation(window.location.href);
     setLocation({topic:nextTopic,filter:next});
     if(next.from!==filter.from||next.to!==filter.to)setDraft({from:next.from,to:next.to});
-    if(nextTopic!==topic)requestAnimationFrame(()=>heading.current?.focus({preventScroll:true}));
+    if(nextTopic!==topic&&focusHeading)requestAnimationFrame(()=>heading.current?.focus({preventScroll:true}));
   };
   const chooseLink=(href:string)=>{
     const search=new URL(href,window.location.origin).searchParams;
-    choose(dashboardTopics.find(v=>v===search.get('dashboardTopic'))??'overview');
+    choose(dashboardTopics.find(v=>v===search.get('dashboardTopic'))??'overview',filter,false);
   };
   const openRange=(period:typeof dashboardPeriods[number])=>{
     const from=period==='custom'?filter.from||snapshot?.period.from||formatWib(new Date().toISOString()).slice(0,10):'';
@@ -756,8 +757,6 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
   const content=<>
     <AdminPageHeader title={t('dashboard')} subtitle={snapshot?t('asOf')+' · '+formatWib(snapshot.asOf)+' WIB':'WIB'}
       headingRef={heading} actions={sections.view&&<AdminRefreshAction label={t('refresh')} loading={data.loading} onClick={()=>setRevision(v=>v+1)}/>}/>
-    {sections.view&&<AdminContentNav label={t('dashboard')} onNavigate={chooseLink}
-      items={dashboardTopics.map(key=>({href:dashboardPath(key,filter),label:t(key),current:key===topic}))}/>}
     {sections.view&&!outputTopic&&<div className="ops-dash-filters">
       <AdminSingleSelect label={t('period')} value={filter.period} lang={lang} isLight={isLight}
         options={dashboardPeriods.map((value,index)=>({value,label:t(periodOptions[index])}))}
@@ -828,13 +827,19 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
       </AdminDisclosure>
     </>;
   }
-  return <section className="ops-dash" aria-label={t('dashboard')}>
+  const main=<div className="ops-dash-main">
     {content}
     {snapshot&&sections.view&&<>
       {!outputTopic&&<p className="ops-dash-period">{selected} · WIB <span>{t('previous')} {comparison}</span></p>}
-      <div className="ops-dash-content" aria-busy={data.loading}>
+      <div className="ops-dash-content" data-wallboard={outputTopic||undefined} aria-busy={data.loading}>
         {outputTopic?<Wallboard data={snapshot} lang={lang} t={t} stale={Boolean(data.error)} />:panels(snapshot)}
       </div>
     </>}
+  </div>;
+  return <section className="ops-dash" aria-label={t('dashboard')}>
+    {sections.view?<AdminTopicFrame selection={topic} label={t(topic)} headingRef={heading} navigation={
+      <AdminContentNav layout="directory" label={t('dashboard')} onNavigate={chooseLink}
+        items={dashboardTopics.map(key=>({href:dashboardPath(key,filter),label:t(key),current:key===topic}))}/>
+    }>{main}</AdminTopicFrame>:main}
   </section>;
 }

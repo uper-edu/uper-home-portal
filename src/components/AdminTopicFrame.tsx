@@ -9,7 +9,9 @@ export function topicRevealDelta(top:number,bottom:number,header:number,viewport
 /** Keyboard scrolls stay local, including at either boundary. */
 export const directoryScrollTarget=scrollKeyTarget;
 /** Presentation only: changing selection does not remount business forms. */
-export function AdminTopicFrame({navigation,children,label,selection}:{navigation:React.ReactNode;children:React.ReactNode;label:string;selection:string}){
+export function AdminTopicFrame({navigation,children,label,selection,headingRef}:{
+ navigation:React.ReactNode;children:React.ReactNode;label:string;selection:string;headingRef?:React.RefObject<HTMLElement|null>;
+}){
  const [open,setOpen]=useState(false);const root=useRef<HTMLDivElement>(null);const previous=useRef(selection);const toggle=useRef<HTMLButtonElement>(null);const source=useRef<'pointer'|'keyboard'>('pointer');const nav=useRef<HTMLDivElement>(null);
  useLayoutEffect(() => {
   const workspace = root.current;
@@ -42,14 +44,14 @@ export function AdminTopicFrame({navigation,children,label,selection}:{navigatio
   setOpen(false);
   const frame=requestAnimationFrame(()=>{
    if(nav.current&&!narrow)nav.current.scrollTop=directoryScroll;
-   const h=Array.from(root.current?.querySelectorAll<HTMLElement>('.admin-topic-main h2,.admin-topic-main h3')||[]).find(el=>el.getClientRects().length>0);
+   const h=headingRef?.current??Array.from(root.current?.querySelectorAll<HTMLElement>('.admin-topic-main h2,.admin-topic-main h3')||[]).find(el=>el.getClientRects().length>0);
    if(!h)return;
    if(narrow||source.current==='keyboard'){h.setAttribute('tabindex','-1');h.focus({preventScroll:true});}
    const header=document.querySelector('[data-admin-header],[data-crm-header]')?.getBoundingClientRect().height||0;
    const bounds=h.getBoundingClientRect();const delta=topicRevealDelta(bounds.top,bounds.bottom,header,window.innerHeight);
    if(delta)window.scrollBy({top:delta,left:0,behavior:'instant'});
   });return()=>cancelAnimationFrame(frame);
- },[selection]);
+ },[selection,headingRef]);
  return <div className="admin-workspace admin-topic" ref={root} data-directory-open={open}><button ref={toggle} type="button" className="admin-directory-toggle" aria-expanded={open} onClick={()=>setOpen(v=>!v)}>{label}</button><div ref={nav} className="admin-topic-directory" data-admin-scroll="directory" role="region" aria-label={label} tabIndex={0} onClickCapture={e=>{source.current=e.detail===0?'keyboard':'pointer';}} onKeyDownCapture={e=>{if(['Enter',' '].includes(e.key))source.current='keyboard';}} onKeyDown={e=>{
  containPaneKeys(e);
  if(e.key==='Escape'){setOpen(false);toggle.current?.focus({preventScroll:true});}}}>{navigation}</div><div className="admin-topic-main">{children}</div></div>;

@@ -11,6 +11,15 @@
 .crm-content-tabs>.crm-content-tab:hover{color:var(--admin-text);background:var(--admin-selected)}
 .crm-content-tabs>.crm-content-tab:is([aria-selected=true],[aria-current=page]){border-bottom-color:var(--admin-action);color:var(--admin-text);background:var(--admin-selected);font-weight:650}
 .crm-content-tabs>.crm-content-tab:focus-visible{outline:2px solid var(--admin-focus);outline-offset:-2px}
+.crm-content-tabs.crm-content-tabs--directory{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:8px;
+  border:1px solid var(--admin-border);border-radius:14px;background:var(--admin-surface);
+}
+.crm-content-tabs--directory>.crm-content-tab{
+  justify-content:flex-start;text-align:start;border-bottom:0;border-inline-start:3px solid transparent;
+  border-radius:8px;padding-inline:12px;overflow-wrap:anywhere;
+}
+.crm-content-tabs--directory>.crm-content-tab[aria-current=page]{border-inline-start-color:var(--admin-action)}
 .crm-detail-root .crm-detail-body{padding:20px;min-width:0;line-height:1.55}.crm-detail-root .crm-detail-body h3{font-size:16px;font-weight:650}
 .crm-detail-root .campaign-info-section{background:transparent!important;border:0;border-top:1px solid var(--dw-border);border-radius:0;padding:20px 0;margin:0}.crm-detail-root .campaign-info-section:first-of-type{border-top:0;padding-top:0}.crm-detail-root .campaign-info-section h3{font-size:16px}.crm-detail-root .campaign-info-heading{margin-bottom:20px}.crm-detail-root .campaign-info-heading p{color:var(--dw-muted)}.crm-detail-root .campaign-info-field dt{color:var(--dw-muted);font-size:13px}.crm-detail-root .campaign-info-field dd{font-size:14px}.crm-detail-root .campaign-info-grid{gap:18px 24px}
 .crm-detail-root .crm-customer-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 24px;font-size:14px}.crm-detail-root .crm-customer-facts>div{min-width:0}.crm-detail-root .crm-customer-facts dt{font-size:13px;min-height:0;margin-bottom:4px;padding:0;color:var(--dw-muted)}.crm-detail-root .crm-customer-facts dd{min-height:0;padding:0}.crm-detail-root .crm-detail-body .crm-customer-sections>section{margin:0;padding:20px 0}.crm-detail-root .crm-detail-body .crm-customer-sections>section:first-child{padding-top:0}.crm-detail-root .crm-detail-body .crm-customer-sections>section+section{border-top:1px solid var(--dw-border)}.crm-detail-root .crm-detail-body .crm-customer-sections>section{border-bottom:0}
