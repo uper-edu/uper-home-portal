@@ -11,6 +11,7 @@ import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { activeLearnerOrder, learnerWaitlist } from './enrollmentLearners.ts';
 import { interestNotice } from './enrollmentNotices.ts';
 import { readEnrollmentSessionDigest } from './enrollmentVisitorSession.ts';
+import { enrollmentWithdrawalReasons, parseEnrollmentCancellation } from '../../src/utils/enrollmentCancellation.ts';
 
 type Client = { query: (sql: string, params?: unknown[]) => Promise<{ rows: any[] }> };
 type Handler = (q: Request, r: Response) => Promise<unknown>;
@@ -347,7 +348,12 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       if(!row) invalid('enrollment_interest_not_found',404);
       if(row.state==='withdrawn') return;
       if(row.criteria?.appointment?.confirmation)invalid('enrollment_demand_conflict',409);
+      const feedback=parseEnrollmentCancellation(q.body,enrollmentWithdrawalReasons);
+      if(!feedback)invalid('enrollment_withdraw_reason_invalid');
       await c.query("UPDATE enrollment_demands SET state='withdrawn',revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p1",[q.params.id]);
+      await c.query("INSERT INTO portal_audit(actor,action,data) VALUES('learner','enrollment.demand.withdraw',:p1)",[
+        {demandId:String(q.params.id),kind:row.criteria?.appointment?'appointment':'demand',feedback},
+      ]);
     });
     send(r,{ok:true});
   });

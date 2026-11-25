@@ -4,6 +4,61 @@ import { demandMatches, enrollmentPhone, parseDemand, parseEnrollmentInterests, 
 import {enrollmentRecordClassLookup,sortEnrollmentRecords} from '../src/utils/enrollmentRecordOrder';
 import {enrollmentInterestStillAvailable} from '../server/portal/enrollmentInterestDelivery';
 
+test('course preferences and lesson requests validate and audit one withdrawal per owned active record',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {mountEnrollmentInterests}=await import('../server/portal/enrollmentInterests');
+  type Context=Parameters<typeof mountEnrollmentInterests>[1];
+  type Handler=Parameters<Context['post']>[1];
+  const handlers=new Map<string,Handler>();
+  const owner='withdraw-fixture@example.invalid';
+  const rows=new Map([
+    ['preferences',{state:'active',criteria:{}}],
+    ['lesson',{state:'active',criteria:{appointment:{}}}],
+    ['confirmed',{state:'active',criteria:{appointment:{confirmation:{}}}}],
+  ]);
+  const audit:unknown[]=[];
+  let updates=0;
+  const unexpected=async()=>assert.fail('Unexpected call during withdrawal');
+  mountEnrollmentInterests({get:()=>{}} as never,{
+    wrap:fn=>fn,post:(path,handler)=>handlers.set(path,handler),
+    session:async(_c,request)=>String(request.headers['x-enrollment-email']),
+    requireNewEnrollment:unexpected,lockClass:unexpected,expireSeats:unexpected,
+    transact:async callback=>callback({query:async(sql,params=[])=>{
+      if(sql.startsWith('SELECT state,criteria')){
+        assert.match(sql,/id=:p1 AND email=:p2 FOR UPDATE/);
+        const row=params[1]===owner?rows.get(String(params[0])):undefined;
+        return {rows:row?[row]:[]};
+      }
+      if(sql.startsWith('UPDATE enrollment_demands')){
+        rows.get(String(params[0]))!.state='withdrawn';
+        updates++;
+      }else if(sql.includes('enrollment.demand.withdraw'))audit.push(params[0]);
+      else assert.fail(sql);
+      return {rows:[]};
+    }}),
+  });
+  const call=async(id:string,body:unknown,email=owner)=>{
+    let result:unknown;
+    const response={set:()=>response,json:(value:unknown)=>{result=value;}};
+    await handlers.get('/api/enrollment/demands/:id/withdraw')!({
+      params:{id},body,headers:{'x-enrollment-email':email},
+    } as never,response as never);
+    return result;
+  };
+  await assert.rejects(call('preferences',{note:'valid'},'other@example.invalid'),{status:404});
+  await assert.rejects(call('preferences',{}),{status:400,message:'enrollment_withdraw_reason_invalid'});
+  await assert.rejects(call('lesson',{reasons:['payment_difficulty']}),{status:400});
+  await assert.rejects(call('confirmed',{note:'valid'}),{status:409,message:'enrollment_demand_conflict'});
+  assert.deepEqual(await call('preferences',{reasons:['already_arranged','schedule_conflict'],note:'  details  '}),{ok:true});
+  assert.deepEqual(await call('preferences',{note:'retry'}),{ok:true});
+  assert.deepEqual(await call('lesson',{note:'  changed plans  '}),{ok:true});
+  assert.equal(updates,2);
+  assert.deepEqual(audit,[
+    {demandId:'preferences',kind:'demand',feedback:{reasons:['schedule_conflict','already_arranged'],note:'details'}},
+    {demandId:'lesson',kind:'appointment',feedback:{reasons:[],note:'changed plans'}},
+  ]);
+});
+
 test('enrollment history only loads matching class metadata when a preference is opened',()=>{
   const cohort=(id:string)=>({id,level:'HSK 1',firstLesson:'2027-01-09T09:00'});
   const saved:Interests['demands'][number]={

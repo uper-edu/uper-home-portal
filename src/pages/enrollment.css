@@ -912,8 +912,6 @@
   font-weight: 650;
 }
 .enrollment-result-state svg { flex: none; }
-.enrollment-cancel-actions .enrollment-primary:not(:disabled) { background: #9b2b25; }
-.enrollment-cancel-actions .enrollment-primary:not(:disabled):hover { background: #7c231f; }
 .enrollment-result-amounts > div { display: flex; justify-content: space-between; gap: 8px; padding-block: 6px; }
 .enrollment-result-amounts > div + div { border-top: 1px solid var(--enrollment-border); }
 .enrollment-result-amounts dt { color: var(--enrollment-muted); }
@@ -979,27 +977,53 @@
   contain-intrinsic-block-size: auto 200px;
 }
 
-.enrollment-cancel-dialog { max-width:min(100% - 32px,420px); padding:24px; border:1px solid #dce5e4; border-radius:16px; color:#172631; }
-.enrollment-cancel-dialog::backdrop { background:rgb(15 30 40 / 45%); }
-.enrollment-cancel-dialog h2 { margin:0 0 12px; }
-.enrollment-cancel-dialog p { margin:0 0 16px; }
-.enrollment-cancel-reasons { min-inline-size:0; padding:0; margin:0 0 12px; border:0; }
-.enrollment-cancel-reasons legend { padding:0; font-weight:650; }
-.enrollment-cancel-reasons p { margin:4px 0; color:var(--enrollment-muted); font-size:13px; }
-.enrollment-cancel-reasons label { display:flex; align-items:center; gap:10px; min-height:44px; cursor:pointer; }
-.enrollment-cancel-reasons input { flex:none; width:18px; height:18px; accent-color:var(--enrollment-accent); }
-.enrollment-cancel-note { margin-block-end:16px; }
-.enrollment-cancel-note textarea {
-  width:100%;
-  min-height:56px;
-  border:1px solid var(--enrollment-border);
-  border-radius:8px;
-  padding:7px 10px;
-  font-size:16px;
-  font-weight:450;
-  resize:vertical;
+.enrollment-cancel-dialog {
+  inline-size: min(480px, calc(100% - 32px));
+  max-block-size: min(720px, calc(100dvh - 32px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--enrollment-border);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--enrollment-ink);
 }
-.enrollment-cancel-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:12px; }
+.enrollment-cancel-dialog::backdrop { background: rgb(15 30 40 / 45%); }
+.enrollment-cancel-dialog .enrollment-cancel-form {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-block-size: min(718px, calc(100dvh - 34px));
+  gap: 0;
+}
+.enrollment-cancel-heading { padding: 16px 20px; border-bottom: 1px solid var(--enrollment-border); }
+.enrollment-cancel-heading h2 { margin: 0 0 6px; font-size: 20px; line-height: 1.35; font-weight: 700; }
+.enrollment-cancel-heading p, .enrollment-cancel-reasons p { margin: 0; color: var(--enrollment-muted); font-size: 13px; }
+.enrollment-cancel-content { overflow: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 12px; padding: 16px 20px; }
+.enrollment-cancel-reasons { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.enrollment-cancel-reasons legend { margin-block-end: 4px; padding: 0; font-weight: 650; }
+.enrollment-cancel-options { display: grid; margin-block-start: 8px; }
+.enrollment-cancel-options label { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.enrollment-cancel-options label + label { border-top: 1px solid var(--enrollment-border); }
+.enrollment-cancel-options input { flex: none; width: 18px; height: 18px; accent-color: var(--enrollment-accent); }
+.enrollment-cancel-note textarea { min-height: 64px; border-color: var(--enrollment-border); font-size: 16px; resize: vertical; }
+.enrollment-cancel-content .enrollment-form-error { margin: 0; }
+.enrollment-cancel-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.enrollment-cancel-actions { padding: 12px 20px; border-top: 1px solid var(--enrollment-border); }
+.enrollment-cancel-actions .enrollment-primary:not(:disabled) { background: #9b2b25; }
+.enrollment-cancel-actions .enrollment-primary:not(:disabled):hover { background: #7c231f; }
+.enrollment-cancel-dialog :is(button, input, textarea):focus-visible { outline: 2px solid var(--enrollment-accent); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .enrollment-cancel-dialog {
+    inset: auto 0 0;
+    margin: 0;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    max-block-size: calc(100dvh - 16px);
+    border-radius: 16px 16px 0 0;
+  }
+  .enrollment-cancel-dialog .enrollment-cancel-form { max-block-size: calc(100dvh - 18px); }
+  .enrollment-cancel-heading, .enrollment-cancel-content, .enrollment-cancel-actions { padding-inline: 16px; }
+  .enrollment-cancel-actions { padding-block-end: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .enrollment-cancel-actions > button { flex: 1 1 auto; }
+}
 
 
 @media (max-width: 359px) {
