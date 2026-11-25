@@ -7,7 +7,7 @@ export const aiSupplierTemplates = {
 
 export type AiSupplierId = keyof typeof aiSupplierTemplates;
 export type AiSupplier = {id: AiSupplierId; name: string; models: string[]; enabled: boolean; verified?: boolean};
-export type AiSupplierView = Omit<AiSupplier,'verified'> & {registered: boolean; credentialReady: boolean; inUse: boolean};
+export type AiSupplierView = Omit<AiSupplier,'verified'|'enabled'> & {registered: boolean; credentialReady: boolean; inUse: boolean};
 export const aiSupplierIds = Object.keys(aiSupplierTemplates) as AiSupplierId[];
 
 export function isAiSupplierId(id: unknown): id is AiSupplierId {

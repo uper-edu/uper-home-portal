@@ -36,8 +36,8 @@ type SlotStatus = {revision:number;updatedAt?:string;activeVersion?:string;sourc
   candidate?:{version:string;outcome?:'verified'|'failed';createdAt:string;validating?:boolean;diagnostic?:CredentialDiagnostic}};
 type Action='set'|'stage'|'import'|'verify'|'activate'|'revoke';
 
-export function IntegrationCredentialControl({kind,resource,lang,isLight,rowLabel,rowDetails,rowInfo,rowActions,subject,onDismiss,onChange,renderSummary}:{
-  kind:string;resource:string;lang:CrmLanguage;isLight:boolean;rowLabel?:string;rowDetails?:ReactNode;rowInfo?:ReactNode;rowActions?:ReactNode;
+export function IntegrationCredentialControl({kind,resource,lang,isLight,rowLabel,rowDetails,rowInfo,subject,onDismiss,onChange,renderSummary}:{
+  kind:string;resource:string;lang:CrmLanguage;isLight:boolean;rowLabel?:string;rowDetails?:ReactNode;rowInfo?:ReactNode;
   subject?:string;onDismiss?:()=>void;onChange?:()=>void;
   renderSummary?:(state:{status:ReactNode;manage:ReactNode;candidate?:string})=>ReactNode;
 }){
@@ -186,6 +186,7 @@ export function IntegrationCredentialControl({kind,resource,lang,isLight,rowLabe
     credential_validation_required:t('Verify this credential version again before activation.','Verifikasi ulang versi ini sebelum aktivasi.','请重新验证该版本再启用。'),
     credential_revoke_current_required:t('Revoke the current credential before setting a new one.','Cabut kredensial saat ini sebelum mengatur yang baru.','请先撤销当前凭证，再设置新凭证。'),
     credential_supplier_in_use:t('Choose a different model before revoking this credential.','Pilih model lain sebelum mencabut kredensial ini.','请先切换到其他模型，再撤销此凭证。'),
+    credential_minimax_legacy_in_use:t('MiniMax is using the previous gateway. Switch to a different model before setting up the direct key.','MiniMax memakai gateway lama. Pilih model lain sebelum mengatur kunci langsung.','MiniMax 正在使用旧网关，请先切换到其他模型，再配置直连密钥。'),
     credential_forbidden:t('You do not have permission for this action.','Anda tidak memiliki izin untuk tindakan ini.','你没有执行此操作的权限。'),
     unknown:t('Result pending confirmation. Check this operation before retrying.','Hasil menunggu konfirmasi. Periksa tindakan ini sebelum mencoba lagi.','结果待确认，请先核对此操作。'),
     query_failed:t('Result lookup failed. The outcome remains unconfirmed.','Pencarian hasil gagal. Hasil belum terkonfirmasi.','结果查询失败，仍待确认。'),
@@ -326,7 +327,7 @@ export function IntegrationCredentialControl({kind,resource,lang,isLight,rowLabe
       <td>{failure!=='denied'&&<AdminRowAction aria-haspopup="dialog" onClick={event=>{
         event.currentTarget.focus({preventScroll:true});
         openDialog();
-      }}>{manage}</AdminRowAction>}{rowActions}</td>
+      }}>{manage}</AdminRowAction>}</td>
     </tr>
     {managing&&createPortal(dialogs,document.body)}
   </>;
@@ -662,9 +663,7 @@ export function IntegrationCredentialsOverview({lang,isLight,topic,onTopicChange
   const [aiDraft,setAiDraft]=useState(false);
   const [larkBusy,setLarkBusy]=useState(false);
   const [aiBusy,setAiBusy]=useState(false);
-  const [supplierDraft,setSupplierDraft]=useState(false);
-  const [supplierBusy,setSupplierBusy]=useState(false);
-  const dirty=larkDraft||aiDraft||supplierDraft,busy=larkBusy||aiBusy||supplierBusy;
+  const dirty=larkDraft||aiDraft,busy=larkBusy||aiBusy;
   useEffect(()=>{
     setVisited(previous=>previous.includes(topic)?previous:[...previous,topic]);
   },[topic]);
@@ -684,7 +683,7 @@ export function IntegrationCredentialsOverview({lang,isLight,topic,onTopicChange
         {(Object.entries(integrationTopics) as [IntegrationTopic,(typeof integrationTopics)[IntegrationTopic]][]).map(([id,{icon:Icon,labels}])=>
           <button key={id} type="button" aria-current={id===topic?'page':undefined} onClick={()=>onTopicChange(id)}>
             <Icon size={16} aria-hidden="true"/>{labels[languageIndex]}
-            {(id==='lark'&&larkDraft||id==='llm'&&(aiDraft||supplierDraft))&&<span aria-label={t('Unsaved changes','Perubahan belum disimpan','有未保存修改')}> ●</span>}
+            {(id==='lark'&&larkDraft||id==='llm'&&aiDraft)&&<span aria-label={t('Unsaved changes','Perubahan belum disimpan','有未保存修改')}> ●</span>}
           </button>)}
       </nav>
     }>
@@ -693,10 +692,9 @@ export function IntegrationCredentialsOverview({lang,isLight,topic,onTopicChange
           renderHeading={(actions,required)=><AdminTopicHeader isLight={isLight} actions={actions}
             subtitle={t('Choose primary and fallback models, verify provider credentials and review call history.','Pilih model utama dan cadangan, periksa kredensial penyedia, dan tinjau riwayat panggilan.','设置主备模型和推理强度，核对供应商凭证及调用记录。')}
             title={<>{llm}{required&&<AdminRequiredNote lang={lang} inline/>}</>}/>}>
-          {(data,refresh)=><AiSupplierCatalog data={data} refresh={refresh} lang={lang} isLight={isLight}
-            onDraftChange={setSupplierDraft} onBusyChange={setSupplierBusy} disabled={aiBusy}
-            renderCredential={(id,label,info,actions)=><IntegrationCredentialControl key={id} kind="ai" resource={id}
-              rowLabel={label} rowInfo={info} rowActions={actions} lang={lang} isLight={isLight}
+          {(data,refresh)=><AiSupplierCatalog suppliers={data?.suppliers} lang={lang}
+            renderCredential={(id,label,info)=><IntegrationCredentialControl key={id} kind="ai" resource={id}
+              rowLabel={label} rowInfo={info} lang={lang} isLight={isLight}
               onChange={()=>void refresh()}/>}/>}
         </AiServicePanel>
       </div>}

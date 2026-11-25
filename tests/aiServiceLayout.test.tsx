@@ -1,4 +1,4 @@
-import React from 'react';import test from 'node:test';import assert from 'node:assert/strict';import {renderToStaticMarkup} from 'react-dom/server';import {AiServiceContent} from '../src/components/AiServicePanel';import{testAndSaveAi}from'../src/utils/aiServiceSubmit';
+import React from 'react';import test from 'node:test';import assert from 'node:assert/strict';import {renderToStaticMarkup} from 'react-dom/server';import {AiServiceContent,aiModelOptions} from '../src/components/AiServicePanel';import{testAndSaveAi}from'../src/utils/aiServiceSubmit';
 import {AiSupplierCatalog} from '../src/components/AiSupplierCatalog';
 import type {AiSupplierView} from '../src/utils/aiSupplier';
 const selection={primary:'gpt-6.2-sol',fallback:'deepseek-v4-pro'},noop=()=>{};
@@ -27,18 +27,29 @@ test('Claude selections display in the shared model controls with independent ef
  assert.match(html,/主模型推理强度/);
  assert.match(html,/备用模型推理强度/);
 });
-test('supplier catalog shows exact template models before credentials and only selected models after adding',()=>{
- const catalog=(suppliers:AiSupplierView[])=>renderToStaticMarkup(<AiSupplierCatalog lang="zh" isLight data={{...data,suppliers}}
-  refresh={async()=>undefined} onDraftChange={noop} onBusyChange={noop} disabled={false}
-  renderCredential={(id,label,info)=><tr key={id}><td>{label}{info}</td><td/><td/></tr>}/>);
- const empty=catalog([]);
- assert.match(empty,/Anthropic \(Claude\).*claude-haiku-5-5.*claude-sonnet-5-5.*未添加/);
- assert.match(empty,/MiniMax.*MiniMax-M3\.1-Flash.*未添加/);
- const added=catalog([{id:'anthropic',name:'Anthropic (Claude)',models:['claude-haiku-5-5'],enabled:false,registered:true,credentialReady:false,inUse:false}]);
- assert.match(added,/Anthropic \(Claude\).*claude-haiku-5-5.*待配置凭证/);
- assert.doesNotMatch(added,/claude-sonnet-5-5/);
- const miniMaxEnabled=catalog([{id:'minimax',name:'MiniMax',models:['MiniMax-M3.1-Flash'],enabled:true,registered:true,credentialReady:true,inUse:false}]);
- assert.ok(miniMaxEnabled.indexOf('Anthropic (Claude)')<miniMaxEnabled.indexOf('MiniMax-M3.1-Flash'));
+test('routing options show exact models and honor eligibility instead of hiding unavailable choices',()=>{
+ const [haiku,sonnet,minimax]=['claude-haiku-5-5','claude-sonnet-5-5','MiniMax-M3.1-Flash'];
+ const suppliers:AiSupplierView[]=[
+  {id:'anthropic',name:'Anthropic',models:[haiku],registered:true,credentialReady:true,inUse:false},
+  {id:'minimax',name:'MiniMax',models:[minimax],registered:true,credentialReady:true,inUse:false},
+ ];
+ const choices=(models:string[],rows:AiSupplierView[]=suppliers)=>aiModelOptions({models,suppliers:rows},'zh');
+ const options=choices([...data.models,haiku,minimax]);
+ assert.deepEqual(options.find(choice=>choice.value===minimax),{value:minimax,label:minimax});
+ assert.deepEqual(options.find(choice=>choice.value===sonnet),{value:sonnet,label:sonnet,disabled:true,description:'此型号需要重新核验凭证'});
+ const missing=choices(data.models,[]);
+ assert.deepEqual(missing.find(choice=>choice.value===haiku),{value:haiku,label:haiku,disabled:true,description:'请先核验供应商凭证'});
+ assert.equal(choices([...data.models,minimax],[]).find(choice=>choice.value===minimax)?.description,'直连密钥核验前使用旧网关');
+ assert.match(render({selection:{...selection,fallback:sonnet},data:{...data,suppliers}}),/<button[^>]*type="submit"[^>]*disabled=""/);
+});
+test('all four default suppliers share the credential management entry and show exact model IDs',()=>{
+ const html=renderToStaticMarkup(<AiSupplierCatalog lang="zh"
+  renderCredential={(id,label,info)=><tr key={id}><td>{label}{info}</td><td/><td>管理凭证</td></tr>}/>);
+ for(const name of ['OpenAI','DeepSeek','Anthropic (Claude)','MiniMax'])assert.ok(html.includes(name));
+ assert.match(html,/Anthropic \(Claude\).*claude-haiku-5-5.*claude-sonnet-5-5/);
+ assert.match(html,/MiniMax.*MiniMax-M3\.1-Flash/);
+ assert.equal((html.match(/管理凭证/g)||[]).length,4);
+ assert.doesNotMatch(html,/新增供应商|启用供应商/);
 });
 test('editing has one test-and-save action and unknown activation replaces it with result lookup',()=>{
  const editing={selection:{...selection,fallback:'deepseek-chat'}};

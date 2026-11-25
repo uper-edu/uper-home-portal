@@ -17,7 +17,7 @@ import {
 import {readCredentialKeyring} from './integrationCredentialCrypto.ts';
 import {platform, type Employee} from './identity.ts';
 import {aiState, aiModels, probeModel, providerFor} from './aiServiceConfig.ts';
-import {isAiSupplierId} from '../../src/utils/aiSupplier.ts';
+import {aiSupplierTemplates,isAiSupplierId} from '../../src/utils/aiSupplier.ts';
 import {saveAiSettings, supplierInUse} from './aiSupplierSettings.ts';
 import {resolveMailPassword} from './enrollmentMailCredentials.ts';
 import {LarkApp} from './larkApp.ts';
@@ -32,6 +32,7 @@ type Target = {
   fields: readonly string[];
   context: string[];
   validation: 'provider'|'manual';
+  legacyMiniMaxInUse?: boolean;
   validate: (values: CredentialValues) => Promise<VerificationResult>;
 };
 
@@ -40,14 +41,15 @@ async function targetFor(db: CredentialClient, slot: Slot, lock=false): Promise<
   switch (slot.type) {
     case 'ai': {
       if (!aiCredentialProviders.some(provider=>provider===id)) return fail(404,'credential_not_found');
-      const {current,suppliers} = await aiState(db);
-      const managedId=isAiSupplierId(id)&&suppliers?.[id]?id:undefined;
-      const supplier=managedId&&suppliers[managedId];
-      if(id==='minimax'&&!supplier)return fail(404,'credential_not_found');
+      const settings=await aiState(db);
+      const {current,suppliers}=settings;
+      const managedId=isAiSupplierId(id)?id:undefined;
+      const supplier=managedId&&suppliers?.[managedId];
       const model = [current.primary, current.fallback, ...aiModels].find(value => providerFor(value).provider === id);
-      if(!supplier&&!model)return fail(404,'credential_not_found');
-      const models:string[]=supplier?supplier.models:[model!];
+      if(!managedId&&!model)return fail(404,'credential_not_found');
+      const models=managedId?aiSupplierTemplates[managedId].models:[model!];
       return {id: aiCredentialTarget(id), legacy: () => supplier?undefined:legacyAiCredential(id), fields: ['key'], context: [id,...models],
+        legacyMiniMaxInUse:id==='minimax'&&!supplier&&supplierInUse(settings,'minimax'),
         validation: 'provider', validate: async values => {
           const deadline=AbortSignal.timeout(130_000);
           const request:typeof fetch=(input,init)=>fetch(input,{...init,signal:init?.signal?AbortSignal.any([deadline,init.signal]):deadline});
@@ -263,6 +265,7 @@ export function mountIntegrationCredentials(app: Express, {
       const supplier=supplierId&&aiSettings?.suppliers?.[supplierId];
       if(action==='revoke'&&supplier&&supplierId&&supplierInUse(aiSettings,supplierId))
         return fail(409,'credential_supplier_in_use');
+      if(action==='set'&&destination.legacyMiniMaxInUse)return fail(409,'credential_minimax_legacy_in_use');
       if(action==='set'&&!canReplace&&(state.active||!state.managed&&destination.legacy()))
         return fail(409,'credential_revoke_current_required');
       const next={...state,revision:revision+1,updatedAt:new Date().toISOString()};
@@ -307,8 +310,11 @@ export function mountIntegrationCredentials(app: Express, {
       if(aiSettings){
         // A test performed with an earlier credential cannot authorize a model change.
         const verified=action==='set';
+        // Keep the stored enabled value compatible with a rollback to the previous release.
+        const nextSupplier=supplierId&&(verified?{id:supplierId,name:supplier?.name??aiSupplierTemplates[supplierId].name,
+          models:[...aiSupplierTemplates[supplierId].models],verified:true,enabled:true}:supplier&&{...supplier,verified:false,enabled:false});
         await saveAiSettings(db,{...aiSettings,revision:aiSettings.revision+1,checks:[],
-          ...(supplier&&supplierId?{suppliers:{...aiSettings.suppliers,[supplierId]:{...supplier,verified,enabled:verified&&supplier.enabled}}}:{})});
+          ...(supplierId&&nextSupplier?{suppliers:{...aiSettings.suppliers,[supplierId]:nextSupplier}}:{})});
       }
       const result={slot:JSON.stringify(slot),revision:next.revision,
         outcome:action==='set'?verification===true?'verified':'failed':next.candidate?.receipt?.outcome,
@@ -333,6 +339,7 @@ export function mountIntegrationCredentials(app: Express, {
         }
         const destination=await target(db,slot,true);
         if(state.revision!==revision)return fail(409,'credential_conflict');
+        if(action==='set'&&destination.legacyMiniMaxInUse)return fail(409,'credential_minimax_legacy_in_use');
         if(destination.validation==='manual'&&q.body.confirmed!==true)return fail(403,'credential_manual_confirmation_required');
         if(setupId){
           if(!canReplace&&(state.active||!state.managed&&destination.legacy()))return fail(409,'credential_revoke_current_required');

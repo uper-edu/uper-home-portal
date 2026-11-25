@@ -90,13 +90,16 @@ test('direct credential setup preserves each service’s verification, replaceme
     if(sql.startsWith("INSERT INTO portal_settings(id,value) VALUES('ai_service'"))[modelSettings]=parameters;
     return {rows};
   }};
-  const routes=new Map<string,(req:any,res:any)=>void>();
-  const fakeApp={get:(path:string,fn:any)=>routes.set('GET '+path,fn),post:(path:string,fn:any)=>routes.set('POST '+path,fn)};
+  const routes=new Map<string,(req:any,res:any)=>void>(),defaultTargets=new Map<string,(req:any,res:any)=>void>();
+  const app=(handlers:typeof routes)=>({get:(path:string,fn:any)=>handlers.set('GET '+path,fn),post:(path:string,fn:any)=>handlers.set('POST '+path,fn)});
+  const mountOptions={pool:db,tx:async<T>(fn:(client:CredentialClient)=>Promise<T>)=>fn(db),authenticate:async(q:any)=>q.fixtureActor};
+  mountIntegrationCredentials(app(defaultTargets) as any,mountOptions);
+  let handlers=routes;
   let checks=0;
   let configuration='target fixture';
   let delayed: Promise<void>|undefined;
-  mountIntegrationCredentials(fakeApp as any,{
-    pool:db,tx:async fn=>fn(db),authenticate:async q=>(q as any).fixtureActor,
+  mountIntegrationCredentials(app(routes) as any,{
+    ...mountOptions,
     target:async(_db,slot)=>slot.type==='ai'?{
       id:target,legacy:()=>slot.resource==='minimax'?undefined:{key:'legacy-fixture'},fields:['key'],context:[slot.resource,configuration],validation:'provider',
       validate:async values=>values.key==='verified-fixture'||{kind:'ai_auth_rejected'},
@@ -117,7 +120,7 @@ test('direct credential setup preserves each service’s verification, replaceme
   function call(actor:Employee|null,method:string,body?:object,operation?:string,origin='http://localhost:3000',kind='smtp',resource=mailSlot.resource){
     return new Promise<{status:number;data:any}>(resolve=>{
       let status=200;
-      const handler=routes.get(method+' '+prefix+(operation?'/results/:id':''))!;
+      const handler=handlers.get(method+' '+prefix+(operation?'/results/:id':''))!;
       handler({method,body,fixtureActor:actor,params:{kind,resource,id:operation},
         is:()=>true,get:()=> 'localhost:3000',protocol:'http',headers:{origin}},
       {set:()=>{},status:(code:number)=>{status=code;return {json:(data:any)=>resolve({status,data})};},
@@ -221,22 +224,26 @@ test('direct credential setup preserves each service’s verification, replaceme
   assert.equal(modelSettings.revision,12);
   assert.deepEqual(modelSettings.current,{primary:'gpt-6.2-sol',fallback:'deepseek-v4-pro'});
   const unchangedModels={...modelSettings.current};
-  modelSettings.suppliers={minimax:{id:'minimax',name:'MiniMax',models:['MiniMax-M3.1-Flash'],enabled:false}};
+  handlers=defaultTargets;
+  assert.deepEqual((await aiStatus('minimax')).data.context,['minimax','MiniMax-M3.1-Flash']);
+  assert.deepEqual((await aiStatus('anthropic')).data.context,['anthropic','claude-haiku-5-5','claude-sonnet-5-5']);
+  modelSettings.current={...unchangedModels,fallback:'MiniMax-M3.1-Flash'};
+  assert.equal((await aiAction(admin,'set',0,'verified-fixture','minimax')).data.error,'credential_minimax_legacy_in_use');
+  modelSettings.current=unchangedModels;
+  handlers=routes;
   assert.equal((await aiAction(admin,'set',0,'wrong-fixture','minimax')).data.outcome,'failed');
-  assert.equal(modelSettings.suppliers.minimax!.verified,undefined);
+  assert.equal(modelSettings.suppliers?.minimax,undefined);
   assert.equal((await aiAction(admin,'set',1,'verified-fixture','minimax')).data.outcome,'verified');
-  assert.equal(modelSettings.suppliers.minimax!.verified,true);
-  assert.equal(modelSettings.suppliers.minimax!.enabled,false);
+  assert.deepEqual(modelSettings.suppliers?.minimax,{id:'minimax',name:'MiniMax',models:['MiniMax-M3.1-Flash'],verified:true,enabled:true});
   assert.deepEqual(modelSettings.current,unchangedModels);
-  modelSettings.suppliers.minimax!.enabled=true;
   modelSettings.current={...unchangedModels,fallback:'MiniMax-M3.1-Flash'};
   const blockedRevoke=await aiAction(admin,'revoke',2,undefined,'minimax');
   assert.equal(blockedRevoke.data.error,'credential_supplier_in_use');
   assert.equal((await aiStatus('minimax')).data.source,'managed');
   modelSettings.current=unchangedModels;
   assert.equal((await aiAction(admin,'revoke',2,undefined,'minimax')).status,200);
-  assert.equal(modelSettings.suppliers.minimax!.enabled,false);
-  assert.equal(modelSettings.suppliers.minimax!.verified,false);
+  assert.equal(modelSettings.suppliers?.minimax?.enabled,false);
+  assert.equal(modelSettings.suppliers?.minimax?.verified,false);
   assert.equal((await aiStatus('minimax')).data.source,'revoked');
   function integrationAction(kind:string,action:string,revision:number,extra:object={},requestId=randomUUID()){
     return call(admin,'POST',{action,revision,requestId,...extra},undefined,undefined,kind,'default');

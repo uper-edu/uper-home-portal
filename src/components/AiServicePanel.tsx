@@ -5,7 +5,7 @@ import {AdminListState} from './admin/AdminList';
 import {AdminRefreshAction} from './admin/AdminRefreshAction';
 import {AdminField,AdminForm,AdminRequiredNote} from './AdminForm';
 import {AdminFormFeedback,AdminSavedReadError,AdminFormGrid,AdminFormSection,AdminFormSummary} from './AdminFormLayout';
-import {AdminSingleSelect} from './admin/AdminSingleSelect';
+import {AdminSingleSelect,type AdminSelectChoice} from './admin/AdminSingleSelect';
 import {AdminDisclosure} from './admin/AdminDisclosure';
 import {AdminPageAction} from './admin/AdminPageAction';
 import {aiModelSlots,defaultReasoningEffort,effortField,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection} from '../utils/aiModelSelection';
@@ -13,7 +13,8 @@ import {aiServiceText} from '../utils/aiServiceLanguage';
 import {testAndSaveAi} from '../utils/aiServiceSubmit';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import type {CrmLanguage} from '../utils/crmLanguage';
-import type {AiSupplierView} from '../utils/aiSupplier';
+import {aiSupplierIds,aiSupplierTemplates,type AiSupplierView} from '../utils/aiSupplier';
+import {aiModels} from '../data/system-defaults/ai';
 
 type AiHistoryRecord={requestId:string;current:AiSelection;actor:string;at:string};
 export type AiServiceData={
@@ -31,6 +32,25 @@ type ReadFailure='error'|'denied';
 const pendingKey='uper-ai-pending',draftKey='uper-ai-draft';
 const emptySelection:AiSelection={primary:'',fallback:''};
 const words=(lang:CrmLanguage)=>(key:keyof typeof aiServiceText)=>aiServiceText[key][lang==='zh'?2:lang==='id'?1:0];
+
+export function aiModelOptions({models,suppliers}:Pick<AiServiceData,'models'|'suppliers'>,lang:CrmLanguage):AdminSelectChoice[]{
+  const t=words(lang);
+  const available=new Set(models);
+  return [...new Set([...aiModels,...models])].map(model=>{
+    const choice={value:model,label:model};
+    const provider=aiSupplierIds.find(id=>aiSupplierTemplates[id].models.some(candidate=>candidate===model));
+    const supplier=suppliers?.find(row=>row.id===provider);
+    if(available.has(model)){
+      return provider==='minimax'&&!supplier?.registered?{...choice,description:t('modelLegacyGateway')}:choice;
+    }
+    const unavailable={...choice,disabled:true};
+    if(provider&&!supplier?.credentialReady)return {...unavailable,description:t('modelVerifyCredential')};
+    if(supplier&&!supplier.models.includes(model))return {...unavailable,description:t('modelNotConfigured')};
+    return {...unavailable,description:t('modelUnavailable')};
+  });
+}
+
+const canSelectModels=(selection:AiSelection,models:readonly string[])=>aiModelSlots.every(role=>models.includes(selection[role]));
 
 async function call(path='',body?:object){
   const response=await fetch('/api/admin/ai-service'+path,{
@@ -124,7 +144,7 @@ export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChang
     if(!candidate.primary||!candidate.fallback||candidate.primary===candidate.fallback){
       setNotice('required');return;
     }
-    if(!diagnostic&&!dirty)return;
+    if(!diagnostic&&(!dirty||!canSelectModels(candidate,data.models)))return;
     submitting.current=true;setBusy(true);setNotice('');setCheck(undefined);
     let activating=false;
     const requestId=crypto.randomUUID();
@@ -195,7 +215,8 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
       </div>}
   </div>;
   const blocked=busy||!!querying||!!failure||unresolved||notice==='conflict';
-  const actionDisabled=!data||!selection.primary||!selection.fallback||sameAiSelection(selection,data.current);
+  const actionDisabled=!data||!canSelectModels(selection,data.models)||sameAiSelection(selection,data.current);
+  const modelOptions=data?aiModelOptions(data,lang):[];
   const attempts=data?.attempts??[],extractions=data?.extractions??[],history=data?.history??[];
   return <>
     <AdminForm lang={lang} onSubmit={(event:React.FormEvent)=>{event.preventDefault();onSubmit();}}
@@ -218,7 +239,7 @@ export function AiServiceContent({lang,isLight,data,selection,check,busy,notice,
             return <div key={role} data-admin-stack>
               <AdminField as="div" required><label htmlFor={modelId}>{t(role)}</label>
                 <AdminSingleSelect controlId={modelId} label={t(role)} value={selection[role]}
-                  options={data.models.map(model=>({value:model,label:model}))}
+                  options={modelOptions}
                   onChange={model=>onSelect({...selection,[role]:model,[key]:supportsReasoningEffort(model)?selection[key]:undefined})}
                   lang={lang} isLight={isLight} required disabled={blocked}/>
               </AdminField>

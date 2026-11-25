@@ -7,8 +7,8 @@ const tx=async(work:any)=>(await import('./store.ts')).tx(work);
 import {validMutationOrigin} from './accessTransport.ts';
 import {acceptedModel,requestAiReply} from './aiProviderRequest.ts';
 import {readAiReply} from './chatProviderReply.ts';
-import {isAiSupplierId,type AiSupplierId} from '../../src/utils/aiSupplier.ts';
-import {changeAiSupplier, managedSupplierForModel, saveAiSettings, selectableAiModels, supplierViews} from './aiSupplierSettings.ts';
+import type {AiSupplierId} from '../../src/utils/aiSupplier.ts';
+import {managedSupplierForModel, saveAiSettings, selectableAiModels, supplierViews} from './aiSupplierSettings.ts';
 import {aiModelSlots,defaultReasoningEffort,effortField,isClaudeModel,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection,type ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
 export {aiModels};
 export {acceptedModel};
@@ -55,7 +55,7 @@ export async function runtimeProviders(db?:CredentialClient){
   const model=s.current[role];
   const provider=providerFor(model,s.current[effortField[role]],managedSupplierForModel(s,model));
   const supplier=s.suppliers?.[provider.provider];
-  if(supplier&&(!supplier.enabled||!supplier.verified||!supplier.models.includes(provider.model)))return {...provider,key:undefined};
+  if(supplier&&(!supplier.verified||!supplier.models.includes(provider.model)))return {...provider,key:undefined};
   if(provider.model==='MiniMax-M3.1-Flash'&&provider.provider!=='minimax'&&process.env.MINIMAX_API_KEY){
    return {...provider,key:process.env.MINIMAX_API_KEY};
   }
@@ -116,28 +116,8 @@ export function mountAiServiceConfig(app:any){
   const model=selection[role],effort=selectedReasoningEffort(selection,role);
   const id=managedSupplierForModel(before,model);
   const supplier=id&&before.suppliers[id];
-  const managedKey=id ? supplier.enabled&&supplier.verified?await configuredAiKey(id,undefined,false)??'':'' : undefined;
+  const managedKey=id ? supplier.verified?await configuredAiKey(id,undefined,false)??'':'' : undefined;
   return probeModel(model,effort,managedKey,fetch,id);
  }));const check={id:randomUUID(),actor:e.id,selection,revision:before.revision,at:new Date().toISOString(),expiresAt:Date.now()+600000,ok:results.every(x=>x.ok),results};await tx(async(c:any)=>{await c.query("SELECT value FROM access_state WHERE id='policy' FOR UPDATE");await guard(q);const s=await aiState(c);if(s.revision!==before.revision)fail(409,'conflict');await saveAiSettings(c,{...s,checks:[check,...(s.checks||[])].slice(0,10)});});r.json(check);}));
- app.post('/api/admin/ai-service/supplier',wrap(async(q:any,r:any)=>{
-  const actor=await guard(q);
-  const input=q.body??{};
-  if(!isAiSupplierId(input.id))fail(400,'supplier_invalid');
-  const supplier=await tx(async(c:CredentialClient)=>{
-   await c.query("SELECT value FROM access_state WHERE id='policy' FOR UPDATE");
-   if((await guard(q)).id!==actor.id)fail(403,'admin_required');
-   const s=await aiState(c);
-   if(input.revision!==s.revision)fail(409,'conflict');
-   const ready=!!await configuredAiKey(input.id,c,input.action==='add');
-   const next=changeAiSupplier(s,input,ready,ready);
-   if(s.suppliers?.[next.id]?.enabled===next.enabled)return next;
-   const suppliers={...s.suppliers,[next.id]:next};
-   const revision=s.revision+1;
-   await saveAiSettings(c,{...s,suppliers,revision,checks:[]});
-   await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'ai.supplier',:p2)",[actor.id,{id:next.id,action:input.action,models:next.models,revision}]);
-   return next;
-  });
-  r.json({supplier});
- }));
  app.post('/api/admin/ai-service/activate',wrap(async(q:any,r:any)=>{await guard(q);if(typeof q.body.requestId!=='string'||!/^[a-zA-Z0-9-]{8,80}$/.test(q.body.requestId))fail(400,'invalid_request');const saved=await tx(async(c:any)=>{await c.query("SELECT value FROM access_state WHERE id='policy' FOR UPDATE");const e=await guard(q),s=await aiState(c);const old=s.history?.find((v:any)=>v.requestId===q.body.requestId&&v.actor===e.id);if(old)return old; const check=activationCheck(s,q.body,e.id);const restore=q.body.restore===true;const record={requestId:q.body.requestId,actor:e.id,revision:s.revision+1,current:check.selection,previous:s.current,at:new Date().toISOString(),restore};await saveAiSettings(c,{...s,...record,checks:[],history:[record,...(s.history||[])].slice(0,30)});await c.query("INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'ai.configuration',:p2)",[e.id,record]);auditLog(e.id,'ai.configuration',{requestId:q.body.requestId});return record;});r.json(saved);}));
 }

@@ -2,46 +2,24 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {aiModels,validateSelection,isAiAdministrator,probeModel,providerFor} from '../server/portal/aiServiceConfig';
 import {aiServiceText} from '../src/utils/aiServiceLanguage';
 import {compareGoals} from '../server/portal/goalReview';
-import {changeAiSupplier,selectableAiModels,supplierViews} from '../server/portal/aiSupplierSettings';
+import {selectableAiModels,supplierViews} from '../server/portal/aiSupplierSettings';
 import {aiCredentialTarget} from '../server/portal/integrationCredentialTargets';
 import {credentialSlot,credentialSource,credentialTarget} from '../server/portal/integrationCredentials';
 
 const claudeHaiku='claude-haiku-5-5',claudeSonnet='claude-sonnet-5-5';
 
-test('Claude template saves an inactive supplier without changing current routing',()=>{
- const settings={current:{primary:'gpt-6-luna',fallback:'deepseek-v4-pro'}};
- const input={id:'anthropic',action:'add',name:'  Anthropic test  ',models:[claudeHaiku],endpoint:'https://ignored.invalid'};
- const draft=changeAiSupplier(settings,input,false,false);
- assert.deepEqual(draft,{id:'anthropic',name:'Anthropic test',models:[claudeHaiku],enabled:false});
- const saved={...settings,suppliers:{anthropic:draft}};
- assert.deepEqual(settings.current,{primary:'gpt-6-luna',fallback:'deepseek-v4-pro'});
- assert.deepEqual(supplierViews(settings,{}),[]);
- assert.equal(supplierViews(saved,{anthropic:true})[0].credentialReady,false);
- assert.ok(!selectableAiModels(saved,supplierViews(saved,{anthropic:true})).includes(claudeHaiku));
- assert.throws(()=>changeAiSupplier(saved,input,false,false),/supplier_exists/);
- assert.throws(()=>changeAiSupplier(settings,{...input,models:['gpt-6-luna']},false,false),/supplier_invalid/);
- assert.throws(()=>changeAiSupplier(settings,{...input,models:[claudeHaiku,claudeHaiku]},false,false),/supplier_invalid/);
- assert.throws(()=>changeAiSupplier(settings,{...input,id:'unknown-provider'},false,false),/supplier_invalid/);
- assert.equal(providerFor(claudeHaiku).url,'https://api.anthropic.com/v1/messages');
-});
-
-test('Claude models become selectable after credential verification and explicit activation',()=>{
+test('verified Claude credentials make the configured models selectable without a separate activation',()=>{
  const current={primary:'gpt-6-luna',fallback:'deepseek-v4-pro'};
- const settings={current,suppliers:{anthropic:{id:'anthropic' as const,name:'Claude',models:[claudeHaiku],enabled:false}}};
- const input={id:'anthropic',action:'enable'};
- assert.throws(()=>changeAiSupplier(settings,input,true,false),/supplier_credential_required/);
- const verified={current,suppliers:{anthropic:{...settings.suppliers.anthropic,verified:true}}};
- assert.throws(()=>changeAiSupplier(verified,input,false,false),/supplier_credential_required/);
- const active={current,suppliers:{anthropic:changeAiSupplier(verified,input,true,false)}};
- const models=selectableAiModels(active,supplierViews(active,{anthropic:true}));
+ const anthropic={id:'anthropic' as const,name:'Claude',models:[claudeHaiku],enabled:false,verified:true};
+ const settings={current,suppliers:{anthropic}};
+ const models=selectableAiModels(settings,supplierViews(settings,{anthropic:true}));
  assert.ok(models.includes(claudeHaiku));
  assert.ok(!models.includes(claudeSonnet));
  assert.deepEqual(validateSelection({primary:claudeHaiku,fallback:current.fallback},models),{primary:claudeHaiku,fallback:current.fallback});
  assert.throws(()=>validateSelection({primary:claudeSonnet,fallback:current.fallback},models),/invalid_selection/);
- const disable={...input,action:'disable'};
- assert.throws(()=>changeAiSupplier({...active,current:{...current,fallback:claudeHaiku}},disable,true,false),/supplier_in_use/);
- const inactive={current,suppliers:{anthropic:changeAiSupplier(active,disable,true,false)}};
- assert.ok(!selectableAiModels(inactive,supplierViews(inactive,{anthropic:true})).includes(claudeHaiku));
+ assert.ok(!selectableAiModels(settings,supplierViews(settings,{anthropic:false})).includes(claudeHaiku));
+ assert.deepEqual(settings.current,current);
+ assert.equal(providerFor(claudeHaiku).url,'https://api.anthropic.com/v1/messages');
 });
 
 test('existing Claude credentials and active legacy selections are retained across the upgrade',()=>{
@@ -50,22 +28,15 @@ test('existing Claude credentials and active legacy selections are retained acro
  assert.equal(available[0].registered,false);
  assert.ok(selectableAiModels(settings,available).includes(claudeHaiku));
  assert.ok(selectableAiModels(settings,supplierViews(settings,{})).includes(claudeSonnet));
- assert.throws(()=>changeAiSupplier(settings,{id:'anthropic',action:'add',name:'Claude',models:[claudeSonnet]},false,false),/supplier_exists/);
 });
 
-test('MiniMax template keeps legacy routing until registration and separates the official credential',async()=>{
+test('MiniMax keeps legacy routing until direct credentials are configured and separates the official credential',async()=>{
  const model='MiniMax-M3.1-Flash';
  const settings={current:{primary:'gpt-6-luna',fallback:'deepseek-v4-pro'}};
- const input={id:'minimax',action:'add',name:'MiniMax',models:[model]};
  assert.ok(selectableAiModels(settings,supplierViews(settings,{})).includes(model));
- const inUse={current:{...settings.current,primary:model}};
- assert.throws(()=>changeAiSupplier(inUse,input,false,false),/supplier_exists/);
- const draft=changeAiSupplier(settings,input,false,false);
- const registered={...settings,suppliers:{minimax:draft}};
- assert.ok(!selectableAiModels(registered,supplierViews(registered,{})).includes(model));
- const verified={...registered,suppliers:{minimax:{...draft,verified:true}}};
- const active={...registered,suppliers:{minimax:changeAiSupplier(verified,{id:'minimax',action:'enable'},true,false)}};
- assert.ok(selectableAiModels(active,supplierViews(active,{minimax:true})).includes(model));
+ const verified={...settings,suppliers:{minimax:{id:'minimax' as const,name:'MiniMax',models:[model],enabled:false,verified:true}}};
+ assert.ok(!selectableAiModels(verified,supplierViews(verified,{})).includes(model));
+ assert.ok(selectableAiModels(verified,supplierViews(verified,{minimax:true})).includes(model));
  assert.equal(providerFor(model).provider,'openai');
  assert.deepEqual(providerFor(model,'low','minimax'),{model,provider:'minimax',key:undefined,url:'https://api.minimax.cn/v1/chat/completions',reasoningEffort:'low'});
  const previousCredential={id:'synthetic-minimax',sealed:'unused',createdAt:'2026-01-01T00:00:00.000Z',
@@ -137,7 +108,7 @@ test('runtime providers read each credential once per turn on the supplied conne
   selection={primary:'MiniMax-M3.1-Flash',primaryEffort:'low',fallback:'deepseek-v4-pro'};
   assert.equal((await runtimeProviders(db))[0].key,'fixture-legacy-minimax');
   assert.deepEqual(reads.splice(0),['settings','deepseek']);
-  suppliers={minimax:{id:'minimax',models:['MiniMax-M3.1-Flash'],enabled:true,verified:true}};
+  suppliers={minimax:{id:'minimax',models:['MiniMax-M3.1-Flash'],enabled:false,verified:true}};
   const [primary]=await runtimeProviders(db);
   assert.equal(primary.provider,'minimax');
   assert.equal(primary.key,undefined);
