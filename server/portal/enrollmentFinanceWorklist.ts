@@ -1,4 +1,5 @@
 import {enrollmentOrderStatus} from '../../src/utils/enrollmentOrderStatus.ts';
+import type {EnrollmentFinanceProgress} from '../../src/utils/enrollmentLearnerPayments.ts';
 import {enrollmentFinanceEvidence,readEnrollmentLearnerPaymentRows,withEnrollmentReceiptProofLinks} from './enrollmentLearnerPayments.ts';
 
 type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
@@ -7,6 +8,25 @@ type Candidate={
   level:string;format:string;period:string;firstLessonAt:string;
   data:{firstProofAvailableAt?:string;firstReviewDueAt?:string;learnerReceiptProofLinks?:unknown};
 };
+
+export async function readEnrollmentFinanceProgress(c:Client,orders:{
+  id:string;state:string;learnerReceiptProofLinks?:unknown;
+}[]) {
+  const rows=await readEnrollmentLearnerPaymentRows(c,orders.map(order=>order.id));
+  return new Map(orders.map(order=>{
+    const {transfers}=enrollmentFinanceEvidence(withEnrollmentReceiptProofLinks(rows.get(order.id),order.learnerReceiptProofLinks));
+    const pending=transfers.filter(transfer=>transfer.verifiedAmount===undefined);
+    const progress:EnrollmentFinanceProgress={
+      reported:transfers.length,
+      verified:transfers.length-pending.length,
+      pending:pending.length,
+      reportedTotal:transfers.reduce((sum,transfer)=>sum+(transfer.amount??0),0),
+      missingAmounts:transfers.filter(transfer=>transfer.amount===undefined).length,
+      nextTransferId:['refunding','refunded'].includes(order.state)?undefined:pending.at(-1)?.id,
+    };
+    return [order.id,progress] as const;
+  }));
+}
 
 export async function readEnrollmentFinanceWorklist(c:Client,search:string,page:number,pageSize:number) {
   // Canonical roots bound the lookup. The shared evidence matcher resolves legacy aliases and supplements.
@@ -21,7 +41,7 @@ export async function readEnrollmentFinanceWorklist(c:Client,search:string,page:
           SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id AND (
             JSON_UNQUOTE(JSON_EXTRACT(o.data,CONCAT('$.learnerReceiptProofLinks.',JSON_QUOTE(r.reference))))=p.id
             OR (r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)
-              AND JSON_EXTRACT(o.data,CONCAT('$.learnerReceiptProofLinks.',JSON_QUOTE(r.reference))) IS NULL)
+              AND COALESCE(JSON_CONTAINS_PATH(o.data,'one',CONCAT('$.learnerReceiptProofLinks.',JSON_QUOTE(r.reference))),0)=0)
           )
         )
     ) AND (:p1='' OR LOCATE(:p1,LOWER(CONCAT_WS(' ',o.data->>'$.name',o.id,e.id,e.data->>'$.level',

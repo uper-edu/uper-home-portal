@@ -27,7 +27,7 @@ import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
 import { isEnrollmentProofAmount,proofTransferDetails } from './enrollmentProofTotals.ts';
 import {enrollmentFinanceEvidence,enrollmentProofGroupId,enrollmentReceiptProofId,readEnrollmentLearnerPaymentRows,withEnrollmentReceiptProofLinks} from './enrollmentLearnerPayments.ts';
-import {readEnrollmentFinanceWorklist} from './enrollmentFinanceWorklist.ts';
+import {readEnrollmentFinanceProgress,readEnrollmentFinanceWorklist} from './enrollmentFinanceWorklist.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { latestAssistanceMail, orderNotice, proofNotices, retryAssistanceMail, sendAssistanceMail, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
 
@@ -767,6 +767,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
               SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id
                 AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')
             ) THEN o.data->>'$.firstReviewDueAt' END AS review_due,
+            IF(:p2='all',CAST(o.data->'$.learnerReceiptProofLinks' AS CHAR),NULL) AS receipt_proof_links,
             o.data->>'$.creditOut' IS NOT NULL AS has_credit
           FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
           LEFT JOIN LATERAL (SELECT p.created_at FROM enrollment_proofs p WHERE p.order_id=o.id
@@ -786,10 +787,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       let rows=(await c.query(sql,[search,status,offset,pageSize])).rows;
       const actualPage=page>1&&!rows.length?1:page;
       if(actualPage!==page)rows=(await c.query(sql,[search,status,0,pageSize])).rows;
+      const progress=status==='all'?await readEnrollmentFinanceProgress(c,rows.map(row=>({
+        id:row.id,state:row.state,learnerReceiptProofLinks:row.receipt_proof_links?JSON.parse(row.receipt_proof_links):undefined,
+      }))):undefined;
       return {orders:rows.map(row=>({id:row.id,name:row.name,price:Number(row.price),received:Number(row.received),
         level:row.level,format:row.format,period:row.period,firstLessonAt:row.firstLessonAt,
         status:enrollmentOrderStatus(row.state,row.class_state),hasProof:Number(row.has_proof)===1,
-        proofAt:row.proof_at,reviewDueAt:row.review_due})),
+        proofAt:row.proof_at,reviewDueAt:row.review_due,progress:progress?.get(row.id)})),
         page:actualPage,pageSize,total:Number(rows[0]?.total??0)};
     });
     r.set('Cache-Control','no-store').json(result);
@@ -886,15 +890,16 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       const { order, cohort } = await lockOrder(c, id);
       if(['refunding','refunded'].includes(order.state)) invalid('enrollment_refund_in_progress',409);
       const ref = bankReference.trim().toUpperCase();
-      let receiptData=order.data;
+      let receiptProofId:string|null=null;
       if(proofId!==undefined){
         if(typeof proofId!=='string'||!uuid.test(proofId))invalid('enrollment_invalid_receipt_proof');
         const rows=withEnrollmentReceiptProofLinks((await readEnrollmentLearnerPaymentRows(c,[order.id])).get(order.id),order.data?.learnerReceiptProofLinks);
         if(linking&&!enrollmentFinanceEvidence(rows).unmatchedReferences.includes(ref))invalid('enrollment_invalid_receipt_proof',409);
         const groupId=enrollmentReceiptProofId(rows.proofs,proofId,ref,rows.receipts);
         if(!groupId)invalid('enrollment_invalid_receipt_proof',409);
-        receiptData={...order.data,learnerReceiptProofLinks:{...order.data?.learnerReceiptProofLinks,[ref]:groupId}};
+        receiptProofId=groupId;
       }
+      const receiptData={...order.data,learnerReceiptProofLinks:{...order.data?.learnerReceiptProofLinks,[ref]:receiptProofId}};
       if(linking){
         await c.query('UPDATE enrollment_orders SET data=:p1,activity_at=UTC_TIMESTAMP(6) WHERE id=:p2',[receiptData,id]);
         return {order:view(order,cohort.state)};

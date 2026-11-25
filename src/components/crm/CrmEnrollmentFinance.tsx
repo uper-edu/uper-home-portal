@@ -25,12 +25,12 @@ import {enrollmentReceivingAccountMaxLength,type EnrollmentReceivingAccount} fro
 import { AdminFormFeedback,AdminSavedReadError } from '../AdminFormLayout';
 import { AdminDisclosure } from '../admin/AdminDisclosure';
 import { CrmEnrollmentReviewDeadline } from './CrmEnrollmentReviewDeadline';
-import type {EnrollmentFinanceTransfer} from '../../utils/enrollmentLearnerPayments';
+import type {EnrollmentFinanceProgress,EnrollmentFinanceTransfer} from '../../utils/enrollmentLearnerPayments';
 
 type Receipt = {reference:string;amount:number;account:string|null;settledAt:string};
 type PaymentCredit = {id:string;orderId:string;direction:'in'|'out';reference:string;amount:number;appliedAt:string};
 type WorkOrder = { id:string; name:string; price:number; received:number; status:string; level:string; format:string; period:string; firstLessonAt:string; hasProof:boolean; proofAt?:string; reviewDueAt?:string;
-  transfer?:{id:string;amount?:number;proofCount:number} };
+  transfer?:{id:string;amount?:number;proofCount:number};progress?:EnrollmentFinanceProgress };
 type Worklist = { orders:WorkOrder[]; total:number; page:number; pageSize:number };
 type FinanceProof = {id:string;mime?:string;submittedAt?:string;transfer?:{amount?:number;reference?:string}|null};
 type RecordRow = Omit<WorkOrder,'hasProof'> & { opened: boolean; proofs?:FinanceProof[]; proofId?: string; proofMime?: string; receipts:Receipt[]; credits:PaymentCredit[];
@@ -286,6 +286,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
   </>:canRecord&&!recoveringReceipt?<button type="button" ref={receiptTrigger} className="crm-work-button" data-primary
     disabled={savedDetailRead===orderId} onClick={()=>startReceipt()}>{bankLookup?lookupLabel:verifyTransferLabel}</button>:undefined;
   const hasResults=Boolean(list?.orders.length);
+  const showProgress=status==='all';
   return <section className="crm-finance-workspace" aria-label={paymentWorkspaceLabel('enrollment',lang)}>
     {denied?<p role="alert">{t('你没有报名订单核款权限。','You do not have enrollment payment access.','Anda tidak memiliki akses verifikasi pembayaran.')}</p>:<>
       <CrmListFilters label={t('筛选核款订单','Filter enrollment payments','Filter pembayaran pendaftaran')}>
@@ -307,8 +308,12 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
         busy={loading||search.trim()!==query} headers={[t('学员与订单','Learner and order','Siswa dan pesanan'),t('班次','Class','Kelas'),
           {label:t('应收','Amount due','Tagihan'),numeric:true},{label:t('已核实实收','Verified receipts','Penerimaan terverifikasi'),numeric:true},
           {label:t('未收余额','Outstanding','Sisa tagihan'),numeric:true},t('订单核款状态','Order payment status','Status pembayaran pesanan'),
+          ...(showProgress?[t('核验进度','Verification progress','Progres verifikasi')]:[]),
           t('转账凭证与期限','Transfer proof and deadline','Bukti transfer dan tenggat'),t('下一步','Next step','Langkah berikutnya')]}>
-        {list.orders.map(order=><tr key={order.transfer?.id??order.id}>
+        {list.orders.map(order=>{
+          const {progress}=order;
+          const transferId=order.transfer?.id??progress?.nextTransferId;
+          return <tr key={order.transfer?.id??order.id}>
           <td><AdminRecordEntry onClick={()=>open(order.id,order.transfer?.id)}
             aria-label={t('查看核款订单','View payment order','Lihat pesanan pembayaran')+' · '+order.name+' · '+order.id.slice(0,8)}>{order.name}</AdminRecordEntry>
             <small title={order.id}>{t('订单','Order','Pesanan')} · {order.id.slice(0,8)}</small></td>
@@ -319,13 +324,26 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
             '—':formatCurrency(Math.max(0,order.price-order.received),lang)}</td>
           <td><CrmListStatus tone={enrollmentListTone(order.status)}>{statusLabel(order.status)}</CrmListStatus>
             {order.hasProof&&order.status==='expired'&&<small>{t('有转账凭证','Transfer proof on file','Bukti transfer tersedia')}</small>}</td>
+          {showProgress&&<td>{progress?<><strong>{t(`已申报 ${progress.reported} 笔`,
+            `${progress.reported} reported`,`${progress.reported} dilaporkan`)}</strong>
+            <small>{t(`已核验 ${progress.verified} 笔 · 待核 ${progress.pending} 笔`,
+              `${progress.verified} verified · ${progress.pending} pending`,
+              `${progress.verified} terverifikasi · ${progress.pending} tertunda`)}</small>
+            <small>{progress.reported>0&&progress.missingAmounts===progress.reported
+              ?t('申报金额未填写','No amounts reported','Nominal belum diisi')
+              :[progress.missingAmounts
+                ?t('已填金额合计','Total of reported amounts entered','Total nominal yang diisi')
+                :t('申报合计','Reported total','Total dilaporkan'),formatCurrency(progress.reportedTotal,lang)].join(' · ')}</small>
+          </>:'—'}</td>}
           <td>{order.transfer&&<strong>{declaredAmount(order.transfer.amount)} · {t(`${order.transfer.proofCount} 份凭证`,`${order.transfer.proofCount} proof files`,`${order.transfer.proofCount} berkas bukti`)}</strong>}
             {order.proofAt?<small><time dateTime={order.proofAt}>{t('提交于','Submitted','Dikirim')} · {formatCrmEventTime(order.proofAt).slice(0,16)}</time></small>:'—'}
             {order.reviewDueAt&&<div className="crm-list-secondary"><CrmEnrollmentReviewDeadline dueAt={order.reviewDueAt} lang={lang} compact/></div>}</td>
-          <td>{order.transfer
-            ?<AdminRowAction onClick={()=>open(order.id,order.transfer?.id)}>{verifyTransferLabel}</AdminRowAction>
+          <td>{transferId
+            ?<AdminRowAction onClick={()=>open(order.id,transferId)}>{(progress?.pending??0)>1
+              ?t('核验待核转账','Review pending transfers','Periksa transfer tertunda'):verifyTransferLabel}</AdminRowAction>
             :<span className="crm-work-muted">—</span>}</td>
-        </tr>)}
+          </tr>;
+        })}
       </CrmListTable>:<p className="crm-finance-empty">{status==='proof_review'
         ?t('暂无符合条件的待核验转账。','No matching transfers awaiting verification.','Tidak ada transfer menunggu verifikasi yang cocok.')
         :t('暂无符合条件的报名订单。','No matching enrollment orders.','Tidak ada pesanan yang cocok.')}</p>)}

@@ -1,7 +1,7 @@
 import {strict as assert} from 'node:assert';
 import {test} from 'node:test';
 import type {Express,Request,Response} from 'express';
-import {readEnrollmentFinanceWorklist} from '../server/portal/enrollmentFinanceWorklist.ts';
+import {readEnrollmentFinanceProgress,readEnrollmentFinanceWorklist} from '../server/portal/enrollmentFinanceWorklist.ts';
 
 const orderId='71f63e18-c5aa-4a35-a339-dc03f99a7521';
 const manualOrderId='10d20262-5354-4441-b390-0ec0faad8a90';
@@ -54,6 +54,36 @@ test('finance queue counts transfers, retains unmatched transfers on settled ord
   assert.equal((await readEnrollmentFinanceWorklist(client,'mock',1,25)).total,0);
 });
 
+test('order progress counts reported transfer groups, with proofless receipts separate until linked',async()=>{
+  const refundedId='fixture-refund';
+  const unknownAmount={...proofRow('no-amount','no-amount',undefined,'MISSING-AMOUNT',secondAt),orderId:refundedId};
+  const orders=[
+    {id:orderId,state:'paid',learnerReceiptProofLinks:{'BANK-A':null}},
+    {id:manualOrderId,state:'partial'},
+    {id:refundedId,state:'refunded'},
+  ];
+  const client={query:async(sql:string,args?:unknown[])=>{
+    assert.match(sql,/WITH picked AS/);
+    assert.deepEqual(args,[JSON.stringify(orders.map(order=>order.id))]);
+    return {rows:[...proofs,unknownAmount,{orderId,reference:'BANK-A',amount:920_000},
+      {orderId:manualOrderId,reference:'WITHOUT-PROOF',amount:150_000}]};
+  }};
+  const progress=await readEnrollmentFinanceProgress(client,orders);
+  assert.deepEqual(progress.get(orderId),{
+    reported:2,verified:0,pending:2,reportedTotal:920_000,missingAmounts:0,nextTransferId:firstId,
+  });
+  assert.deepEqual(progress.get(manualOrderId),{
+    reported:0,verified:0,pending:0,reportedTotal:0,missingAmounts:0,nextTransferId:undefined,
+  });
+  assert.deepEqual(progress.get(refundedId),{
+    reported:1,verified:0,pending:1,reportedTotal:0,missingAmounts:1,nextTransferId:undefined,
+  });
+  orders[0].learnerReceiptProofLinks={'BANK-A':firstId};
+  assert.deepEqual((await readEnrollmentFinanceProgress(client,orders)).get(orderId),{
+    reported:2,verified:1,pending:1,reportedTotal:920_000,missingAmounts:0,nextTransferId:secondId,
+  });
+});
+
 test('the finance routes can locate a proofless order and link existing receipts without recording more money',async()=>{
   await import('./helpers/mockPortalDatabase.mjs');
   const {mountEnrollmentApplication}=await import('../server/portal/enrollmentApplication.ts');
@@ -72,7 +102,7 @@ test('the finance routes can locate a proofless order and link existing receipts
       },visitor:async()=>assert.fail('learner permission was consulted for a finance route'),
     });
     const order={id:orderId,class_id:'fixture-class',class_state:'published',state:'paid',received:920_000,price:920_000,
-      payment_due_at:'2026-11-22 00:00:00',data:{name:'Fixture',learnerReceiptProofLinks:{} as Record<string,string>}};
+      payment_due_at:'2026-11-22 00:00:00',data:{name:'Fixture',learnerReceiptProofLinks:{} as Record<string,string|null>}};
     const manualOrder={...order,id:manualOrderId,state:'awaiting_payment',received:0,data:{...order.data,learnerReceiptProofLinks:{}}};
     const receipt={orderId,reference:'BANK-ALREADY-SAVED',amount:920_000};
     const knownReferences=new Set([receipt.reference]);
@@ -80,6 +110,11 @@ test('the finance routes can locate a proofless order and link existing receipts
     let writes=0,reads=0,inserted=0;
     const client={transactionIsolation:'READ COMMITTED',query:async(sql:string,args:unknown[]=[])=>{
       reads++;
+      if(sql.startsWith('SELECT ranked.*')){
+        assert.deepEqual(args,['','all',0,25]);
+        return {rows:[{...order,receipt_proof_links:JSON.stringify(order.data.learnerReceiptProofLinks),
+          name:order.data.name,has_proof:1,total:1}]};
+      }
       if(sql.includes('SELECT o.*,e.state')){
         assert.deepEqual(args,[manualOrderId,1]);
         assert.match(sql,/WHERE \(:p1='' OR o.id=:p1\) AND \(:p2=1 OR/);
@@ -143,6 +178,10 @@ test('the finance routes can locate a proofless order and link existing receipts
     assert.equal(saved.order.received,920_000);
     assert.equal(saved.operationKind,'enrollment.receipt');
     assert.equal(order.data.learnerReceiptProofLinks[receipt.reference],secondId);
+    const worklist=await invoke('GET','/worklist',{query:{status:'all'}});
+    assert.deepEqual(worklist.orders[0].progress,{
+      reported:2,verified:1,pending:1,reportedTotal:920_000,missingAmounts:0,nextTransferId:firstId,
+    });
     assert.equal(writes,1);
     assert.equal((await invoke('POST','/:id/receipts',{body:link})).replayed,true);
     assert.equal(writes,1);
@@ -154,6 +193,7 @@ test('the finance routes can locate a proofless order and link existing receipts
     assert.equal(manual.order.status,'partial');
     assert.equal(manual.order.received,100_000);
     assert.equal(inserted,1);
+    assert.deepEqual(manualOrder.data.learnerReceiptProofLinks,{'MANUAL-01':null});
     const additional={...bankDetails,reference:'BANK-A',proofId:firstId,requestId:'7119a6d3-de0f-47fc-9bf9-d243c5e0ac4d'};
     const paid=await invoke('POST','/:id/receipts',{body:additional});
     assert.equal(paid.order.status,'paid');

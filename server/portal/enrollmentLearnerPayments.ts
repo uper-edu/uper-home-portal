@@ -3,7 +3,7 @@ import {isEnrollmentProofAmount} from './enrollmentProofTotals.ts';
 
 type Client = {query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
 type Proof = {id:string;digest:string;submittedAt:string;details?:{transferId?:string;amount?:number;reference?:string}|null};
-type Receipt = {reference:string;amount:number;proofId?:string};
+type Receipt = {reference:string;amount:number;proofId?:string|null};
 type Transfer = {
   id:string; proofs:string[]; digests:Set<string>; references:Set<string>;
   submittedAt:string; amount?:number; explicitlyGrouped:boolean;
@@ -70,6 +70,8 @@ export function enrollmentReceiptProofId(proofs:Proof[],id:string,reference:stri
 }
 
 function receiptGroup(aliases:Map<string,Transfer>,receipt:Receipt) {
+  // Explicitly recorded without proof. A later finance action can link this receipt.
+  if(receipt.proofId===null)return;
   return (receipt.proofId?aliases.get(receipt.proofId):undefined)??aliases.get('reference:'+receipt.reference);
 }
 
@@ -131,6 +133,6 @@ export function withEnrollmentReceiptProofLinks(rows:PaymentRows|undefined,links
   if(!rows)return emptyPaymentRows;
   if(!links||typeof links!=='object')return rows;
   return {...rows,receipts:rows.receipts.map(receipt=>({
-    ...receipt,proofId:Object.hasOwn(links,receipt.reference)?(links as Record<string,string>)[receipt.reference]:undefined,
+    ...receipt,proofId:Object.hasOwn(links,receipt.reference)?(links as Record<string,string|null>)[receipt.reference]:undefined,
   }))};
 }
