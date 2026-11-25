@@ -151,7 +151,7 @@ export async function submitEnrollmentInterest(kind:'waitlist'|'demands', body:u
   throw Error('enrollment_interest_unconfirmed');
 }
 
-export function postEnrollmentProof(path:string,file:File,metadata:{uploadId:string;reportedAmount?:number;bankReference?:string},expectedEmail:string,signal:AbortSignal) {
+export function postEnrollmentProof(path:string,file:File,metadata:import('../utils/enrollmentLearnerPayments').EnrollmentProofSubmission & {uploadId:string},expectedEmail:string,signal:AbortSignal) {
   return postEnrollmentBody(path,file,{
     'Content-Type':file.type,
     'X-Enrollment-Proof':encodeURIComponent(JSON.stringify(metadata)),

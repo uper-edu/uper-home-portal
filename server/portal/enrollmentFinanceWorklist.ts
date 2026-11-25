@@ -1,0 +1,51 @@
+import {enrollmentOrderStatus} from '../../src/utils/enrollmentOrderStatus.ts';
+import {enrollmentFinanceEvidence,readEnrollmentLearnerPaymentRows,withEnrollmentReceiptProofLinks} from './enrollmentLearnerPayments.ts';
+
+type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
+type Candidate={
+  id:string;state:string;class_state:string;name:string;price:number;received:number;
+  level:string;format:string;period:string;firstLessonAt:string;
+  data:{firstProofAvailableAt?:string;firstReviewDueAt?:string;learnerReceiptProofLinks?:unknown};
+};
+
+export async function readEnrollmentFinanceWorklist(c:Client,search:string,page:number,pageSize:number) {
+  // Canonical roots bound the lookup. The shared evidence matcher resolves legacy aliases and supplements.
+  const candidates:Candidate[]=(await c.query(`SELECT o.id,o.state,o.price,o.received,o.data,o.data->>'$.name' AS name,
+      e.state AS class_state,e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,
+      e.first_lesson_at AS firstLessonAt
+    FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
+    WHERE o.state NOT IN ('refunding','refunded') AND EXISTS (
+      SELECT 1 FROM enrollment_proofs p WHERE p.order_id=o.id
+        AND COALESCE(p.transfer_details->>'$.transferId',p.id)=p.id
+        AND NOT EXISTS (
+          SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id AND (
+            JSON_UNQUOTE(JSON_EXTRACT(o.data,CONCAT('$.learnerReceiptProofLinks.',JSON_QUOTE(r.reference))))=p.id
+            OR (r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)
+              AND JSON_EXTRACT(o.data,CONCAT('$.learnerReceiptProofLinks.',JSON_QUOTE(r.reference))) IS NULL)
+          )
+        )
+    ) AND (:p1='' OR LOCATE(:p1,LOWER(CONCAT_WS(' ',o.data->>'$.name',o.id,e.id,e.data->>'$.level',
+      REPLACE(e.data->>'$.level',' ',''),e.data->>'$.schedule')))>0)`,[search])).rows;
+  const queue=[];
+  for(let start=0;start<candidates.length;start+=100){
+    const batch=candidates.slice(start,start+100);
+    const rows=await readEnrollmentLearnerPaymentRows(c,batch.map(row=>row.id));
+    for(const order of batch){
+      const {transfers}=enrollmentFinanceEvidence(withEnrollmentReceiptProofLinks(rows.get(order.id),order.data.learnerReceiptProofLinks));
+      for(const transfer of transfers){
+        if(transfer.verifiedAmount!==undefined)continue;
+        const reviewDueAt=transfer.submittedAt===order.data.firstProofAvailableAt?order.data.firstReviewDueAt:undefined;
+        queue.push({
+          id:order.id,name:order.name,price:Number(order.price),received:Number(order.received),
+          level:order.level,format:order.format,period:order.period,firstLessonAt:order.firstLessonAt,
+          status:enrollmentOrderStatus(order.state,order.class_state),hasProof:true,proofAt:transfer.submittedAt,reviewDueAt,
+          transfer:{id:transfer.id,amount:transfer.amount,proofCount:transfer.proofCount},
+        });
+      }
+    }
+  }
+  queue.sort((a,b)=>Number(!a.reviewDueAt)-Number(!b.reviewDueAt)||(a.reviewDueAt??'').localeCompare(b.reviewDueAt??'')||
+    a.proofAt.localeCompare(b.proofAt)||a.id.localeCompare(b.id)||a.transfer.id.localeCompare(b.transfer.id));
+  const actualPage=page>1&&(page-1)*pageSize>=queue.length?1:page;
+  return {orders:queue.slice((actualPage-1)*pageSize,actualPage*pageSize),page:actualPage,pageSize,total:queue.length};
+}

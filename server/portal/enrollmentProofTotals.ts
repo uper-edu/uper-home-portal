@@ -75,7 +75,8 @@ export async function pendingEnrollmentProofTotals(c:Client,cutoff:string,classI
       COALESCE((SELECT SUM(a.amount) FROM enrollment_payment_credits a WHERE a.target_order_id=o.id AND a.created_at<:p1),0)<o.price
     LEFT JOIN enrollment_receipts r ON r.order_id=o.id AND r.created_at<:p1
       AND r.reference=CAST(p.transfer_details->>'$.reference' AS BINARY)
-    WHERE o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS
+    WHERE COALESCE(p.transfer_details->>'$.transferId',p.id)=p.id
+    AND o.created_at<:p1 AND (:p2 IS NULL OR o.class_id=:p2) AND NOT EXISTS
       (SELECT 1 FROM enrollment_refund_cases f WHERE f.order_id=o.id AND f.created_at<:p1)
       AND NOT EXISTS (SELECT 1 FROM portal_audit a WHERE a.action='enrollment.order.end'
         AND a.data->>'$.orderId'=o.id AND a.created_at<:p1)

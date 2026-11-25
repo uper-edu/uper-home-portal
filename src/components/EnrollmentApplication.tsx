@@ -30,6 +30,7 @@ import { readEnrollmentAftercare, type EnrollmentAftercare } from '../utils/enro
 import {enrollmentSupportPath} from '../utils/enrollmentSupportNavigation';
 import { EnrollmentModuleBoundary, lazyEnrollmentModule } from './EnrollmentModuleBoundary';
 import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
+import type {EnrollmentProofDraft,EnrollmentProofSubmission} from '../utils/enrollmentLearnerPayments';
 import { interestOption, waitlistStates } from '../utils/enrollmentInterestCopy';
 import { parseEnrollmentInterests, type DemandCriteria, type DemandItem, type Interests } from '../utils/enrollmentInterestRecords';
 import { enrollmentRecordClassLookup, sortEnrollmentRecords } from '../utils/enrollmentRecordOrder';
@@ -309,7 +310,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const [proofReadFailure,setProofReadFailure]=useState<'unavailable'|'not_found'>();
   const [confirmedProofOrderId,setConfirmedProofOrderId]=useState<string>();
   const [file,setFile] = useState<File>();
-  const [proofTransfer,setProofTransfer] = useState({amount:'',reference:''});
+  const [proofTransfer,setProofTransfer] = useState<EnrollmentProofDraft>({amount:'',reference:''});
   const [paymentRefresh,setPaymentRefresh] = useState<'checking'|'failed'>();
   const networkRevision=useRef(0);
   useEffect(()=>{
@@ -323,7 +324,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     setProofTransfer(next);
     const email=recordsEmail.current;
     if(!payment||!orderId||!email)return;
-    writeEnrollmentDraft(owner,proofTransferKey,next.amount||next.reference?{email,...next}:undefined);
+    writeEnrollmentDraft(owner,proofTransferKey,next.amount||next.reference||next.transferId?{email,...next}:undefined);
   }
   function persistEmailStep(verifying:boolean, challengeId?:string, sendId?:string) {
     writeEnrollmentDraft<ApplicationEmailDraft>(owner,emailDraftKey,{email:currentEmail,verifying,challengeId,sendId});
@@ -639,7 +640,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     if(!payment||!currentOrderId||!recordsEmail.current)return;
     const draft=readEnrollmentDraft<typeof proofTransfer & {email:string}>(owner,proofTransferKey);
     if(draft?.email===recordsEmail.current&&typeof draft.amount==='string'&&typeof draft.reference==='string')
-      setProofTransfer({amount:draft.amount,reference:draft.reference});
+      setProofTransfer({amount:draft.amount,reference:draft.reference,transferId:draft.transferId});
   },[payment,currentOrderId,owner,proofTransferKey]);
   const [mineRefreshFailedFor,setMineRefreshFailedFor]=useState<string>();
   const [mineRefreshChecking,setMineRefreshChecking]=useState(false);
@@ -987,7 +988,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       changeRecordsEmail();
     });
   }
-  function upload(transfer:{reportedAmount:number;bankReference?:string}) {
+  function upload(transfer:EnrollmentProofSubmission) {
     if (!order || !file || checkingProofReceipt) return;
     return run(async () => {
       const controller=new AbortController();
@@ -996,7 +997,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       finally { if(proofUpload.current===controller)proofUpload.current=undefined; }
     });
   }
-  async function submitProof(transfer:{reportedAmount:number;bankReference?:string},order:Order,file:File,signal:AbortSignal) {
+  async function submitProof(transfer:EnrollmentProofSubmission,order:Order,file:File,signal:AbortSignal) {
     setConfirmedProofOrderId(undefined);
     setProofReadFailure(undefined);
     const path=base+'/orders/'+encodeURIComponent(order.id)+'/proofs';
@@ -1048,7 +1049,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     catch(cause){
       if(!current())return;
       const message=(cause as Error).message;
-      if(['enrollment_invalid_proof','enrollment_upload_expired','enrollment_invalid_proof_amount','enrollment_origin_rejected'].includes(message)){
+      if(['enrollment_invalid_proof','enrollment_upload_expired','enrollment_invalid_proof_amount','enrollment_invalid_proof_transfer','enrollment_origin_rejected'].includes(message)){
         storePendingProof(undefined);
         throw cause;
       }
@@ -1211,6 +1212,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     enrollment_invalid_proof:['凭证上传失败。请检查文件后重试。','Upload failed. Check the file and retry.','Unggahan gagal. Periksa file dan coba lagi.'],
     enrollment_upload_expired:['上次上传已失效，请重新提交凭证。','The last upload expired. Submit your proof again.','Unggahan terakhir kedaluwarsa. Kirim kembali bukti Anda.'],
     enrollment_invalid_proof_amount:['请填写有效的实际转账金额（Rp 整数）。','Enter the actual amount transferred as a whole number in Rp.','Masukkan nominal transfer aktual dalam rupiah tanpa desimal.'],
+    enrollment_invalid_proof_transfer:['无法关联这笔转账。请核对凭证和所选记录。','This transfer could not be linked. Check the proof and the transfer you selected.','Transfer tidak dapat ditautkan. Periksa bukti dan transfer yang dipilih.'],
     enrollment_origin_rejected:['上传请求已被拒绝。请从原报名页面重新打开后再试。','The upload was rejected. Reopen it from your enrollment page and try again.','Unggahan ditolak. Buka kembali dari halaman pendaftaran Anda, lalu coba lagi.'],
     enrollment_operation_unconfirmed:['结果尚未确认。请查询上次提交。','The result is unconfirmed. Check your last submission.','Hasil belum terkonfirmasi. Periksa pengiriman terakhir Anda.'],
   };
@@ -1744,7 +1746,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const activeRecords = records.filter(record=>record.active&&!record.needsAction);
   const pastRecords = records.filter(record=>!record.active);
   const editingProof = payment && !!canUpload &&
-    (params.get('proof')==='upload'||!!pendingProof||!!file||!!proofTransfer.amount||!!proofTransfer.reference);
+    (params.get('proof')==='upload'||!!pendingProof||!!file||!!proofTransfer.amount||!!proofTransfer.reference||!!proofTransfer.transferId);
   const classCancelled=aftercare?.originalClassState==='cancelled';
   const existingTransferOnly = !!(editingProof && order && (!order.bank||classCancelled) &&
     (order.status==='expired' || order.closureReason==='learner_cancelled' || aftercare?.originalClassState==='cancelled'));
@@ -1771,7 +1773,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const summaryClass=aftercare?.currentClass??resultCourse;
   const summarySchedule=enrollmentScheduleLabel(summaryClass,language);
   const showPaymentForm=payment&&!!order&&!!canUpload&&!checkingRecords&&!loadingOrder&&!waitingForAftercare&&!showAftercare&&!showOrderResult;
-  const rejectedProof=showPaymentForm&&['enrollment_invalid_proof','enrollment_upload_expired','enrollment_invalid_proof_amount','enrollment_origin_rejected'].includes(error);
+  const rejectedProof=showPaymentForm&&['enrollment_invalid_proof','enrollment_upload_expired','enrollment_invalid_proof_amount','enrollment_invalid_proof_transfer','enrollment_origin_rejected'].includes(error);
   const proofFeedback=rejectedProof?<p role="alert" className="enrollment-result-state" data-state="error">{message}</p>:
     payment&&order&&pendingProof&&!loadingOrder&&!submittingProof&&(checkingProofReceipt||proofNeedsCheck)
     ?<div className="enrollment-result-state enrollment-proof-feedback" data-state="progress">

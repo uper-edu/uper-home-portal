@@ -435,7 +435,7 @@ test('finance order details keep each learner declaration with its own proof',as
         assert.deepEqual(args,['fixture-order']);
         assert.match(sql,/ORDER BY created_at DESC,id DESC/);
         assert.doesNotMatch(sql,/SELECT proof[, ]/);
-        return {rows:proofRows};
+        return {rows:proofRows.map(proof=>({...proof,digest:'digest-'+proof.id}))};
       }
       assert.match(sql,/FROM enrollment_(receipts|payment_credits)/);
       return {rows:[]};
@@ -445,6 +445,9 @@ test('finance order details keep each learner declaration with its own proof',as
     const response={set:()=>response,json:(data:unknown)=>{payload=data;}} as unknown as Response;
     await operationContext.run(client,()=>read(request,response));
     assert.deepEqual(payload.orders[0].proofs,proofRows);
+    assert.deepEqual(payload.orders[0].learnerTransfers.map(({id,amount,reference}:any)=>[id,amount,reference]),[
+      ['new-pdf',120000,'••••-REF'],['old-image',undefined,undefined],
+    ]);
     assert.equal(payload.orders[0].received,0);
     assert.equal(reads.filter(sql=>sql.includes('transfer_details AS transfer')).length,1);
     assert.deepEqual(payload.orders[0].receivingAccounts,[

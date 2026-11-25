@@ -10,6 +10,7 @@ import {nextPaymentClockDelay,paymentMinuteMs} from '../utils/enrollmentPaymentC
 import {EnrollmentJoiningNote} from './EnrollmentJoiningNote';
 import {hasEnrollmentBankPlaceholder,type EnrollmentBank} from '../utils/enrollmentBank';
 import {enrollmentProofAccept,enrollmentProofSelectionIssue} from '../utils/enrollmentProofFile';
+import type {EnrollmentLearnerTransfer,EnrollmentProofDraft,EnrollmentProofSubmission} from '../utils/enrollmentLearnerPayments';
 
 export type EnrollmentOrder = {
   id: string;
@@ -26,6 +27,7 @@ export type EnrollmentOrder = {
   bank?: EnrollmentBank;
   bankDetailsInvalid?: boolean;
   serverClockOffsetMs?: number;
+  transfers?: EnrollmentLearnerTransfer[];
 };
 
 type Language = 'zh' | 'en' | 'id';
@@ -40,9 +42,9 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   file?: File;
   busy: boolean;
   setFile: (file?: File) => void;
-  proofTransfer: {amount:string;reference:string};
-  onProofTransferChange: (draft:{amount:string;reference:string}) => void;
-  upload: (transfer:{reportedAmount:number;bankReference?:string}) => void;
+  proofTransfer: EnrollmentProofDraft;
+  onProofTransferChange: (draft:EnrollmentProofDraft) => void;
+  upload: (transfer:EnrollmentProofSubmission) => void;
   existingTransferOnly?: boolean;
   proofUploadFailed?: boolean;
   submittingProof?: boolean;
@@ -121,6 +123,10 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   const balance = Math.max(0, order.price - order.received);
   const amountLabel = order.received ? t('剩余应付', 'Remaining balance', 'Sisa tagihan') : t('应付金额', 'Amount due', 'Jumlah tagihan');
 
+  const previousTransfers=order.transfers??[];
+  const selectedTransfer=previousTransfers.find(transfer=>transfer.id===proofTransfer.transferId);
+  const newTransfer=!previousTransfers.length||proofTransfer.transferId==='new';
+
   async function copyValue(label: string, value: string) {
     const currentTime = Date.now();
     if (awaitingPayment && currentTime + clockOffset >= deadline.valueOf()) {
@@ -183,8 +189,9 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
     </div>}
     {canUpload && <form className="enrollment-payment-form" onSubmit={event => {
       event.preventDefault();
-      const bankReference=proofTransfer.reference.trim()||undefined;
-      upload({reportedAmount:Number(proofTransfer.amount),bankReference});
+      if(!newTransfer&&!selectedTransfer)return;
+      const bankReference=newTransfer?proofTransfer.reference.trim()||undefined:undefined;
+      upload({reportedAmount:newTransfer?Number(proofTransfer.amount):undefined,bankReference,transferId:selectedTransfer?.id});
     }}>
       <section className="enrollment-upload-section">
         <h2>{t('转账凭证', 'Transfer proof', 'Bukti transfer')}</h2>
@@ -209,20 +216,30 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
             : t('请选择有效的 PNG、JPEG 或 PDF 文件。','Choose a valid PNG, JPEG or PDF file.','Pilih file PNG, JPEG, atau PDF yang valid.')}
         </p>}
         <div className="enrollment-proof-transfer">
-          <label>{t('实际转账金额（Rp）','Amount transferred (Rp)','Nominal yang ditransfer (Rp)')} *
+          {!!previousTransfers.length&&<label>{t('这份凭证对应的转账','Transfer shown on this proof','Transfer pada bukti ini')} *
+            <select required disabled={busy} value={selectedTransfer?.id??(newTransfer?'new':'')} onChange={event=>
+              onProofTransferChange({amount:'',reference:'',transferId:event.currentTarget.value||undefined})}>
+              <option value="">{t('请选择','Select a transfer','Pilih transfer')}</option>
+              <option value="new">{t('新一笔已完成的转账','A new transfer already made','Transfer baru yang sudah dilakukan')}</option>
+              {previousTransfers.map(row=><option key={row.id} value={row.id}>
+                {t('补充原凭证','Add to an earlier transfer','Tambahkan bukti transfer sebelumnya')} · {enrollmentDateFormatter(language,'dateTime').format(new Date(row.submittedAt))} WIB{row.amount!==undefined?' · '+formatCurrency(row.amount,language):''}
+              </option>)}
+            </select>
+          </label>}
+          {newTransfer&&<label>{t('实际转账金额（Rp）','Amount transferred (Rp)','Nominal yang ditransfer (Rp)')} *
             <input name="reportedAmount" type="number" inputMode="numeric" min="1" max="1000000000" step="1" required disabled={busy}
               value={proofTransfer.amount} onChange={event=>onProofTransferChange({...proofTransfer,amount:event.target.value})}/>
-          </label>
-          <label>{t('银行流水号（选填）','Bank reference (optional)','Referensi bank (opsional)')}
+          </label>}
+          {newTransfer&&<label>{t('银行流水号（选填）','Bank reference (optional)','Referensi bank (opsional)')}
             <input name="bankReference" maxLength={120} autoComplete="off" disabled={busy}
               value={proofTransfer.reference} onChange={event=>onProofTransferChange({...proofTransfer,reference:event.target.value})}/>
-          </label>
+          </label>}
           <p>{t('请按银行回执填写。财务会核对实际到账。','Use the details on your bank receipt. Finance will verify the amount received.','Isi sesuai bukti bank. Tim keuangan akan memverifikasi dana yang diterima.')}</p>
         </div>
       </section>
       <div className="enrollment-proof-actions enrollment-payment-actions">
         {!existingTransferOnly && <p>{t('财务核实足额到账后，报名才算成功。', 'Enrollment is confirmed after Finance verifies full payment.', 'Pendaftaran berhasil setelah pembayaran penuh diverifikasi.')}</p>}
-        <button className="enrollment-primary" type="submit" disabled={busy || !file} aria-busy={submittingProof}>{submittingProof
+        <button className="enrollment-primary" type="submit" disabled={busy || !file || !newTransfer&&!selectedTransfer} aria-busy={submittingProof}>{submittingProof
           ? t('正在提交凭证…','Submitting proof…','Mengirim bukti…')
           : existingTransferOnly
           ? t('提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan')

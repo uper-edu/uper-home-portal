@@ -26,6 +26,8 @@ import { assistedEnrollmentOpportunity, mountEnrollmentCrm, recordEnrollmentCust
 import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
 import { isEnrollmentProofAmount,proofTransferDetails } from './enrollmentProofTotals.ts';
+import {enrollmentFinanceEvidence,enrollmentProofGroupId,enrollmentReceiptProofId,readEnrollmentLearnerPaymentRows,withEnrollmentReceiptProofLinks} from './enrollmentLearnerPayments.ts';
+import {readEnrollmentFinanceWorklist} from './enrollmentFinanceWorklist.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { latestAssistanceMail, orderNotice, proofNotices, retryAssistanceMail, sendAssistanceMail, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
 
@@ -134,9 +136,10 @@ export async function readProofSubmission(q:Request,r:Response) {
     try { metadata=JSON.parse(decodeURIComponent(header)); }
     catch { invalid('enrollment_invalid_proof'); }
   }
-  const {uploadId,reportedAmount,bankReference}=metadata??{};
+  const {uploadId,reportedAmount,bankReference,transferId}=metadata??{};
   if(typeof uploadId!=='string'||!uuid.test(uploadId))invalid('enrollment_invalid_proof');
-  if(header===undefined)return {uploadId,reportedAmount,bankReference,mime:metadata.mime,content:metadata.encoded};
+  const transferFields={uploadId,reportedAmount,bankReference,...(transferId!==undefined&&{transferId})};
+  if(header===undefined)return {...transferFields,mime:metadata.mime,content:metadata.encoded};
   const mime=q.is(proofMimeTypes)||undefined;
   if(mime){
     await new Promise<void>((resolve,reject)=>readBinaryProof(q,r,(error?:{status?:number})=>{
@@ -146,7 +149,7 @@ export async function readProofSubmission(q:Request,r:Response) {
       resolve();
     }));
   }
-  return {uploadId,reportedAmount,bankReference,mime,content:Buffer.isBuffer(q.body)?q.body:undefined};
+  return {...transferFields,mime,content:Buffer.isBuffer(q.body)?q.body:undefined};
 }
 
 async function readEnrollmentIntake(c:Client,policy?:ReturnType<typeof enrollmentServicePolicy>,includeBank=false) {
@@ -631,7 +634,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const result = await enrollTx(async (c: Client) => {
       const verifiedEmail = await session(c,q);
       const { order,cohort } = await lockOrder(c, String(q.params.id), verifiedEmail);
+      const rows=await readEnrollmentLearnerPaymentRows(c,[order.id]);
+      const evidence=enrollmentFinanceEvidence(withEnrollmentReceiptProofLinks(rows.get(order.id),order.data?.learnerReceiptProofLinks));
       return { ...view(order,cohort.state), verifiedEmail,
+        transfers:evidence.transfers.map(({proofIds,...transfer})=>transfer),
         bank: cohort.state!=='cancelled' && (order.state === 'awaiting_payment' || order.state === 'partial') ? order.data.bank : undefined };
     });
     r.set('Cache-Control', 'no-store').json(result);
@@ -685,7 +691,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
   });
 
   post(base + '/orders/:id/proofs/finish', async (q, r) => {
-    const {uploadId,reportedAmount,bankReference,mime,content}=await readProofSubmission(q,r);
+    const {uploadId,reportedAmount,bankReference,transferId,mime,content}=await readProofSubmission(q,r);
     // End the current attempt on a rejected upload, so a later attempt uses a fresh server clock.
     const result = await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
@@ -694,19 +700,25 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       if (order.upload_id !== uploadId || !Number(order.upload_active) || !allowsEnrollmentProof(order.state,order.data?.closureReason)) {
         invalid('enrollment_upload_expired', 409);
       }
-      if (!isEnrollmentProofAmount(reportedAmount)) invalid('enrollment_invalid_proof_amount');
+      if(transferId!==undefined&&(typeof transferId!=='string'||!uuid.test(transferId)))invalid('enrollment_invalid_proof_transfer');
+      if(transferId===undefined&&!isEnrollmentProofAmount(reportedAmount))invalid('enrollment_invalid_proof_amount');
       let proof, transferDetails;
       try {
         proof = await measureEnrollmentPhase(r,'proof_validation',()=>proofContent(content,mime));
-        transferDetails = proofTransferDetails(reportedAmount,bankReference);
+        transferDetails = transferId===undefined?proofTransferDetails(reportedAmount,bankReference):null;
       }
       catch {
         await c.query('UPDATE enrollment_orders SET upload_id=NULL,upload_expires_at=NULL WHERE id=:p1', [order.id]);
         await expireSeats(c, order.class_id);
         return null;
       }
+      const rows=(await readEnrollmentLearnerPaymentRows(c,[order.id])).get(order.id);
+      const groupId=enrollmentProofGroupId(rows?.proofs??[],uploadId,proof.digest,transferDetails?.reference,transferId);
+      if(!groupId)invalid('enrollment_invalid_proof_transfer',409);
       await c.query(`INSERT INTO enrollment_proofs(id,order_id,mime,digest,proof,transfer_details,created_at)
-        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,proof.digest,proof.encoded,transferDetails]);
+        VALUES(:p1,:p2,:p3,:p4,FROM_BASE64(:p5),:p6,UTC_TIMESTAMP(6))`, [uploadId,order.id,mime,proof.digest,proof.encoded,{
+        ...transferDetails,amount:groupId===uploadId?transferDetails?.amount:undefined,transferId:groupId,
+      }]);
       const state = order.state === 'awaiting_payment' ? 'proof_review' : order.state;
       if (!order.data.firstReviewDueAt) {
         const first=(await c.query(`SELECT id,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS availableAt
@@ -731,17 +743,19 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     await financeActor(q);
     const search=typeof q.query.q==='string'?q.query.q.trim().slice(0,120).toLowerCase():'';
     const status=typeof q.query.status==='string'&&['all','pending','proof_review','partial','paid','refund','closed'].includes(q.query.status)
-      ?q.query.status:'pending';
+      ?q.query.status:'proof_review';
     const page=Math.max(1,Math.min(1_000_000,Math.floor(Number(q.query.page)||1)));
     const pageSize=25,offset=(page-1)*pageSize;
+    if(status==='proof_review'){
+      const result=await tx((c:Client)=>readEnrollmentFinanceWorklist(c,search,page,pageSize));
+      return r.set('Cache-Control','no-store').json(result);
+    }
     const result=await enrollTx(async c=>{
       const sql=`SELECT ranked.* FROM (
         SELECT filtered.*,COUNT(*) OVER() AS total,
           ROW_NUMBER() OVER(ORDER BY
-          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.pending_review ELSE 0 END DESC,
-          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.review_due IS NULL ELSE 0 END,
-          CASE WHEN :p2 IN ('pending','proof_review') THEN filtered.review_due END ASC,
-          CASE WHEN :p2 IN ('pending','proof_review') AND filtered.pending_review=1 THEN filtered.proof_at END ASC,
+          CASE WHEN :p2='pending' THEN filtered.review_due IS NULL ELSE 0 END,
+          CASE WHEN :p2='pending' THEN filtered.review_due END ASC,
           filtered.created_at DESC,filtered.id) AS position
         FROM (
           SELECT o.id,o.state,o.price,o.received,o.created_at,o.data->>'$.name' AS name,e.state AS class_state,
@@ -749,9 +763,6 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
             e.first_lesson_at AS firstLessonAt,
             latest_proof.created_at IS NOT NULL AS has_proof,
             DATE_FORMAT(latest_proof.created_at,'%Y-%m-%dT%H:%i:%sZ') AS proof_at,
-            IF(o.state IN ('proof_review','partial','expired') AND latest_proof.created_at IS NOT NULL
-              AND NOT EXISTS(SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id AND r.created_at>=latest_proof.created_at),
-              1,0) AS pending_review,
             CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (
               SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id
                 AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')
@@ -770,8 +781,6 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
           OR (:p2='paid' AND filtered.state IN ('paid','recovered'))
           OR (:p2='refund' AND filtered.state IN ('refunding','refunded'))
           OR (:p2='closed' AND filtered.state IN ('ended','expired'))
-          OR (:p2='proof_review' AND (filtered.state='proof_review' OR
-            (filtered.state IN ('partial','expired') AND filtered.pending_review=1 AND filtered.received<filtered.price)))
           OR (:p2='partial' AND filtered.state='partial'))
       ) ranked WHERE ranked.position>:p3 AND ranked.position<=:p3+:p4 ORDER BY ranked.position`;
       let rows=(await c.query(sql,[search,status,offset,pageSize])).rows;
@@ -789,25 +798,24 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
   app.get(finance, wrap(async (q, r) => {
     await financeActor(q);
     const orderId=typeof q.query.order==='string'?q.query.order:'';
+    const bankLookup=q.query.bankLookup==='1';
+    if(bankLookup&&!uuid.test(orderId))invalid('enrollment_invalid_order_number');
     const orders = await enrollTx(async (c: Client) => {
       const rows=(await c.query(`SELECT o.*,e.state AS class_state,e.first_lesson_at AS firstLessonAt,
         e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,
         EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=o.class_id) AS opened,
-        CASE WHEN o.state IN ('proof_review','partial','expired') AND NOT EXISTS (
-          SELECT 1 FROM enrollment_receipts r WHERE r.order_id=o.id
-            AND r.created_at>=STR_TO_DATE(o.data->>'$.firstProofAvailableAt','%Y-%m-%dT%H:%i:%s.%fZ')
-        ) THEN o.data->>'$.firstReviewDueAt' END AS first_review_due_at,
         latest_proof.id AS proof_id,latest_proof.mime AS proof_mime
       FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
       LEFT JOIN LATERAL (SELECT p.id,p.mime FROM enrollment_proofs p
         WHERE p.order_id=o.id ORDER BY p.created_at DESC,p.id DESC LIMIT 1) latest_proof ON TRUE
-      WHERE (:p1='' OR o.id=:p1) AND (o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
+      WHERE (:p1='' OR o.id=:p1) AND (:p2=1 OR o.state IN ('proof_review','partial','paid','recovered','refunding','refunded')
         OR (o.state IN ('ended','expired') AND (o.received>0 OR o.data->>'$.creditOut' IS NOT NULL)) OR latest_proof.id IS NOT NULL)
-      ORDER BY o.created_at DESC LIMIT 150`,[orderId])).rows;
+      ORDER BY o.created_at DESC LIMIT 150`,[orderId,Number(bankLookup)])).rows;
       const receivingAccounts=orderId&&rows.length?await readEnrollmentReceivingAccounts(c,rows[0].data.bank):undefined;
-      const proofs=orderId&&rows[0]?.proof_id?(await c.query(`SELECT id,mime,
+      const proofRows=orderId&&rows[0]?.proof_id?(await c.query(`SELECT id,mime,digest,
         DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS submittedAt,transfer_details AS transfer
         FROM enrollment_proofs WHERE order_id=:p1 ORDER BY created_at DESC,id DESC`,[orderId])).rows:[];
+      const proofs=proofRows.map(({digest,...proof})=>proof);
       const receiptsByOrder=new Map<string,any[]>();
       const creditsByOrder=new Map<string,any[]>();
       if(rows.length){
@@ -833,9 +841,17 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
           }
         }
       }
-      return rows.map(row=>({...view(row,row.class_state),name:row.data.name,opened:Number(row.opened)===1,
-        proofId:row.proof_id,proofMime:row.proof_mime,proofs,receivingAccounts,firstReviewDueAt:row.first_review_due_at,receipts:receiptsByOrder.get(row.id)??[],credits:creditsByOrder.get(row.id)??[],
-        level:row.level,format:row.format,period:row.period,firstLessonAt:row.firstLessonAt}));
+      return rows.map(row=>{
+        const receipts=receiptsByOrder.get(row.id)??[];
+        const paymentRows=proofRows.length?{proofs:proofRows.slice().reverse().map(({id,digest,submittedAt,transfer})=>({id,digest,submittedAt,details:transfer})),receipts}:undefined;
+        const evidence=paymentRows?enrollmentFinanceEvidence(withEnrollmentReceiptProofLinks(paymentRows,row.data?.learnerReceiptProofLinks)):undefined;
+        const learnerTransfers=evidence?.transfers.map(transfer=>({...transfer,
+          reviewDueAt:transfer.verifiedAmount===undefined&&transfer.submittedAt===row.data?.firstProofAvailableAt?row.data.firstReviewDueAt:undefined,
+        }));
+        return {...view(row,row.class_state),name:row.data.name,opened:Number(row.opened)===1,
+          proofId:row.proof_id,proofMime:row.proof_mime,proofs,receivingAccounts,receipts,credits:creditsByOrder.get(row.id)??[],
+          learnerTransfers,unmatchedReferences:evidence?.unmatchedReferences,level:row.level,format:row.format,period:row.period,firstLessonAt:row.firstLessonAt};
+      });
     });
     r.set('Cache-Control', 'no-store').json({ orders });
   }));
@@ -854,20 +870,35 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
 
   post(finance + '/:id/receipts', async (q, r) => {
     const actor = await financeActor(q);
-    const { amount, reference, receivingAccount, transferredAt, requestId } = q.body;
+    const { amount, reference, receivingAccount, transferredAt, requestId, proofId, existingReference } = q.body;
+    const linking=existingReference!==undefined;
+    const bankReference=linking?existingReference:reference;
     const time = typeof transferredAt === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(transferredAt) ? new Date(transferredAt) : null;
-    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1_000_000_000 ||
-        typeof reference !== 'string' || !reference.trim() || reference.length > 120 ||
-        !time || !Number.isFinite(time.getTime()) || time.getTime() > Date.now() ||
-        typeof requestId !== 'string' || !uuid.test(requestId)) invalid('enrollment_invalid_receipt');
+    if(typeof bankReference!=='string'||!bankReference.trim()||bankReference.length>120||
+      typeof requestId!=='string'||!uuid.test(requestId)||
+      (linking?!proofId:(!Number.isSafeInteger(amount)||amount<1||amount>1_000_000_000||
+        !time||!Number.isFinite(time.getTime())||time.getTime()>Date.now())))invalid('enrollment_invalid_receipt');
     const id = String(q.params.id);
     const result = await measureEnrollmentPhase(r,'transaction',()=>moneyTx((c: Client) => operation(c, actor.id, q.body,
       { leadId: 'enrollment:' + id, kind: 'enrollment.receipt', authorize: () => financeActor(q) }, async () => {
-      if(typeof receivingAccount!=='string'||!receivingAccount.trim()||receivingAccount.trim().length>enrollmentReceivingAccountMaxLength)
+      if(!linking&&(typeof receivingAccount!=='string'||!receivingAccount.trim()||receivingAccount.trim().length>enrollmentReceivingAccountMaxLength))
         invalid('enrollment_receiving_account_required');
       const { order, cohort } = await lockOrder(c, id);
       if(['refunding','refunded'].includes(order.state)) invalid('enrollment_refund_in_progress',409);
-      const ref = reference.trim().toUpperCase();
+      const ref = bankReference.trim().toUpperCase();
+      let receiptData=order.data;
+      if(proofId!==undefined){
+        if(typeof proofId!=='string'||!uuid.test(proofId))invalid('enrollment_invalid_receipt_proof');
+        const rows=withEnrollmentReceiptProofLinks((await readEnrollmentLearnerPaymentRows(c,[order.id])).get(order.id),order.data?.learnerReceiptProofLinks);
+        if(linking&&!enrollmentFinanceEvidence(rows).unmatchedReferences.includes(ref))invalid('enrollment_invalid_receipt_proof',409);
+        const groupId=enrollmentReceiptProofId(rows.proofs,proofId,ref,rows.receipts);
+        if(!groupId)invalid('enrollment_invalid_receipt_proof',409);
+        receiptData={...order.data,learnerReceiptProofLinks:{...order.data?.learnerReceiptProofLinks,[ref]:groupId}};
+      }
+      if(linking){
+        await c.query('UPDATE enrollment_orders SET data=:p1,activity_at=UTC_TIMESTAMP(6) WHERE id=:p2',[receiptData,id]);
+        return {order:view(order,cohort.state)};
+      }
       try {
         await c.query(`INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,receiving_account,created_at)
           VALUES(:p1,:p2,:p3,:p4,:p5,:p6,UTC_TIMESTAMP(6))`, [ref,id,amount,actor.id,time,receivingAccount.trim()]);
@@ -886,8 +917,8 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       } else if(!['ended','expired','recovered'].includes(order.state)){
         state=received>=order.price?'paid':'partial';
       }
-      const summary=await updateEnrollmentPayment(c,{order,cohort},received,state);
-      await applyEnrollmentPaymentCredits(c,{order:{...order,state,received},cohort},lockOrder);
+      const summary=await updateEnrollmentPayment(c,{order,cohort},received,state,receiptData);
+      await applyEnrollmentPaymentCredits(c,{order:{...order,data:receiptData,state,received},cohort},lockOrder);
       const latest=(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0];
       return {order:view(latest,cohort.state),...summary};
     })));
