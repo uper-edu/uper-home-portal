@@ -68,7 +68,8 @@ test('direct credential setup preserves each service’s verification, replaceme
     PORTAL_CREDENTIAL_PROVIDER_CHECKS:process.env.PORTAL_CREDENTIAL_PROVIDER_CHECKS};
   process.env.PORTAL_ENV='dev';
   process.env.PORTAL_CREDENTIAL_KEYRING_FILE=file;
-  process.env.PORTAL_CREDENTIAL_PROVIDER_CHECKS='true';
+  // The retired switch no longer blocks a system administrator's credential check.
+  process.env.PORTAL_CREDENTIAL_PROVIDER_CHECKS='false';
   t.after(()=>{for(const [key,value] of Object.entries(legacyEnv)){
     if(value===undefined)delete process.env[key];else process.env[key]=value;
   }});

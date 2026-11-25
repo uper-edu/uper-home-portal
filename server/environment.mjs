@@ -13,11 +13,14 @@ export function portalEnvironmentKey(key) {
   return key.startsWith('UPER_PORTAL_') ? key.slice(5) : key;
 }
 
+// Ignore both spellings in old environment files before checking for conflicts.
+const retiredPortalSettings = new Set(['PORTAL_WORKER_ENABLED', 'PORTAL_CREDENTIAL_PROVIDER_CHECKS']);
+
 function normalizePortalEnvironment(values) {
   const normalized = {...values};
   for (const [key, value] of Object.entries(values)) {
     const runtimeKey = portalEnvironmentKey(key);
-    if (runtimeKey === 'PORTAL_WORKER_ENABLED') {
+    if (retiredPortalSettings.has(runtimeKey)) {
       delete normalized[key];
       continue;
     }
@@ -109,7 +112,7 @@ export function loadPortalEnvironment({ env = process.env, directory = process.c
   }
   Object.assign(env, mysqlEnvironment(normalizePortalEnvironment(env)));
   for (const key of Object.keys(env))
-    if (portalEnvironmentKey(key) !== key || key === 'PORTAL_WORKER_ENABLED') delete env[key];
+    if (portalEnvironmentKey(key) !== key || retiredPortalSettings.has(key)) delete env[key];
   if (name) env.PORTAL_ENV = name;
   if(env.PORTAL_BOOTSTRAP_SECRET_FILE)Object.assign(env,readBootstrapSecrets(env.PORTAL_BOOTSTRAP_SECRET_FILE));
   if (env.PORTAL_PACKAGE_ENV && name && env.PORTAL_PACKAGE_ENV !== name) throw Error('Package and runtime environment mismatch');

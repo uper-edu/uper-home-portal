@@ -334,7 +334,6 @@ export function mountIntegrationCredentials(app: Express, {
         const destination=await target(db,slot,true);
         if(state.revision!==revision)return fail(409,'credential_conflict');
         if(destination.validation==='manual'&&q.body.confirmed!==true)return fail(403,'credential_manual_confirmation_required');
-        if(destination.validation==='provider'&&process.env.PORTAL_CREDENTIAL_PROVIDER_CHECKS!=='true')return fail(409,'credential_provider_checks_disabled');
         if(setupId){
           if(!canReplace&&(state.active||!state.managed&&destination.legacy()))return fail(409,'credential_revoke_current_required');
           const setupTarget=credentialTarget([destination.id,...destination.context]);

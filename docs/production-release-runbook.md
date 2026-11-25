@@ -135,7 +135,6 @@
 | `MYSQL_BIN_DIRECTORY` | 备份或恢复工具找不到 MySQL 客户端时填写。 |
 | `ACCESS_INITIAL_PASSWORD` | 全新生产库首次启动前，由部署层从私有配置注入。若启动器读取环境文件，在私有 `.env.prod`（权限 `0600`）中填写。预置账号首次登录必须改密。确认账号初始化成功后，可从私有配置移除此项。 |
 | `UPER_PORTAL_BOOTSTRAP_SECRET_FILE` | 部署层按需指定启动凭证私有文件的绝对路径，可提供数据库连接和首次初始化所需的临时密码。初始化成功后只移除临时密码条目，保留仍在使用的连接配置。 |
-| `UPER_PORTAL_CREDENTIAL_PROVIDER_CHECKS` | 仅获准调用真实供应商核验时启用。 模板值为 `false`。 |
 | `OPENAI_MODEL` | 可选的初始模型覆盖。已有后台配置时以后台为准。模板示例已注释。 |
 | `UPER_PORTAL_COS_BUCKET`、`UPER_PORTAL_COS_REGION`、`UPER_PORTAL_COS_PREFIX` | 省略时使用代码内置目标。若存量部署显式提供这些值，必须与已批准的桶、区域及 `cms/` 前缀一致。 |
 

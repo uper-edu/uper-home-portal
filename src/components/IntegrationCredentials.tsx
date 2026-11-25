@@ -180,7 +180,6 @@ export function IntegrationCredentialControl({kind,resource,lang,isLight,rowLabe
       kind==='ga'?t('The Measurement ID does not match this environment.','ID Pengukuran tidak sesuai dengan lingkungan ini.','衡量 ID 与当前环境不匹配。'):
       kind==='lark-group'?t('Check the Webhook URL and signing settings.','Periksa URL webhook dan pengaturan tanda tangan.','请核对 Webhook 地址和签名设置。'):
       t('Verification failed. Review the candidate credential.','Verifikasi gagal. Periksa kredensial calon.','验证失败，请核对候选凭证。'),
-    credential_provider_checks_disabled:t('Provider checks are disabled for this environment.','Pemeriksaan penyedia dinonaktifkan di lingkungan ini.','本环境未启用供应商连接核验。'),
     credential_verification_running:t('Verification is in progress. Refresh to check the result.','Verifikasi sedang berjalan. Segarkan untuk melihat hasil.','正在核验，请刷新查看结果。'),
     credential_invalid:t('Check the credential fields.','Periksa kolom kredensial.','请核对凭证字段。'),
     credential_conflict:t('Settings changed elsewhere. Refresh to review the latest version.','Pengaturan berubah. Segarkan untuk meninjau versi terbaru.','配置已在别处更新，请刷新核对。'),

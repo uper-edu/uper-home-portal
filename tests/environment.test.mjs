@@ -26,6 +26,15 @@ test('environment target errors and unprovisioned production fail before databas
  assert.throws(()=>loadPortalEnvironment({env:{},directory,target:'prod'}),/not been provisioned/);
  assert.throws(()=>loadPortalEnvironment({env:{PORTAL_ENV:'test',PORTAL_ENV_SOURCE:'injected',PORTAL_PACKAGE_ENV:'prod'}}),/mismatch/);
 });
+test('old provider check overrides are discarded from files and injected environments',t=>{
+ const directory=fixture(t);
+ const retired={PORTAL_CREDENTIAL_PROVIDER_CHECKS:'false',UPER_PORTAL_CREDENTIAL_PROVIDER_CHECKS:'true'};
+ fs.writeFileSync(path.join(directory,'.env.dev'),`PORTAL_ENV=dev\n${Object.entries(retired).map(([key,value])=>`${key}=${value}`).join('\n')}`);
+ assert.equal(readEnvironment('dev',directory).values.PORTAL_CREDENTIAL_PROVIDER_CHECKS,undefined);
+ const env={PORTAL_ENV:'test',PORTAL_ENV_SOURCE:'injected',...retired};
+ assert.equal(loadPortalEnvironment({env,directory}).target,'test');
+ for(const key of Object.keys(retired))assert.equal(env[key],undefined);
+});
 test('frontend configuration excludes private values and rejects secret VITE names',t=>{
  const directory=fixture(t);fs.writeFileSync(path.join(directory,'.env.test'),'PORTAL_ENV=test\nOPENAI_API_KEY=synthetic-private\nMYSQL_TRIAL_URL=mysql://private\nVITE_TEST_PUBLIC=TEST-PUBLIC');
  assert.deepEqual(frontendEnvironment('test',directory),{VITE_TEST_PUBLIC:'TEST-PUBLIC'});
