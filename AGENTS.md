@@ -9,6 +9,12 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 - Confirm the delivery batch and its exact commit with the user before pushing to the canonical repository or releasing to company test. Production deployment requires separate explicit authorization.
 - Keep lesson content and grading rules unchanged during infrastructure fixes unless the user requests content changes.
 
+## 环境变量与业务开关
+
+- 环境变量用于部署和基础设施所需的配置，例如运行环境、服务地址、连接参数、凭证注入和日志设置。禁止为已交付的业务功能、权限或管理操作新增环境变量开关。
+- 业务确需启停时，沿用现有系统配置和权限。
+- 凡需在任何环境的 `.env` 或模板中新增环境变量，必须先向用户单独说明变量名、用途、涉及环境、默认或缺失时的行为及运维影响，取得用户明确批准后才可实施。功能开发、合并或发布授权不能替代这项审批。获批后同步更新对应环境模板与发布手册。
+
 ## 本地开发与验证范围
 
 - 默认在本地 `main` 开发，在本地 3000 按改动影响做定向验收。验收通过后，按可独立验证和回退的范围提交到本地 `main`。
