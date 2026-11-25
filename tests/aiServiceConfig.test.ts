@@ -3,6 +3,8 @@ import {aiModels,validateSelection,isAiAdministrator,probeModel,providerFor} fro
 import {aiServiceText} from '../src/utils/aiServiceLanguage';
 import {compareGoals} from '../server/portal/goalReview';
 import {changeAiSupplier,selectableAiModels,supplierViews} from '../server/portal/aiSupplierSettings';
+import {aiCredentialTarget} from '../server/portal/integrationCredentialTargets';
+import {credentialSlot,credentialSource,credentialTarget} from '../server/portal/integrationCredentials';
 
 const claudeHaiku='claude-haiku-5-5',claudeSonnet='claude-sonnet-5-5';
 
@@ -65,14 +67,19 @@ test('MiniMax template keeps legacy routing until registration and separates the
  const active={...registered,suppliers:{minimax:changeAiSupplier(verified,{id:'minimax',action:'enable'},true,false)}};
  assert.ok(selectableAiModels(active,supplierViews(active,{minimax:true})).includes(model));
  assert.equal(providerFor(model).provider,'openai');
- assert.deepEqual(providerFor(model,'low','minimax'),{model,provider:'minimax',key:undefined,url:'https://api.minimax.io/v1/chat/completions',reasoningEffort:'low'});
+ assert.deepEqual(providerFor(model,'low','minimax'),{model,provider:'minimax',key:undefined,url:'https://api.minimax.cn/v1/chat/completions',reasoningEffort:'low'});
+ const previousCredential={id:'synthetic-minimax',sealed:'unused',createdAt:'2026-01-01T00:00:00.000Z',
+  target:credentialTarget(['minimax','https://api.minimax.io/v1/chat/completions'])};
+ assert.deepEqual(credentialSource({revision:1,managed:true,active:previousCredential},credentialSlot('ai','minimax','dev'),
+  aiCredentialTarget('minimax'),()=>assert.fail('Managed MiniMax must not fall back to a legacy credential')),
+ {source:'target_changed',value:undefined});
 });
 
 test('managed MiniMax passes completion, stream and extraction probes with its official request contract',async()=>{
  const model='MiniMax-M3.1-Flash';
  const requests:string[]=[];
  const request:typeof fetch=async(url,init)=>{
-  assert.equal(url,'https://api.minimax.io/v1/chat/completions');
+  assert.equal(url,'https://api.minimax.cn/v1/chat/completions');
   assert.equal(new Headers(init?.headers).get('authorization'),'Bearer synthetic-minimax');
   assert.equal(init?.redirect,'error');
   const body=JSON.parse(String(init?.body));
