@@ -761,6 +761,12 @@
       "server/portal/aiServiceConfig.ts"
     ]
   },
+  "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'ai.supplier',:p2)": {
+    "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'ai.supplier',:p2)",
+    "sources": [
+      "server/portal/aiServiceConfig.ts"
+    ]
+  },
   "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)": {
     "sql": "INSERT INTO portal_audit(actor,action,data) VALUES(:p1,'attendance.record',:p2)",
     "sources": [
@@ -1035,8 +1041,7 @@
   "INSERT INTO portal_settings(id,value) VALUES('ai_service',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)": {
     "sql": "INSERT INTO portal_settings(id,value) VALUES('ai_service',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)",
     "sources": [
-      "server/portal/aiServiceConfig.ts",
-      "server/portal/integrationCredentialAdmin.ts"
+      "server/portal/aiSupplierSettings.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES('crm_assignment_cursor',:p1) ON DUPLICATE KEY UPDATE value=:p1": {

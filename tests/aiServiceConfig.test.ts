@@ -2,17 +2,113 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {aiModels,validateSelection,isAiAdministrator,probeModel,providerFor} from '../server/portal/aiServiceConfig';
 import {aiServiceText} from '../src/utils/aiServiceLanguage';
 import {compareGoals} from '../server/portal/goalReview';
+import {changeAiSupplier,selectableAiModels,supplierViews} from '../server/portal/aiSupplierSettings';
+
+const claudeHaiku='claude-haiku-5-5',claudeSonnet='claude-sonnet-5-5';
+
+test('Claude template saves an inactive supplier without changing current routing',()=>{
+ const settings={current:{primary:'gpt-6-luna',fallback:'deepseek-v4-pro'}};
+ const input={id:'anthropic',action:'add',name:'  Anthropic test  ',models:[claudeHaiku],endpoint:'https://ignored.invalid'};
+ const draft=changeAiSupplier(settings,input,false,false);
+ assert.deepEqual(draft,{id:'anthropic',name:'Anthropic test',models:[claudeHaiku],enabled:false});
+ const saved={...settings,suppliers:{anthropic:draft}};
+ assert.deepEqual(settings.current,{primary:'gpt-6-luna',fallback:'deepseek-v4-pro'});
+ assert.deepEqual(supplierViews(settings,{}),[]);
+ assert.equal(supplierViews(saved,{anthropic:true})[0].credentialReady,false);
+ assert.ok(!selectableAiModels(saved,supplierViews(saved,{anthropic:true})).includes(claudeHaiku));
+ assert.throws(()=>changeAiSupplier(saved,input,false,false),/supplier_exists/);
+ assert.throws(()=>changeAiSupplier(settings,{...input,models:['gpt-6-luna']},false,false),/supplier_invalid/);
+ assert.throws(()=>changeAiSupplier(settings,{...input,models:[claudeHaiku,claudeHaiku]},false,false),/supplier_invalid/);
+ assert.throws(()=>changeAiSupplier(settings,{...input,id:'unknown-provider'},false,false),/supplier_invalid/);
+ assert.equal(providerFor(claudeHaiku).url,'https://api.anthropic.com/v1/messages');
+});
+
+test('Claude models become selectable after credential verification and explicit activation',()=>{
+ const current={primary:'gpt-6-luna',fallback:'deepseek-v4-pro'};
+ const settings={current,suppliers:{anthropic:{id:'anthropic' as const,name:'Claude',models:[claudeHaiku],enabled:false}}};
+ const input={id:'anthropic',action:'enable'};
+ assert.throws(()=>changeAiSupplier(settings,input,true,false),/supplier_credential_required/);
+ const verified={current,suppliers:{anthropic:{...settings.suppliers.anthropic,verified:true}}};
+ assert.throws(()=>changeAiSupplier(verified,input,false,false),/supplier_credential_required/);
+ const active={current,suppliers:{anthropic:changeAiSupplier(verified,input,true,false)}};
+ const models=selectableAiModels(active,supplierViews(active,{anthropic:true}));
+ assert.ok(models.includes(claudeHaiku));
+ assert.ok(!models.includes(claudeSonnet));
+ assert.deepEqual(validateSelection({primary:claudeHaiku,fallback:current.fallback},models),{primary:claudeHaiku,fallback:current.fallback});
+ assert.throws(()=>validateSelection({primary:claudeSonnet,fallback:current.fallback},models),/invalid_selection/);
+ const disable={...input,action:'disable'};
+ assert.throws(()=>changeAiSupplier({...active,current:{...current,fallback:claudeHaiku}},disable,true,false),/supplier_in_use/);
+ const inactive={current,suppliers:{anthropic:changeAiSupplier(active,disable,true,false)}};
+ assert.ok(!selectableAiModels(inactive,supplierViews(inactive,{anthropic:true})).includes(claudeHaiku));
+});
+
+test('existing Claude credentials and active legacy selections are retained across the upgrade',()=>{
+ const settings={current:{primary:claudeSonnet,fallback:'gpt-6-luna'}};
+ const available=supplierViews(settings,{anthropic:true});
+ assert.equal(available[0].registered,false);
+ assert.ok(selectableAiModels(settings,available).includes(claudeHaiku));
+ assert.ok(selectableAiModels(settings,supplierViews(settings,{})).includes(claudeSonnet));
+ assert.throws(()=>changeAiSupplier(settings,{id:'anthropic',action:'add',name:'Claude',models:[claudeSonnet]},false,false),/supplier_exists/);
+});
+
+test('MiniMax template keeps legacy routing until registration and separates the official credential',async()=>{
+ const model='MiniMax-M3.1-Flash';
+ const settings={current:{primary:'gpt-6-luna',fallback:'deepseek-v4-pro'}};
+ const input={id:'minimax',action:'add',name:'MiniMax',models:[model]};
+ assert.ok(selectableAiModels(settings,supplierViews(settings,{})).includes(model));
+ const inUse={current:{...settings.current,primary:model}};
+ assert.throws(()=>changeAiSupplier(inUse,input,false,false),/supplier_exists/);
+ const draft=changeAiSupplier(settings,input,false,false);
+ const registered={...settings,suppliers:{minimax:draft}};
+ assert.ok(!selectableAiModels(registered,supplierViews(registered,{})).includes(model));
+ const verified={...registered,suppliers:{minimax:{...draft,verified:true}}};
+ const active={...registered,suppliers:{minimax:changeAiSupplier(verified,{id:'minimax',action:'enable'},true,false)}};
+ assert.ok(selectableAiModels(active,supplierViews(active,{minimax:true})).includes(model));
+ assert.equal(providerFor(model).provider,'openai');
+ assert.deepEqual(providerFor(model,'low','minimax'),{model,provider:'minimax',key:undefined,url:'https://api.minimax.io/v1/chat/completions',reasoningEffort:'low'});
+});
+
+test('managed MiniMax passes completion, stream and extraction probes with its official request contract',async()=>{
+ const model='MiniMax-M3.1-Flash';
+ const requests:string[]=[];
+ const request:typeof fetch=async(url,init)=>{
+  assert.equal(url,'https://api.minimax.io/v1/chat/completions');
+  assert.equal(new Headers(init?.headers).get('authorization'),'Bearer synthetic-minimax');
+  assert.equal(init?.redirect,'error');
+  const body=JSON.parse(String(init?.body));
+  assert.equal(body.reasoning_split,true);
+  assert.equal(body.reasoning_effort,'low');
+  assert.equal(body.response_format,undefined);
+  assert.equal(body.temperature,undefined);
+  assert.ok(body.max_completion_tokens>0);
+  assert.match(body.messages[0].content,/one JSON object/);
+  if(body.stream){
+   requests.push('stream');
+   const chunks=[{model,choices:[{delta:{reasoning_content:'internal'},finish_reason:null}]},
+    {model,choices:[{delta:{content:'{"ok":true}'},finish_reason:'stop'}]}];
+   return new Response(chunks.map(chunk=>`data: ${JSON.stringify(chunk)}\n\n`).join('')+'data: [DONE]\n\n',{headers:{'content-type':'text/event-stream'}});
+  }
+  const extraction=body.messages.some((message:any)=>message.content.includes('You extract CRM evidence'));
+  requests.push(extraction?'extraction':'direct');
+  const value=extraction?{observations:[{kind:'field',field:'budgetAmount',value:1500000,quote:'150万印尼盾',subject:'customer',temporality:'current',change:'state'}]}:{ok:true};
+  return Response.json({model,choices:[{message:{content:JSON.stringify(value),reasoning_content:'internal'},finish_reason:'stop'}]});
+ };
+ const verification=await probeModel(model,'low','synthetic-minimax',request,'minimax');
+ assert.equal(verification.ok,true,JSON.stringify(verification));
+ assert.deepEqual(requests,['direct','stream','extraction']);
+});
 const permissions=['access.read','access.users','access.roles','access.sessions','access.audit'];
 test('runtime providers read each credential once per turn on the supplied connection',async()=>{
  const {runtimeProviders}=await import('../server/portal/aiServiceConfig');
- const keys=['MYSQL_TRIAL_URL','PORTAL_ENV','OPENAI_API_KEY','DEEPSEEK_API_KEY','ANTHROPIC_API_KEY'];
+ const keys=['MYSQL_TRIAL_URL','PORTAL_ENV','OPENAI_API_KEY','DEEPSEEK_API_KEY','ANTHROPIC_API_KEY','MINIMAX_API_KEY'];
  const previous=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
- Object.assign(process.env,{MYSQL_TRIAL_URL:'mysql://fixture.invalid/fixture',PORTAL_ENV:'test',OPENAI_API_KEY:'fixture-openai',DEEPSEEK_API_KEY:'fixture-deepseek',ANTHROPIC_API_KEY:'fixture-claude'});
+ Object.assign(process.env,{MYSQL_TRIAL_URL:'mysql://fixture.invalid/fixture',PORTAL_ENV:'test',OPENAI_API_KEY:'fixture-openai',DEEPSEEK_API_KEY:'fixture-deepseek',ANTHROPIC_API_KEY:'fixture-claude',MINIMAX_API_KEY:'fixture-legacy-minimax'});
  let selection={primary:'gpt-6-luna',primaryEffort:'medium',fallback:'gpt-6.2-sol'};
+ let suppliers:object|undefined;
  let openaiRevoked=false;
  const reads:string[]=[];
  const db={query:async(sql:string,args?:any[])=>{
-  if(sql.includes('portal_settings')){reads.push('settings');return {rows:[{value:{current:selection}}]};}
+  if(sql.includes('portal_settings')){reads.push('settings');return {rows:[{value:{current:selection,suppliers}}]};}
   assert.match(sql,/FROM integration_credentials/);
   assert.deepEqual(args?.slice(0,2),['test','ai']);
   reads.push(args?.[2]);
@@ -30,7 +126,15 @@ test('runtime providers read each credential once per turn on the supplied conne
   assert.deepEqual(reads.splice(0),['settings','openai','deepseek']);
   selection={primary:'claude-haiku-5-5',primaryEffort:'medium',fallback:'claude-sonnet-5-5'};
   assert.deepEqual((await runtimeProviders(db)).map(({provider,key})=>[provider,key]),[['anthropic','fixture-claude'],['anthropic','fixture-claude']]);
-  assert.deepEqual(reads,['settings','anthropic']);
+  assert.deepEqual(reads.splice(0),['settings','anthropic']);
+  selection={primary:'MiniMax-M3.1-Flash',primaryEffort:'low',fallback:'deepseek-v4-pro'};
+  assert.equal((await runtimeProviders(db))[0].key,'fixture-legacy-minimax');
+  assert.deepEqual(reads.splice(0),['settings','deepseek']);
+  suppliers={minimax:{id:'minimax',models:['MiniMax-M3.1-Flash'],enabled:true,verified:true}};
+  const [primary]=await runtimeProviders(db);
+  assert.equal(primary.provider,'minimax');
+  assert.equal(primary.key,undefined);
+  assert.deepEqual(reads,['settings','minimax','deepseek']);
  } finally {
   for(const key of keys)if(previous[key]===undefined)delete process.env[key];else process.env[key]=previous[key];
  }

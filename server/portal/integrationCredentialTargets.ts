@@ -4,11 +4,12 @@ import {credentialTarget, integrationCredential, type CredentialClient, type Cre
 import {resolveGroupWebhook, validWebhook} from './larkGroupWebhook.ts';
 import {cmsMediaConfiguration} from '../../cloud/mysql/cms-media-storage.mjs';
 import {larkSettings,larkSettingsTarget,type LarkSettings} from './larkSettings.ts';
+import {aiSupplierTemplates} from '../../src/utils/aiSupplier.ts';
 
 const normalizeChatCompletionUrl = (url: string) => url.replace(/\/v1\/?$/, '/v1/chat/completions');
-export const aiCredentialProviders = ['openai', 'deepseek', 'anthropic'] as const;
-export const aiCredentialUrl = (provider: string, env = process.env) => provider === 'anthropic'
-  ? 'https://api.anthropic.com/v1/messages'
+export const aiCredentialProviders = ['openai', 'deepseek', 'anthropic', 'minimax'] as const;
+export const aiCredentialUrl = (provider: string, env = process.env) => provider === 'anthropic'||provider==='minimax'
+  ? aiSupplierTemplates[provider].endpoint
   : normalizeChatCompletionUrl(
   provider === 'deepseek'
     ? env.DEEPSEEK_API_BASE_URL || 'https://api.deepseek.com/chat/completions'
@@ -16,7 +17,7 @@ export const aiCredentialUrl = (provider: string, env = process.env) => provider
 );
 export const aiCredentialTarget = (provider: string) => credentialTarget([provider, aiCredentialUrl(provider)]);
 export const legacyAiCredential = (provider: string, env = process.env) => {
-  const key = provider === 'anthropic' ? env.ANTHROPIC_API_KEY : provider === 'deepseek' ? env.DEEPSEEK_API_KEY : env.OPENAI_API_KEY;
+  const key = provider === 'minimax' ? undefined : provider === 'anthropic' ? env.ANTHROPIC_API_KEY : provider === 'deepseek' ? env.DEEPSEEK_API_KEY : env.OPENAI_API_KEY;
   return key ? {key} : undefined;
 };
 

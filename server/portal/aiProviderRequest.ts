@@ -1,7 +1,7 @@
 import {defaultReasoningEffort, isClaudeModel, type ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
 import {modelParameters} from './modelParameters.ts';
 
-export type AiProvider = {model: string; url: string; key?: string; reasoningEffort?: ReasoningEffort};
+export type AiProvider = {model: string; url: string; key?: string; provider?:string; reasoningEffort?: ReasoningEffort};
 type AiMessage = {role: string; content: string};
 type RequestOptions = {
   tokens: number;
@@ -42,12 +42,16 @@ export function requestAiReply(request: typeof fetch, provider: AiProvider, mess
     });
   }
 
+  const miniMaxDirect=provider.provider==='minimax';
+  const prompt=miniMaxDirect?[
+    {role:'system',content:'Return exactly one JSON object without Markdown fences or any text outside the JSON.'}, ...messages,
+  ]:messages;
   return request(url, {
-    method: 'POST', signal, redirect,
+    method: 'POST', signal, redirect:miniMaxDirect?'error':redirect,
     headers: {Authorization: 'Bearer ' + key, 'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model, messages,
-      ...(options.json !== false ? {response_format: {type: 'json_object'}} : {}),
+      model, messages:prompt,
+      ...(miniMaxDirect ? {reasoning_split:true} : options.json !== false ? {response_format: {type: 'json_object'}} : {}),
       ...modelParameters(model, tokens, temperature, reasoningEffort),
       stream,
       ...(stream && options.includeUsage ? {stream_options: {include_usage: true}} : {}),

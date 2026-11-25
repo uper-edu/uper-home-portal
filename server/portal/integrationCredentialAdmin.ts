@@ -17,6 +17,8 @@ import {
 import {readCredentialKeyring} from './integrationCredentialCrypto.ts';
 import {platform, type Employee} from './identity.ts';
 import {aiState, aiModels, probeModel, providerFor} from './aiServiceConfig.ts';
+import {isAiSupplierId} from '../../src/utils/aiSupplier.ts';
+import {saveAiSettings, supplierInUse} from './aiSupplierSettings.ts';
 import {resolveMailPassword} from './enrollmentMailCredentials.ts';
 import {LarkApp} from './larkApp.ts';
 import {larkSettings,larkSettingsTarget,larkIdentityLocked,saveLarkSettings} from './larkSettings.ts';
@@ -38,12 +40,20 @@ async function targetFor(db: CredentialClient, slot: Slot, lock=false): Promise<
   switch (slot.type) {
     case 'ai': {
       if (!aiCredentialProviders.some(provider=>provider===id)) return fail(404,'credential_not_found');
-      const {current} = await aiState(db);
-      const model = [current.primary, current.fallback, ...aiModels].find(value => providerFor(value).provider === id)!;
-      return {id: aiCredentialTarget(id), legacy: () => legacyAiCredential(id), fields: ['key'], context: [id,model],
+      const {current,suppliers} = await aiState(db);
+      const managedId=isAiSupplierId(id)&&suppliers?.[id]?id:undefined;
+      const supplier=managedId&&suppliers[managedId];
+      if(id==='minimax'&&!supplier)return fail(404,'credential_not_found');
+      const model = [current.primary, current.fallback, ...aiModels].find(value => providerFor(value).provider === id);
+      if(!supplier&&!model)return fail(404,'credential_not_found');
+      const models:string[]=supplier?supplier.models:[model!];
+      return {id: aiCredentialTarget(id), legacy: () => supplier?undefined:legacyAiCredential(id), fields: ['key'], context: [id,...models],
         validation: 'provider', validate: async values => {
-          const check=await probeModel(model,undefined,values.key);
-          if(check.ok)return true;
+          const deadline=AbortSignal.timeout(130_000);
+          const request:typeof fetch=(input,init)=>fetch(input,{...init,signal:init?.signal?AbortSignal.any([deadline,init.signal]):deadline});
+          const checks=await Promise.all(models.map(model=>probeModel(model,undefined,values.key,request,managedId)));
+          const check=checks.find(result=>!result.ok);
+          if(!check)return true;
           if(check.error==='provider_http_401'||check.error==='provider_http_403')return {kind:'ai_auth_rejected'};
           if(check.error==='provider_http_429')return {kind:'ai_rate_limited'};
           if(check.error&&/^(model_mismatch|invalid_json|stream_missing|stream_error|stream_incomplete|extraction_failed)$/.test(check.error))
@@ -248,6 +258,11 @@ export function mountIntegrationCredentials(app: Express, {
       }
       if(state.revision!==revision)return fail(409,'credential_conflict');
       const destination=await target(db,slot,true);
+      const aiSettings=slot.type==='ai'&&(action==='revoke'||action==='set'&&verification===true)?await aiState(db):undefined;
+      const supplierId=isAiSupplierId(slot.resource)?slot.resource:undefined;
+      const supplier=supplierId&&aiSettings?.suppliers?.[supplierId];
+      if(action==='revoke'&&supplier&&supplierId&&supplierInUse(aiSettings,supplierId))
+        return fail(409,'credential_supplier_in_use');
       if(action==='set'&&!canReplace&&(state.active||!state.managed&&destination.legacy()))
         return fail(409,'credential_revoke_current_required');
       const next={...state,revision:revision+1,updatedAt:new Date().toISOString()};
@@ -289,11 +304,11 @@ export function mountIntegrationCredentials(app: Express, {
         delete next.smtpSetup;
       }
       await storeCredentialState(db,slot,next);
-      if(slot.type==='ai' && (action==='revoke'||action==='set'&&verification===true)){
-        const settings=await aiState(db);
+      if(aiSettings){
         // A test performed with an earlier credential cannot authorize a model change.
-        await db.query("INSERT INTO portal_settings(id,value) VALUES('ai_service',:p1) ON DUPLICATE KEY UPDATE value=VALUES(value)",
-          [{...settings,revision:settings.revision+1,checks:[]}]);
+        const verified=action==='set';
+        await saveAiSettings(db,{...aiSettings,revision:aiSettings.revision+1,checks:[],
+          ...(supplier&&supplierId?{suppliers:{...aiSettings.suppliers,[supplierId]:{...supplier,verified,enabled:verified&&supplier.enabled}}}:{})});
       }
       const result={slot:JSON.stringify(slot),revision:next.revision,
         outcome:action==='set'?verification===true?'verified':'failed':next.candidate?.receipt?.outcome,

@@ -13,12 +13,14 @@ import {aiServiceText} from '../utils/aiServiceLanguage';
 import {testAndSaveAi} from '../utils/aiServiceSubmit';
 import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import type {CrmLanguage} from '../utils/crmLanguage';
+import type {AiSupplierView} from '../utils/aiSupplier';
 
 type AiHistoryRecord={requestId:string;current:AiSelection;actor:string;at:string};
-type AiServiceData={
+export type AiServiceData={
   current:AiSelection;
   revision:number;
   models:string[];
+  suppliers?:AiSupplierView[];
   history?:AiHistoryRecord[];
   attempts?:{model:string;ok:boolean;at:string;fallbackModel?:string}[];
   extractions?:{model:string;status:string;completed_at:string}[];
@@ -53,7 +55,8 @@ function isDenied(error:unknown){
 export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChange,onBusyChange}:{
   lang:CrmLanguage;isLight:boolean;
   renderHeading:(actions:ReactNode,required:boolean)=>ReactNode;
-  children:ReactNode;onDraftChange:(dirty:boolean)=>void;onBusyChange:(busy:boolean)=>void;
+  children:(data:AiServiceData|undefined,refresh:()=>Promise<AiServiceData|undefined>)=>ReactNode;
+  onDraftChange:(dirty:boolean)=>void;onBusyChange:(busy:boolean)=>void;
 }){
   const [data,setData]=useState<AiServiceData>();
   const [draft,setDraft]=useState<AiSelection|undefined>(readDraft);
@@ -97,6 +100,7 @@ export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChang
       else if(notice==='conflict'||notice==='queryPendingFailed'){
         setNotice('');setCheck(undefined);
       }
+      return next;
     }catch(error){
       if(isDenied(error))clearDenied();
       else if(sessionStorage.getItem(pendingKey)){
@@ -155,7 +159,7 @@ export function AiServicePanel({lang,isLight,renderHeading,children,onDraftChang
     onDiagnose={()=>{setCheck(undefined);setNotice('');setDiagnosing(true);}}
     onTestCurrent={()=>void submit(true)}
     onCloseDiagnostics={()=>{if(!busy){setDiagnosing(false);setCheck(undefined);setNotice('');}}}>
-    {children}
+    {children(data,load)}
   </AiServiceContent>;
 }
 

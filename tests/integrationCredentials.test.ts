@@ -9,6 +9,7 @@ import {credentialSlot,credentialSource,credentialTarget,type CredentialClient} 
 import {mountIntegrationCredentials} from '../server/portal/integrationCredentialAdmin.ts';
 import type {Employee} from '../server/portal/identity.ts';
 import {readBootstrapSecrets} from '../server/environment.mjs';
+import type {AiSupplier,AiSupplierId} from '../src/utils/aiSupplier.ts';
 
 const keys={old:randomBytes(32).toString('hex'),current:randomBytes(32).toString('hex')};
 const mailSlot=credentialSlot('smtp','learner-fixture@example.test','dev');
@@ -72,7 +73,8 @@ test('direct credential setup preserves each service’s verification, replaceme
     if(value===undefined)delete process.env[key];else process.env[key]=value;
   }});
   const slots=new Map<string,any>(),receipts=new Map<string,any>(),audit:unknown[]=[];
-  let modelSettings={revision:10,current:{primary:'gpt-6.2-sol',fallback:'deepseek-v4-pro'},checks:[{id:'old-model-check'}]};
+  let modelSettings:{revision:number;current:{primary:string;fallback:string};checks:{id:string}[];suppliers?:Partial<Record<AiSupplierId,AiSupplier>>}=
+    {revision:10,current:{primary:'gpt-6.2-sol',fallback:'deepseek-v4-pro'},checks:[{id:'old-model-check'}]};
   const db:CredentialClient={async query(sql,parameters=[]){
     const slotKey=parameters.slice(0,3).join('/');
     const operationKey=parameters.slice(0,2).join('/');
@@ -95,7 +97,7 @@ test('direct credential setup preserves each service’s verification, replaceme
   mountIntegrationCredentials(fakeApp as any,{
     pool:db,tx:async fn=>fn(db),authenticate:async q=>(q as any).fixtureActor,
     target:async(_db,slot)=>slot.type==='ai'?{
-      id:target,legacy:()=>({key:'legacy-fixture'}),fields:['key'],context:[slot.resource,configuration],validation:'provider',
+      id:target,legacy:()=>slot.resource==='minimax'?undefined:{key:'legacy-fixture'},fields:['key'],context:[slot.resource,configuration],validation:'provider',
       validate:async values=>values.key==='verified-fixture'||{kind:'ai_auth_rejected'},
     }:slot.type==='lark-app'?{
       id:target,legacy:()=>({key:'legacy-fixture'}),fields:['key'],context:[configuration],validation:'provider',
@@ -217,6 +219,24 @@ test('direct credential setup preserves each service’s verification, replaceme
   assert.equal((await aiStatus('deepseek')).data.source,'legacy');
   assert.equal(modelSettings.revision,12);
   assert.deepEqual(modelSettings.current,{primary:'gpt-6.2-sol',fallback:'deepseek-v4-pro'});
+  const unchangedModels={...modelSettings.current};
+  modelSettings.suppliers={minimax:{id:'minimax',name:'MiniMax',models:['MiniMax-M3.1-Flash'],enabled:false}};
+  assert.equal((await aiAction(admin,'set',0,'wrong-fixture','minimax')).data.outcome,'failed');
+  assert.equal(modelSettings.suppliers.minimax!.verified,undefined);
+  assert.equal((await aiAction(admin,'set',1,'verified-fixture','minimax')).data.outcome,'verified');
+  assert.equal(modelSettings.suppliers.minimax!.verified,true);
+  assert.equal(modelSettings.suppliers.minimax!.enabled,false);
+  assert.deepEqual(modelSettings.current,unchangedModels);
+  modelSettings.suppliers.minimax!.enabled=true;
+  modelSettings.current={...unchangedModels,fallback:'MiniMax-M3.1-Flash'};
+  const blockedRevoke=await aiAction(admin,'revoke',2,undefined,'minimax');
+  assert.equal(blockedRevoke.data.error,'credential_supplier_in_use');
+  assert.equal((await aiStatus('minimax')).data.source,'managed');
+  modelSettings.current=unchangedModels;
+  assert.equal((await aiAction(admin,'revoke',2,undefined,'minimax')).status,200);
+  assert.equal(modelSettings.suppliers.minimax!.enabled,false);
+  assert.equal(modelSettings.suppliers.minimax!.verified,false);
+  assert.equal((await aiStatus('minimax')).data.source,'revoked');
   function integrationAction(kind:string,action:string,revision:number,extra:object={},requestId=randomUUID()){
     return call(admin,'POST',{action,revision,requestId,...extra},undefined,undefined,kind,'default');
   }
