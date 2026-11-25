@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { demandMatches, enrollmentPhone, parseDemand,type PrivateLessonRegistration } from '../../src/utils/enrollmentInterests.ts';
+import { demandMatches, enrollmentPhone, enrollmentPhoneDisplay, parseDemand,type PrivateLessonRegistration } from '../../src/utils/enrollmentInterests.ts';
 import { enrollmentLearnerNameKey } from '../../src/utils/enrollmentOrderStatus.ts';
 import { invalid,operation,normalizeContactPhone } from './trustWorkflow.ts';
 import { createHash } from 'node:crypto';
@@ -219,12 +219,22 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
       const {rows:demands}=await c.query(`SELECT id,email,criteria,state,revision,DATE_FORMAT(updated_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS updatedAt
         FROM enrollment_demands WHERE email=:p1 ORDER BY updated_at DESC,id DESC`,[email]);
       const candidates=demands.some(d=>d.state==='active') ? await offers(c) : [];
+      const legacyTeacherTypes=new Map(
+        demands.some(({criteria:{appointment}})=>appointment&&!appointment.teacherType&&!appointment.confirmation)
+          ? (await readPublicEnrollmentAppointments(c)).map(offer=>[offer.id,offer.teacherType])
+          : [],
+      );
       const enriched=[];
       for(const demand of demands){
         const matched=demand.state==='active'?candidates.filter(cohort=>demandMatches(demand.criteria,cohort.data)):[];
         for (const match of matched) await recordDemandMatch(c,demand,match);
         const {appointment,...criteria}=demand.criteria;
-        const publicAppointment=appointment && Object.fromEntries(Object.entries(appointment).filter(([key])=>key!=='learnerKey'));
+        const publicAppointment=appointment&&{
+          templateId:appointment.templateId, learnerName:appointment.learnerName,
+          lessons:appointment.lessons, minutes:appointment.minutes, total:appointment.total,
+          teacherType:appointment.teacherType??legacyTeacherTypes.get(appointment.templateId),
+          confirmation:appointment.confirmation, phoneDisplay:enrollmentPhoneDisplay(criteria.phone),
+        };
         enriched.push({id:demand.id,criteria,state:demand.state,revision:demand.revision,updatedAt:demand.updatedAt,appointment:publicAppointment,
           matches:matched.map(v=>({id:v.id,level:v.data.level,firstLesson:v.data.firstLesson}))});
       }
@@ -282,7 +292,7 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
           const [offer]=await readPublicEnrollmentAppointments(c,appointmentId);
           if(!offer||offer.level!==criteria.level)invalid('enrollment_appointment_unavailable',409);
           const appointment:PrivateLessonRegistration={templateId:offer.id,learnerKey,learnerName:name,
-            lessons:offer.lessons,minutes:offer.minutes,total:offer.price*offer.lessons};
+            lessons:offer.lessons,minutes:offer.minutes,total:offer.price*offer.lessons,teacherType:offer.teacherType};
           await c.query("INSERT INTO enrollment_demands(id,email,revision,state,criteria,updated_at) VALUES(:p1,:p2,1,'active',:p3,UTC_TIMESTAMP(6))",
             [id,email,{...criteria,appointment}]);
           await recordEnrollmentCustomer(c,{kind:'demand',id,email,phone:criteria.phone,name,level:criteria.level});

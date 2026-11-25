@@ -22,7 +22,7 @@ import { ArrowLeft, ChevronDown, ChevronRight, CircleCheck } from 'lucide-react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {EnrollmentEmailIdentity,maskEnrollmentEmail} from './EnrollmentEmailIdentity';
 import {enrollmentOrderReturnParam,EnrollmentJourneyLink,useEnrollmentJourneyState,useEnrollmentRecordReturn} from './EnrollmentJourneyLink';
-import {EnrollmentDetailFields,EnrollmentIntakeSummary,EnrollmentListRecord,EnrollmentOrderInformation,EnrollmentPriceActions,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
+import {EnrollmentContactInformation,EnrollmentDetailActions,EnrollmentDetailFields,EnrollmentIntakeSummary,EnrollmentListRecord,EnrollmentOrderInformation,EnrollmentPriceActions,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
 import {promotionJourneyUrl} from '../utils/promotionNavigation';
 import {isPlainLinkClick} from '../utils/chatJourneyNavigation';
 import { formatCurrency } from '../utils/currency';
@@ -31,6 +31,7 @@ import { readEnrollmentAftercare, type EnrollmentAftercare } from '../utils/enro
 import {enrollmentSupportPath} from '../utils/enrollmentSupportNavigation';
 import { EnrollmentModuleBoundary, lazyEnrollmentModule } from './EnrollmentModuleBoundary';
 import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
+import {EnrollmentPaymentInformation} from './EnrollmentPaymentInformation';
 import type {EnrollmentProofDraft,EnrollmentProofSubmission} from '../utils/enrollmentLearnerPayments';
 import { interestOption, waitlistStates } from '../utils/enrollmentInterestCopy';
 import { parseEnrollmentInterests, type DemandCriteria, type DemandItem, type Interests } from '../utils/enrollmentInterestRecords';
@@ -76,6 +77,7 @@ type EnrollmentFormProps = {
   applicationClass?: ApplicationClass; waitlistClass?: PublicEnrollmentClass; mine?: boolean; record?: InterestRecord;
   privateLesson?:PublicEnrollmentAppointment;
   privateLessonNavigation?:{registrationHeading:ReactNode;completionBack:ReactNode};
+  listHeading?:string;
   returnAction?: ReactNode;
 } & ({payment: true; intakeTools?: never} | {payment?: false; intakeTools: EnrollmentIntakeTools});
 
@@ -83,7 +85,11 @@ function focusPrivateConfirmation(node:HTMLHeadingElement|null) {
   node?.focus();
 }
 
-export function EnrollmentForm({ classId, language, full = false, demandOnly = false, payment = false, applicationClass, waitlistClass, mine = false, record, returnAction, intakeTools,privateLesson,privateLessonNavigation }: EnrollmentFormProps) {
+function focusAppointmentEditor(node:HTMLDivElement|null) {
+  node?.focus();
+}
+
+export function EnrollmentForm({ classId, language, full = false, demandOnly = false, payment = false, applicationClass, waitlistClass, mine = false, record, returnAction, intakeTools,privateLesson,privateLessonNavigation,listHeading }: EnrollmentFormProps) {
   const t = (text: Copy) => enrollmentCopy(language,text);
   function privateLessonWhatsApp(level:string,period='any') {
     const url=new URL(socialProfiles.whatsapp.url);
@@ -145,7 +151,8 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const hasOrderClassInfo=!!(classInfo?.level&&classInfo.format&&classInfo.period&&
     typeof classInfo.schedule==='string'&&typeof classInfo.opened==='boolean');
   const loadingTransferInstructions=payment&&!!order?.bank&&!params.has('view')&&
-    (order.status==='awaiting_payment'||order.status==='partial'&&params.get('proof')==='upload'&&!order.restored);
+    (order.status==='awaiting_payment'||order.payment?.action==='top_up'&&params.get('proof')==='balance'||
+      !order.payment&&order.status==='partial'&&params.get('proof')==='upload')&&!order.restored;
   // The verified aftercare response already includes the class shown on order details.
   const needsOrderClass=!!order&&!hasOrderClassInfo &&
     (loadingTransferInstructions || aftercareFailedFor===order.id || !!aftercare);
@@ -194,6 +201,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     setEditDemand(undefined);
   }
   const [editDemand,setEditDemand] = useState<DemandItem>();
+  const appointmentEditButton=useRef<HTMLButtonElement>(null);
   const [joined,setJoined] = useState(false);
   const [lastSeatWaitlist,setLastSeatWaitlist] = useState<{id:string;classId:string;email:string;waiting:boolean}>();
   const [savedDemand,setSavedDemand] = useState<DemandReceipt>();
@@ -385,7 +393,8 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       nextOrder.serverClockOffsetMs=Number.isFinite(serverDate)?serverDate-Date.now():undefined;
       const verifiedAddress=address??expected;
       const showPayment = nextOrder.status === 'awaiting_payment' ||
-        (nextOrder.status === 'partial' && params.get('proof') === 'upload' && !nextOrder.restored);
+        (nextOrder.payment?.action==='top_up'&&params.get('proof')==='balance'&&!nextOrder.restored) ||
+        (!nextOrder.payment&&nextOrder.status==='partial'&&params.get('proof')==='upload'&&!nextOrder.restored);
       const renderEarly=allowEarlyPayment && payment && !params.has('view') && address && showPayment && nextOrder.bank;
       if(renderEarly) {
         // The order endpoint has verified ownership and suppresses bank details for a cancelled class.
@@ -861,7 +870,16 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       if(!payment)rememberVisitorContact?.(owner,{email});
       clearDraft();
       recordsEmail.current=currentEmail;
-      if (orderId) await getOrder(orderId,payment,payment?release:undefined);
+      if (orderId) {
+        try { await getOrder(orderId,payment,payment?release:undefined); }
+        catch(error) {
+          if(payment&&(error as Error).message==='enrollment_order_not_found'){
+            recordsEmail.current='';
+            requireEmailVerification();
+          }
+          throw error;
+        }
+      }
       else if (!classId) await getRecords();
       else setVerified(true);
     });
@@ -988,7 +1006,6 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     setError('');
   }
   function changeRecordsEmail() {
-    if(payment&&orderId)writeEnrollmentDraft(owner,proofTransferKey);
     recordsEmail.current='';
     editEmail('');
     clearPrivateRecords();
@@ -1211,7 +1228,11 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     enrollment_email_verification_unconfirmed:['暂时无法确认邮箱验证结果。请重试验证，或重新获取验证码。','We could not confirm email verification. Try verifying again or request a new code.','Verifikasi email belum dapat dikonfirmasi. Coba verifikasi lagi atau minta kode baru.'],
     enrollment_email_signout_unconfirmed:['暂时无法确认是否已退出报名邮箱，请重试退出。','We could not confirm sign-out. Try signing out again.','Status keluar belum dapat dikonfirmasi. Coba keluar lagi.'],
     enrollment_verification_required:['请验证当前邮箱后继续。','Verify this email address to continue.','Verifikasi alamat email ini untuk melanjutkan.'],
-    enrollment_order_not_found:['找不到这条报名。','This enrollment could not be found.','Pendaftaran ini tidak ditemukan.'],
+    enrollment_order_not_found:payment?[
+      '无法用当前邮箱查看这笔订单。请验证报名时使用的邮箱。',
+      'This order cannot be opened with the current email. Verify the email you used to enroll.',
+      'Pesanan ini tidak dapat dibuka dengan email saat ini. Verifikasi email yang Anda gunakan untuk mendaftar.',
+    ]:['找不到这条报名。','This enrollment could not be found.','Pendaftaran ini tidak ditemukan.'],
     enrollment_order_read_failed:['暂时无法读取报名，请重试。','This enrollment could not be loaded. Please try again.','Pendaftaran belum dapat dimuat. Silakan coba lagi.'],
     enrollment_records_read_failed:['暂时无法读取报名记录。','Enrollment records could not be loaded.','Catatan pendaftaran belum dapat dimuat.'],
     enrollment_invalid_waitlist:['请检查姓名和带区号的电话号码。','Check the name and phone number with country code.','Periksa nama dan nomor telepon beserta kode negara.'],
@@ -1251,10 +1272,12 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       await getOrder(order.id);
     });
   }
-  const paymentPath = (id: string) => {
+  const paymentPath = (id: string, proof?:'balance'|'upload', fromDetail=false) => {
     const next = new URLSearchParams(params);
     for(const key of ['apply','view','target','proof',enrollmentOrderReturnParam])next.delete(key);
     next.set('order', id);
+    if(proof)next.set('proof',proof);
+    if(fromDetail)next.set(enrollmentOrderReturnParam,'1');
     return '/enrollment/payment?' + next.toString();
   };
   const paymentBar=mine&&order?.status==='awaiting_payment'&&!order.restored;
@@ -1544,6 +1567,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     return '/enrollment/mine?'+query.toString();
   }
   const paymentLabel=t(['转账与凭证','Transfer & proof','Transfer dan bukti']);
+  const topUpLabel=t(['补缴余款','Pay remaining balance','Lunasi sisa pembayaran']);
   function recordEntry(entry:string,to:string,label:ReactNode,primary=false) {
     return <EnrollmentJourneyLink recordEntry={'enrollment-entry-'+entry} to={to} onClick={preloadRecordDestination}
       className={primary?'enrollment-primary':'enrollment-record-title-link'}>
@@ -1567,26 +1591,37 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const course = recordClasses.get(row.classId);
     const schedule = enrollmentScheduleLabel(course,language);
     const teacher = enrollmentTeacherLabel(course?.teacherType,language);
-    const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(row.closureReason==='learner_cancelled'?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:enrollmentStatuses[row.status]);
+    const status = row.restored ? t(['已恢复原班报名','Enrollment restored','Pendaftaran dipulihkan']) : t(row.closureReason==='learner_cancelled'
+      ?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']
+      : row.status==='partial'&&row.payment?.awaitingVerification
+        ? ['部分到账 · 凭证待核实','Partially paid · Proof awaiting verification','Dibayar sebagian · Bukti menunggu verifikasi']
+        : enrollmentStatuses[row.status]);
     const active = orderIsActive(row);
     const completed = !row.classCancelled&&(row.status==='paid'||row.restored);
-    const payable = row.status==='awaiting_payment'&&!row.classCancelled;
+    const payable = row.payment?row.payment.action==='transfer':row.status==='awaiting_payment'&&!row.classCancelled;
+    const topUp = row.payment?.action==='top_up';
+    const needsSupport = row.payment?.action==='support';
+    const proofWaiting = row.status==='proof_review'||row.status==='partial'&&!!row.payment?.awaitingVerification;
     const key='order-'+row.id;
     const primary=row.invitation
       ? recordEntry(key+'-invite',transferInvitationPath(row.id,row.invitation.id),t(['查看转班邀请','View transfer invitation','Lihat undangan pindah kelas']),true)
       : payable ? recordEntry(key+'-pay',paymentPath(row.id),paymentLabel,true)
+        : topUp ? recordEntry(key+'-balance',paymentPath(row.id,'balance'),topUpLabel,true)
+        : needsSupport ? recordEntry(key+'-support',orderPath(row.id),t(['查看补款安排','View payment arrangements','Lihat pengaturan pembayaran']),true)
         : row.status==='partial'&&row.needsPayment
           ? recordEntry(key+'-balance',orderPath(row.id),t(['查看补款','View balance','Lihat sisa tagihan']),true)
           : undefined;
-    return {key,active,completed,updatedAt:row.updatedAt,needsAction:active&&!!(row.invitation||row.needsPayment),card:
+    return {key,active,completed,updatedAt:row.updatedAt,needsAction:active&&!!primary,card:
       <EnrollmentListRecord category={t(['报名申请','Application','Pendaftaran'])} title={recordTitle(key,orderPath(row.id),classTitle(row.level,row.firstLesson,row.classId))}
-        status={status} tone={enrollmentOrderTone(row.status,{restored:row.restored,classCancelled:row.classCancelled,needsAction:!!primary})} primary={primary}>
+        status={status} tone={enrollmentOrderTone(row.status,{restored:row.restored,classCancelled:row.classCancelled,needsAction:!!primary&&!proofWaiting})} primary={primary}>
         {row.invitation&&<p>{t(['待答复转班邀请','Transfer invitation awaiting reply','Undangan pindah kelas menunggu jawaban'])} · {paymentDeadline(row.invitation.deadline)}</p>}
         {payable&&<p className="enrollment-record-next"><strong>{formatCurrency(Math.max(0,row.price-row.received),language)}</strong>{paymentDeadline(row.deadline)&&<time dateTime={row.deadline}>{paymentDeadline(row.deadline)}</time>}</p>}
-        {row.status==='partial'&&row.needsPayment&&<p>{t(['还需补款','Balance due','Sisa tagihan'])} · {formatCurrency(Math.max(0,row.price-row.received),language)}</p>}
+        {topUp&&row.payment?.balance!=null&&<p>{row.payment.estimated?t(['预计剩余应付','Estimated balance','Perkiraan sisa tagihan']):t(['剩余应付','Balance due','Sisa tagihan'])} · {formatCurrency(row.payment.balance,language)}</p>}
+        {!row.payment&&row.status==='partial'&&row.needsPayment&&<p>{t(['还需补款','Balance due','Sisa tagihan'])} · {formatCurrency(Math.max(0,row.price-row.received),language)}</p>}
         {row.classCancelled&&row.status==='awaiting_payment'&&<p>{t(['原班已停止收款','Payment for the original class is closed','Pembayaran untuk kelas asal ditutup'])}</p>}
         {row.status==='expired'&&!row.restored&&<p>{t(['付款凭证未按时提交','Proof was not submitted by the deadline','Bukti tidak dikirim sebelum batas waktu'])}</p>}
-        {row.status==='proof_review'&&<p>{t(['凭证已提交，等待财务核实。','Proof submitted. Finance is reviewing it.','Bukti sudah dikirim dan sedang diperiksa tim keuangan.'])}</p>}
+        {proofWaiting&&<p>{topUp?t(['按学员申报计算，财务核实后更新。','Based on reported transfers. Updated after verification.','Berdasarkan laporan transfer dan diperbarui setelah verifikasi.'])
+          : t(['凭证已提交，等待财务核实。','Proof submitted. Finance is reviewing it.','Bukti sudah dikirim dan sedang diperiksa tim keuangan.'])}</p>}
         {row.status==='paid'&&schedule&&<p>{[course?.opened&&t(['已确认开班','Class confirmed','Kelas dikonfirmasi']),schedule].filter(Boolean).join(' · ')}</p>}
         {(row.learnerName||teacher)&&<p>{[row.learnerName,teacher].filter(Boolean).join(' · ')}</p>}
       </EnrollmentListRecord>,
@@ -1650,35 +1685,53 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   function renderDemandDetail(row: DemandItem) {
     const active = row.state==='active';
     if(row.appointment){
-      const {confirmation,learnerName,lessons,minutes,total}=row.appointment;
+      const {confirmation,learnerName,lessons,minutes,total,teacherType,phoneDisplay}=row.appointment;
+      const editing = editDemand?.id===row.id;
+      const canEdit = active&&!confirmation;
       const time=interestOption(language,row.criteria.period);
+      const teacher=confirmation?.teacher||enrollmentTeacherLabel(teacherType,language)||
+        t(['待安排','To be assigned','Belum ditentukan']);
       return <div className="enrollment-interest-detail">
         <EnrollmentRecordSummary language={language} title={demandTitle(row)} status={demandStatus(row)}
-          tone={!active?'full':confirmation?'confirmed':'progress'}>
-          <EnrollmentDetailFields fields={[
-            [t(['学员姓名','Learner name','Nama siswa']),learnerName],
-            [t(['课时安排','Lesson duration','Durasi pelajaran']),enrollmentFixedLessonDuration(lessons,minutes,language)],
-            [t(['登记总价','Tuition at registration','Biaya saat pendaftaran']),formatCurrency(total,language)],
-            [t(['偏好时段','Preferred times','Waktu pilihan']),time],
-            [t(['授课教师','Teacher','Pengajar']),confirmation?.teacher],
-            [t(['首课时间','First lesson','Sesi pertama']),confirmation&&enrollmentDateFormatter(language,'dateTime').format(new Date(confirmation.firstLessonAt))+' WIB'],
+          tone={!active?'full':confirmation?'confirmed':'progress'} statusSection={{kind:'booking',
+            description:active&&!confirmation?<p>{t([
+              '可通过 WhatsApp 与顾问确认上课时间。',
+              'Use WhatsApp to agree on a lesson schedule with an advisor.',
+              'Gunakan WhatsApp untuk menyepakati jadwal dengan konsultan.',
+            ])}</p>:undefined,
+          }} additionalFields={[
+            [t(['授课教师','Teacher','Pengajar']),teacher],
+            [t(['首课时间','First class','Pertemuan pertama']),confirmation&&<time dateTime={confirmation.firstLessonAt}>
+              {enrollmentDateFormatter(language,'dateTime').format(new Date(confirmation.firstLessonAt))} WIB
+            </time>],
             [t(['上课安排','Lesson schedule','Jadwal kelas']),confirmation?.schedule],
+            [t(['课时安排','Lesson duration','Durasi pelajaran']),enrollmentFixedLessonDuration(lessons,minutes,language)],
+            [t(['课程总价','Total price','Total biaya']),formatCurrency(total,language)],
+          ]}/>
+        <EnrollmentContactInformation title={t(['约课信息','Booking information','Informasi permintaan kelas'])}
+          language={language} learnerName={learnerName} verifiedEmail={recordsEmail.current} phoneDisplay={phoneDisplay}
+          additionalFields={[
+            [t(['偏好时段','Preferred times','Waktu pilihan']),time,canEdit&&!editing&&
+              <button ref={appointmentEditButton} type="button" className="enrollment-quiet enrollment-detail-field-action"
+                aria-label={t(['修改时段','Edit preferred times','Ubah waktu pilihan'])} disabled={busy} onClick={()=>setEditDemand(row)}>
+                {t(['修改','Edit','Ubah'])}
+              </button>],
             [t(['补充说明','Notes','Catatan']),row.criteria.notes],
           ]}/>
-        </EnrollmentRecordSummary>
-        {active&&!confirmation&&editDemand?.id!==row.id&&<EnrollmentRecordActions
-          tertiary={<button type="button" className="enrollment-quiet enrollment-order-cancel" disabled={busy} onClick={()=>remove('demands',row.id)}>
+        {canEdit&&!editing&&<EnrollmentDetailActions mobileFixed
+          secondaryLink={<button type="button" className="enrollment-quiet enrollment-order-cancel" disabled={busy} onClick={()=>remove('demands',row.id)}>
             {t(['撤回约课','Withdraw lesson request','Tarik permintaan kelas'])}
-          </button>}
-          secondary={<button type="button" className="enrollment-outline" disabled={busy} onClick={()=>setEditDemand(row)}>
-            {t(['修改时段','Edit preferred times','Ubah waktu pilihan'])}
-          </button>}
-          primary={<a className="enrollment-primary" href={privateLessonWhatsApp(row.criteria.level,row.criteria.period)} target="_blank" rel="noopener noreferrer">
+          </button>}>
+          <a className="enrollment-primary" href={privateLessonWhatsApp(row.criteria.level,row.criteria.period)} target="_blank" rel="noopener noreferrer">
             {t(['WhatsApp 约课','Open WhatsApp','Buka WhatsApp'])}
-          </a>}/>}
-        {active&&!confirmation&&EnrollmentDemandForm&&editDemand?.id===row.id&&<div className="enrollment-record">
+          </a>
+        </EnrollmentDetailActions>}
+        {canEdit&&EnrollmentDemandForm&&editing&&<div className="enrollment-record" tabIndex={-1} ref={focusAppointmentEditor}>
           <EnrollmentDemandForm key={row.id+':'+row.revision} language={language} initial={row} busy={busy} onSave={savePreferences} privateLesson/>
-          <button type="button" className="enrollment-record-link" disabled={busy} onClick={()=>setEditDemand(undefined)}>{t(['取消修改','Cancel editing','Batalkan perubahan'])}</button>
+          <button type="button" className="enrollment-record-link" disabled={busy} onClick={()=>{
+            setEditDemand(undefined);
+            requestAnimationFrame(()=>appointmentEditButton.current?.focus());
+          }}>{t(['取消修改','Cancel editing','Batalkan perubahan'])}</button>
         </div>}
       </div>;
     }
@@ -1771,8 +1824,9 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const activeRecords = records.filter(record=>record.active&&!record.needsAction&&!record.completed);
   const completedRecords = records.filter(record=>record.active&&!record.needsAction&&record.completed);
   const pastRecords = records.filter(record=>!record.active);
+  const isBalanceLink=params.get('proof')==='balance';
   const editingProof = payment && !!canUpload &&
-    (params.get('proof')==='upload'||!!pendingProof||!!file||!!proofTransfer.amount||!!proofTransfer.reference||!!proofTransfer.transferId);
+    (params.get('proof')==='upload'||isBalanceLink||!!pendingProof||!!file||!!proofTransfer.amount||!!proofTransfer.reference||!!proofTransfer.transferId);
   const classCancelled=aftercare?.originalClassState==='cancelled';
   const existingTransferOnly = !!(editingProof && order && (!order.bank||classCancelled) &&
     (order.status==='expired' || order.closureReason==='learner_cancelled' || aftercare?.originalClassState==='cancelled'));
@@ -1795,7 +1849,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const proofParams = new URLSearchParams(mineParams);
   if (order) proofParams.set('order',order.id);
   proofParams.set('proof','upload');
-  const showEmailIdentity=!!recordsEmail.current&&(!!order||(!!mine&&verified));
+  const showListEmailIdentity=!!recordsEmail.current&&!!listHeading&&showRecordList;
   const summaryClass=aftercare?.currentClass??resultCourse;
   const summarySchedule=enrollmentScheduleLabel(summaryClass,language);
   const showPaymentForm=payment&&!!order&&!!canUpload&&!checkingRecords&&!loadingOrder&&!waitingForAftercare&&!showAftercare&&!showOrderResult;
@@ -1818,11 +1872,14 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       {t(['退出报名邮箱','Sign out','Keluar'])}
     </button>
   </div>;
-  const compactEmailIdentity=<EnrollmentEmailIdentity key={'enrollment-email:'+recordsEmail.current} email={recordsEmail.current} language={language}>
+  const compactEmailIdentity=<EnrollmentEmailIdentity key={'enrollment-email:'+recordsEmail.current} email={recordsEmail.current} language={language} compact>
     {emailIdentityActions}
   </EnrollmentEmailIdentity>;
-  const detailIdentity=mine&&order&&!payment&&!checkingRecords&&!loadingOrder&&!waitingForAftercare
-    &&showEmailIdentity?compactEmailIdentity:undefined;
+  const orderDetail=!payment&&!!order;
+  const detailEmail=orderDetail?recordsEmail.current:undefined;
+  const cancelAction=cancelable&&<button type="button" className="enrollment-quiet enrollment-order-cancel" disabled={busy} onClick={openCancellation}>
+    {t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}
+  </button>;
   const recordsReadFailed=error==='enrollment_records_read_failed' && mine && !orderId;
   const interestsNotice=<div className="enrollment-journey-note" role="status">
     <p>{t(['暂时无法更新候补和选课需求。','Waitlist and course preferences could not be refreshed.','Daftar tunggu dan preferensi kursus belum dapat diperbarui.'])}</p>
@@ -1851,13 +1908,16 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   }
   if (!open) return <button className="enrollment-action" type="button" onClick={()=>setOpen(true)}>{hasNoSeat?joinText:applyText}</button>;
   return <section className={mine ? "enrollment-application enrollment-mine-content" : payment ? "enrollment-application enrollment-payment-content" : "enrollment-card enrollment-application"}>
+    {listHeading&&<header className="enrollment-mine-list-heading">
+      <h1>{listHeading}</h1>
+      {showListEmailIdentity&&compactEmailIdentity}
+    </header>}
     {error && !rejectedProof && !(proofFeedback&&error==='enrollment_operation_unconfirmed') && <p role="alert">{message}{' '}
       {error==='enrollment_order_read_failed' && orderId && <button type="button" className="enrollment-quiet" disabled={busy}
         onClick={()=>void retryOrderRead(orderId)}>{t(['重试读取报名','Retry loading enrollment','Coba muat ulang pendaftaran'])}</button>}
       {recordsReadFailed && <button type="button" className="enrollment-quiet" disabled={busy}
         onClick={()=>void retryRecordsRead()}>{t(['重试读取记录','Retry loading records','Coba muat ulang catatan'])}</button>}
     </p>}
-    {showEmailIdentity&&!detailIdentity&&compactEmailIdentity}
     <dialog key={orderId} className="enrollment-cancel-dialog" ref={cancelDialog} aria-labelledby="enrollment-cancel-title" aria-describedby="enrollment-cancel-effect" onCancel={event=>{if(busy)event.preventDefault();}}>
       <h2 id="enrollment-cancel-title">{t(['取消这笔报名？','Cancel this enrollment?','Batalkan pendaftaran ini?'])}</h2>
       <p id="enrollment-cancel-effect">{t(['取消后，付款入口会关闭，席位会释放。如果你已经转账，请先提交凭证。','Canceling closes the payment link and releases your seat. If you already transferred the money, submit the proof first.','Pembatalan menutup pembayaran dan melepas kursi. Jika sudah transfer, kirim bukti terlebih dahulu.'])}</p>
@@ -1918,12 +1978,13 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
           {t(['重试读取售后详情','Retry loading aftercare','Coba muat ulang detail layanan'])}
         </button>
       </p>}
-      {waitingForAftercare ? <p>{status}</p> : showAftercare ? orderDetailsView(<EnrollmentOrderAftercare identity={detailIdentity} order={order} details={aftercare} catalog={recordClasses} search={params}
+      {waitingForAftercare ? <p>{status}</p> : showAftercare ? orderDetailsView(<EnrollmentOrderAftercare enrollmentDetail={!payment} verifiedEmail={detailEmail} order={order} details={aftercare} catalog={recordClasses} search={params}
         language={language} busy={busy} searchBase={mineParams} proofPath={canUpload ? '/enrollment/payment?'+proofParams.toString() : undefined}
-        onCancel={cancelable?openCancellation:undefined} onTransfer={transfer} onEnablePriority={enablePriority}/>, 'aftercare') : showOrderResult ? orderDetailsView(<EnrollmentOrderResult identity={detailIdentity} order={order} course={resultCourse} classInfo={aftercare?.currentClass}
+        onCancel={cancelable?openCancellation:undefined} onTransfer={transfer} onEnablePriority={enablePriority}/>, 'aftercare') : showOrderResult ? orderDetailsView(<EnrollmentOrderResult enrollmentDetail={!payment} verifiedEmail={detailEmail} order={order} course={resultCourse} classInfo={aftercare?.currentClass}
         classState={aftercare?.originalClassState} language={language} busy={busy}
         refundPath={canConsultRefund ? '/enrollment/mine?'+refundParams.toString() : undefined}
-        balancePath={order.status==='partial'&&order.bank&&!classCancelled ? '/enrollment/payment?'+proofParams.toString() : undefined}
+        balancePath={order.bank&&!classCancelled&&(order.payment?.action==='top_up'||!order.payment&&order.status==='partial')
+          ? paymentPath(order.id,order.payment?'balance':'upload',true) : undefined}
         uploadPath={canUpload ? '/enrollment/payment?'+proofParams.toString() : undefined}
        />, 'result') : payment ? <div className={existingTransferOnly ? 'enrollment-order-result enrollment-order-result-shell' : 'contents'}>
         {paymentRefresh&&<p role="status" className="enrollment-journey-note">
@@ -1937,27 +1998,27 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
           status={status ?? ''} canUpload={!!canUpload} file={file} busy={busy||checkingProofReceipt} setFile={setFile}
           proofTransfer={proofTransfer} onProofTransferChange={updateProofTransfer}
           upload={transfer=>void upload(transfer)} existingTransferOnly={existingTransferOnly}
+          showTopUp={isBalanceLink&&order.payment?.action==='top_up'}
           submittingProof={submittingProof} proofUploadFailed={rejectedProof} proofFeedback={proofFeedback}/>
       </div> : <>
         <EnrollmentRecordSummary language={language} teacherType={summaryClass?.teacherType} firstLesson={summaryClass?.firstLesson} title={(summaryClass&&enrollmentClassTitle(summaryClass,language))||t(['班次报名','Class application','Pendaftaran kelas'])}
-          status={status} tone={enrollmentOrderTone(order.status,{restored:order.restored,classCancelled})} schedule={summarySchedule}/>
-        <section className="enrollment-detail-section" aria-label={t(['付款信息','Payment information','Informasi pembayaran'])}>
-          <EnrollmentDetailFields fields={[
-            [t(['待付金额','Amount due','Jumlah tagihan']),!paymentBar&&<span className="enrollment-main-amount">{formatCurrency(Math.max(0,order.price-order.received),language)}</span>],
+          status={status} tone={enrollmentOrderTone(order.status,{restored:order.restored,classCancelled})} schedule={summarySchedule}
+          sessions={summaryClass?.sessions??resultCourse?.sessions} minutes={summaryClass?.minutes??resultCourse?.minutes}
+          statusSection={{kind:'enrollment',fields:[
             [t(['付款截止','Payment deadline','Batas pembayaran']),order.status==='awaiting_payment'&&Number.isFinite(Date.parse(order.deadline))&&
               <time dateTime={order.deadline}>{enrollmentDateFormatter(language,'dateTime').format(new Date(order.deadline))} WIB</time>],
+          ]}}
+          additionalFields={[
+            [t(['待付金额','Amount due','Jumlah tagihan']),!paymentBar&&<span className="enrollment-main-amount">{formatCurrency(Math.max(0,order.price-order.received),language)}</span>],
           ]}/>
-        </section>
-        <EnrollmentOrderInformation order={order} language={language} identity={detailIdentity}/>
-        {cancelable&&<button type="button" className="enrollment-quiet enrollment-order-cancel enrollment-detail-cancel" disabled={busy} onClick={openCancellation}>
-          {t(['取消报名','Cancel enrollment','Batalkan pendaftaran'])}
-        </button>}
-        {canUpload&&(paymentBar
+        {order.payment&&<EnrollmentPaymentInformation order={order} language={language} includeBalance={!paymentBar}/>}
+        <EnrollmentOrderInformation order={order} language={language} verifiedEmail={detailEmail}/>
+        {canUpload&&paymentBar
           ? <EnrollmentPriceActions label={t(['待付金额','Amount due','Jumlah tagihan'])}
-              amount={Math.max(0,order.price-order.received)} language={language}>
+              amount={Math.max(0,order.price-order.received)} language={language} secondaryLink={cancelAction}>
               <EnrollmentJourneyLink className="enrollment-primary" stepEntry="enrollment-order-payment" to={paymentPath(order.id)}>{paymentLabel}</EnrollmentJourneyLink>
             </EnrollmentPriceActions>
-          : <EnrollmentRecordActions primary={<EnrollmentJourneyLink className="enrollment-primary" stepEntry="enrollment-order-payment" to={paymentPath(order.id)}>{paymentLabel}</EnrollmentJourneyLink>}/>)}
+          : <EnrollmentRecordActions secondary={cancelAction} primary={canUpload&&<EnrollmentJourneyLink className="enrollment-primary" stepEntry="enrollment-order-payment" to={paymentPath(order.id)}>{paymentLabel}</EnrollmentJourneyLink>}/>}
       </>}
       {!showAftercare && !showOrderResult && canConsultRefund && <EnrollmentJourneyLink className="enrollment-quiet" to={'/enrollment/mine?'+refundParams.toString()}>
         {t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}

@@ -4,6 +4,7 @@ import { ArrowRight, Check, Clock3, Copy as CopyIcon } from 'lucide-react';
 import {EnrollmentOrderInformation,EnrollmentRecordActions,EnrollmentRecordSummary} from './EnrollmentRecordLayout';
 import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import { formatCurrency } from '../utils/currency';
+import {EnrollmentPaymentInformation,EnrollmentSubmittedTransfers} from './EnrollmentPaymentInformation';
 import {enrollmentClassTitle,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import type { EnrollmentOrder } from './EnrollmentPayment';
@@ -14,10 +15,11 @@ import type { AftercareCourse as Course, EnrollmentAftercare } from '../utils/en
 type Copy = readonly [string, string, string];
 
 export function EnrollmentOrderAftercare({
-  order, identity, details, catalog, search, language, searchBase, proofPath, busy, onTransfer, onEnablePriority, onCancel,
+  order, enrollmentDetail, verifiedEmail, details, catalog, search, language, searchBase, proofPath, busy, onTransfer, onEnablePriority, onCancel,
 }: {
   order: EnrollmentOrder;
-  identity?: React.ReactNode;
+  enrollmentDetail: boolean;
+  verifiedEmail?: string;
   details?: EnrollmentAftercare;
   catalog: ReadonlyMap<string,PublicEnrollmentClass>;
   search: URLSearchParams;
@@ -83,12 +85,16 @@ export function EnrollmentOrderAftercare({
 
   const classCard = (value?: Course, label?: string, isOriginal = false, status?: string, tone:'pending'|'confirmed'|'full'='full') =>
     <EnrollmentRecordSummary language={language} teacherType={value?.teacherType??course?.teacherType} firstLesson={value?.firstLesson} title={courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}
-      schedule={enrollmentScheduleLabel(value,language)} status={status??(isOriginal&&closed?originalClosed:undefined)} tone={tone}>
+      schedule={enrollmentScheduleLabel(value,language)} sessions={value?.sessions} minutes={value?.minutes}
+      statusSection={enrollmentDetail&&!view?{kind:'enrollment'}:undefined}
+      status={status??(isOriginal&&closed?originalClosed:undefined)} tone={tone}>
       {label&&<p>{label}</p>}
     </EnrollmentRecordSummary>;
   const actions = (primary?: React.ReactNode, secondary?: React.ReactNode) =>
     <>
-      <EnrollmentOrderInformation order={order} language={language} identity={identity}/>
+      {!view&&order.payment&&<EnrollmentPaymentInformation order={order} language={language} includeBalance={false}/>}
+      {!view&&<EnrollmentSubmittedTransfers transfers={order.transfers} language={language}/>}
+      <EnrollmentOrderInformation order={order} language={language} verifiedEmail={verifiedEmail}/>
       <EnrollmentRecordActions primary={primary} secondary={<>
         {secondary}
         {onCancel&&<button type="button" className="enrollment-outline enrollment-order-cancel" disabled={busy} onClick={onCancel}>
@@ -247,7 +253,7 @@ export function EnrollmentOrderAftercare({
       {classCard(course,undefined,false,t(learnerCancelled?['已取消报名','Enrollment canceled','Pendaftaran dibatalkan']:['报名已结束','Enrollment ended','Pendaftaran telah berakhir']))}
       <article className="enrollment-detail-section">
         <p>{t(['席位已释放，付款入口已关闭。','Your seat has been released and the payment link is closed.','Kursi telah dilepas dan tautan pembayaran ditutup.'])}</p>
-        <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received)}</p>
+        {!order.payment&&<p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received)}</p>}
       </article>
       {learnerCancelled&&lateProofSubmitted&&<p role="status">{t(['转账凭证待核实','Transfer proof awaiting verification','Bukti transfer menunggu verifikasi'])}</p>}
       {actions(learnerCancelled&&proofPath&&!lateProofSubmitted
@@ -265,14 +271,14 @@ export function EnrollmentOrderAftercare({
       </p>}
       <article className="enrollment-detail-section">
         <h2>{t(order.received>0||order.creditOut?['收款状态','Payment status','Status pembayaran']:lateProofSubmitted?['下一步','What happens next','Langkah berikutnya']:['已经转账？','Already transferred?','Sudah transfer?'])}</h2>
-        {order.received>0||order.creditOut ? <p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received+(order.creditOut??0))}</p>
+        {order.received>0||order.creditOut ? !order.payment&&<p>{t(['已核实到账','Verified receipts','Dana terverifikasi'])} · {currency(order.received+(order.creditOut??0))}</p>
           : lateProofSubmitted ? <p>{t([
             '财务会核对这笔转账。若足额转账的时间在原付款截止时刻或之前，且原班仍可接收，系统会恢复原班报名。',
             'Finance will review the transfer. If you transferred the full amount by the original payment deadline and the class can still admit you, your enrollment will be restored.',
             'Tim keuangan akan memeriksa transfer ini. Jika Anda sudah mentransfer jumlah penuh paling lambat pada tenggat pembayaran awal dan kelas masih dapat menerima Anda, pendaftaran Anda akan dipulihkan.',
           ])}</p>
           : <p>{t(['可提交已发生的转账凭证，财务会核对实际到账。','If you already transferred funds, submit the proof for Finance to review.','Jika sudah transfer, kirim buktinya untuk diperiksa tim keuangan.'])}</p>}
-        {!!order.creditOut&&<p>{t(['已冲抵新订单','Applied to a new order','Digunakan untuk pesanan baru'])} · {currency(order.creditOut)}</p>}
+        {!order.payment&&!!order.creditOut&&<p>{t(['已冲抵新订单','Applied to a new order','Digunakan untuk pesanan baru'])} · {currency(order.creditOut)}</p>}
         <p>{t(['原付款入口已关闭，原席位已释放。','The original payment link is closed and the seat was released.','Pembayaran untuk pesanan awal ditutup dan kursinya sudah dilepas.'])}</p>
       </article>
 
@@ -314,7 +320,7 @@ export function EnrollmentOrderAftercare({
       {classCard(course,undefined,closed)}
       <article className="enrollment-detail-section">
         <h2>{t(showTransfers?['收款进度','Payment progress','Status pembayaran']:['收款状态','Payment status','Status pembayaran'])}</h2>
-        {showTransfers ? <dl className="enrollment-result-amounts">
+        {showTransfers ? (!order.payment||!!view)&&<dl className="enrollment-result-amounts">
           <div><dt>{t(['应付','Amount due','Jumlah tagihan'])}</dt><dd>{currency(order.price)}</dd></div>
           <div><dt>{t(['已核实到账','Verified receipts','Dana terverifikasi'])}</dt><dd>{currency(order.received)}</dd></div>
         </dl> : <>

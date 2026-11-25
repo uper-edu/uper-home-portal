@@ -5,7 +5,7 @@ import {verifyVisitorSession, subscribeVisitorScope, visitorScope} from '../serv
 import {getStudentContext, saveStudentContext} from '../services/studentProfileStorage';
 
 /** Mount personal UI only after the cookie's identity is known. Rekey on person changes. */
-export default function VisitorBoundary({children}: {children: React.ReactNode}) {
+export default function VisitorBoundary({children,heading}: {children: React.ReactNode;heading?:React.ReactNode}) {
   const {i18n} = useTranslation();
   const lang = new URLSearchParams(location.search).get('lang') || i18n.language;
   const t = (zh:string,en:string,id:string) => lang.startsWith('zh')?zh:lang.startsWith('id')?id:en;
@@ -53,10 +53,10 @@ export default function VisitorBoundary({children}: {children: React.ReactNode})
       document.removeEventListener('visibilitychange', visible);
     };
   }, []);
-  const notice = <div role="status" className="p-4 text-sm">
+  const notice = <>{heading}<div role="status" className="p-4 text-sm">
     {failed?t('访客资料暂不可用。未显示其他访客的信息。','Visitor information is unavailable. Other visitors’ information is hidden.','Informasi pengunjung tidak tersedia. Informasi pengunjung lain disembunyikan.'):t('正在确认访客身份…','Checking visitor identity…','Memeriksa identitas pengunjung…')}
     {failed && <button className="ml-3 underline" onClick={()=>retry.current()}>{t('重试','Retry','Coba lagi')}</button>}
-  </div>;
+  </div></>;
   if (!ready || ready !== visitorScope()) return notice;
   return <React.Fragment key={ready+':'+restoration}>{(checking || failed) && notice}<div ref={privateContent} hidden={checking || failed}>{children}</div></React.Fragment>;
 }

@@ -34,7 +34,7 @@
 .enrollment-status[data-state="pending"], .enrollment-result-state[data-state="pending"] { --enrollment-state-ink: #744909; --enrollment-state-bg: #faf0dc; }
 .enrollment-status[data-state="progress"], .enrollment-result-state[data-state="progress"], .enrollment-teacher-foreign { --enrollment-state-ink: #284982; --enrollment-state-bg: #eaf0fc; }
 .enrollment-status[data-state="confirmed"], .enrollment-result-state[data-state="confirmed"] { --enrollment-state-ink: #08654e; --enrollment-state-bg: #e8f5ed; }
-.enrollment-status[data-state="full"], .enrollment-result-state[data-state="full"] { --enrollment-state-ink: #475b62; --enrollment-state-bg: #eef2f2; }
+.enrollment-status[data-state="full"], .enrollment-result-state[data-state="full"], .enrollment-teacher-local { --enrollment-state-ink: #475b62; --enrollment-state-bg: #eef2f2; }
 .enrollment-status[data-state="error"], .enrollment-result-state[data-state="error"] { --enrollment-state-ink: #9b2b25; --enrollment-state-bg: #fbeceb; }
 .enrollment-class-bottom {
   display: flex;

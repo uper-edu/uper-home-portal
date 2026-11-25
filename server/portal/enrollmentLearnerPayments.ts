@@ -1,4 +1,5 @@
-import type {EnrollmentFinanceTransfer,EnrollmentLearnerTransfer} from '../../src/utils/enrollmentLearnerPayments.ts';
+import type {EnrollmentFinanceTransfer,EnrollmentLearnerPayment,EnrollmentLearnerTransfer} from '../../src/utils/enrollmentLearnerPayments.ts';
+import {parseEnrollmentBank} from '../../src/utils/enrollmentBank.ts';
 import {isEnrollmentProofAmount} from './enrollmentProofTotals.ts';
 
 type Client = {query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
@@ -105,6 +106,41 @@ export function enrollmentFinanceEvidence(rows:PaymentRows) {
     ...transferSummary(group,matched.get(group)),proofIds:group.proofs,
   })).sort(recentFirst);
   return {transfers,unmatchedReferences};
+}
+
+export function enrollmentLearnerPayment(
+  order:{state:string;price:number|string;received:number|string;before_due:number|string;data?:{bank?:unknown}},
+  classState:string,
+  {proofs,receipts}:PaymentRows=emptyPaymentRows,
+) {
+  const {groups,matched,unmatchedReferences}=reconcileTransfers({proofs,receipts});
+  const transfers:EnrollmentLearnerTransfer[]=[];
+  let outstanding=0, legacyUnknown=0, pending=0, unknownAmount=false;
+  for(const group of groups){
+    const verifiedAmount=matched.get(group);
+    if(verifiedAmount===undefined){
+      pending++;
+      if(group.amount===undefined)unknownAmount=true;
+      else outstanding+=group.amount;
+      if(!group.explicitlyGrouped&&!group.references.size)legacyUnknown++;
+    }
+    transfers.push(transferSummary(group,verifiedAmount));
+  }
+  transfers.sort(recentFirst);
+
+  const verifiedBalance=Math.max(0,Number(order.price)-Number(order.received));
+  const uncertain=order.state==='proof_review'&&!groups.size||pending>0&&(unmatchedReferences.length>0||unknownAmount||legacyUnknown>1);
+  const estimated=pending>0&&!uncertain&&verifiedBalance>0;
+  const balance=verifiedBalance===0?0:uncertain?null:Math.max(0,verifiedBalance-outstanding);
+  const action:EnrollmentLearnerPayment['action']=classState!=='published'||verifiedBalance===0?'none'
+    :order.state==='awaiting_payment'&&Number(order.before_due)?'transfer'
+    :order.state==='proof_review'||order.state==='partial'
+      ? balance===0||uncertain?'wait'
+        : (order.state==='partial'||Number(order.before_due))&&parseEnrollmentBank(order.data?.bank)?'top_up'
+          : order.state==='partial'?'support':'wait'
+      : 'none';
+
+  return {payment:{balance,estimated,action,awaitingVerification:pending>0||order.state==='proof_review'} satisfies EnrollmentLearnerPayment,transfers};
 }
 
 export async function readEnrollmentLearnerPaymentRows(c:Client,ids:string[]) {

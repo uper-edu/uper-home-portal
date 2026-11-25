@@ -53,7 +53,7 @@ export async function enrollmentAftercareStatus(c:Client,id:string,includeRefund
     WHERE i.order_id=:p1 ORDER BY i.created_at DESC`,[id])).rows.map(row=>({
       id:row.id,targetClassId:row.target_class_id,expiresAt:row.expires_at_iso,
       state:row.state,level:row.data.level,format:row.data.format,period:row.data.period,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
-      weeklySchedule:row.data.weeklySchedule,minutes:row.data.minutes,
+      weeklySchedule:row.data.weeklySchedule,minutes:row.data.minutes,sessions:row.data.sessions,
     }));
   const refund=includeRefund?await refundLedger(c,id):null;
   const transfers=(await c.query('SELECT source_class_id,target_class_id,created_at FROM enrollment_transfers WHERE order_id=:p1 ORDER BY created_at DESC',[id])).rows;

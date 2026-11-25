@@ -152,6 +152,12 @@ test('proof retry checks the old receipt under the order lock before replacing a
       assert.deepEqual(args,[oldId]);
       return {rows:receipt?[{order_id:orderId}]:[]};
     }
+    if(sql.startsWith('WITH picked AS')){
+      assert.deepEqual(args,[JSON.stringify([orderId])]);
+      assert.ok(receipt);
+      operations.push('read payment summary');
+      return {rows:[]};
+    }
     if(sql.startsWith('UPDATE enrollment_orders SET upload_id')){
       operations.push('reserve');
       assert.equal(args[1],orderId);
@@ -197,7 +203,7 @@ test('proof retry checks the old receipt under the order lock before replacing a
     receipt=true;
     const saved=await invoke(restart) as {state:string;order:{id:string};uploadId?:string};
     assert.deepEqual([saved.state,saved.order.id,saved.uploadId],['saved',orderId,undefined]);
-    assert.deepEqual(operations.splice(0),['lock order','check receipt']);
+    assert.deepEqual(operations.splice(0),['lock order','check receipt','read payment summary']);
 
     receipt=false;
     const fresh=await invoke(restart) as {uploadId:string;transport:string};
@@ -232,7 +238,7 @@ test('proof retry checks the old receipt under the order lock before replacing a
     assert.deepEqual(await invoke(check),{state:'unconfirmed',proofTransport:'binary-v1',uploadActive:true});
     receipt=true;
     assert.equal((await invoke(finish,proof) as {id:string}).id,orderId);
-    assert.deepEqual(operations.splice(0),['lock order','check saved proof']);
+    assert.deepEqual(operations.splice(0),['lock order','check saved proof','read payment summary']);
 
     verified=other;
     await assert.rejects(invoke(restart),{status:404,message:'enrollment_order_not_found'});

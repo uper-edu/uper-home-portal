@@ -101,13 +101,20 @@ test('my enrollments reads the latest waitlist and preference events by owner an
   const email='activity-learner@example.invalid',classId='fixture-class',id='shared-fixture-id';
   const first='2027-01-09T09:00';
   const older='2026-11-22T08:00:00.000001Z',newer='2026-11-22T08:00:00.000002Z';
-  let activityReads=0,hasRecords=true;
+  let activityReads=0,teacherReads=0,hasRecords=true,legacyAppointment=false;
   mountEnrollmentInterests({get:(path:string,handler:Handler)=>handlers.set(path,handler)} as never,{
     wrap:handler=>handler,post:()=>{},session:async()=>email,expireSeats:async()=>{},
     requireNewEnrollment:async()=>assert.fail('Reading history must not start a new enrollment'),
     lockClass:async(_,requested)=>({id:requested,state:'draft',accepting:1,course_active:1,data:{level:'HSK 1',firstLesson:first}}),
     transact:async callback=>callback({async query(sql,params){
       if(sql.startsWith('SELECT (SELECT COUNT(*)'))return {rows:[{count:0}]};
+      if(sql.includes('FROM portal_settings t JOIN crm_courses')){
+        teacherReads++;
+        return {rows:[{
+          template:{id:'private-1',teacherType:'foreign',saleUnitPrice:350000,standardUnitPrice:400000},
+          course:{name:'Fixture',sessions:23,active:true,teaching:{level:'HSK 1',minutes:45}},
+        }]};
+      }
       assert.deepEqual(params,[email]);
       if(sql.includes('JOIN enrollment_interest_events')){
         activityReads++;
@@ -118,7 +125,10 @@ test('my enrollments reads the latest waitlist and preference events by owner an
         return {rows:[{kind:'vacancy',interest_id:id,updatedAt:older},{kind:'match',interest_id:id,updatedAt:newer}]};
       }
       if(sql.includes('FROM enrollment_waitlist'))return {rows:hasRecords?[{id,class_id:classId,state:'closed',updatedAt:older}]:[]};
-      if(sql.includes('FROM enrollment_demands'))return {rows:hasRecords?[{id,state:'withdrawn',revision:1,criteria:{},updatedAt:older}]:[]};
+      if(sql.includes('FROM enrollment_demands'))return {rows:hasRecords?[{id,state:'withdrawn',revision:1,criteria:legacyAppointment?{
+        level:'HSK 1',period:'weekend',format:'one-on-one',notes:'',phone:'081234567890',
+        appointment:{templateId:'private-1',learnerName:'Fixture learner',learnerKey:'self',lessons:23,minutes:45,total:8050000},
+      }:{},updatedAt:older}]:[]};
       assert.fail('Unexpected history query: '+sql);
     }}),
   });
@@ -137,6 +147,15 @@ test('my enrollments reads the latest waitlist and preference events by owner an
   const blank=await read();
   assert.deepEqual([blank.waitlist,blank.demands],[[],[]]);
   assert.equal(activityReads,1);
+  assert.equal(teacherReads,0);
+  hasRecords=true;
+  legacyAppointment=true;
+  const legacy=await read();
+  assert.equal(teacherReads,1);
+  assert.deepEqual(legacy.demands[0]?.appointment,{
+    templateId:'private-1',learnerName:'Fixture learner',lessons:23,minutes:45,total:8050000,
+    teacherType:'foreign',phoneDisplay:'+62 •••• 7890',confirmation:undefined,
+  });
 });
 
 test('other needs an explanation and stays for human review; any can match a published cohort', () => {
@@ -279,6 +298,7 @@ test('verified private lesson requests reuse one active record across independen
   assert.equal(attribution.length,1);
   assert.equal((attribution[0][2] as {lang:string}).lang,'id');
   assert.equal(appointments[0].criteria.appointment.total,8050000);
+  assert.equal(appointments[0].criteria.appointment.teacherType,'local');
   await request('33333333-3333-4333-8333-333333333333','entry_point=website',true);
   assert.equal(appointments.length,2);
   assert.equal(demandMatches(appointments[0].criteria,{level:'HSK 1',period:'weekend',format:'one-on-one'}),false);

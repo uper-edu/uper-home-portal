@@ -1,4 +1,4 @@
-import {validContactPhone} from './contactPhone';
+import {parseContactPhone,validContactPhone} from './contactPhone';
 
 import {demandFormats, demandLevels, demandPeriods, type DemandCriteria} from './enrollmentInterestRecords';
 export * from './enrollmentInterestRecords';
@@ -12,6 +12,14 @@ export function enrollmentInsertionPhone(input: unknown): string | null {
   const phone = input.trim();
   const digits = phone.replace(/\D/g,'').length;
   return /^\+?[0-9 ()-]{7,26}$/.test(phone) && digits >= 7 && digits <= 15 ? phone : null;
+}
+
+export function enrollmentPhoneDisplay(value: unknown) {
+  const parsed = parseContactPhone(value);
+  const phone = parsed?.number ?? enrollmentInsertionPhone(value);
+  if (!phone) return undefined;
+  const callingCode = (parsed ?? parseContactPhone(phone.replace(/[()]/g,'')))?.countryCallingCode;
+  return (callingCode ? '+'+callingCode+' ' : '')+'•••• '+phone.replace(/\D/g,'').slice(-4);
 }
 
 export function parseDemand(input: Record<string,unknown>): DemandCriteria | null {

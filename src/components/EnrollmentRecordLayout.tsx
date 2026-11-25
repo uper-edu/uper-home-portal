@@ -1,11 +1,12 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
-import type {ReactNode} from 'react';
-import {enrollmentCopy,enrollmentInstant,enrollmentTeacherLabel} from '../utils/enrollmentCatalog';
+import {useLayoutEffect,useRef,type ReactNode} from 'react';
+import {enrollmentCopy,enrollmentFixedLessonDuration,enrollmentInstant,enrollmentTeacherLabel} from '../utils/enrollmentCatalog';
 import type {InterestLanguage} from '../utils/enrollmentInterestCopy';
 import type {EnrollmentOrder} from './EnrollmentPayment';
 import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
 import {formatCurrency} from '../utils/currency';
 import type {EnrollmentStatusTone} from '../utils/enrollmentOrderStatus';
+import {maskEnrollmentEmail} from '../utils/enrollmentEmailIdentity';
 
 export function EnrollmentPriceSaving({amount,standardPrice,language}:{
   amount:number;standardPrice?:number;language:InterestLanguage;
@@ -55,11 +56,35 @@ export function EnrollmentRecordActions({primary,secondary,tertiary}: {
   </div>;
 }
 
-export function EnrollmentPriceActions({label,hideLabel=false,amount,standardPrice,language,children}:{
-  label:string;hideLabel?:boolean;amount:number;standardPrice?:number;language:InterestLanguage;children:ReactNode;
+export function EnrollmentDetailActions({mobileFixed=false,secondaryLink,price,children,additional}:{
+  mobileFixed?:boolean;secondaryLink?:ReactNode;price?:ReactNode;children?:ReactNode;additional?:ReactNode;
 }) {
-  return <div className="enrollment-price-actions">
-    <dl className="enrollment-price-actions-summary">
+  const actionBar=useRef<HTMLDivElement>(null);
+  useLayoutEffect(()=>{
+    const bar=actionBar.current;
+    const screen=bar?.closest<HTMLElement>('.enrollment-screen');
+    if(!mobileFixed||!bar||!screen)return;
+    const update=()=>screen.style.setProperty('--enrollment-fixed-action-height',bar.offsetHeight+'px');
+    update();
+    const observer=typeof ResizeObserver==='function'?new ResizeObserver(update):undefined;
+    observer?.observe(bar,{box:'border-box'});
+    return ()=>{
+      observer?.disconnect();
+      screen.style.removeProperty('--enrollment-fixed-action-height');
+    };
+  },[mobileFixed]);
+  return <div ref={actionBar} className={price?'enrollment-detail-actions enrollment-price-actions':'enrollment-detail-actions'}
+    data-mobile-fixed={mobileFixed}>
+    {secondaryLink&&<div className="enrollment-detail-action-link">{secondaryLink}</div>}
+    {children&&<div className="enrollment-detail-action-main">{price}{children}</div>}
+    {additional&&<div className="enrollment-detail-action-link">{additional}</div>}
+  </div>;
+}
+
+export function EnrollmentPriceActions({label,hideLabel=false,amount,standardPrice,language,secondaryLink,children}:{
+  label:string;hideLabel?:boolean;amount:number;standardPrice?:number;language:InterestLanguage;secondaryLink?:ReactNode;children:ReactNode;
+}) {
+  return <EnrollmentDetailActions mobileFixed secondaryLink={secondaryLink} price={<dl className="enrollment-price-actions-summary">
       <div>
         <dt className={hideLabel?'sr-only':undefined}>{label}</dt>
         <dd className="enrollment-main-amount">{formatCurrency(amount,language)}</dd>
@@ -72,35 +97,71 @@ export function EnrollmentPriceActions({label,hideLabel=false,amount,standardPri
         <dt className="sr-only">{enrollmentCopy(language,['节省金额','Savings','Penghematan'])}</dt>
         <dd><EnrollmentPriceSaving amount={amount} standardPrice={standardPrice} language={language}/></dd>
       </div>}
-    </dl>
-    {children}
-  </div>;
+    </dl>}>{children}</EnrollmentDetailActions>;
 }
 
-export function EnrollmentDetailFields({fields}:{
-  fields:ReadonlyArray<readonly [string,ReactNode]>
+type EnrollmentDetailField = readonly [label:string,value:ReactNode,badge?:ReactNode];
+
+export function EnrollmentDetailFields({fields,heading}:{
+  fields:ReadonlyArray<EnrollmentDetailField>;heading?:string;
 }) {
   const visible=fields.filter(([,value])=>value!==undefined&&value!==null&&value!==false&&value!=='');
   if(!visible.length)return null;
-  return <dl className="enrollment-detail-fields">
-    {visible.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-  </dl>;
+  return <>
+    {heading&&<h3 className="enrollment-record-section-title">{heading}</h3>}
+    <dl className="enrollment-detail-fields">
+      {visible.map(([label,value,badge])=><div key={label}>
+        <dt>{label}</dt>
+        {badge ? <dd className="enrollment-detail-field-with-badge">
+          <span className="enrollment-detail-field-value">{value}</span>
+          <span className="enrollment-detail-field-badge">{badge}</span>
+        </dd> : <dd>{value}</dd>}
+      </div>)}
+    </dl>
+  </>;
 }
 
-export function EnrollmentRecordSummary({title,status,tone='pending',schedule,teacherType,firstLesson,language,children}: {
+export function EnrollmentDetailSection({title,fields}:{
+  title:string;fields:ReadonlyArray<EnrollmentDetailField>;
+}) {
+  return <section className="enrollment-detail-section">
+    <h2 className="enrollment-record-section-title">{title}</h2>
+    <EnrollmentDetailFields fields={fields}/>
+  </section>;
+}
+
+export function EnrollmentRecordSummary({title,status,tone='pending',schedule,teacherType,firstLesson,sessions,minutes,language,additionalFields,statusSection,children}: {
   title:string;status?:string;tone?:EnrollmentStatusTone;schedule?:string;teacherType?:'local'|'foreign';firstLesson?:string;
-  language:InterestLanguage;children?:ReactNode;
+  sessions?:number;minutes?:number;
+  language:InterestLanguage;additionalFields?:ReadonlyArray<EnrollmentDetailField>;children?:ReactNode;
+  statusSection?:{kind:'enrollment'|'booking';fields?:ReadonlyArray<EnrollmentDetailField>;description?:ReactNode};
 }) {
   const t=(copy:readonly [string,string,string])=>enrollmentCopy(language,copy);
   const firstDate=enrollmentInstant(firstLesson);
+  const booking=statusSection?.kind==='booking';
+  const statusLabel=booking?t(['约课状态','Booking status','Status penjadwalan']):
+    t(['报名状态','Enrollment status','Status pendaftaran']);
+  const courseHeading=statusSection&&(booking?t(['课程信息','Lesson information','Informasi kursus']):
+    t(['班次信息','Class information','Informasi kelas']));
   return <header className="enrollment-record-summary">
-    <EnrollmentClassSummaryHeading title={title} status={status} tone={tone} announceStatus/>
-    <EnrollmentDetailFields fields={[
+    <EnrollmentClassSummaryHeading title={title} status={statusSection?undefined:status} tone={tone} announceStatus/>
+    {statusSection&&status&&<section className="enrollment-record-status" aria-label={statusLabel}>
+      <div className="enrollment-record-status-heading">
+        <h3 className="enrollment-record-section-title">{statusLabel}</h3>
+        <EnrollmentStatusBadge status={status} tone={tone} announceStatus/>
+      </div>
+      {statusSection.fields&&<EnrollmentDetailFields fields={statusSection.fields}/>}
+      {statusSection.description}
+    </section>}
+    <EnrollmentDetailFields heading={courseHeading} fields={[
       [t(['授课教师','Teacher','Pengajar']),enrollmentTeacherLabel(teacherType,language)],
       [t(['首课时间','First class','Pertemuan pertama']),firstDate&&<time dateTime={firstDate.toISOString()}>
         {enrollmentDateFormatter(language,'dateTime').format(firstDate)} WIB
       </time>],
       [t(['每周课表','Weekly schedule','Jadwal mingguan']),schedule],
+      [t(['课时安排','Lesson duration','Durasi pelajaran']),
+        sessions!==undefined&&sessions>0&&minutes!==undefined&&minutes>0&&enrollmentFixedLessonDuration(sessions,minutes,language)],
+      ...(additionalFields??[]),
     ]}/>
     {children}
   </header>;
@@ -120,14 +181,22 @@ export function EnrollmentListRecord({category,title,status,tone,children,primar
   </article>;
 }
 
-export function EnrollmentOrderInformation({order,language,identity}: {order:EnrollmentOrder;language:InterestLanguage;identity?:ReactNode}) {
+export function EnrollmentContactInformation({title,language,learnerName,verifiedEmail,phoneDisplay,additionalFields}:{
+  title:string;language:InterestLanguage;learnerName?:string;verifiedEmail?:string;phoneDisplay?:string;
+  additionalFields?:ReadonlyArray<EnrollmentDetailField>;
+}) {
   const t=(copy:readonly [string,string,string])=>enrollmentCopy(language,copy);
-  return <section className="enrollment-detail-section">
-    <h2 className="enrollment-record-section-title">{t(['报名信息','Enrollment information','Informasi pendaftaran'])}</h2>
-    <EnrollmentDetailFields fields={[
-      [t(['学员姓名','Learner name','Nama siswa']),order.learnerName],
-      [t(['报名编号','Order number','Nomor pendaftaran']),order.id],
-    ]}/>
-    {identity}
-  </section>;
+  return <EnrollmentDetailSection title={title} fields={[
+    [t(['学员姓名','Learner name','Nama siswa']),learnerName],
+    [t(['报名邮箱','Enrollment email','Email pendaftaran']),verifiedEmail&&maskEnrollmentEmail(verifiedEmail),
+      <EnrollmentStatusBadge status={t(['已验证','Verified','Terverifikasi'])} tone="confirmed"/>],
+    [t(['WhatsApp／手机号','WhatsApp or phone','WhatsApp atau nomor HP']),verifiedEmail&&phoneDisplay],
+    ...(additionalFields??[]),
+  ]}/>;
+}
+
+export function EnrollmentOrderInformation({order,language,verifiedEmail}: {order:EnrollmentOrder;language:InterestLanguage;verifiedEmail?:string}) {
+  return <EnrollmentContactInformation title={enrollmentCopy(language,['报名信息','Enrollment information','Informasi pendaftaran'])}
+    language={language} learnerName={order.learnerName} verifiedEmail={verifiedEmail} phoneDisplay={order.phoneDisplay}
+    additionalFields={[[enrollmentCopy(language,['报名编号','Order number','Nomor pendaftaran']),order.id]]}/>;
 }

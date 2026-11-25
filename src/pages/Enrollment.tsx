@@ -36,8 +36,8 @@ const loadEnrollmentAssistance = () => import('../components/EnrollmentAssistanc
 const EnrollmentAssistanceForm = lazyEnrollmentModule(() => loadEnrollmentAssistance().then(module => module.EnrollmentAssistanceForm));
 const EnrollmentSupport = lazyEnrollmentModule(() => import('../components/EnrollmentSupport').then(module => module.EnrollmentSupport));
 
-function EnrollmentApplication(props: ComponentProps<typeof EnrollmentForm>) {
-  return <VisitorBoundary><EnrollmentForm {...props}/></VisitorBoundary>;
+function EnrollmentApplication({fallbackHeading,...props}: ComponentProps<typeof EnrollmentForm>&{fallbackHeading?:ReactNode}) {
+  return <VisitorBoundary heading={fallbackHeading}><EnrollmentForm {...props}/></VisitorBoundary>;
 }
 
 function ClassIntakeMode({classId,application,waitlist}:{classId:string;application:ReactNode;waitlist:ReactNode}) {
@@ -564,17 +564,23 @@ export default function Enrollment() {
       ? deferredSection(<VisitorBoundary><EnrollmentPaymentForm key={params.get('order')} language={language} payment/></VisitorBoundary>)
       : <p>{t('unavailable')}</p>}
   </section>;
-  if (mine) return <section className="enrollment-screen enrollment-mine" data-record-detail={!!recordId||hasOrder}>
-    {recordId||hasOrder ? <div>{backChat}{isOrderSubpage?backToOrder:mineBack}</div> : <>{backChat}{backCatalog}</>}
-    <h1 id="enrollment-mine-heading" tabIndex={-1}>
-      {record?.kind==='waitlist'?t('waitlistDetail'):record?.kind==='demands'?t('demandDetail'):hasOrder
-        ?enrollmentCopy(language,['报名详情','Enrollment details','Detail pendaftaran']):t('mine')}
-    </h1>
-    {recordId && !record ? <p>{t('recordUnavailable')}</p>
-      : servicing === undefined ? <p role="status">{t('loading')}</p>
-      : servicing ? deferredSection(<EnrollmentApplication key={pathname} language={language} mine record={record}/>)
-      : <p>{t('unavailable')}</p>}
-  </section>;
+  if (mine) {
+    const list = !recordId&&!hasOrder;
+    const listHeading=list?t('mine'):undefined;
+    const fallbackHeading=list?<h1>{listHeading}</h1>:undefined;
+    return <section className="enrollment-screen enrollment-mine" data-record-detail={!list}>
+      {list ? <>{backChat}{backCatalog}</> : <div>{backChat}{isOrderSubpage?backToOrder:mineBack}</div>}
+      {!list&&<h1 id="enrollment-mine-heading" tabIndex={-1}>
+        {record?.kind==='waitlist'?t('waitlistDetail'):record?.kind==='demands'?t('demandDetail'):hasOrder
+          ?enrollmentCopy(language,['报名详情','Enrollment details','Detail pendaftaran']):t('mine')}
+      </h1>}
+      {recordId && !record ? <p>{t('recordUnavailable')}</p>
+        : servicing === undefined ? <>{fallbackHeading}<p role="status">{t('loading')}</p></>
+        : servicing ? deferredSection(<EnrollmentApplication key={pathname} language={language} mine record={record}
+          listHeading={listHeading} fallbackHeading={fallbackHeading}/>,fallbackHeading)
+        : <>{fallbackHeading}<p>{t('unavailable')}</p></>}
+    </section>;
+  }
   if(appointmentRegistration){
     const appointment=appointments?.find(item=>item.id===appointmentId);
     const loading=servicing===undefined||catalogUrl&&!catalog;

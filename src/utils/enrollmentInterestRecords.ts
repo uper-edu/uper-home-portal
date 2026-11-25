@@ -12,6 +12,7 @@ export interface DemandCriteria {
 export type PrivateLessonRegistration = {
   templateId:string; learnerName:string; learnerKey:string;
   lessons:number; minutes:number; total:number;
+  teacherType?:'local'|'foreign';
   confirmation?:{firstLessonAt:string;teacher:string;schedule:string};
 };
 
@@ -25,7 +26,7 @@ type WaitlistItem = MatchedClass & {
 export type DemandItem = {
   id:string; revision:number; state:'active'|'withdrawn'; criteria:DemandCriteria;
   matches:MatchedClass[]; updatedAt?:string|null;
-  appointment?:Omit<PrivateLessonRegistration,'learnerKey'>;
+  appointment?:Omit<PrivateLessonRegistration,'learnerKey'>&{phoneDisplay?:string};
 };
 export type Interests = {waitlist:WaitlistItem[];demands:DemandItem[]};
 
@@ -38,6 +39,8 @@ export function parseEnrollmentInterests(data:unknown):Interests {
     const item=row.appointment;
     return item===undefined||!!item&&row.criteria.format==='one-on-one'&&typeof item.templateId==='string'&&typeof item.learnerName==='string'&&
       Number.isSafeInteger(item.lessons)&&item.lessons>0&&Number.isSafeInteger(item.minutes)&&item.minutes>0&&Number.isSafeInteger(item.total)&&item.total>0&&
+      (item.teacherType===undefined||item.teacherType==='local'||item.teacherType==='foreign')&&
+      (item.phoneDisplay===undefined||typeof item.phoneDisplay==='string')&&
       (item.confirmation===undefined||!!item.confirmation&&typeof item.confirmation.firstLessonAt==='string'&&Number.isFinite(Date.parse(item.confirmation.firstLessonAt))&&
         typeof item.confirmation.teacher==='string'&&typeof item.confirmation.schedule==='string');
   };

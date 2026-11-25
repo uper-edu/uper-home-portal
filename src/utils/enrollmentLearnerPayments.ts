@@ -1,3 +1,10 @@
+export type EnrollmentLearnerPayment = {
+  balance: number | null;
+  estimated: boolean;
+  awaitingVerification: boolean;
+  action: 'transfer' | 'top_up' | 'wait' | 'support' | 'none';
+};
+
 export type EnrollmentLearnerTransfer = {
   id: string;
   submittedAt: string;

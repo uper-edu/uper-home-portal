@@ -12,7 +12,7 @@ import { permittedRecord } from '../../src/utils/accessControl.ts';
 import type { Employee } from './identity.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitlist, startEnrollmentVacancySimulation, takenSeats } from './enrollmentInterests.ts';
-import { enrollmentInsertionPhone, enrollmentPhone } from '../../src/utils/enrollmentInterests.ts';
+import { enrollmentInsertionPhone, enrollmentPhone, enrollmentPhoneDisplay } from '../../src/utils/enrollmentInterests.ts';
 import { allowsEnrollmentProof, enrollmentClosureReason, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import {enrollmentProofAccept,enrollmentProofFileIssue,matchesEnrollmentProofSignature,maxEnrollmentProofBytes} from '../../src/utils/enrollmentProofFile.ts';
 import { isEnrollmentInsertionWindow } from '../../src/utils/enrollmentCatalog.ts';
@@ -26,7 +26,7 @@ import { assistedEnrollmentOpportunity, mountEnrollmentCrm, recordEnrollmentCust
 import { lockIdentityRegistry } from './identityConsolidation.ts';
 import { saveSimpleSalesWorkflow } from './simpleSalesWorkflow.ts';
 import { isEnrollmentProofAmount,proofTransferDetails } from './enrollmentProofTotals.ts';
-import {enrollmentFinanceEvidence,enrollmentProofGroupId,enrollmentReceiptProofId,readEnrollmentLearnerPaymentRows,withEnrollmentReceiptProofLinks} from './enrollmentLearnerPayments.ts';
+import {enrollmentFinanceEvidence,enrollmentLearnerPayment,enrollmentProofGroupId,enrollmentReceiptProofId,readEnrollmentLearnerPaymentRows,withEnrollmentReceiptProofLinks} from './enrollmentLearnerPayments.ts';
 import {readEnrollmentFinanceProgress,readEnrollmentFinanceWorklist} from './enrollmentFinanceWorklist.ts';
 import { recordEnrollmentAttribution } from './enrollmentAttribution.ts';
 import { latestAssistanceMail, orderNotice, proofNotices, retryAssistanceMail, sendAssistanceMail, startEnrollmentWeeklySimulation } from './enrollmentNotices.ts';
@@ -112,6 +112,13 @@ function view(row: any, classState: string) {
     restored: status === 'recovered', learnerName: row.data?.name, price: row.price,
     received: Number(row.received), closureReason:enrollmentClosureReason(row.state,row.data?.closureReason), deadline: row.payment_due_at.replace(' ', 'T') + 'Z',
     ...(row.data?.creditIn?{creditIn:Number(row.data.creditIn)}:{}),...(row.data?.creditOut?{creditOut:Number(row.data.creditOut)}:{}) };
+}
+
+async function learnerPaymentView(c:Client,order:any,classState:string) {
+  const rows=await readEnrollmentLearnerPaymentRows(c,[order.id]);
+  const {payment,transfers}=enrollmentLearnerPayment(order,classState,withEnrollmentReceiptProofLinks(rows.get(order.id),order.data?.learnerReceiptProofLinks));
+  return {...view(order,classState),payment,transfers,
+    bank:payment.action==='transfer'||payment.action==='top_up'?order.data.bank:undefined};
 }
 
 export function proofContent(raw: unknown, mime: unknown) {
@@ -274,14 +281,14 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
             < CAST(e.data->>'$.capacity' AS UNSIGNED)
         ORDER BY e.first_lesson_at,e.id`,[cohort.id,cohort.data.level,cohort.data.format])).rows.map(row=>({
           id:row.id,level:row.data.level,format:row.data.format,period:row.data.period,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
-          weeklySchedule:row.data.weeklySchedule,minutes:row.data.minutes,
+          weeklySchedule:row.data.weeklySchedule,minutes:row.data.minutes,sessions:row.data.sessions,
         })):[];
       const status=await enrollmentAftercareStatus(c,order.id);
       const lateProofSubmitted=(order.state==='expired'||enrollmentClosureReason(order.state,order.data?.closureReason)==='learner_cancelled')&&verified===0&&!order.data?.creditOut&&
         (await c.query('SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1',[order.id])).rows.length>0;
       return { originalClassState:cohort.state, currentClass:{
         level:cohort.data.level,format:cohort.data.format,period:cohort.data.period,batchNumber:cohort.data.batchNumber,teacherType:cohort.data.teacherType,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
-        weeklySchedule:cohort.data.weeklySchedule,minutes:cohort.data.minutes,
+        weeklySchedule:cohort.data.weeklySchedule,minutes:cohort.data.minutes,sessions:cohort.data.sessions,
         opened:!!confirmed,
       }, lateProofSubmitted, priorityRequested:typeof order.data?.priority==='boolean' ? order.data.priority : undefined,
         transfers, ...status, refund: verified<=0 ? { mode:'unavailable' } :
@@ -595,15 +602,16 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
 
   app.get(base + '/orders', wrap(async (q, r) => {
     if(!readEnrollmentSessionDigest(q.headers.cookie))invalid('enrollment_verification_required',401);
-    const result = await enrollTx(async (c: Client) => {
+    const result = await tx(async (c: Client) => {
       const email = await session(c, q);
       const { rows } = await c.query(`SELECT o.id,o.class_id,o.price,o.received,o.payment_due_at,
         CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
           AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,
         o.data,e.state AS class_state,e.data AS class_data,
         i.id AS invitation_id,DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS invitation_deadline,
+        o.payment_due_at>=UTC_TIMESTAMP(6) AS before_due,
         (e.state='published' AND (o.state='partial' OR
-          (o.state='awaiting_payment' AND o.payment_due_at>=UTC_TIMESTAMP(6)))) AS needs_payment,
+          (o.state IN ('awaiting_payment','proof_review') AND o.payment_due_at>=UTC_TIMESTAMP(6)))) AS needs_payment,
         DATE_FORMAT(GREATEST(o.created_at,COALESCE(o.activity_at,o.created_at),COALESCE(n.latest,o.created_at),
           COALESCE(i.created_at,o.created_at),IF(e.state='cancelled',e.updated_at,o.created_at)),
           '%Y-%m-%dT%H:%i:%s.%fZ') AS updated_at_iso
@@ -621,9 +629,14 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt,expires_at>UTC_TIMESTAMP(6) AS active
         FROM enrollment_assisted_applications WHERE email=:p1 AND order_id IS NULL ORDER BY created_at DESC,id LIMIT 100`,[email])).rows
         .map(row=>({id:row.id,quote:row.data.quote,name:row.data.name,createdAt:row.createdAt,expiresAt:row.expiresAt,active:Number(row.active)===1}));
-      const orders=rows.map(row => ({ ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson,
-        classCancelled:row.class_state==='cancelled',updatedAt:row.updated_at_iso,needsPayment:Number(row.needs_payment)===1,
-        invitation:row.invitation_id?{id:row.invitation_id,deadline:row.invitation_deadline}:undefined }));
+      const paymentRows=await readEnrollmentLearnerPaymentRows(c,rows.filter(row=>['proof_review','partial'].includes(row.state)).map(row=>row.id));
+      const orders=rows.map(row => {
+        const {payment}=enrollmentLearnerPayment(row,row.class_state,withEnrollmentReceiptProofLinks(paymentRows.get(row.id),row.data?.learnerReceiptProofLinks));
+        return { ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson,
+          classCancelled:row.class_state==='cancelled',updatedAt:row.updated_at_iso,payment,
+          needsPayment:['transfer','top_up','support'].includes(payment.action),
+          invitation:row.invitation_id?{id:row.invitation_id,deadline:row.invitation_deadline}:undefined };
+      });
       return {orders,applications,verifiedEmail:email};
     });
     r.set('Cache-Control', 'no-store').json(result);
@@ -634,11 +647,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const result = await enrollTx(async (c: Client) => {
       const verifiedEmail = await session(c,q);
       const { order,cohort } = await lockOrder(c, String(q.params.id), verifiedEmail);
-      const rows=await readEnrollmentLearnerPaymentRows(c,[order.id]);
-      const evidence=enrollmentFinanceEvidence(withEnrollmentReceiptProofLinks(rows.get(order.id),order.data?.learnerReceiptProofLinks));
-      return { ...view(order,cohort.state), verifiedEmail,
-        transfers:evidence.transfers.map(({proofIds,...transfer})=>transfer),
-        bank: cohort.state!=='cancelled' && (order.state === 'awaiting_payment' || order.state === 'partial') ? order.data.bank : undefined };
+      return { ...await learnerPaymentView(c,order,cohort.state), verifiedEmail, phoneDisplay:enrollmentPhoneDisplay(order.data?.phone) };
     });
     r.set('Cache-Control', 'no-store').json(result);
   }));
@@ -650,12 +659,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const result=await enrollTx(async(c:Client)=>{
       const email=await session(c,q);
       const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state, p.id AS saved_proof,
+        o.payment_due_at>=UTC_TIMESTAMP(6) AS before_due,
         (o.upload_id=:p3 AND o.upload_expires_at>=UTC_TIMESTAMP(6)) AS upload_active
         FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id
         LEFT JOIN enrollment_proofs p ON p.order_id=o.id AND p.id=:p3
         WHERE o.id=:p1 AND o.email=:p2`,[id,email,uploadId]);
       if(!row)invalid('enrollment_order_not_found',404);
-      return row.saved_proof?{state:'saved',order:view(row,row.class_state)}:
+      return row.saved_proof?{state:'saved',order:await learnerPaymentView(c,row,row.class_state)}:
         {state:'unconfirmed',proofTransport:'binary-v1',uploadActive:Number(row.upload_active)===1};
     });
     r.json(result);
@@ -670,7 +680,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       // A delayed finish may have committed while this retry waited for the
       // same order lock. Return its result before opening another upload.
       if(previousUploadId&&(await c.query('SELECT id FROM enrollment_proofs WHERE id=:p1 AND order_id=:p2',
-        [previousUploadId,order.id])).rows.length)return {state:'saved',order:view(order,cohort.state)};
+        [previousUploadId,order.id])).rows.length)return {state:'saved',order:await learnerPaymentView(c,order,cohort.state)};
       if (!allowsEnrollmentProof(order.state,order.data?.closureReason)) invalid('enrollment_proof_not_available', 409);
       if (Number(order.upload_active)) {
         if (previousUploadId && previousUploadId===order.upload_id &&
@@ -696,7 +706,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const result = await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
       const prior = (await c.query('SELECT order_id FROM enrollment_proofs WHERE id=:p1', [uploadId])).rows[0];
-      if (prior?.order_id === order.id) return view(order,cohort.state);
+      if (prior?.order_id === order.id) return learnerPaymentView(c,order,cohort.state);
       if (order.upload_id !== uploadId || !Number(order.upload_active) || !allowsEnrollmentProof(order.state,order.data?.closureReason)) {
         invalid('enrollment_upload_expired', 409);
       }
@@ -733,7 +743,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       }
       await c.query('UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
       await proofNotices(c,order.id,cohort.id,proof.digest,cohort.data.level);
-      return view({...order,state},cohort.state);
+      return learnerPaymentView(c,{...order,state},cohort.state);
     }));
     if (!result) invalid('enrollment_invalid_proof');
     r.json(result);

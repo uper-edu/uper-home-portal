@@ -10,7 +10,7 @@ import {nextPaymentClockDelay,paymentMinuteMs} from '../utils/enrollmentPaymentC
 import {EnrollmentJoiningNote} from './EnrollmentJoiningNote';
 import {hasEnrollmentBankPlaceholder,type EnrollmentBank} from '../utils/enrollmentBank';
 import {enrollmentProofAccept,enrollmentProofSelectionIssue} from '../utils/enrollmentProofFile';
-import type {EnrollmentLearnerTransfer,EnrollmentProofDraft,EnrollmentProofSubmission} from '../utils/enrollmentLearnerPayments';
+import type {EnrollmentLearnerPayment,EnrollmentLearnerTransfer,EnrollmentProofDraft,EnrollmentProofSubmission} from '../utils/enrollmentLearnerPayments';
 
 export type EnrollmentOrder = {
   id: string;
@@ -18,6 +18,7 @@ export type EnrollmentOrder = {
   status: string;
   restored: boolean;
   learnerName?: string;
+  phoneDisplay?: string;
   closureReason?: EnrollmentClosureReason;
   price: number;
   received: number;
@@ -27,12 +28,13 @@ export type EnrollmentOrder = {
   bank?: EnrollmentBank;
   bankDetailsInvalid?: boolean;
   serverClockOffsetMs?: number;
+  payment?: EnrollmentLearnerPayment;
   transfers?: EnrollmentLearnerTransfer[];
 };
 
 type Language = 'zh' | 'en' | 'id';
 
-export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, proofTransfer, onProofTransferChange, upload, existingTransferOnly = false, proofUploadFailed = false, submittingProof = false, proofFeedback }: {
+export function EnrollmentPayment({ order, course, classInfo, language, status, canUpload, file, busy, setFile, proofTransfer, onProofTransferChange, upload, existingTransferOnly = false, showTopUp = false, proofUploadFailed = false, submittingProof = false, proofFeedback }: {
   order: EnrollmentOrder;
   course?: PublicEnrollmentClass;
   classInfo?:AftercareCourse;
@@ -46,6 +48,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   onProofTransferChange: (draft:EnrollmentProofDraft) => void;
   upload: (transfer:EnrollmentProofSubmission) => void;
   existingTransferOnly?: boolean;
+  showTopUp?: boolean;
   proofUploadFailed?: boolean;
   submittingProof?: boolean;
   proofFeedback?: ReactNode;
@@ -60,12 +63,13 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   const clockOffset = order.serverClockOffsetMs ?? 0;
   const serverNow = now + clockOffset;
   const awaitingPayment = order.status === 'awaiting_payment';
-  const deadlinePassed = awaitingPayment && Number.isFinite(deadline.valueOf()) && serverNow >= deadline.valueOf();
-  const bank = deadlinePassed ? undefined : order.bank;
-  const hasBalance = !existingTransferOnly && !!bank && (awaitingPayment || order.status === 'partial');
+  const hasDeadline=awaitingPayment||showTopUp&&order.status==='proof_review';
+  const deadlinePassed = hasDeadline && Number.isFinite(deadline.valueOf()) && serverNow >= deadline.valueOf();
+  const bank = deadlinePassed || existingTransferOnly ? undefined : order.bank;
+  const hasBalance = !!bank && (awaitingPayment || showTopUp || order.status === 'partial'&&!order.payment);
   const cohort=classInfo?{...course,...classInfo}:course;
   const classStart=enrollmentInstant(cohort?.firstLesson);
-  const cutoff=awaitingPayment?deadline.valueOf():NaN;
+  const cutoff=hasDeadline?deadline.valueOf():NaN;
   const firstLesson=hasBalance?classStart?.valueOf()??NaN:NaN;
   useEffect(() => {
     if (!file && proofInput.current) proofInput.current.value = '';
@@ -120,12 +124,13 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
     [t('备注', 'Transfer reference', 'Catatan transfer'), order.id],
   ] : [];
   const chooseProof = t('选择凭证', 'Choose proof', 'Pilih bukti');
-  const balance = Math.max(0, order.price - order.received);
-  const amountLabel = order.received ? t('剩余应付', 'Remaining balance', 'Sisa tagihan') : t('应付金额', 'Amount due', 'Jumlah tagihan');
-
+  const balance = order.payment?.balance ?? Math.max(0, order.price - order.received);
+  const amountLabel = order.payment?.estimated ? t('预计剩余应付','Estimated balance','Perkiraan sisa tagihan')
+    : showTopUp||order.received ? t('剩余应付', 'Remaining balance', 'Sisa tagihan') : t('应付金额', 'Amount due', 'Jumlah tagihan');
   const previousTransfers=order.transfers??[];
   const selectedTransfer=previousTransfers.find(transfer=>transfer.id===proofTransfer.transferId);
   const newTransfer=!previousTransfers.length||proofTransfer.transferId==='new';
+  const supplementOnly=!awaitingPayment&&!showTopUp&&!!order.payment;
 
   async function copyValue(label: string, value: string) {
     const currentTime = Date.now();
@@ -157,6 +162,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
         {title&&status&&<EnrollmentStatusBadge status={status} tone={statusTone}/>}
       </div>}
       {schedule&&<p>{schedule}</p>}
+      {order.learnerName&&<p>{t('学员姓名','Learner name','Nama siswa')} · {order.learnerName}</p>}
       {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={serverNow} language={language}/>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}
       {!!order.creditIn&&<p>{t('旧订单已冲抵','Credit applied from an earlier order','Dana pesanan sebelumnya yang digunakan')} · {formatCurrency(order.creditIn,language)}</p>}
@@ -165,11 +171,14 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       <span><Clock3 size={16} aria-hidden="true"/>{minutes ? timeLeft : t('付款时间已到', 'Payment deadline reached', 'Batas pembayaran tercapai')}</span>
       <time dateTime={deadline.toISOString()}>{dayFormat.format(deadline)} {enrollmentDateFormatter(language,'time').format(deadline)} WIB <span>{t('截止', 'deadline', 'batas')}</span></time>
     </div>}
-    {bank ? <>
+    {hasBalance ? <>
       <div className="enrollment-payment-amount">
         <div><small>{amountLabel}</small><strong>{formatCurrency(balance, language)}</strong></div>
         {copyButton(amountLabel, String(balance))}
       </div>
+      {order.payment?.estimated&&<p className="enrollment-journey-note">
+        {t('按已提交的转账金额计算，财务核实后更新。如果已转出这笔款项，直接提交凭证。','Based on reported transfers and updated after verification. If you already sent this transfer, submit its proof.','Dihitung dari transfer yang dilaporkan dan diperbarui setelah verifikasi. Jika sudah transfer, langsung kirim buktinya.')}
+      </p>}
       <section className="enrollment-payment-section">
         <h2><Landmark size={18} aria-hidden="true"/>{t('银行转账', 'Bank transfer', 'Transfer bank')}</h2>
         <dl className="enrollment-bank">
@@ -184,6 +193,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       </section>
     </> : <div className="enrollment-payment-summary">
       {existingTransferOnly || deadlinePassed ? <p>{t('原付款入口已关闭。此处可提交已发生的转账记录。','The original payment link is closed. Only submit proof of a transfer you already made.','Pembayaran awal telah ditutup. Kirim bukti transfer yang sudah dilakukan.')}</p>
+        : supplementOnly ? <p>{t('这里仅用于提交已经转账的凭证。','Use this page to submit proof of a transfer you already made.','Gunakan halaman ini untuk mengirim bukti transfer yang sudah dilakukan.')}</p>
         : order.bankDetailsInvalid ? <p role="status">{t('暂时无法读取收款资料。请刷新状态后再转账。','Bank details are temporarily unavailable. Refresh the status before transferring funds.','Informasi rekening belum dapat dimuat. Muat ulang status sebelum transfer.')}</p>
         : <p>{t('实际到账', 'Verified receipts', 'Dana terverifikasi')} · {formatCurrency(order.received, language)}</p>}
     </div>}
