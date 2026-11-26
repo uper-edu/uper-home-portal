@@ -5,8 +5,9 @@ import {AdminPageHeader} from '../admin/AdminPageHeader';
 import {documentSearchExcerpt,locateDocumentMatch} from '../../utils/crmDocumentSearch';
 import { CrmWhatsAppGuide, whatsAppChapter, whatsAppSections, isWhatsAppChapter } from "./CrmWhatsAppGuide";
 import { CrmMarketingPlaybook, marketingPlaybookSections, marketingPlaybookTitle, isMarketingPlaybookAnchor, marketingPlaybookNavKey } from "./CrmMarketingPlaybook";
-import { CrmAnalyticsGuide, analyticsGuideTitle, analyticsGuideSections, isAnalyticsGuideAnchor } from "./CrmAnalyticsGuide";
+import { CrmAnalyticsGuide, CrmNumberedMarkdownGuide, analyticsGuideTitle, analyticsGuideSections, isAnalyticsGuideAnchor } from "./CrmAnalyticsGuide";
 import { CrmPromotionAttributionGuide, promotionAttributionGuideTitle, promotionAttributionGuideSections, isPromotionAttributionGuideAnchor } from "./CrmPromotionAttributionGuide";
+import dashboardMetricsGuide from "./dashboardMetricsGuide.json";
 import {containPaneKeys} from '../adminScroll';
 import {
   panoramaRoles,
@@ -83,6 +84,7 @@ export function resolveGuideAnchor(hash: string) {
   if (key === "fields") key = "data-implementation";
   if (isAnalyticsGuideAnchor(key)) return { part: "analytics", key };
   if (isPromotionAttributionGuideAnchor(key)) return { part: "promotion", key };
+  if (dashboardMetricsGuide.sections.some(section=>section.key===key)) return { part: "dashboardMetrics", key };
   if (isMarketingPlaybookAnchor(key)) return { part: "marketing", key };
   if (isWhatsAppChapter(key)) return { part: "whatsapp", key };
   if (systemChapters.some((s) => s.key === key)) return { part: "system", key };
@@ -149,6 +151,7 @@ export function CrmUserGuide({
       marketing: part === "marketing",
       analytics: part === "analytics",
       promotion: part === "promotion",
+      dashboardMetrics: part === "dashboardMetrics",
     }),
     [isNarrow, setIsNarrow] = useState(false),
     [navOpen, setNavOpen] = useState(false),
@@ -247,6 +250,7 @@ export function CrmUserGuide({
     if (!focusRequest || lastFocusRequest.current === focusRequest) return;
     const request = requestAnimationFrame(() => {
       lastFocusRequest.current = focusRequest;
+      navigationUntil.current=performance.now()+400;
       const pane = content.current;
       const node = document.getElementById("crm-guide-" + selectedKey);
       if (!pane || !layout.current) return;
@@ -354,8 +358,11 @@ export function CrmUserGuide({
   const matchesPromotion = promotionAttributionGuideSections.filter(s =>
     includes([promotionAttributionGuideTitle[col], s.title[col], s.body[col]]),
   );
+  const matchesDashboardMetrics = dashboardMetricsGuide.sections.filter(s =>
+    includes([dashboardMetricsGuide.title[col], s.title[col], s.body[col]]),
+  );
   const resultKeys = new Set(
-    [...matchesSystem, ...matchesOperations, ...matchesMarketing, ...matchesAnalytics, ...matchesPromotion].map((s) => s.key),
+    [...matchesSystem, ...matchesOperations, ...matchesMarketing, ...matchesAnalytics, ...matchesPromotion, ...matchesDashboardMetrics].map((s) => s.key),
   );
   // Search results are separate; chapter names and numbering stay stable.
   const navSystem = systemChapters;
@@ -399,6 +406,7 @@ export function CrmUserGuide({
       whatsapp: whatsAppSections,
       marketing: marketingPlaybookSections,
       promotion: promotionAttributionGuideSections,
+      dashboardMetrics: dashboardMetricsGuide.sections,
     };
     if (searchMode || readingSearch || part === "system" || part === "operations") return;
     const keys = sections[part].map((section) => section.key);
@@ -416,12 +424,14 @@ export function CrmUserGuide({
     marketing: "marketing-playbook",
     whatsapp: whatsAppChapter.key,
     promotion: "promotion-attribution",
+    dashboardMetrics: "dashboard-metrics",
     system: selectedKey,
     operations: selectedKey,
   };
   const numberedChapters = {
     analytics: { number: 5, title: analyticsGuideTitle, sections: analyticsGuideSections },
     promotion: { number: 6, title: promotionAttributionGuideTitle, sections: promotionAttributionGuideSections },
+    dashboardMetrics: { number: 7, ...dashboardMetricsGuide },
   };
   const fullNavigation = [
       ...systemChapters.map((s) => s.key),
@@ -430,6 +440,7 @@ export function CrmUserGuide({
       "marketing-playbook",
       partOpening.analytics,
       partOpening.promotion,
+      partOpening.dashboardMetrics,
     ],
     position = fullNavigation.indexOf(partOpening[part]);
   const chapterTitle = (part === "system" || part === "operations"
@@ -442,13 +453,14 @@ export function CrmUserGuide({
     ...matchesMarketing.map(s => ({ ...s, part: "marketing" })),
     ...matchesAnalytics.map(s => ({ ...s, part: "analytics" })),
     ...matchesPromotion.map(s => ({ ...s, part: "promotion" })),
+    ...matchesDashboardMetrics.map(s => ({ ...s, part: "dashboardMetrics" })),
   ];
   const partLabel = (value: string) => value === "system"
     ? t("System explanation", "Penjelasan sistem", "系统说明")
     : value === "operations"
       ? t("Operating guide", "Panduan operasi", "操作指南")
       : value === "whatsapp" ? t("WhatsApp integration", "Integrasi WhatsApp", "WhatsApp接入方案")
-        : value === "analytics" || value === "promotion" ? numberedChapters[value].title[col] : marketingPlaybookTitle[col];
+        : value === "analytics" || value === "promotion" || value === "dashboardMetrics" ? numberedChapters[value].title[col] : marketingPlaybookTitle[col];
   return (
     <article
       ref={guide}
@@ -545,7 +557,7 @@ export function CrmUserGuide({
             </button>
           )}
           </div>
-          {(["system", "operations", "whatsapp", "marketing", "analytics", "promotion"] as const).map((root) => (
+          {(["system", "operations", "whatsapp", "marketing", "analytics", "promotion", "dashboardMetrics"] as const).map((root) => (
             <section key={root} className="crm-doc-nav-group">
               <button
                 type="button"
@@ -561,7 +573,7 @@ export function CrmUserGuide({
               <ol id={"crm-doc-nav-" + root} hidden={terms ? !navResults.some(s=>s.part===root) : !expanded[root]}>
                 {(root === "system"
                   ? navSystem.map((s) => ({ ...s, group: [s.key] }))
-                  : root === "operations" ? navOperations : (root === "analytics" || root === "promotion" ? numberedChapters[root].sections : root === "whatsapp" ? whatsAppSections : marketingPlaybookSections).map(s => ({ ...s, group: [s.key] }))
+                  : root === "operations" ? navOperations : (root === "analytics" || root === "promotion" || root === "dashboardMetrics" ? numberedChapters[root].sections : root === "whatsapp" ? whatsAppSections : marketingPlaybookSections).map(s => ({ ...s, group: [s.key] }))
                 ).map((s, index) => (
                   <li key={s.key} hidden={!!terms&&!resultKeys.has(s.key)&&!s.group.some(key=>resultKeys.has(key))}>
                     <a
@@ -574,7 +586,7 @@ export function CrmUserGuide({
                       }}
                     >
                       <span className="crm-doc-nav-number" aria-hidden="true">
-                        {root === "analytics" || root === "promotion" ? `${numberedChapters[root].number}.${index + 1}` : `${index + 1}.`}
+                        {root === "analytics" || root === "promotion" || root === "dashboardMetrics" ? `${numberedChapters[root].number}.${index + 1}` : `${index + 1}.`}
                       </span>
                       {s.title[col]}
                     </a>
@@ -671,6 +683,8 @@ export function CrmUserGuide({
               {part === "marketing" && <CrmMarketingPlaybook lang={lang} onChoose={choose} />}
               {part === "analytics" && <CrmAnalyticsGuide lang={lang} />}
               {part === "promotion" && <CrmPromotionAttributionGuide lang={lang} />}
+              {part === "dashboardMetrics" && <CrmNumberedMarkdownGuide lang={lang} id="crm-dashboard-metrics-document"
+                {...numberedChapters.dashboardMetrics}/>}
               {(part === "system" || part === "whatsapp") &&
                 system.map((s) => (
                   <section

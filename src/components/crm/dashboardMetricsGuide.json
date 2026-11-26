@@ -1,0 +1,113 @@
+{
+  "title": [
+    "Operating dashboard metric definitions",
+    "Definisi metrik dasbor operasi",
+    "经营看板指标与统计口径"
+  ],
+  "sections": [
+    {
+      "key": "dashboard-metrics",
+      "title": [
+        "Reading the dashboard",
+        "Membaca dasbor",
+        "看板阅读与数据状态"
+      ],
+      "body": [
+        "Use this reference for [the operating dashboard](/crm?tab=dashboard) and the TV wallboard. WIB means Jakarta time. Monthly reports compare the elapsed portion of this month with the equivalent part of last month. Today’s wallboard figures compare with the same time last week. GA4 and advertising use complete days. The upcoming classes and open queues describe the current snapshot even when you filter historical results.\n\nA recorded zero is a value. A dash means the value cannot be reported. Read its note for the reason, such as missing data or permissions, an observation window still open, or no eligible records. Partial reports describe covered days. A failed refresh keeps the last authorised snapshot and shows a warning. Revoked access clears it.",
+        "Gunakan referensi ini untuk [dasbor operasi](/crm?tab=dashboard) dan layar TV. WIB adalah waktu Jakarta. Laporan bulanan membandingkan bagian bulan ini yang telah berlalu dengan periode setara bulan lalu. Angka hari ini dibandingkan dengan waktu yang sama minggu lalu. GA4 dan iklan menggunakan hari lengkap. Kelas mendatang dan antrean menampilkan kondisi saat ini meskipun hasil historis difilter.\n\nNol tercatat adalah nilai. Tanda pisah berarti nilai belum dapat dilaporkan. Baca alasannya, misalnya data atau izin belum tersedia, periode pengamatan belum selesai, atau belum ada catatan yang memenuhi syarat. Laporan parsial mencantumkan cakupan hari. Jika penyegaran gagal, snapshot terakhir yang diizinkan dipertahankan dan ditandai. Pencabutan akses menghapusnya.",
+        "本文适用于[经营看板](/crm?tab=dashboard)和电视大屏。日期按雅加达时间 WIB。本月至今对比上月同阶段，今日对比上周同一时点。GA4 和广告以完整日为准。查看历史期间时，未来班次和待处理队列仍以当前快照为准。\n\n有记录的零值正常显示。无法报告的值显示「—」并提示原因，包括未接入、字段缺失、权限不足、观察期未满和暂无可观察记录。覆盖不全时显示覆盖天数。刷新失败时标记并保留最近一次获准查看的快照，权限失效时清除。"
+      ]
+    },
+    {
+      "key": "dashboard-metrics-enrollment",
+      "title": [
+        "Enrollment and payment conversion",
+        "Pendaftaran dan konversi pembayaran",
+        "报名结果与付款转化"
+      ],
+      "body": [
+        "- **Seats reserved** counts enrollment orders by reservation time.\n- **Fully paid enrollments** counts each purchase once at the first verified full payment. The finance transaction confirmation supplies the timestamp. A class transfer carries the same purchase. Email delivery is tracked separately.\n- **First-paying learners** deduplicates first fully paid purchases by verified learner, including available earlier history. A contact may pay for multiple learners. Unresolved matches and missing payment dates are reported separately.\n- **7-day payment rate** divides purchases paid within 168 hours by reservations with a completed observation window and a verifiable outcome. Expired or cancelled reservations remain in the eligible cohort. Classify payment paths by whether proof preceded full payment. The 1-, 3- and 7-day cohorts apply their own cutoffs. Report numerator and denominator.",
+        "- **Kursi dipesan** menghitung pesanan menurut waktu pemesanan.\n- **Pendaftaran lunas** menghitung satu kali saat pembelian pertama kali diverifikasi lunas. Waktu berasal dari konfirmasi transaksi keuangan. Pindah kelas melanjutkan pembelian yang sama. Pengiriman email dicatat terpisah.\n- **Murid pertama kali membayar** dihitung berdasarkan identitas murid terverifikasi dan riwayat pembelian. Satu kontak dapat membayar untuk beberapa murid. Identitas dan tanggal pelunasan yang belum diketahui ditampilkan terpisah.\n- **Konversi 7 hari** adalah jumlah yang lunas dalam 168 jam dibagi reservasi dengan masa pengamatan lengkap dan hasil yang dapat diverifikasi. Pembatalan dan kedaluwarsa tetap dalam kohor yang memenuhi syarat. Bukti sebelum pelunasan dan jalur lainnya dipisahkan. Kohor 1, 3, dan 7 hari punya batas masing-masing. Tampilkan pembilang dan penyebut.",
+        "- **获席订单**按获席时间计订单笔数。\n- **足额报名人次**按一笔购买首次核实足额的业务回执时间计一次。转班承接原购买链。邮件送达另行记录。\n- **首次付费学员**按可核对的规范学员去重，结合可查历史确定首次足额。同一联系人可能为多位学员付款。身份暂未匹配和缺少可靠足额时间单列。\n- **获席后 7 天付款率**为获席后 168 小时内足额笔数 ÷ 已观察满且结果可核对的获席订单。已到期或取消的订单仍计入符合条件的分母。按足额前是否已提交凭证区分路径。1、3、7 天队列分别计算各自的成熟样本，并显示分子与分母。"
+      ]
+    },
+    {
+      "key": "dashboard-metrics-acquisition",
+      "title": [
+        "Traffic and channel effectiveness",
+        "Trafik dan efektivitas kanal",
+        "流量、入口与渠道成效"
+      ],
+      "body": [
+        "- **GA4 sessions** group by date, source/medium, first landing and device. The exact homepage path is `/`. Other site paths and unknown landings are separate. Earlier snapshots included the homepage under Other. A homepage value is available only for reclassified days.\n- **Order entry and order source** describe how each order was made. **First acquisition source** attributes a verified learner’s first purchase. These dimensions use different evidence and may differ for the same learner.\n- **Application start rate** needs sessions with at least one application start and all eligible sessions from the same cohort. **Ad spend** uses account, campaign, day and currency. **First-paying CAC** needs matched spend and first-paying learners in the same attribution scope and observation window. The rate and CAC are pending confirmed inputs.",
+        "- **Sesi GA4** dikelompokkan berdasarkan tanggal, sumber/media, halaman awal, dan perangkat. Beranda memakai jalur `/`. Halaman lain dan halaman tidak diketahui dipisahkan. Snapshot lama memasukkan beranda ke Lainnya. Angka beranda hanya tersedia pada hari yang sudah dipisahkan.\n- **Jalur masuk dan sumber pesanan** menjelaskan cara pesanan dibuat. **Sumber akuisisi pertama** memberi atribusi pada pembelian pertama murid terverifikasi. Bukti keduanya berbeda dan dapat menghasilkan nilai yang berbeda.\n- **Rasio mulai mendaftar** perlu jumlah sesi dengan sedikitnya satu awal pendaftaran dan seluruh sesi yang memenuhi syarat pada kohor yang sama. **Belanja iklan** menurut akun, kampanye, hari, dan mata uang. **CAC pembelian pertama** perlu pencocokan biaya dan murid baru yang membayar pada cakupan serta jendela yang sama. Keduanya menunggu data terkonfirmasi.",
+        "- **GA4 会话**按日期、来源／媒介、首次落地页与设备统计。官网首页为精确路径 `/`，与其他页面和未知分开。旧快照的首页计在「其他」，首页数以已重新分类的日期为准。\n- **订单入口和订单当次来源**回答这笔报名怎么进来。**首次获客来源**按规范学员首次购买的可核对来源记录。同一学员的两种来源可能不同。\n- **申请启动率**拟以同批至少一次开始申请的有效会话 ÷ 全部有效会话。**广告实花**按账户、活动、日期和币种对账。**广告首购获客成本**拟用同一归因范围及观察窗内的实花 ÷ 首次付费学员。启动率和 CAC 待正式样本对账。"
+      ]
+    },
+    {
+      "key": "dashboard-metrics-sales",
+      "title": [
+        "Sales and follow-up",
+        "Penjualan dan tindak lanjut",
+        "销售跟进与协助"
+      ],
+      "body": [
+        "- **Pending first contacts** and **overdue first contacts** count active consultation follow-ups using their existing deadlines.\n- **Sales-assisted purchases** require confirmed assistance tied to the order. Self-service, staff-entered and unclassified purchases are separate. An assigned owner remains responsible for follow-up.\n- **On-time first contact rate** needs the deadline that applied at the time and the first documented effective human contact. It awaits historical evidence and an agreed denominator.",
+        "- **Kontak pertama tertunda** dan **terlambat** menghitung tindak lanjut konsultasi aktif menurut tenggat yang berlaku.\n- **Pembelian berbantuan penjualan** memerlukan bantuan terkonfirmasi yang terkait pesanan. Mandiri, dicatat staf, dan belum terklasifikasi dipisahkan. Penanggung jawab tetap menangani tindak lanjut.\n- **Ketepatan waktu kontak pertama** memerlukan tenggat yang berlaku dan kontak manusia efektif pertama yang tercatat. Riwayat dan penyebut masih perlu dikonfirmasi.",
+        "- **待首次跟进、首次跟进逾期**按当前有效咨询任务和原适用期限统计。\n- **销售协助成交**以关联订单且已确认的协助记录为依据。自助、员工代办、销售协助和未分类分别统计。指定负责人用于跟进归属。\n- **首联按时率**需追溯当时适用的期限和首次有效人工联系。历史证据及统计分母待确认。"
+      ]
+    },
+    {
+      "key": "dashboard-metrics-supply",
+      "title": [
+        "Classes, seats and demand",
+        "Kelas, kursi, dan permintaan",
+        "班次、席位与需求"
+      ],
+      "body": [
+        "- **Readiness in 14 days** counts scheduled classes meeting their paid learner minimum. The gap is the minimum minus fully paid learners, floored at zero. Holds and waiting lists are separate.\n- **Supply and demand** shows current waitlisted learners, active group-class requests and bookable seats by HSK level and schedule. Bookable seats come from classes accepting applications. The detailed topic also shows all remaining physical seats, including classes closed to applications. The detailed topic lists private bookings separately.\n- Counts can overlap across waitlists and requests. The TV shows up to three upcoming classes, while the topic lists the full 14-day set.",
+        "- **Kesiapan 14 hari** menghitung kelas terjadwal yang memenuhi minimum murid lunas. Kekurangan adalah minimum dikurangi murid lunas, dengan batas bawah nol. Reservasi sementara dan daftar tunggu dipisahkan.\n- **Penawaran dan permintaan** menyajikan daftar tunggu, permintaan kelas grup aktif, dan kursi yang bisa dipesan menurut tingkat HSK dan jadwal. Kursi yang bisa dipesan hanya dari kelas yang menerima pendaftaran. Rincian juga menyajikan seluruh sisa kursi fisik, termasuk kelas yang sudah menutup pendaftaran, serta pemesanan privat secara terpisah.\n- Daftar tunggu dan permintaan bisa mencakup murid yang sama. TV menampilkan paling banyak tiga kelas, sedangkan topik merinci seluruh periode 14 hari.",
+        "- **未来 14 天成班达标**统计到达足额人数门槛的排课班次。成班缺口为门槛减符合条件的足额人数，下限为 0。暂占、候补分别展示。\n- **班次供需**按 HSK 级别和时段，统一统计当前候补、当前有效普通班选课需求及可报名余位。可报名余位只统计开放报名的班次。专题页另列物理剩余席位，含已关闭报名班次，并单列一对一约课记录。\n- 候补和选课需求可能对应同一学员。大屏最多显示三个即将开班，专题页显示未来 14 天的完整清单。"
+      ]
+    },
+    {
+      "key": "dashboard-metrics-cash",
+      "title": [
+        "Cash and refunds",
+        "Kas dan pengembalian dana",
+        "收款、退款和当前应收"
+      ],
+      "body": [
+        "- **Verified net receipts** = verified actual receipts − refunds paid + returned refunds. Each bank movement counts once by its recorded WIB day. Actual settlement appears in the detail when available. Proof submissions, transfers between classes and credits do not create new cash receipts.\n- **Current tuition balance** is the active order tuition less verified payments and applied credits. **Pending verification** counts independent transfers. Additional proofs for one transfer are grouped; further pending transfers remain pending after full payment. **Refunds in progress** counts the current queue and outstanding amount.\n- **30-day refund rate** awaits an approved treatment of partial refunds and returned refunds, measured against fully paid orders with a complete window.",
+        "- **Penerimaan bersih terverifikasi** = penerimaan aktual terverifikasi − refund dibayar + refund yang kembali. Setiap mutasi bank dihitung sekali menurut tanggal pencatatan WIB. Rincian memuat waktu dana masuk jika tersedia. Bukti, pindah kelas, dan pemakaian kredit tidak menambah arus kas.\n- **Sisa tagihan saat ini** adalah biaya pesanan aktif setelah pembayaran terverifikasi dan kredit terpakai. **Verifikasi tertunda** menghitung transfer independen. Bukti tambahan satu transfer digabung; transfer lain tetap tertunda setelah lunas. **Refund diproses** menampilkan antrean kini dan sisa nominal.\n- **Rasio refund 30 hari** memerlukan aturan refund parsial dan refund yang kembali, dengan penyebut pesanan lunas yang masa pengamatannya lengkap.",
+        "- **已核实净收款**等于实际核实实收减已执行退款加退款退回。每笔交易按系统 WIB 记账日计一次。明细有实际到账时间时独立展示。凭证、转班与抵扣不新增现金。\n- **当前待收学费**按有效订单学费扣除已核实付款和已用抵扣。**待核验**按独立转账计笔，同笔补传多张凭证合并，订单足额后其他待核仍保留。**退款处理中**显示当前待执行队列及未退金额。\n- **30 天退款率**待按足额订单的成熟队列核定，并确认部分退款和退款退回如何处理。"
+      ]
+    },
+    {
+      "key": "dashboard-metrics-teaching",
+      "title": [
+        "Teaching delivery and contribution",
+        "Pengajaran dan kontribusi",
+        "教学交付、课程收益与续读"
+      ],
+      "body": [
+        "- **Delivered lessons and minutes** use verified lesson records from the teaching platform, tied to a class or confirmed private booking. **Attendance rate** = present ÷ recorded eligible learner-lessons. **Recording coverage** = recorded ÷ expected learner-lessons with a known roster.\n- **Teacher direct cost** follows the instructor, applicable rate and actual delivery date confirmed by finance. **Delivered contribution** = confirmed allocated delivery revenue − all confirmed direct cost. Show it only for complete coverage.\n- **90-day repeat purchase** needs a verified mature first-purchase cohort and a later independent purchase. Completion and progression need a validated teaching cohort, learner link and eligible next course. These measures await confirmed inputs.",
+        "- **Sesi dan menit terlaksana** memakai catatan pengajaran terverifikasi yang terkait kelas atau pemesanan privat terkonfirmasi. **Kehadiran** = hadir ÷ kehadiran murid-sesi yang tercatat. **Cakupan pencatatan** = tercatat ÷ diharapkan hadir pada daftar yang diketahui.\n- **Biaya langsung pengajar** mengikuti pengajar, tarif yang berlaku, dan tanggal pengajaran yang disetujui keuangan. **Kontribusi layanan** = pendapatan layanan yang teralokasi dan terverifikasi dikurangi seluruh biaya langsung terverifikasi. Tampilkan saat cakupan lengkap.\n- **Pembelian ulang 90 hari** perlu kohor pembeli pertama yang terverifikasi dengan pengamatan lengkap dan pembelian independen berikutnya. Kelulusan dan kelanjutan perlu kohor pembelajaran, identitas murid yang terhubung, dan kursus berikutnya yang memenuhi syarat. Data masih menunggu konfirmasi.",
+        "- **实授课次与分钟**由教学平台的实授记录汇总，绑定普通班或已确认一对一。**出勤率**为出勤学员课次 ÷ 有资格且已登记的学员课次。**登记覆盖率**为已登记 ÷ 有名册且应登记的学员课次。\n- **教师直接成本**按实际执教教师、授课日期和已核定的有效费率核算。**交付贡献**为财务核定的交付收入减全部已核定直接成本，两者与课次覆盖均完整时才报告。\n- **首购后 90 天复购率**需要身份可核对且观察满 90 天的首购学员，以及后续独立购买。完课与续读还需核定教学队列、学员关联和可报读后续课程。以上结果待正式数据。"
+      ]
+    },
+    {
+      "key": "dashboard-metrics-wallboard",
+      "title": [
+        "TV targets and comparison",
+        "Target dan perbandingan layar TV",
+        "电视大屏目标与比较"
+      ],
+      "body": [
+        "- The monthly targets cover net verified cash, fully paid enrollments, first-paying learners and 7-day payment rate. Cumulative targets show actual ÷ monthly target and compare progress with the latest approved milestone. The rate compares in percentage points. Missing plans use labelled period comparisons.\n- Daily paid enrollments and net cash compare the last seven complete days with the previous seven on separate scales. HSK change uses the same monthly window and groups 4A/4B under HSK 4.\n- Green identifies leaders among recognised rows on display. Session leaders need complete traffic dates. Rate ranking starts at 20 mature orders. Smaller cohorts still show their rate and denominator. The screen shows aggregates and follows CRM permissions.",
+        "- Target bulanan mencakup kas bersih, pendaftaran lunas, murid pembayar pertama, dan konversi 7 hari. Target kumulatif menampilkan aktual ÷ target serta membandingkan kemajuan dengan tonggak terakhir yang disetujui. Rasio dibandingkan dalam poin persentase. Tanpa rencana, perbandingan periode diberi label.\n- Pendaftaran lunas dan kas harian membandingkan tujuh hari penuh dengan tujuh hari sebelumnya pada skala terpisah. Perubahan HSK memakai periode bulanan sama, dengan 4A/4B digabung sebagai HSK 4.\n- Hijau menandai pemimpin dari baris yang teridentifikasi. Peringkat sesi memerlukan cakupan tanggal lengkap. Peringkat konversi dimulai pada 20 pesanan dengan pengamatan lengkap. Kohor lebih kecil tetap menampilkan rasio dan penyebut. Layar memakai agregat dan mengikuti izin CRM.",
+        "- 月目标覆盖净收款、足额报名、首次付费及 7 天付款率。累计指标显示实际 ÷ 月目标，并对照截至今日最近获批的累计计划。付款率差用百分点。缺少计划时标注采用的同期对照。\n- 每日足额和净收款比较最近 7 个完整日与再前 7 日，采用各自刻度。HSK 增减按同等月度窗口，4A／4B 并入 HSK 4。\n- 绿色标出屏上已识别渠道的符合条件领先值。GA4 会话需覆盖完整日期才评比。7 天付款率至少达到 20 笔成熟订单才参与评比，小样本仍显示比率和分母。大屏只展示汇总，沿用 CRM 权限。"
+      ]
+    }
+  ]
+}

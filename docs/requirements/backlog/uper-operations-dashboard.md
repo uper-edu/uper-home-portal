@@ -138,6 +138,8 @@ flowchart TB
 
 ## 4. 指标口径
 
+日常查阅入口为 CRM「系统文档 → 经营看板指标与统计口径」，也可从看板页头进入。该章节集中说明分母、适用日期、数据来源、覆盖与缺口，按主题保留稳定链接。 [在线指标口径](/crm?tab=docs#crm-guide-dashboard-metrics)
+
 日期维度采用指标的业务事件日期。看板能说明一个值是「期间内新增」「同批次最终达成」还是「截至该日当前状态」。默认以 WIB 分组，跨自然日、跨月及历史回补均按相同规则计算。卡片和下钻共用筛选、时间基准与指标版本。
 
 ### 4.1 招生与销售
@@ -320,7 +322,19 @@ node --import tsx scripts/import-dashboard-teaching.mts --environment dev --file
 
 ### 5.8 大屏月度目标读取
 
-大屏从现有 `portal_settings` 按 `dashboard_monthly_kpi_v1:<环境>:<WIB 年月>` 读取获批计划。`targets` 中 `first` 和 `paid` 分别为首次付费人数及足额报名人次，`net` 为整印尼盾净收款，三项月目标均为正整数。`paymentRate` 使用 0 至 1 的比例。`milestones` 按 WIB 的 `YYYY-MM-DD` 收纳累计计划，每项取截至当天最近一个有效日期。暂缺累计计划时，仅显示已确认的月目标和完成度。净收款计划随财务权限限制读取。当前仅提供读取和展示，实际目标需由经营团队确认后配置。
+大屏从现有 `portal_settings` 按 `dashboard_monthly_kpi_v1:<环境>:<WIB 年月>` 读取获批计划。`targets` 中 `first` 和 `paid` 分别为首次付费人数及足额报名人次，`net` 为整印尼盾净收款，三项月目标均为正整数。`paymentRate` 使用 0 至 1 的比例。`milestones` 按 WIB 的 `YYYY-MM-DD` 收纳累计计划，每项取截至当天最近一个有效日期。暂缺累计计划时，仅显示已确认的月目标和完成度。净收款计划随财务权限限制读取。实际目标由经营团队确认。
+
+经经营团队确认后，使用 `scripts/import-dashboard-kpi.mts` 预览月目标。输入包含 `version: 1`、`environment`、`month`、`approvedAt`（含毫秒的 UTC ISO 时间戳）、`targets` 和可选的 `milestones`。一份文件代表该环境该月完整的已批准版本。先核对预览，再在获准的环境加 `--apply`。重复应用同一内容无变化，较旧或同时间不同内容的版本被拒绝。说明文档中的数字、验收样本和配置示例均不作为正式目标。
+
+```sh
+node --import tsx scripts/import-dashboard-kpi.mts --environment dev --file /path/to/approved-plan.json
+```
+
+### 5.9 供需、渠道与历史覆盖
+
+课程与班次专题与大屏共用候补、待匹配普通班需求和可报名余位的聚合。专题另列包含关闭报名班次的物理余位，并把一对一单列。大屏 7 天付款率的领先色仅用于拥有至少 20 笔成熟获席订单的已识别渠道。低于门槛仍可查看实测值和分母。GA4 会话的领先色需要所选期间完整的流量快照。
+
+获客专题与电视大屏将精确路径 `/` 单列为官网首页。旧快照保持原统计，首页仍在原「其他」计数内。当期无重新分类日时首页显示「—」。混合期间显示首页可计算值及覆盖日数，及时重读经授权的完整日期可重建可比较系列。
 
 <a name="acceptance"></a>
 

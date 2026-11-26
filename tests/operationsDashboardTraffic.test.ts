@@ -96,11 +96,29 @@ test('traffic snapshots scope storage by environment and distinguish partial day
   assert.equal(report?.coveredDays,2);
   assert.equal(report?.expectedDays,3);
   assert.equal(report?.sessions,5);
-  assert.deepEqual(report?.landings,{enrollment:0,chat:0,link:1,other:2,unknown:2});
-  assert.deepEqual(report?.devices,{coveredDays:2,rows:[{device:'desktop',sessions:5,landings:{enrollment:0,chat:0,link:1,other:2,unknown:2}}]});
+  assert.deepEqual(report?.landings,{enrollment:0,chat:0,link:1,homepage:0,other:2,unknown:2});
+  assert.deepEqual(report?.devices,{coveredDays:2,homepageCoveredDays:2,
+    rows:[{device:'desktop',sessions:5,landings:{enrollment:0,chat:0,link:1,homepage:0,other:2,unknown:2}}]});
   assert.equal((await readGaTraffic(db,'dev',to,to,now))?.sessions,0);
   assert.equal(await readGaTraffic(db,'prod',from,to,now),null);
   assert.equal((await readGaTraffic(db,'test',from,to,now))?.sessions,15);
+});
+
+test('homepage traffic is distinct from other and unknown, with coverage for older snapshots',async()=>{
+  const [modern,legacyDay]=await fetchGaTraffic('dev',from,to,'fixture',now,fakeGa({
+    totals:[makeRow(16,'20261121'),makeRow(5,'20261122')],
+    entries:[...detail,makeRow(6,'20261121','google','organic','/')],
+  }).request);
+  assert.equal(modern.segments.find(row=>row.source==='google')?.landing,'homepage');
+  const {homepageClassified:_,...legacy}=legacyDay;
+  const report=await readGaTraffic({async query(){return {rows:[{value:modern},{value:legacy}]};}},'dev',from,to,now);
+  assert.equal(report?.sessions,21);
+  assert.equal(report?.homepageCoveredDays,1);
+  assert.equal(report?.devices?.homepageCoveredDays,1);
+  assert.equal(report?.landings.homepage,6);
+  assert.equal(report?.landings.other,2);
+  assert.equal(report?.landings.unknown,2);
+  assert.equal(Object.values(report!.landings).reduce((sum,n)=>sum+n,0),report?.sessions);
 });
 
 test('a prior GA4 snapshot retains overall sessions without implying zero device usage',async()=>{

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type {Express,Request,Response} from 'express';
-import {dashboardPath,dashboardScopes,dashboardTopics,readDashboardFilters} from '../src/utils/crmOperationsDashboard.ts';
-import {dashboardKpiPlan,readDashboardKpiPlan} from '../server/portal/operationsDashboardKpi.ts';
+import {dashboardChannelLeaders,dashboardPath,dashboardPaymentSampleIssue,dashboardRateComparisonMinimum,dashboardScopes,dashboardSupply,dashboardTopics,readDashboardFilters} from '../src/utils/crmOperationsDashboard.ts';
+import {dashboardKpiPlan,parseDashboardKpiImport,readDashboardKpiPlan,storeDashboardKpiPlan} from '../server/portal/operationsDashboardKpi.ts';
+import dashboardMetricsGuide from '../src/components/crm/dashboardMetricsGuide.json';
+import type {EnrollmentClassSummary} from '../src/utils/crmEnrollmentManagement.ts';
 import type {Employee} from '../server/portal/identity.ts';
 
 // Module initialization creates a pool only. Each route test rejects before opening a connection.
@@ -15,6 +17,67 @@ const filters=readDashboardFilters(new URLSearchParams());
 const finance:Employee={id:'finance',teams:['ops'],permissions:['crm.read','crm.payments.verify'],scope:'all'};
 const sales:Employee={id:'sales',teams:['sales'],permissions:['crm.read','crm.followup'],scope:'own'};
 const manager:Employee={id:'manager',teams:['ops'],permissions:['crm.read','crm.operations.manage','crm.followup'],scope:'all'};
+
+test('supply uses only bookable seats and active group requests, retaining physical capacity and waitlists',()=>{
+  const open={level:'HSK 1',period:'weekend',counts:{waiting:2},available:9,accepting:true} as EnrollmentClassSummary;
+  const closed={...open,counts:{...open.counts,waiting:1},available:4,accepting:false};
+  const group={level:open.level,period:open.period,format:'standard',state:'active',count:4};
+  const supply=dashboardSupply([open,closed],[group,{...group,state:'withdrawn',count:8},
+    {...group,format:'one-on-one',count:2},{...group,format:'one-on-one',state:'confirmed',count:3}]);
+  assert.deepEqual(supply,[{level:'HSK 1',period:'weekend',waiting:3,requests:4,seats:9,physicalSeats:13}]);
+});
+
+test('channel ranking excludes small cohorts and partial traffic without hiding measured values',()=>{
+  const rows=[
+    {identified:true,sessions:120,eligible:1,paid:1,first:6},
+    {identified:true,sessions:110,eligible:dashboardRateComparisonMinimum,paid:18,first:2},
+    {identified:false,sessions:500,eligible:30,paid:29,first:20},
+  ];
+  assert.deepEqual(dashboardChannelLeaders(rows,true),[
+    {sessions:true,rate:false,first:true},{sessions:false,rate:true,first:false},{sessions:false,rate:false,first:false},
+  ]);
+  assert.ok(dashboardChannelLeaders(rows,false).every(row=>!row.sessions));
+  assert.equal(dashboardPaymentSampleIssue({mature:0,observing:6,timingUnknown:0}),'tvKpiObserving');
+  assert.equal(dashboardPaymentSampleIssue({mature:0,observing:0,timingUnknown:1}),'missingTime');
+  assert.equal(dashboardPaymentSampleIssue({mature:0,observing:0,timingUnknown:0}),'tvKpiNoSample');
+  assert.equal(dashboardPaymentSampleIssue({mature:1,observing:0,timingUnknown:0}),null);
+});
+
+test('dashboard metric reference has stable anchors and covers the ranking rule in three languages',()=>{
+  const {title,sections}=dashboardMetricsGuide;
+  assert.equal(sections[0].key,'dashboard-metrics');
+  assert.equal(new Set(sections.map(section=>section.key)).size,sections.length);
+  assert.equal(title.length,3);
+  assert.ok(sections.every(section=>section.title.length===3&&section.body.length===3&&section.body.every(Boolean)));
+  assert.ok(sections.at(-1)!.body.every(body=>body.includes(String(dashboardRateComparisonMinimum))));
+});
+
+test('approved KPI revisions are validated for month and environment and stale or conflicting writes are rejected',async()=>{
+  const source={version:1,environment:'dev',month:'2026-11',approvedAt:'2026-11-25T02:00:00.000Z',
+    targets:{first:100,net:5000000,paymentRate:0},milestones:{'2026-11-15':{net:1800000,first:31}}};
+  const plan=parseDashboardKpiImport(source,'dev',now);
+  assert.throws(()=>parseDashboardKpiImport(source,'test',now),/environment/);
+  assert.throws(()=>parseDashboardKpiImport({...source,month:'2026-13'},'dev',now),/month/);
+  assert.throws(()=>parseDashboardKpiImport({...source,approvedAt:'2026-11-25T03:01:00.000Z'},'dev',now),/timestamp/);
+  assert.throws(()=>parseDashboardKpiImport({...source,milestones:{'2026-11-31':{first:40}}},'dev',now),/Milestone dates/);
+  assert.throws(()=>parseDashboardKpiImport({...source,milestones:{'2026-11-28':{paid:40}}},'dev',now),/monthly target/);
+  let stored:unknown,updates=0;
+  const db={async query(sql:string,[key,value]:unknown[]){
+    assert.equal(key,'dashboard_monthly_kpi_v1:dev:2026-11');
+    if(sql.startsWith('INSERT'))stored??=value;
+    if(sql.startsWith('UPDATE')){stored=value;updates++;}
+    return {rows:[{value:stored}]};
+  }};
+  await storeDashboardKpiPlan(db,plan);
+  await storeDashboardKpiPlan(db,plan);
+  assert.equal(updates,0);
+  const newer=parseDashboardKpiImport({...source,approvedAt:'2026-11-25T02:10:00.000Z'},'dev',now);
+  await storeDashboardKpiPlan(db,newer);
+  assert.equal(updates,1);
+  await assert.rejects(storeDashboardKpiPlan(db,plan),/newer KPI/);
+  await assert.rejects(storeDashboardKpiPlan(db,{...newer,targets:{first:102}}),/newer KPI/);
+  assert.deepEqual(stored,newer);
+});
 
 test('finance queue age counts each item once and preserves missing and future timestamps',()=>{
   const dates=['2026-11-25T03:00:00Z','2026-11-24T03:00:00.001Z',

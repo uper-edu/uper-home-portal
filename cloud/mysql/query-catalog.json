@@ -1027,7 +1027,8 @@
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/enrollmentCatalog.ts",
-      "server/portal/larkChannelModes.ts"
+      "server/portal/larkChannelModes.ts",
+      "server/portal/operationsDashboardKpi.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2": {
@@ -3997,7 +3998,8 @@
     "sources": [
       "server/portal/enrollmentCatalog.ts",
       "server/portal/enrollmentTemplates.ts",
-      "server/portal/larkChannelModes.ts"
+      "server/portal/larkChannelModes.ts",
+      "server/portal/operationsDashboardKpi.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id='ai_service'": {
@@ -5065,6 +5067,7 @@
     "sources": [
       "server/portal/enrollmentCatalog.ts",
       "server/portal/larkChannelModes.ts",
+      "server/portal/operationsDashboardKpi.ts",
       "server/portal/runtime.ts"
     ]
   },

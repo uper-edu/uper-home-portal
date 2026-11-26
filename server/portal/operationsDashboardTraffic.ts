@@ -18,6 +18,7 @@ type Report={
 };
 type DayTraffic={
   date:string;fetchedAt:string;sessions:number;
+  homepageClassified?:true;
   segments:{source:string;medium:string;landing:DashboardLandingPage;sessions:number}[];
   devices?:{device:DashboardDevice;landing:DashboardLandingPage;sessions:number}[];
 };
@@ -29,10 +30,11 @@ export const trafficEnvironment=(value:string|undefined):Environment=>{
 const property=(environment:Environment)=>analytics.environments[environment];
 const dayKey=(environment:Environment,date:string)=>`ga_traffic_v1:${environment}:${date}`;
 const field=(fieldName:string,value:string)=>({filter:{fieldName,stringFilter:{matchType:'EXACT',value,caseSensitive:true}}});
-const blankLandings=():DashboardLandingCounts=>({enrollment:0,chat:0,link:0,other:0,unknown:0});
+const blankLandings=():DashboardLandingCounts=>({enrollment:0,chat:0,link:0,homepage:0,other:0,unknown:0});
 const maxRows=10_000;
 
 function landingGroup(value:string):DashboardLandingPage{
+  if(value==='/')return 'homepage';
   const path=value.replace(/\/$/,'');
   if(path==='/enrollment'||path==='/chat'||path==='/link')return path.slice(1) as DashboardLandingPage;
   return value===''||value==='(not set)'?'unknown':'other';
@@ -96,7 +98,7 @@ export async function fetchGaTraffic(environment:Environment,from:string,to:stri
     responseFor(['date','sessionSource','sessionMedium','landingPage']),
     responseFor(['date','deviceCategory','landingPage']),
   ]);
-  const reports=new Map(dates.map(date=>[date,{date,fetchedAt,sessions:0,segments:[],devices:[]} as Required<DayTraffic>]));
+  const reports=new Map(dates.map(date=>[date,{date,fetchedAt,sessions:0,homepageClassified:true,segments:[],devices:[]} as Required<DayTraffic>]));
   const readDate=(raw:string)=>{
     const day=/^\d{8}$/.test(raw)&&reports.get(raw.slice(0,4)+'-'+raw.slice(4,6)+'-'+raw.slice(6));
     if(!day)throw Error('GA4 returned a date outside the requested range');
@@ -155,9 +157,10 @@ export async function readGaTraffic(db:Client,environment:Environment,from:strin
   const landings=blankLandings();
   const groups=new Map<string,DashboardTrafficChannel>();
   const byDevice=new Map<DashboardDevice,DashboardTrafficDevice>();
-  let deviceDays=0;
+  let deviceDays=0,homepageDays=0,deviceHomepageDays=0;
   let sessions=0,fetchedAt=days[0].fetchedAt;
   for(const day of days){
+    if(day.homepageClassified)homepageDays++;
     sessions+=day.sessions;
     if(day.fetchedAt<fetchedAt)fetchedAt=day.fetchedAt;
     for(const segment of day.segments){
@@ -170,6 +173,7 @@ export async function readGaTraffic(db:Client,environment:Environment,from:strin
     }
     if(day.devices){
       deviceDays++;
+      if(day.homepageClassified)deviceHomepageDays++;
       for(const segment of day.devices){
         const group=byDevice.get(segment.device)??{device:segment.device,sessions:0,landings:blankLandings()};
         group.sessions+=segment.sessions;
@@ -185,6 +189,8 @@ export async function readGaTraffic(db:Client,environment:Environment,from:strin
     otherChannels.sessions+=row.sessions;
     for(const page of Object.keys(row.landings) as DashboardLandingPage[])otherChannels.landings[page]+=row.landings[page];
   }
-  const devices=deviceDays?{coveredDays:deviceDays,rows:[...byDevice.values()].sort((a,b)=>b.sessions-a.sessions||a.device.localeCompare(b.device))}:undefined;
-  return {from,to,coveredDays:days.length,expectedDays:dates.length,fetchedAt,sessions,landings,channels:sorted.slice(0,12),otherChannels,devices};
+  const devices=deviceDays?{coveredDays:deviceDays,homepageCoveredDays:deviceHomepageDays,
+    rows:[...byDevice.values()].sort((a,b)=>b.sessions-a.sessions||a.device.localeCompare(b.device))}:undefined;
+  return {from,to,coveredDays:days.length,homepageCoveredDays:homepageDays,expectedDays:dates.length,fetchedAt,sessions,
+    landings,channels:sorted.slice(0,12),otherChannels,devices};
 }

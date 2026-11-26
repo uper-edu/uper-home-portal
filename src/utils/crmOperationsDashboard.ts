@@ -85,6 +85,52 @@ export type DashboardFinanceQueue={
   pendingByClass?:Record<string,number>;
 };
 export type DashboardDemand={level:string;period:string;format:string;state:string;count:number};
+export type DashboardSupply={
+  level:string;period:string;waiting:number;requests:number;seats:number;physicalSeats:number;
+};
+export function dashboardSupply(classes:readonly EnrollmentClassSummary[],demand:readonly DashboardDemand[]|null){
+  const groups=new Map<string,DashboardSupply>();
+  const group=(level:string,period:string)=>{
+    const key=JSON.stringify([level,period]);
+    const row=groups.get(key)??{level,period,waiting:0,requests:0,seats:0,physicalSeats:0};
+    groups.set(key,row);
+    return row;
+  };
+  for(const row of classes){
+    const supply=group(row.level,row.period);
+    supply.waiting+=row.counts.waiting;
+    supply.physicalSeats+=row.available;
+    if(row.accepting)supply.seats+=row.available;
+  }
+  for(const row of demand??[]){
+    if(row.state==='active'&&row.format!=='one-on-one')group(row.level,row.period).requests+=row.count;
+  }
+  return [...groups.values()];
+}
+
+export const dashboardRateComparisonMinimum=20;
+export function dashboardPaymentSampleIssue(metrics:Pick<DashboardMetrics,'mature'|'observing'|'timingUnknown'>){
+  if(metrics.mature)return null;
+  if(metrics.timingUnknown)return 'missingTime';
+  if(metrics.observing)return 'tvKpiObserving';
+  return 'tvKpiNoSample';
+}
+
+export function dashboardChannelLeaders(
+  rows:readonly {identified:boolean;sessions?:number;eligible:number;paid:number;first:number}[],
+  completeTraffic:boolean,
+){
+  const eligibleRate=(row:typeof rows[number])=>row.eligible>=dashboardRateComparisonMinimum?row.paid/row.eligible:undefined;
+  const eligibleRows=rows.filter(row=>row.identified);
+  const first=Math.max(0,...eligibleRows.map(row=>row.first));
+  const rate=Math.max(0,...eligibleRows.map(row=>eligibleRate(row)??0));
+  const sessions=completeTraffic?Math.max(0,...eligibleRows.map(row=>row.sessions??0)):0;
+  return rows.map(row=>({
+    first:row.identified&&first>0&&row.first===first,
+    rate:row.identified&&rate>0&&eligibleRate(row)===rate,
+    sessions:row.identified&&sessions>0&&row.sessions===sessions,
+  }));
+}
 export type DashboardMovement={
   orderId:string;reference:string;at:string;settledAt:string|null;kind:'received'|'refunded'|'returned';amount:number;
 };
@@ -94,7 +140,7 @@ export type DashboardContribution=DashboardChange&{level:string};
 export type DashboardFormatContribution=DashboardChange&{format:string};
 export type DashboardChannelContribution=DashboardChange&{source:DashboardSource};
 export type DashboardCohort={week:string;orders:number;windows:{days:number;confirmed:number;observed:number}[]};
-export const dashboardLandingPages=['enrollment','chat','link','other','unknown'] as const;
+export const dashboardLandingPages=['enrollment','chat','link','homepage','other','unknown'] as const;
 export type DashboardLandingPage=typeof dashboardLandingPages[number];
 export type DashboardLandingCounts=Record<DashboardLandingPage,number>;
 export type DashboardTrafficChannel={
@@ -105,8 +151,9 @@ export type DashboardDevice=typeof dashboardDevices[number];
 export type DashboardTrafficDevice={device:DashboardDevice;sessions:number;landings:DashboardLandingCounts};
 export type DashboardTraffic={
   from:string;to:string;coveredDays:number;expectedDays:number;fetchedAt:string;sessions:number;
+  homepageCoveredDays?:number;
   landings:DashboardLandingCounts;channels:DashboardTrafficChannel[];otherChannels:DashboardTrafficChannel|null;
-  devices?:{coveredDays:number;rows:DashboardTrafficDevice[]};
+  devices?:{coveredDays:number;homepageCoveredDays?:number;rows:DashboardTrafficDevice[]};
 };
 export const dashboardDay=86_400_000;
 export const dashboardDate=(time:number)=>new Date(time+7*3_600_000).toISOString().slice(0,10);

@@ -9,8 +9,9 @@ import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {AdminDateField} from '../admin/AdminDateField';
 import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {dashboardAdSpendScale,dashboardChannelKey,dashboardFormats,dashboardLandingPages,dashboardLevels,dashboardPath,dashboardPeriods,dashboardScopes,dashboardTopics,readDashboardFilters,
+  dashboardChannelLeaders,dashboardPaymentSampleIssue,dashboardRateComparisonMinimum,dashboardSupply,
   type DashboardAdSpend,type DashboardCash,type DashboardEconomicsRow,type DashboardFilters,type DashboardKpiTarget,type DashboardLandingPage,type DashboardMovementPage,
-  type DashboardSnapshot,type DashboardSource,type DashboardSources,type DashboardTeaching,type DashboardTeachingRow,type DashboardTopic,
+  type DashboardLandingCounts,type DashboardSnapshot,type DashboardSource,type DashboardSources,type DashboardTeaching,type DashboardTeachingRow,type DashboardTopic,
   type DashboardTraffic,type DashboardTrafficChannel} from '../../utils/crmOperationsDashboard';
 import type {AccessEmployee} from '../../utils/accessControl';
 import type {CrmLanguage} from '../../utils/crmLanguage';
@@ -36,7 +37,10 @@ const filterDefaults=readDashboardFilters(new URLSearchParams());
 const periodOptions:DashboardWord[]=['month','week','days','custom'];
 const sameDate=(a:string,b:string)=>a===b?a:a+' – '+b;
 const formatWib=(at:string)=>formatCrmOperatingTime(at,'Asia/Jakarta');
-const landingTitle=(key:DashboardLandingPage,t:Translate)=>key==='unknown'?t('unknownLanding'):key==='other'?t('otherLanding'):'/'+key;
+const landingTitle=(key:DashboardLandingPage,t:Translate)=>key==='homepage'?t('homeLanding'):
+  key==='unknown'?t('unknownLanding'):key==='other'?t('otherLanding'):'/'+key;
+const landingCount=(landings:DashboardLandingCounts,key:DashboardLandingPage,homeDays?:number)=>
+  key==='homepage'&&!homeDays?'—':landings[key];
 const gaSourceTitle=(row:Pick<DashboardTrafficChannel,'source'|'medium'>,t:Translate)=>{
   if(row.source==='(direct)')return t('directTraffic');
   return [row.source,row.medium].filter(value=>value!=='(not set)'&&value!=='(none)').join(' · ')||t('unattributed');
@@ -44,6 +48,12 @@ const gaSourceTitle=(row:Pick<DashboardTrafficChannel,'source'|'medium'>,t:Trans
 const gaDates=(data:DashboardTraffic)=>sameDate(data.from,data.to)+' · WIB';
 const gaFreshness=(data:DashboardTraffic,t:Translate)=>t('gaSnapshotTime')+' '+formatWib(data.fetchedAt)+' WIB';
 const gaCoverage=(data:DashboardTraffic,t:Translate)=>t('gaDaysCovered')+' '+data.coveredDays+' / '+data.expectedDays;
+function paymentSampleNote(metrics:DashboardSnapshot['current'],t:Translate,count:(value:number)=>string){
+  const issue=dashboardPaymentSampleIssue(metrics);
+  if(!issue)return null;
+  if(issue==='missingTime')return t(issue)+' · '+count(metrics.timingUnknown);
+  return t(issue)+(metrics.observing?' · '+count(metrics.observing):'');
+}
 
 function useDashboard(url:string,accessKey:string,enabled:boolean,polling:boolean,revision:number){
   const key=url+'|'+accessKey;
@@ -345,25 +355,19 @@ function WallboardChannels({data,rows,t,lang}:{data:DashboardSnapshot;rows:Retur
   const traffic=data.wallboard?.traffic;
   const coverage=sourceCoverage(data.sources,'first');
   const spend=data.adSpend;
-  const leaders={sessions:0,rate:0,first:0};
-  for(const row of rows){
-    if(!wallboardSourceIdentified(row.source))continue;
-    leaders.sessions=Math.max(leaders.sessions,row.sessions??0);
-    leaders.rate=Math.max(leaders.rate,row.eligible?row.paid/row.eligible:0);
-    leaders.first=Math.max(leaders.first,row.first);
-  }
-  function metric(value:number|undefined,best:number,text:string,ranked:boolean,detail?:ReactNode){
-    const leading=ranked&&best>0&&value===best;
+  const completeTraffic=Boolean(traffic&&traffic.coveredDays===traffic.expectedDays);
+  const leaders=dashboardChannelLeaders(rows.map(row=>({...row,identified:wallboardSourceIdentified(row.source)})),completeTraffic);
+  function metric(text:string,leading:boolean,detail?:ReactNode){
     return <td data-column-leader={leading||undefined}>
       <strong>{text}</strong>{detail&&<> <small>{detail}</small></>}
       {leading&&<span className="sr-only"> · {t('tvColumnLeader')}</span>}
     </td>;
   }
   return <Panel title={t('tvChannelMatrix')} className="ops-dash-tv-channel-matrix" aside={<span>
-    <strong className="ops-dash-tv-leading-key">{t('tvColumnLegend')}</strong> · {sameDate(data.period.from,data.period.to)} WIB
+    <strong className="ops-dash-tv-leading-key">{t('tvColumnLegend')}</strong> · {t('tvRateRankMinimum')} {dashboardRateComparisonMinimum}
   </span>}>
     <Table headers={[t('source'),t('sessions'),t('tvApplicationRate'),t('sevenDayConversion'),t('firstThisPeriod'),t('adSpend'),t('tvAcquisitionCost')]}>
-      {rows.map(row=>{
+      {rows.map((row,index)=>{
         const ranked=wallboardSourceIdentified(row.source);
         const medium=row.source.medium;
         const kind=promotionKindForMedium(medium);
@@ -373,11 +377,11 @@ function WallboardChannels({data,rows,t,lang}:{data:DashboardSnapshot;rows:Retur
         const costState=!ranked?t('tvSourcePending'):!row.spend.size&&(kind==='unpaid'||medium==='organic')?t('tvNonPaid'):'—';
         return <tr key={row.source.key} data-source-pending={!ranked||undefined}>
           <th scope="row">{source}</th>
-          {metric(row.sessions,leaders.sessions,row.sessions===undefined?'—':number.format(row.sessions),ranked)}
+          {metric(row.sessions===undefined?'—':number.format(row.sessions),leaders[index].sessions)}
           <td>—</td>
-          {metric(rate,leaders.rate,rate===undefined?'—':percent.format(rate),ranked,
+          {metric(rate===undefined?'—':percent.format(rate),leaders[index].rate,
             rate!==undefined?number.format(row.paid)+'/'+number.format(row.eligible):undefined)}
-          {metric(row.first,leaders.first,number.format(row.first),ranked,
+          {metric(number.format(row.first),leaders[index].first,
             <DashboardDelta value={row.first-row.previousFirst} format={value=>number.format(value)}/>)}
           <td><strong>{[...row.spend].map(([currency,amount])=>formatCurrency(amount/dashboardAdSpendScale,lang,currency)).join(' · ')||'—'}</strong></td>
           <td>{costState}</td>
@@ -385,7 +389,7 @@ function WallboardChannels({data,rows,t,lang}:{data:DashboardSnapshot;rows:Retur
       })}
       {!rows.length&&<tr><td colSpan={7}>{t('noSamples')}</td></tr>}
     </Table>
-    <p className="ops-dash-caption">{t('tvChannelPeriods')} · {t('versus')} {sameDate(data.period.compareFrom,data.period.compareTo)}</p>
+    <p className="ops-dash-caption">{t('tvChannelPeriods')} · {sameDate(data.period.from,data.period.to)} WIB · {t('versus')} {sameDate(data.period.compareFrom,data.period.compareTo)}</p>
     <p className="ops-dash-caption">{traffic?gaCoverage(traffic,t):t('trafficGap')} · {t('sourceCoverage')} {coverage.verified}/{coverage.total}
       {spend?.currencies.map(row=>' · '+t('tvMappedSpend')+' '+row.currency+' '+(row.amount?percent.format(row.mapped/row.amount):'—'))}</p>
     <p className="ops-dash-caption">{t('tvNeedsEvents')}</p>
@@ -413,30 +417,14 @@ function WallboardPayment({rows,t,lang}:{rows:ReturnType<typeof wallboardChannel
 }
 
 function WallboardSupply({data,t}:{data:DashboardSnapshot;t:Translate}){
-  const groups=new Map<string,{waiting:number;requests:number;seats:number}>();
-  const levels=new Set<string>();
-  function group(level:string,period:string){
-    const key=JSON.stringify([level,period]);
-    const value=groups.get(key)??{waiting:0,requests:0,seats:0};
-    groups.set(key,value);
-    levels.add(level);
-    return value;
-  }
-  for(const row of data.upcoming){
-    const value=group(row.level,row.period);
-    value.waiting+=row.counts.waiting;
-    if(row.accepting)value.seats+=row.available;
-  }
-  for(const row of data.demand??[]){
-    if(row.state==='active'&&row.format!=='one-on-one')group(row.level,row.period).requests+=row.count;
-  }
-  const shownLevels=dashboardLevels.filter(level=>levels.has(level));
+  const groups=dashboardSupply(data.upcoming,data.demand);
+  const shownLevels=dashboardLevels.filter(level=>groups.some(row=>row.level===level));
   return <Panel title={t('tvSupply')} className="ops-dash-tv-supply" aside={<span>{t('tvSupplyLegend')}</span>}>
     <Table headers={[t('level'),t('weekday'),t('weekend'),t('mixed')]}>
       {shownLevels.map(level=><tr key={level}>
         <th scope="row">{level}</th>
         {enrollmentPeriods.map(period=>{
-          const value=groups.get(JSON.stringify([level,period]));
+          const value=groups.find(row=>row.level===level&&row.period===period);
           return <td key={period} title={value?t('tvSupplyBasis'):undefined} data-shortage={Boolean(value?.waiting&&!value.seats)||undefined}>
             {value?<>{value.waiting} · {data.demand?value.requests:'—'} · <strong>{value.seats}</strong></>:'—'}
           </td>;
@@ -546,14 +534,19 @@ function WallboardIntake({data,t,lang}:{data:DashboardSnapshot;t:Translate;lang:
         {traffic?<>
           <p className="ops-dash-caption">{t('sessions')} <strong>{number.format(traffic.sessions)}</strong> · {gaCoverage(traffic,t)}</p>
           <ul className="ops-dash-tv-landing-bars" aria-label={t('sessions')}>
-            {dashboardLandingPages.map(key=><li key={key}>
+            {dashboardLandingPages.map(key=>{
+              const value=landingCount(traffic.landings,key,traffic.homepageCoveredDays);
+              return <li key={key}>
               <span>{landingTitle(key,t)}</span>
               <span className="ops-dash-tv-landing-track" aria-hidden="true">
-                <i style={{width:traffic.landings[key]/max*100+'%'}}/>
+                {typeof value==='number'&&<i style={{width:value/max*100+'%'}}/>}
               </span>
-              <strong>{number.format(traffic.landings[key])}</strong>
-            </li>)}
+              <strong>{typeof value==='number'?number.format(value):value}</strong>
+            </li>;})}
           </ul>
+          {(traffic.homepageCoveredDays??0)<traffic.coveredDays&&<p className="ops-dash-caption">
+            {t('homeLandingCoverage')} {traffic.homepageCoveredDays??0} / {traffic.coveredDays}
+          </p>}
         </>:<p className="ops-dash-caption">{t('trafficGap')}</p>}
       </section>
       <section>
@@ -613,24 +606,29 @@ function AcquisitionSources({data,t,lang,canManageCampaigns}:{data:DashboardSnap
 
 function AcquisitionTraffic({data,t,filtered}:{data:DashboardTraffic|null|undefined;t:Translate;filtered:boolean}){
   const other=data?.otherChannels;
+  const cells=(landings:DashboardLandingCounts,homeDays?:number)=>dashboardLandingPages.map(key=>
+    <td key={key}>{landingCount(landings,key,homeDays)}</td>);
   return <Panel title={t('sessions')} aside={data?<span>{gaDates(data)}</span>:undefined}>
     {data?<>
       <Table headers={[t('source'),...dashboardLandingPages.map(key=>landingTitle(key,t)),t('sessionCount')]}>
-        <tr><th scope="row">{t('trafficTotal')}</th>{dashboardLandingPages.map(key=><td key={key}>{data.landings[key]}</td>)}<td>{data.sessions}</td></tr>
+        <tr><th scope="row">{t('trafficTotal')}</th>{cells(data.landings,data.homepageCoveredDays)}<td>{data.sessions}</td></tr>
         {data.channels.map(row=><tr key={JSON.stringify([row.source,row.medium])}>
-          <th scope="row">{gaSourceTitle(row,t)}</th>{dashboardLandingPages.map(key=><td key={key}>{row.landings[key]}</td>)}<td>{row.sessions}</td>
+          <th scope="row">{gaSourceTitle(row,t)}</th>{cells(row.landings,data.homepageCoveredDays)}<td>{row.sessions}</td>
         </tr>)}
         {other&&<tr><th scope="row">{t('otherSources')}</th>
-          {dashboardLandingPages.map(key=><td key={key}>{other.landings[key]}</td>)}<td>{other.sessions}</td>
+          {cells(other.landings,data.homepageCoveredDays)}<td>{other.sessions}</td>
         </tr>}
       </Table>
       <p className="ops-dash-caption">{gaCoverage(data,t)} · {gaFreshness(data,t)}</p>
       {data.coveredDays<data.expectedDays&&<p className="ops-dash-caption">{t('gaPartial')}</p>}
+      {(data.homepageCoveredDays??0)<data.coveredDays&&<p className="ops-dash-caption">
+        {t('homeLandingCoverage')} {data.homepageCoveredDays??0} / {data.coveredDays}
+      </p>}
       {data.devices?<AdminDisclosure heading={t('sessionsByDevice')} density="compact">
         {data.devices.rows.length?<Table headers={[t('device'),...dashboardLandingPages.map(key=>landingTitle(key,t)),t('sessionCount')]}>
           {data.devices.rows.map(row=><tr key={row.device}>
             <th scope="row">{row.device==='unknown'?t('unknownDevice'):row.device==='other'?t('otherDevice'):t(row.device)}</th>
-            {dashboardLandingPages.map(key=><td key={key}>{row.landings[key]}</td>)}<td>{row.sessions}</td>
+            {cells(row.landings,data.devices?.homepageCoveredDays)}<td>{row.sessions}</td>
           </tr>)}
         </Table>:<p>{t('noSamples')}</p>}
         <p className="ops-dash-caption">{t('gaDaysCovered')} {data.devices.coveredDays} / {data.expectedDays}</p>
@@ -765,9 +763,9 @@ function WallboardKpiTrack({fill,marker,tone}:{fill:number|null;marker:number|nu
   </div>;
 }
 
-function WallboardCumulativeKpi({label,value,previous,plan,format,percent,unit,t}:{
+function WallboardCumulativeKpi({label,value,previous,plan,format,percent,unit,t,coverage}:{
   label:string;value:number|null;previous:number|null;plan?:DashboardKpiTarget;format:(value:number)=>string;
-  percent:(value:number)=>string;unit?:string;t:Translate;
+  percent:(value:number)=>string;unit?:string;t:Translate;coverage?:string;
 }){
   const amount=(value:number)=>format(value)+(unit?' '+unit:'');
   const ratio=value!==null&&plan?value/plan.target:null;
@@ -792,6 +790,7 @@ function WallboardCumulativeKpi({label,value,previous,plan,format,percent,unit,t
     </>:plan?<>
       <strong data-tone={tone}>{value>=plan.target?t('tvKpiReached'):t('tvKpiRemaining')+' '+amount(plan.target-value)}</strong>
     </>:<>{t('tvTargetPending')}{previous!==null&&<> · <DashboardDelta value={value-previous} format={format}/></>}</>}</p>
+    {coverage&&<p className="ops-dash-caption">{coverage}</p>}
   </article>;
 }
 
@@ -799,6 +798,7 @@ function WallboardRateKpi({data,t,percent,count}:{data:DashboardSnapshot;t:Trans
   percent:(value:number)=>string;count:(value:number)=>string}){
   const current=data.current,previous=data.compare;
   const rate=current.mature?current.paidWithinWindow/current.mature:null;
+  const sampleNote=paymentSampleNote(current,t,count);
   const prior=previous.mature?previous.paidWithinWindow/previous.mature:null;
   const target=data.wallboard?.kpiPlan?.paymentRate;
   const deviation=rate!==null&&target!==undefined?Math.round((rate-target)*1000)/10:null;
@@ -814,10 +814,10 @@ function WallboardRateKpi({data,t,percent,count}:{data:DashboardSnapshot;t:Trans
       <span>{count(current.paidWithinWindow)} / {count(current.mature)}</span>
     </div>
     <WallboardKpiTrack fill={rate} marker={target??prior} tone={tone}/>
-    <p>{rate===null?t('tvKpiNoSample'):deviation!==null?
+    <p>{sampleNote??(deviation!==null?
       <strong data-tone={tone}>{deviation===0?t('tvKpiAtTarget'):
         t(deviation>0?'tvKpiAbove':'tvKpiBelow')+' '+count(Math.abs(deviation))+' '+t('percentagePoints')}</strong>:
-      t('tvTargetPending')}
+      t('tvTargetPending'))}
       {prior!==null&&<> · {t('tvKpiComparison')} {percent(prior)}</>}
       {target===undefined&&periodChange!==null&&<> · <DashboardDelta value={periodChange} format={count} unit={t('percentagePoints')}/></>}
     </p>
@@ -839,7 +839,8 @@ function WallboardKpis({data,t,lang,compactMoney}:{data:DashboardSnapshot;t:Tran
       <WallboardCumulativeKpi label={t('paid')} value={data.current.paid} previous={data.compare.paid}
         plan={kpi?.paid} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvEnrollmentUnit')} t={t}/>
       <WallboardCumulativeKpi label={t('first')} value={data.current.first} previous={data.compare.first}
-        plan={kpi?.first} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvLearnerUnit')} t={t}/>
+        plan={kpi?.first} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvLearnerUnit')} t={t}
+        coverage={data.current.identityUnknown?t('firstIdentityPending')+' · '+number.format(data.current.identityUnknown):undefined}/>
       <WallboardRateKpi data={data} t={t} percent={value=>format.format(value)} count={value=>number.format(value)}/>
       <article className="ops-dash-tv-score">
         <span>{t('tvKpiClassReadiness')}</span>
@@ -1025,34 +1026,34 @@ function Sales({data,t}:{data:DashboardSnapshot;t:Translate}){
 }
 
 function Classes({data,filter,t,lang,onNavigate}:{data:DashboardSnapshot;filter:DashboardFilters;t:Translate;lang:CrmLanguage;onNavigate:(href:string)=>void}){
-  const demand=data.demand?.filter(row=>row.state!=='withdrawn'&&(!filter.level||row.level===filter.level)&&(!filter.format||row.format===filter.format));
+  const demand=data.demand?.filter(row=>row.state!=='withdrawn'&&(!filter.level||row.level===filter.level)&&(!filter.format||row.format===filter.format))??null;
+  const breakdown=dashboardSupply(data.upcoming,demand).sort((a,b)=>a.level.localeCompare(b.level)||a.period.localeCompare(b.period));
   const format=(value:string)=>value==='standard'||value==='small'?t(value):value==='one-on-one'?t('oneToOne'):value||'—';
   const timeLabel=(value:string)=>value==='weekday-evening'?t('weekday'):value==='weekend'||value==='mixed'?t(value):value||'—';
-  const breakdown=new Map<string,{level:string;period:string;supply:number;requests:number;waitlist:number}>();
-  for(const row of [...data.upcoming,...demand??[]]){
-    const key=[row.level,row.period].join('|');
-    const group=breakdown.get(key)??{level:row.level,period:row.period,supply:0,requests:0,waitlist:0};
-    if('counts' in row){group.supply+=row.available;group.waitlist+=row.counts.waiting;}
-    else group.requests+=row.count;
-    breakdown.set(key,group);
-  }
+  const enrollmentsHref='/crm?tab=enrollment-management';
+  const demandTable=(rows:typeof demand)=>rows?.length?<Table headers={[t('level'),t('format'),t('schedule'),t('demandStatus'),t('demandCount')]}>
+    {rows.map(row=><tr key={JSON.stringify([row.level,row.format,row.period,row.state])}>
+      <th scope="row">{row.level||'—'}</th><td>{format(row.format)}</td><td>{timeLabel(row.period)}</td>
+      <td>{row.state==='confirmed'?t('confirmedSchedule'):row.format==='one-on-one'?t('awaitingSchedule'):t('active')}</td><td>{row.count}</td>
+    </tr>)}
+  </Table>:<p>{t(rows?'noSamples':'denied')}</p>;
   return <>
     <Upcoming rows={data.upcoming} t={t} lang={lang} onNavigate={onNavigate}/>
     <Panel title={t('supplyDemand')}>
-      {breakdown.size?<Table headers={[t('level'),t('schedule'),t('available'),t('waitlist'),t('demandCount')]}>
-        {[...breakdown.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([key,row])=><tr key={key}>
-          <th scope="row">{row.level||'—'}</th><td>{timeLabel(row.period)}</td><td>{row.supply}</td><td>{row.waitlist}</td><td>{demand?row.requests:'—'}</td>
+      {breakdown.length?<Table headers={[t('level'),t('schedule'),t('waitlist'),t('groupDemand'),t('bookableSeats'),t('physicalSeats')]}>
+        {breakdown.map(row=><tr key={JSON.stringify([row.level,row.period])}>
+          <th scope="row">{row.level||'—'}</th><td>{timeLabel(row.period)}</td><td>{row.waiting}</td><td>{demand?row.requests:'—'}</td>
+          <td>{row.seats}</td><td>{row.physicalSeats}</td>
         </tr>)}
       </Table>:<p>{t('noSamples')}</p>}
+      <p className="ops-dash-caption">{t('tvSupplyNote')} {t('physicalSeatsNote')}{!demand&&' '+t('denied')}</p>
     </Panel>
-    <Panel title={t('demand')} aside={<Link href="/crm?tab=enrollment-management" onNavigate={onNavigate}>{t('enrollment')}</Link>}>
-      {demand?.length?<Table headers={[t('level'),t('format'),t('schedule'),t('demandStatus'),t('demandCount')]}>
-        {demand.map(row=><tr key={[row.level,row.format,row.period,row.state].join('|')}>
-          <th scope="row">{row.level||'—'}</th><td>{format(row.format)}</td><td>{timeLabel(row.period)}</td>
-          <td>{row.state==='confirmed'?t('confirmedSchedule'):row.format==='one-on-one'?t('awaitingSchedule'):t('active')}</td><td>{row.count}</td>
-        </tr>)}
-      </Table>:<p>{t(demand?'noSamples':'denied')}</p>}
+    <Panel title={t('groupDemand')} aside={<Link href={enrollmentsHref} onNavigate={onNavigate}>{t('enrollment')}</Link>}>
+      {demandTable(demand?.filter(row=>row.format!=='one-on-one')??null)}
     </Panel>
+    {!filter.format&&<Panel title={t('privateBookings')}>
+      {demandTable(demand?.filter(row=>row.format==='one-on-one')??null)}
+    </Panel>}
   </>;
 }
 
@@ -1154,7 +1155,10 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
   const status=data.error===401||data.error===403?'denied':data.error===400?'rejected':snapshot?'stale':'error';
   const content=<>
     <AdminPageHeader title={t('dashboard')} subtitle={snapshot?t('asOf')+' · '+formatWib(snapshot.asOf)+' WIB':'WIB'}
-      headingRef={heading} actions={sections.view&&<AdminRefreshAction label={t('refresh')} loading={data.loading} onClick={()=>setRevision(v=>v+1)}/>}/>
+      headingRef={heading} actions={sections.view&&<>
+        {!outputTopic&&<Link href="/crm?tab=docs#crm-guide-dashboard-metrics">{t('metricsReference')}</Link>}
+        <AdminRefreshAction label={t('refresh')} loading={data.loading} onClick={()=>setRevision(v=>v+1)}/>
+      </>}/>
     {sections.view&&!outputTopic&&<div className="ops-dash-filters">
       <AdminSingleSelect label={t('period')} value={filter.period} lang={lang} isLight={isLight}
         options={dashboardPeriods.map((value,index)=>({value,label:t(periodOptions[index])}))}
@@ -1182,6 +1186,7 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
   const count=(n:number)=>numeric.format(n);
   const formatRate=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
   const rate=snapshot?.current.mature?snapshot.current.paidWithinWindow/snapshot.current.mature:null;
+  const sampleNote=snapshot&&paymentSampleNote(snapshot.current,t,count);
   const earlierRate=snapshot?.compare.mature?snapshot.compare.paidWithinWindow/snapshot.compare.mature:null;
   const points=rate!==null&&earlierRate!==null?(rate-earlierRate)*100:null;
   const pointChange=points===null?null:<>
@@ -1200,12 +1205,13 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
       allowed={sections.operations&&sections.finance} onNavigate={onNavigate}/>;
     return <>
       <div className="ops-dash-kpis">
-        <NumberCard label={t('first')} value={count(data.current.first)} note={change(data.current.first-data.compare.first)} onClick={()=>choose('acquisition')}/>
+        <NumberCard label={t('first')} value={count(data.current.first)} note={<>{change(data.current.first-data.compare.first)}
+          {data.current.identityUnknown>0&&' · '+t('firstIdentityPending')+' '+count(data.current.identityUnknown)}</>} onClick={()=>choose('acquisition')}/>
         <NumberCard label={t('paid')} value={count(data.current.paid)} note={change(data.current.paid-data.compare.paid)} onClick={()=>choose('sales')}/>
         <NumberCard label={t('net')} value={data.cash?money(data.cash.current.net):'—'}
           note={data.cash?change(data.cash.current.net-data.cash.compare.net,money):t('denied')} onClick={data.cash?()=>choose('finance'):undefined}/>
         <NumberCard label={t('rate')} value={rate===null?'—':formatRate.format(rate)}
-          note={<>{data.current.paidWithinWindow} / {data.current.mature} · {t('completedWindow')}{pointChange}</>} onClick={()=>choose('acquisition')}/>
+          note={sampleNote??<>{data.current.paidWithinWindow} / {data.current.mature} · {t('completedWindow')}{pointChange}</>} onClick={()=>choose('acquisition')}/>
       </div>
       <div className="ops-dash-grid ops-dash-overview-grid">
         <OverviewTrends key={query} data={data} t={t} lang={lang}
