@@ -88,6 +88,10 @@ mysql --host=<主机> --port=<端口> --user=<账号> -p --default-character-set
 - 彻底撤销：从执行前备份恢复。
 - 未演练：旧版应用在已升级库上的页面和队列行为；从备份恢复所需时间。
 
+### 7. 生产部署配置
+
+新版以生产方式启动时会先校验部署配置，任何一项不符都会在监听前退出。切换制品前逐项核对正式环境已注入的键（只核对键名和非敏感取值，不导出密钥）：`PORTAL_ENV=prod`、`PORTAL_DEPLOYMENT=production`、`PORTAL_PRODUCTION_READY=true`、`NODE_ENV=production`、`APP_ENV=production`、`PLATFORM_MODE=local`、`TRIAL_DATASET=synthetic`、`APP_URL` 和 `PORTAL_PUBLIC_ORIGIN` 均为 `https://uperedu.com`、`ACCESS_ALLOWED_ORIGINS` 只含获批域名、`MYSQL_TLS_MODE=disabled`、`ACCESS_TRUSTED_PROXIES` 为确切的内网代理地址。旧版使用的 `ACCESS_PUBLIC_ORIGIN` 和 `PORTAL_WORKER_ENABLED` 新版不再读取；生产方式下 worker 随应用启动。缺少的键属于新增环境变量，须按 `AGENTS.md` 逐项取得批准后才能加入。
+
 ## 演练记录
 
 | 项目 | 内容 |
@@ -99,8 +103,9 @@ mysql --host=<主机> --port=<端口> --user=<账号> -p --default-character-set
 | 与旧启动路径对比 | 在另一份克隆上运行旧迁移程序和原挂载步骤作参照。两者的表、列及顺序、默认值、排序规则、索引、约束完全一致；数据差异只有时间戳、审计记录和邮件配置行（参照路径未运行邮件初始化） |
 | 对旧数据的影响 | 旧 42 张表中 35 张逐表校验无变化；变化的 7 张为版本表、`portal_settings`、`portal_audit`、`notification_rules`、`notification_channels`、`trial_campaigns`、`campaign_promotion_index` |
 | 字符集 | 第 ③ 份用 `latin1` 客户端执行，写入的「·」与 `utf8mb4` 客户端逐字节相同 |
+| 应用启动 | 用提交 `e344651` 的开发构建，以隔离数据集方式（无通知 worker，飞书固定模拟，不提供任何外部凭证）在升级后的克隆上启动：2 秒就绪，`/api/health`、`/api/version` 正常，`/api/promotion-links/enroll-ig` 返回 `verified`。启动加 8 个只读请求后全库逐表校验无变化 |
 | 耗时 | 每份约 1 秒（库约 7 MB） |
-| 未覆盖 | 使用 root 账号执行，受限账号所需权限未验证；真实生产实例的锁等待、复制延迟和恢复时间未验证；没有启动应用或 worker，没有消费队列或发送通知 |
+| 未覆盖 | 使用 root 账号执行，受限账号所需权限未验证；真实生产实例的锁等待、复制延迟和恢复时间未验证；没有以生产部署方式启动应用，没有运行 worker，没有消费队列或发送通知；生产配置（公开域名、代理、发布门禁、密钥环）与新版启动要求是否一致未核对 |
 
 ## 启动路径的变化
 
