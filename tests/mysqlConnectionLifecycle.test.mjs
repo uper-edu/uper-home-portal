@@ -20,6 +20,7 @@ test('a MySQL session setup failure discards the checked-out connection', async 
     load(url,context,next) {
       if(url.endsWith('/cloud/mysql/database.mjs'))return {format:'module',shortCircuit:true,
         source:`export const openTrialDatabase=()=>globalThis[Symbol.for('uper.mysqlSetupFailureFixture')];
+          export const validateTrialDatabase=()=>{throw Error('Unexpected CLI validation');};
           export const withLock=()=>{throw Error('Unexpected migration');};`};
       return next(url,context);
     },
