@@ -54,6 +54,7 @@ export async function localEmployee(req: Request) {
 }
 /** Restrict temporary-password sessions before any CRM, CMS or administration routes. */
 export function passwordChangeGate(req:any,res:any,next:any){
+ if(!/^\/(?:crm|cms|admin|staff)(?:\/|$)/.test(req.path))return next();
  const operationQuery = req.method === 'GET' && /^\/crm\/auth\/operations\/[a-zA-Z0-9_-]{16,100}$/.test(req.path);
  const passwordOperationClose = req.method === 'POST' && req.body?.url === '/api/crm/auth/password' &&
    /^\/crm\/auth\/operations\/[a-zA-Z0-9_-]{16,100}\/close$/.test(req.path);

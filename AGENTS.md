@@ -9,6 +9,13 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 - Confirm the delivery batch and its exact commit with the user before pushing to the canonical repository or releasing to company test. Production deployment requires separate explicit authorization.
 - Keep lesson content and grading rules unchanged during infrastructure fixes unless the user requests content changes.
 
+## 生产发布分支
+
+- 生产发布分支固定为 `release`。Jenkins 生产构建、镜像和 TKE 发布只取 `release` 的已推送提交，不从 `main`、功能分支或本地未推送提交发布。
+- `release` 只接收准备发布的代码。功能开发可在 `main` 或功能分支进行；进入生产前必须把已验证提交合入 `release`。
+- 创建或更新 `release`、推送 `release`，以及触发生产发布，各自需要明确授权。本次规范本身不创建发布、不推送、不部署。
+- 公司测试环境和本地 3000 不使用 `release` 作为开发分支。测试发布仍按当次授权的测试版本执行。
+
 ## 环境变量与业务开关
 
 - 环境变量用于部署和基础设施所需的配置，例如运行环境、服务地址、连接参数、凭证注入和日志设置。禁止为已交付的业务功能、权限或管理操作新增环境变量开关。

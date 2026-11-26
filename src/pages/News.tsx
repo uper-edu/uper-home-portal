@@ -86,7 +86,7 @@ const BannerCarousel = ({ carouselItems, isLoading, fallbackTitle, fallbackSubti
     return (
       <div className="pb-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative w-full h-[50vh] md:h-[60vh] overflow-hidden bg-slate-950 rounded-[2.5rem] shadow-2xl flex flex-col justify-center items-center p-8 text-center">
-          <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200')` }} />
+          <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url('https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/52baf858410748e3da33693b8de042a10618f7e3b30dd32cb7e255cac195acb8.webp')` }} />
           <div className="absolute inset-0 bg-black/40 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
           <div className="relative z-10 max-w-4xl px-4 text-white">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight drop-shadow-lg text-white">
@@ -598,7 +598,7 @@ export default function News() {
                       src={(() => {
                         const imgToUse = (item.images && item.images.length > 0) ? item.images[0] : item.image;
                         return imgToUse ? urlFor(imgToUse)?.width(800).url() : null;
-                      })() || "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=800"} 
+                      })() || "https://uper-portal-public-20261104191752-1433456541.cos.ap-jakarta.myqcloud.com/cms/695dcca885c945106725b3a32ac03edb61cccaa08f25feb53f6cf7f9174e870e.webp"}
                       alt={item.title} 
                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       referrerPolicy="no-referrer"
