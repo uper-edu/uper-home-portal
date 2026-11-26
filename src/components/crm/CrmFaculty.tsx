@@ -69,6 +69,7 @@ const words={
   contract:['合同生效日','Contract start date','Tanggal mulai kontrak'],
   phaseShort:['生效后月数','Months after start','Bulan setelah mulai'],
   effective:['本段生效日','Effective from','Berlaku sejak'],
+  phase:['费率阶段','Rate phase','Fase tarif'],
   kind:['计费方式','Pay basis','Dasar pembayaran'],
   lesson:['按课时（45 分钟一节）','Per 45-minute lesson','Per sesi 45 menit'],
   monthly:['月薪 · 待分摊','Monthly salary · allocation pending','Gaji bulanan · alokasi tertunda'],
@@ -83,7 +84,8 @@ const words={
   saved:['已保存。','Saved.','Tersimpan.'],
   invalid:['请核对必填项、金额、合同日期及费率阶段。','Check the required fields, amount, contract dates and rate phases.','Periksa kolom wajib, jumlah, tanggal kontrak, dan fase tarif.'],
   conflict:['记录已更新。草稿已保留，关闭编辑后可核对最新档案。','A newer revision exists. Your draft is retained. Close the editor to review the latest profile.','Ada versi lebih baru. Draf disimpan. Tutup editor untuk memeriksa profil terbaru.'],
-  nameHelp:['至少填写一种语言的教师姓名。原文按语言分别保存。','Enter the teacher name in at least one language. Each version is saved separately.','Isi nama pengajar dalam setidaknya satu bahasa. Setiap versi disimpan secara terpisah.'],
+  nameHelp:['至少填写一种语言的教师姓名。','Enter the teacher name in at least one language.','Isi nama pengajar dalam setidaknya satu bahasa.'],
+  nameMissing:['请至少填写一种语言的教师姓名。','Enter the teacher name in at least one language.','Isi nama pengajar dalam setidaknya satu bahasa.'],
   version:['资料语言','Profile language','Bahasa profil'],
   fileInvalid:['请检查文件格式和大小。','Check the file type and size.','Periksa jenis dan ukuran berkas.'],
   reread:['核对保存结果','Check save result','Periksa hasil simpan'],
@@ -92,11 +94,12 @@ const words={
   experience:['职务与经历','Roles and experience','Jabatan dan pengalaman'],
   teaching:['研究与教学','Research and teaching','Riset dan pengajaran'],
   noneInLanguage:['当前语言暂无资料。','No profile information in this language.','Belum ada informasi profil dalam bahasa ini.'],
+  viewProfileLanguage:['查看资料','View profile in','Lihat profil dalam'],
 } as const;
 type Word=keyof typeof words;
 type Mode='profile'|'rates';
 type Details={profile:FacultyProfile;rates?:FacultyRates};
-type RateDraft=Omit<FacultyTerm,'amountMinor'>&{amount:string;key:number};
+type RateDraft=Omit<FacultyTerm,'amountMinor'>&{amount:string;key:number;contractGroup?:string};
 const profileGroups=[
   {title:'education',fields:['qualification','education','chineseProficiency','languages']},
   {title:'experience',fields:['positions','teachingExperience','chineseTeachingExperience','internationalExperience','leadershipExperience','practicalExperience']},
@@ -113,7 +116,10 @@ function followWorkspaceLink(event:MouseEvent<HTMLAnchorElement>,navigate:(href:
 }
 
 function rateDraft(term:FacultyTerm,key:number):RateDraft{
-  return {...term,key,amount:term.amountMinor===null||term.currency===null?'':facultyAmount(term.amountMinor,term.currency)};
+  return {...term,key,contractGroup:term.contractStart,amount:term.amountMinor===null||term.currency===null?'':facultyAmount(term.amountMinor,term.currency)};
+}
+function hasProfileText(bio?:FacultyBio){
+  return Object.values(bio??{}).some(value=>value?.trim());
 }
 async function get<T>(url:string,signal?:AbortSignal){
   const response=await fetch(url,{cache:'no-store',signal});
@@ -258,13 +264,14 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
   const [mode,setMode]=useState<Mode>('profile');
   const [editing,setEditing]=useState(()=>!id||Boolean(canEdit&&openForEdit));
   const directEdit=useRef(Boolean(canEdit&&openForEdit));
-  const [locale,setLocale]=useState<CrmLanguage>(lang);
+  const [editorLanguage,setEditorLanguage]=useState<CrmLanguage>(lang);
+  const [selectedDetailLanguage,setDetailLanguage]=useState<CrmLanguage>();
   const [dirty,setDirty]=useState(false);
   const [discard,setDiscard]=useState(false);
   const [busy,setBusy]=useState(false);
   const [uploading,setUploading]=useState(false);
   const [load,setLoad]=useState<'loading'|'ready'|'error'|'denied'>(id?'loading':'ready');
-  const [feedback,setFeedback]=useState<'saved'|'invalid'|'conflict'|'unknown'|'fileInvalid'|null>(null);
+  const [feedback,setFeedback]=useState<'saved'|'invalid'|'conflict'|'unknown'|'fileInvalid'|'nameMissing'|null>(null);
   const [retry,setRetry]=useState(0);
   const guard=useRef(false);
   const unknown=feedback==='unknown';
@@ -335,7 +342,7 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
     let body:unknown;
     if(mode==='profile'){
       if(!facultyLanguages.some(lang=>draft.content[lang]?.name?.trim())){
-        setFeedback('invalid');nameInput.current?.focus();return;
+        setFeedback('nameMissing');nameInput.current?.focus();return;
       }
       body={revision:draft.revision,category:draft.category,active:draft.active,content:draft.content,files};
     }else{
@@ -376,16 +383,26 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
     }catch(error){if(error.status===404&&mode==='profile'&&!details?.profile.revision)setFeedback('invalid');}
     finally{setBusy(false);}
   }
-  const tabs=facultyLanguages.map(code=>({id:code,label:{zh:'中文',en:'English',id:'Bahasa Indonesia'}[code]}));
+  const languageLabels={zh:'中文',en:'English',id:'Bahasa Indonesia'};
+  const tabs=facultyLanguages.map(code=>({id:code,label:languageLabels[code]}));
   const patchBio=(field:keyof FacultyBio,value:string)=>change(()=>setDraft(prev=>prev&&({...prev,
-    content:{...prev.content,[locale]:{...prev.content[locale],[field]:value}}})));
+    content:{...prev.content,[editorLanguage]:{...prev.content[editorLanguage],[field]:value}}})));
   const patchRate=(key:number,patch:Partial<RateDraft>)=>change(()=>setTerms(prev=>prev.map(term=>term.key===key?{...term,...patch}:term)));
+  function changeContractDate(term:RateDraft,contractStart:string){
+    change(()=>setTerms(previous=>previous.map(row=>{
+      const sameContract=term.contractGroup!==undefined&&row.contractGroup===term.contractGroup;
+      return row.key===term.key||sameContract?{...row,contractStart}:row;
+    })));
+  }
   const profileName=details?facultyName(Object.fromEntries(facultyLanguages.map(code=>[code,details.profile.content[code]?.name])),lang):'';
   const readRates=details?.rates;
-  const shown=details?.profile.content[locale]??{};
+  const detailLanguage=selectedDetailLanguage??(details?.profile.category==='local'?'id':'zh');
+  const shown=details?.profile.content[detailLanguage]??{};
+  const availableLanguage=(['en','zh','id'] as const).find(code=>code!==detailLanguage&&hasProfileText(details?.profile.content[code]));
   const modeTabs=[{id:'profile',label:t('profile')},...(readRates?[{id:'rates',label:t('rates')}]:[])];
   const modeId=contentId+'detail',detailTabsId=tabsId+'detail';
   const languageId=contentId+'language',languageTabsId=tabsId+'language';
+  const editorLanguageId=contentId+'editor-language',editorLanguageTabsId=tabsId+'editor-language';
   const canEditMode=load==='ready'&&(mode==='profile'?canEdit:canRates&&readRates);
   const rateTable=(terms:FacultyTerm[],label:string)=>terms.length?<AdminListTable label={label}
     headers={[t('contract'),t('effective'),t('phaseShort'),t('kind'),t('currency'),{label:t('amount'),numeric:true},t('rateNote')]}>
@@ -421,12 +438,17 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
                   <div className="flex flex-wrap items-center gap-2">
                     <label className="text-sm" htmlFor={languageId}>{t('version')}</label>
                     <AdminSingleSelect controlId={languageId} label={t('version')} lang={lang} isLight={isLight}
-                      value={locale} options={tabs.map(tab=>({value:tab.id,label:tab.label}))}
-                      onChange={value=>setLocale(value as CrmLanguage)}/>
+                      value={detailLanguage} options={tabs.map(tab=>({value:tab.id,label:tab.label}))}
+                      onChange={value=>setDetailLanguage(value as CrmLanguage)}/>
                   </div>
                 </div>
                 {shown.name?.trim()&&<dl className="crm-customer-facts">{fact(t('name'),shown.name)}</dl>}
-                {!Object.values(shown).some(value=>value?.trim())&&<AdminListState compact lang={lang} state="empty" message={t('noneInLanguage')}/>}
+                {!hasProfileText(shown)&&<>
+                  <AdminListState compact lang={lang} state="empty" message={t('noneInLanguage')}/>
+                  {availableLanguage&&<div><AdminRowAction onClick={()=>setDetailLanguage(availableLanguage)}>
+                    {t('viewProfileLanguage')} · {languageLabels[availableLanguage]}
+                  </AdminRowAction></div>}
+                </>}
               </section>
                 {profileGroups.map(group=>{
                   const fields=group.fields.filter(field=>shown[field]?.trim());
@@ -467,15 +489,20 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
   if(!editing||!draft)return <>{detailView}</>;
 
   const editText=(field:keyof typeof facultyFields)=><AdminField key={field}>{facultyText(lang,facultyFields[field])}
-    <textarea className="admin-text-input" rows={3} maxLength={20000} value={draft.content[locale]?.[field]??''} disabled={blocked}
+    <textarea className="admin-text-input" rows={3} maxLength={20000} value={draft.content[editorLanguage]?.[field]??''} disabled={blocked}
       onChange={event=>patchBio(field,event.target.value)}/></AdminField>;
   return <>
     {detailView}
     <AdminEditor title={t(!profileExists?'add':mode==='profile'?'edit':'editRates')} description={profileName||undefined}
-      lang={lang} light={isLight} variant="drawer" responsiveForm required busy={busy||uploading} onClose={close} onSubmit={save}
+      lang={lang} light={isLight} variant="drawer" responsiveForm required={mode==='profile'||terms.some(term=>term.kind==='lesson')} busy={busy||uploading} onClose={close} onSubmit={save}
       footer={<>
+        {busy&&<AdminFormFeedback className="basis-full" state="saving" lang={lang}>
+          {unknown&&facultyText(lang,['正在查询保存结果…','Checking save result…','Memeriksa hasil simpan…'])}
+        </AdminFormFeedback>}
+        {!busy&&feedback&&feedback!=='saved'&&<AdminFormFeedback className="basis-full"
+          state={feedback==='unknown'?'unknown':'error'} lang={lang}>{feedback==='unknown'?undefined:t(feedback)}</AdminFormFeedback>}
         <button type="button" onClick={close} disabled={busy||uploading}>{t('cancel')}</button>
-        {unknown?<button type="button" onClick={()=>void check()} disabled={busy}>{t('reread')}</button>:
+        {unknown?<button type="button" data-primary="" onClick={()=>void check()} disabled={busy}>{t('reread')}</button>:
           <button type="submit" data-primary="" disabled={!dirty||blocked||feedback==='conflict'}>{t('save')}</button>}
       </>}>
       {mode==='profile'?<div data-admin-section-stack="open">
@@ -494,20 +521,18 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
             </AdminField>
           </AdminFormGrid>
         </AdminFormSection>
-        <AdminFormSection title={t('profile')} variant="subgroup">
-          <AdminDetailTabs id={languageTabsId} contentId={languageId} value={locale} label={t('version')}
-            tabs={tabs} onChange={value=>setLocale(value as CrmLanguage)}/>
-          <div id={languageId} role="tabpanel" aria-labelledby={languageTabsId+'-tab-'+locale} data-admin-stack="">
+        <AdminFormSection title={t('profile')} description={t('nameHelp')} variant="subgroup">
+          <AdminDetailTabs id={editorLanguageTabsId} contentId={editorLanguageId} value={editorLanguage} label={t('version')}
+            disabled={blocked} tabs={tabs} onChange={value=>setEditorLanguage(value as CrmLanguage)}/>
+          <div id={editorLanguageId} role="tabpanel" aria-labelledby={editorLanguageTabsId+'-tab-'+editorLanguage} data-admin-stack="">
             <AdminField as="div"><label>{t('name')}</label>
-              <input className="admin-text-input" ref={nameInput} maxLength={120} value={draft.content[locale]?.name??''} disabled={blocked}
-                aria-describedby={languageId+'-name-help'}
+              <input className="admin-text-input" ref={nameInput} maxLength={120} value={draft.content[editorLanguage]?.name??''} disabled={blocked}
                 onChange={event=>patchBio('name',event.target.value)}/>
-              <small id={languageId+'-name-help'}>{t('nameHelp')}</small>
             </AdminField>
-            {profileGroups.map(group=><AdminDisclosure key={group.title} heading={t(group.title)} density="panel">
+            {profileGroups.map(group=><AdminDisclosure key={group.title} heading={t(group.title)} density="compact">
               <AdminFormGrid>{group.fields.map(editText)}</AdminFormGrid>
             </AdminDisclosure>)}
-            <AdminDisclosure heading={facultyText(lang,facultyFields.cv)} density="panel">{editText('cv')}</AdminDisclosure>
+            <AdminDisclosure heading={facultyText(lang,facultyFields.cv)} density="compact">{editText('cv')}</AdminDisclosure>
           </div>
         </AdminFormSection>
         <AdminFormSection title={t('files')} description={t('fileHelp')} variant="subgroup">
@@ -532,14 +557,14 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
           })}</AdminFormGrid>
         </AdminFormSection>
       </div>:<div data-admin-section-stack="open">
-        {terms.map(term=><AdminFormSection key={term.key} title={t('effective')+' · '+(facultyDateValid(term.contractStart)
-          ?facultyEffectiveDate(term):t('pendingDate'))}
+        {terms.map((term,index)=><AdminFormSection key={term.key} title={t('phase')+' '+(index+1)}
+          description={facultyDateValid(term.contractStart)?t('effective')+' · '+facultyEffectiveDate(term):t('pendingDate')}
           variant="subgroup" actions={<AdminRowAction disabled={blocked}
+            aria-label={t('removeRate')+' · '+t('phase')+' '+(index+1)}
             onClick={()=>change(()=>setTerms(terms.filter(row=>row.key!==term.key)))}>{t('removeRate')}</AdminRowAction>}>
           <AdminFormGrid>
             <AdminDateField label={t('contract')} lang={lang} value={term.contractStart} disabled={blocked}
-              onChange={value=>change(()=>setTerms(previous=>previous.map(row=>
-                row.contractStart===term.contractStart?{...row,contractStart:value}:row)))}/>
+              onChange={value=>changeContractDate(term,value)}/>
             <AdminField as="div"><label>{t('kind')}</label><AdminSingleSelect label={t('kind')} lang={lang} isLight={isLight} disabled={blocked}
               value={term.kind} options={(['lesson','monthly'] as const).map(value=>({value,label:t(value)}))}
               onChange={value=>patchRate(term.key,{kind:value as FacultyTerm['kind']})}/></AdminField>
@@ -552,16 +577,15 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
               value={term.note} onChange={e=>patchRate(term.key,{note:e.target.value})}/></AdminField>
           </AdminFormGrid>
         </AdminFormSection>)}
-        <div className="mt-4"><AdminPageAction label={t('addRate')} icon={Plus} disabled={blocked||terms.length>=120}
-          onClick={()=>change(()=>setTerms([...terms,{key:nextKey.current++,contractStart:'',monthsAfterStart:0,kind:'lesson',
-            currency:draft.category==='foreign'?'CNY':'IDR',amount:'',note:''}]))}/></div>
-        <div className="mt-4"><AdminField>{t('reason')}<input className="admin-text-input" value={rateReason} maxLength={500}
-          disabled={blocked} onChange={event=>setRateReason(event.target.value)}/></AdminField></div>
+        <AdminFormSection title={t('rates')} variant="subgroup">
+          {terms.length===0&&<p className="m-0 text-sm text-[var(--admin-muted)]">{t('noRates')}</p>}
+          <AdminPageAction label={t('addRate')} icon={Plus} className="justify-self-start" disabled={blocked||terms.length>=120}
+            onClick={()=>change(()=>setTerms([...terms,{key:nextKey.current++,contractStart:'',monthsAfterStart:0,kind:'lesson',
+              currency:draft.category==='foreign'?'CNY':'IDR',amount:'',note:''}]))}/>
+          <AdminField>{t('reason')}<input className="admin-text-input" value={rateReason} maxLength={500}
+            disabled={blocked} onChange={event=>setRateReason(event.target.value)}/></AdminField>
+        </AdminFormSection>
       </div>}
-      {busy&&<AdminFormFeedback state="saving" lang={lang}/>}
-      {feedback&&feedback!=='saved'&&<AdminFormFeedback state={feedback==='unknown'?'unknown':'error'} lang={lang}>
-        {feedback==='unknown'?undefined:t(feedback)}
-      </AdminFormFeedback>}
     </AdminEditor>
     {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{
       setDiscard(false);updateDirty(false);setFeedback(null);
