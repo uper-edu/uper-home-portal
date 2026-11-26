@@ -93,7 +93,8 @@
   "DELETE FROM portal_settings WHERE id=:p1": {
     "sql": "DELETE FROM portal_settings WHERE id=:p1",
     "sources": [
-      "server/portal/enrollmentTemplates.ts"
+      "server/portal/enrollmentTemplates.ts",
+      "server/portal/faculty.ts"
     ]
   },
   "DELETE FROM trial_campaigns WHERE id=:p1": {
@@ -701,6 +702,7 @@
       "server/portal/assignmentBackfill.ts",
       "server/portal/autoAssignment.ts",
       "server/portal/contactPlans.ts",
+      "server/portal/faculty.ts",
       "server/portal/integrationCredentialAdmin.ts",
       "server/portal/larkGroupChannelTest.ts",
       "server/portal/larkSelfService.ts",
@@ -1034,6 +1036,7 @@
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id",
     "sources": [
       "server/portal/enrollmentCatalog.ts",
+      "server/portal/faculty.ts",
       "server/portal/larkChannelModes.ts",
       "server/portal/operationsDashboardKpi.ts"
     ]
@@ -1042,6 +1045,7 @@
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",
     "sources": [
       "server/portal/enrollmentTemplates.ts",
+      "server/portal/faculty.ts",
       "server/portal/gaSettings.ts",
       "server/portal/larkSelfService.ts",
       "server/portal/larkSettings.ts"
@@ -3986,12 +3990,14 @@
   "SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id": {
     "sql": "SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id",
     "sources": [
-      "server/portal/enrollmentTemplates.ts"
+      "server/portal/enrollmentTemplates.ts",
+      "server/portal/faculty.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id=:p1": {
     "sql": "SELECT value FROM portal_settings WHERE id=:p1",
     "sources": [
+      "server/portal/faculty.ts",
       "server/portal/gaSettings.ts",
       "server/portal/larkChannelModes.ts",
       "server/portal/larkSelfService.ts",
@@ -4003,7 +4009,8 @@
   "SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE": {
     "sql": "SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE",
     "sources": [
-      "server/portal/enrollmentTemplates.ts"
+      "server/portal/enrollmentTemplates.ts",
+      "server/portal/faculty.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE": {
@@ -4011,6 +4018,7 @@
     "sources": [
       "server/portal/enrollmentCatalog.ts",
       "server/portal/enrollmentTemplates.ts",
+      "server/portal/faculty.ts",
       "server/portal/larkChannelModes.ts",
       "server/portal/operationsDashboardKpi.ts"
     ]
@@ -5079,6 +5087,7 @@
     "sql": "UPDATE portal_settings SET value=:p2 WHERE id=:p1",
     "sources": [
       "server/portal/enrollmentCatalog.ts",
+      "server/portal/faculty.ts",
       "server/portal/larkChannelModes.ts",
       "server/portal/operationsDashboardKpi.ts",
       "server/portal/runtime.ts"

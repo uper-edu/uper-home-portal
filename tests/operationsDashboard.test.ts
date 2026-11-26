@@ -11,6 +11,7 @@ import type {Employee} from '../server/portal/identity.ts';
 process.env.TRIAL_DATASET='synthetic';
 process.env.MYSQL_TRIAL_URL='mysql://unused:unused@localhost/uper_trial_dashboard_unit';
 const {classifyDashboardSource,dashboardPaymentCohorts,dashboardReservationOutcomes,dashboardWindows,mountOperationsDashboard,summarizeDashboardActivity,summarizeDashboardCash,summarizeDashboardOrders,summarizeDashboardQueueAges}=await import('../server/portal/operationsDashboard.ts');
+const {mountFaculty}=await import('../server/portal/facultyRoutes.ts');
 
 const now=Date.parse('2026-11-25T03:00:00Z');
 const filters=readDashboardFilters(new URLSearchParams());
@@ -302,6 +303,29 @@ test('dashboard routes reject unauthorized aggregate and financial reads before 
   await assert.rejects(handlers.get('PUT /api/crm/operations-dashboard/kpi/:month')!({} as Request,res),{status:403});
   actor=finance;
   await assert.rejects(handlers.get('/api/crm/operations-dashboard/cash')!({originalUrl:'/api/crm/operations-dashboard/cash?page=-1'} as Request,res),{status:400});
+});
+
+test('faculty routes deny private profiles, downloads and fee edits outside their roles before storage',async()=>{
+  const routes=new Map<string,(q:Request,r:Response)=>Promise<unknown>>();
+  const app={get(path:string,handler:(q:Request,r:Response)=>Promise<unknown>){routes.set(path,handler);},
+    put(path:string,handler:(q:Request,r:Response)=>Promise<unknown>){routes.set('PUT '+path,handler);}} as unknown as Express;
+  let actor:Employee=sales;
+  mountFaculty(app,{wrap:handler=>handler,authenticate:async()=>actor,staff:async(_q,permission)=>{
+    if(!actor.permissions.includes(permission))throw Object.assign(Error('denied'),{status:403});
+    return actor;
+  }});
+  const request={protocol:'http',headers:{origin:'http://localhost:3000'},get:()=> 'localhost:3000',
+    is:()=>true,params:{id:'test',kind:'cv'}} as unknown as Request;
+  const endpoint='/api/crm/enrollment/faculty',res={} as Response;
+  for(const path of [endpoint,endpoint+'/:id',endpoint+'/:id/files/:kind','PUT '+endpoint+'/:id']){
+    await assert.rejects(routes.get(path)!(request,res),{status:403});
+  }
+  actor=manager;
+  await assert.rejects(routes.get('PUT '+endpoint+'/:id/rates')!(request,res),{status:403});
+  actor={...finance,scope:'own'};
+  await assert.rejects(routes.get('PUT '+endpoint+'/:id/rates')!(request,res),{status:403});
+  actor=finance;
+  await assert.rejects(routes.get('PUT '+endpoint+'/:id')!(request,res),{status:403});
 });
 
 test('payment heatmap uses a separate observation cutoff for each WIB cohort and payment window',()=>{

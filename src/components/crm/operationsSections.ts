@@ -8,6 +8,7 @@ export const enrollmentSettingSections = [
  {id:'courses',title:['Courses','Kursus','课程']},
  {id:'enrollment-templates',title:['Class templates','Templat kelas','班型模板']},
  {id:'enrollment-classes',title:['Enrollment classes','Kelas pendaftaran','报名班次']},
+ {id:'faculty',title:['Faculty directory','Direktori pengajar','教师档案']},
  {id:'enrollment-rules',title:['Enrollment rules','Aturan pendaftaran','报名规则']},
  {id:'enrollment-mail',title:['Admissions email','Email penerimaan','招生邮件']},
 ] as const;
@@ -41,9 +42,10 @@ export function isLegacyEnrollmentSettings(params:URLSearchParams) {
    || (!topic && params.has('enrollmentClass')));
 }
 
-export function enrollmentSettingsPath(topic:EnrollmentSettingTopic='courses',options?:{classId?:string;returnTo?:string;templateId?:string;createFrom?:string;createFromCourse?:string}){
+export function enrollmentSettingsPath(topic:EnrollmentSettingTopic='courses',options?:{classId?:string;facultyId?:string;returnTo?:string;templateId?:string;createFrom?:string;createFromCourse?:string}){
  const query=new URLSearchParams({tab:'enrollment-settings',policyTopic:topic});
  if(topic==='enrollment-classes'&&options?.classId)query.set('enrollmentClass',options.classId);
+ if(topic==='faculty'&&options?.facultyId)query.set('facultyId',options.facultyId);
  if(options?.templateId)query.set('enrollmentTemplate',options.templateId);
  if(options?.createFrom)query.set('createFromTemplate',options.createFrom);
  if(options?.createFromCourse)query.set('createFromCourse',options.createFromCourse);

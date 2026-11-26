@@ -557,7 +557,7 @@ function CrmWorkspace({
   };
   const changeModule = (module: typeof crmModule) => {
     const finish = () => {leadRouteVersion.current++;const url=new URL(window.location.href);url.searchParams.set("tab",module);
-      if(crmModule==="enrollment-settings")for(const key of ["policyTopic","enrollmentClass","enrollmentReturn"])url.searchParams.delete(key);
+      if(crmModule==="enrollment-settings")for(const key of ["policyTopic","enrollmentClass","facultyId","enrollmentReturn"])url.searchParams.delete(key);
       if(module!=="dashboard")for(const key of [...url.searchParams.keys()])if(key.startsWith('dashboard'))url.searchParams.delete(key);
       if(module!=="opportunities")url.searchParams.delete("opportunity");if(module!=="enrollment-management"||crmModule!==module){url.searchParams.delete("classId");url.searchParams.delete("classStatus");}if(module!==crmModule&&(crmModule==="policy"||module==="policy")){url.searchParams.delete("policyTopic");url.searchParams.delete("enrollmentClass");url.searchParams.delete("job");url.searchParams.delete("deliveryState");url.searchParams.delete("deliveryPage");}if(module!=="payments")for(const key of ["paymentLead","paymentEntry","paymentProject","paymentAction","paymentView","enrollmentOrder","opportunityReturn"])url.searchParams.delete(key);else if(crmModule!==module)url.searchParams.set("paymentView","enrollment");url.searchParams.delete("leadArea");setLeadAnalysis(false);if(module!=="leads"){url.searchParams.delete("lead");url.searchParams.delete("leadView");}if(module!=="campaigns"){url.searchParams.delete("campaign");url.searchParams.delete("campaignView");}url.hash="";window.history.pushState({},"",url);lastWorkspaceUrl.current=url.href;if(module==="payments")setEnrollmentPaymentView(isEnrollmentPaymentView(url.searchParams));if(module==="policy")setConfigurationLocation(url.search);setCrmModule(module);};
     const proceed=()=>{if(discardDraft(finish))finish();};
@@ -1492,7 +1492,7 @@ function CrmWorkspace({
             onNavigate={changeContentPage} onLocation={url=>{lastWorkspaceUrl.current=url;}}/>
           </Suspense> :
           crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} actorId={employee.id} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : (crmModule === "enrollment-management" || crmModule === "enrollment-aftercare") ? <CrmEnrollmentManagement lang={lang} isLight={isLight} employee={employee} employees={employees} canSupport={canEnrollmentSupport} aftercare={crmModule==="enrollment-aftercare"} onNavigate={changeContentPage}/> : crmModule === "enrollment-settings" ? (
-          <CrmEnrollmentSettings lang={lang} isLight={isLight} allowed={canManageOperations}
+          <CrmEnrollmentSettings lang={lang} isLight={isLight} allowed={canManageOperations} finance={dashboardScopes(employee).finance}
             params={new URLSearchParams(configurationLocation)} rulesDirty={rulesDirty}
             onRulesDraftChange={setRulesDirty} onEditorDraftChange={setEnrollmentSettingsEditorDirty} onNavigate={changeContentPage}/>
         ) : crmModule === "payments" ? (

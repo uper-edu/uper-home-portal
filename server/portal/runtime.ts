@@ -8,6 +8,7 @@ import {promotionEntryPoint,promotionEvidenceKeys} from '../../src/utils/promoti
 import {mountCourseRoutes} from './courseCatalog.ts';
 import { mountEnrollmentManagement } from './enrollmentManagement.ts';
 import { mountEnrollmentCatalog } from './enrollmentCatalog.ts';
+import {mountFaculty} from './facultyRoutes.ts';
 import {enrollmentSessionCookie,portalVisitorCookie,portalVisitorToken} from './enrollmentVisitorSession.ts';
 import { mountEnrollmentApplication } from './enrollmentApplication.ts';
 import { mountOperationsDashboard } from './operationsDashboard.ts';
@@ -394,6 +395,7 @@ export async function mountPortal(app: Express) {
   mountCourseRoutes(app,{wrap,staff});
   app.use(accessRestoreGate);
   mountEnrollmentCatalog(app, { wrap, staff });
+  mountFaculty(app,{wrap,staff,authenticate:q=>platform.authenticate(q)});
   mountEnrollmentManagement(app, wrap, staff);
   mountEnrollmentApplication(app, { wrap, staff, visitor });
   mountOperationsDashboard(app, wrap, staff);
