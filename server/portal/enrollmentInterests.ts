@@ -234,7 +234,9 @@ export function mountEnrollmentInterests(app: Express, ctx: Context) {
           templateId:appointment.templateId, learnerName:appointment.learnerName,
           lessons:appointment.lessons, minutes:appointment.minutes, total:appointment.total,
           teacherType:appointment.teacherType??legacyTeacherTypes.get(appointment.templateId),
-          confirmation:appointment.confirmation, phoneDisplay:enrollmentPhoneDisplay(criteria.phone),
+          confirmation:appointment.confirmation&&{firstLessonAt:appointment.confirmation.firstLessonAt,
+            teacher:appointment.confirmation.teacher,schedule:appointment.confirmation.schedule},
+          phoneDisplay:enrollmentPhoneDisplay(criteria.phone),
         };
         enriched.push({id:demand.id,criteria,state:demand.state,revision:demand.revision,updatedAt:demand.updatedAt,appointment:publicAppointment,
           matches:matched.map(v=>({id:v.id,level:v.data.level,firstLesson:v.data.firstLesson}))});

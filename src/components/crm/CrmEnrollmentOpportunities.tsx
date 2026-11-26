@@ -18,6 +18,7 @@ import { CrmIdentityStatus } from './CrmCurrentSalesState';
 import { assistanceMailLabel, CrmEnrollmentAssistance, type AssistanceResult } from './CrmEnrollmentAssistance';
 import type { PurchaseIntentResult } from './CrmOpenEnrollmentOpportunity';
 import { AdminSingleSelect } from '../admin/AdminSingleSelect';
+import {facultyEndpoint,facultyName,facultyTeacherLabels,facultyText,type FacultyChoice} from '../../utils/crmFaculty';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import { crmInstant, formatCrmEventTime, formatCrmSummaryTime, validateLocalInstant, viewerTimeZone } from '../../utils/crmOperatingTime';
 import type {PrivateLessonRegistration} from '../../utils/enrollmentInterestRecords';
@@ -48,7 +49,7 @@ type CourseRecord = {
   latestNotice?:string;
   enrollmentEmail?:string;
   canLinkOpportunity?:boolean;
-  appointment?:{confirmation:NonNullable<PrivateLessonRegistration['confirmation']>|null};
+  appointment?:{teacherType?:PrivateLessonRegistration['teacherType'];confirmation:NonNullable<PrivateLessonRegistration['confirmation']>|null};
 };
 type EnrollmentEmail = {id:string;orderId:string;kind:string;state:string;subject:string|null;language:string|null;recordedAt:string};
 type OpportunityFollowup = {kind:'agreement'|'task';id:string;type?:string;action?:string;at?:string;date?:string};
@@ -381,6 +382,18 @@ function PrivateLessonConfirmation({opportunityId,row,lang,isLight,onClose,onSav
   const [pending,setPending]=useState<NonNullable<PrivateLessonRegistration['confirmation']>>();
   const unknown=!!pending;
   const [message,setMessage]=useState('');
+  const [teacherId,setTeacherId]=useState('');
+  const [teachers,setTeachers]=useState<FacultyChoice[]>([]);
+  const [teacherLoad,setTeacherLoad]=useState<'loading'|'ready'|'error'>('loading');
+  const [retryTeachers,setRetryTeachers]=useState(0);
+  useEffect(()=>{
+    const controller=new AbortController();
+    setTeacherLoad('loading');
+    read<FacultyChoice[]>(facultyEndpoint+'/choices',controller.signal).then(items=>{
+      setTeachers(items);setTeacherLoad('ready');
+    }).catch(()=>{if(!controller.signal.aborted)setTeacherLoad('error');});
+    return ()=>controller.abort();
+  },[retryTeachers]);
   const title=t(lang,['确认约课','Confirm schedule','Konfirmasi jadwal']);
   const failed=t(lang,['暂未保存，请核对记录和权限。','Could not save. Check the record and your access.','Belum tersimpan. Periksa catatan dan akses.']);
   const base='/api/crm/opportunities/'+encodeURIComponent(opportunityId);
@@ -390,7 +403,9 @@ function PrivateLessonConfirmation({opportunityId,row,lang,isLight,onClose,onSav
     let firstLessonAt:string;
     try{firstLessonAt=validateLocalInstant(local,new Date(local),viewerTimeZone()).toISOString();}
     catch{setMessage(t(lang,['请核对首课日期和时间。','Check the first lesson date and time.','Periksa tanggal dan waktu sesi pertama.']));return;}
-    const submitted={firstLessonAt,teacher:String(data.get('teacher')??'').trim(),schedule:String(data.get('schedule')??'').trim()};
+    const teacher=teachers.find(item=>item.id===teacherId);
+    if(!teacher)return;
+    const submitted={firstLessonAt,teacherId,teacher:facultyName(teacher.names,'en'),schedule:String(data.get('schedule')??'').trim()};
     setBusy(true);setMessage('');
     try{
       const response=await fetch(base+'/private-lessons/'+encodeURIComponent(row.id),{method:'POST',headers:{'Content-Type':'application/json'},
@@ -405,7 +420,7 @@ function PrivateLessonConfirmation({opportunityId,row,lang,isLight,onClose,onSav
     try{
       const result=await read<Opportunity>(base,AbortSignal.timeout(12000));
       const saved=result.records.find(item=>item.id===row.id)?.appointment?.confirmation;
-      if(saved?.firstLessonAt===pending.firstLessonAt&&saved.teacher===pending.teacher&&saved.schedule===pending.schedule){
+      if(saved?.firstLessonAt===pending.firstLessonAt&&saved.teacherId===pending.teacherId&&saved.schedule===pending.schedule){
         onSaved(result);return;
       }
       setPending(undefined);
@@ -421,7 +436,13 @@ function PrivateLessonConfirmation({opportunityId,row,lang,isLight,onClose,onSav
       <div className="crm-editor-scroll">
         <p>{t(lang,['与学员确认上课安排后再保存。','Save after agreeing on the schedule with the learner.','Simpan setelah jadwal disepakati dengan siswa.'])}</p>
         <AdminField required>{t(lang,['首课时间','First lesson','Sesi pertama'])}<input name="firstLessonAt" type="datetime-local" required disabled={busy||unknown}/></AdminField>
-        <AdminField required>{t(lang,['授课教师','Teacher','Pengajar'])}<input name="teacher" required maxLength={120} disabled={busy||unknown}/></AdminField>
+        <AdminField as="div" required><label>{t(lang,['授课教师','Teacher','Pengajar'])}</label>
+          <AdminSingleSelect label={t(lang,['授课教师','Teacher','Pengajar'])} lang={lang} isLight={isLight}
+            required searchable disabled={busy||unknown||teacherLoad!=='ready'} value={teacherId} onChange={setTeacherId}
+            options={teachers.filter(item=>!row.appointment?.teacherType||item.category===row.appointment.teacherType)
+              .map(item=>({value:item.id,label:facultyName(item.names,lang),description:facultyText(lang,facultyTeacherLabels[item.category])}))}/>
+          {teacherLoad!=='ready'&&<AdminListState compact lang={lang} state={teacherLoad} onRetry={()=>setRetryTeachers(value=>value+1)}/>}
+        </AdminField>
         <AdminField>{t(lang,['上课安排','Lesson schedule','Jadwal kelas'])}<textarea name="schedule" maxLength={600} disabled={busy||unknown}/></AdminField>
         {unknown&&<CrmSaveFeedback state="unknown" lang={lang}/>}
         {message&&<p role="alert">{message}</p>}
@@ -429,7 +450,7 @@ function PrivateLessonConfirmation({opportunityId,row,lang,isLight,onClose,onSav
       <AdminFormActions className="crm-editor-actions">
         {unknown?<button type="button" className="crm-work-button" disabled={busy} onClick={()=>void check()}>{t(lang,['查询保存结果','Check save result','Periksa hasil simpan'])}</button>:<>
           <button type="button" className="crm-work-button" disabled={busy} onClick={onClose}>{t(lang,['取消','Cancel','Batal'])}</button>
-          <button type="submit" className="crm-work-button" data-primary disabled={busy}>{t(lang,['保存','Save','Simpan'])}</button>
+          <button type="submit" className="crm-work-button" data-primary disabled={busy||teacherLoad!=='ready'}>{t(lang,['保存','Save','Simpan'])}</button>
         </>}
       </AdminFormActions>
     </AdminForm>

@@ -25,6 +25,7 @@ import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmSaveFeedback } from './CrmDetailWorkspace';
 import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import { AdminSingleSelect, type AdminSelectChoice } from '../admin/AdminSingleSelect';
+import {facultyName,facultyTeacherLabels,facultyText,type FacultyChoice} from '../../utils/crmFaculty';
 import { enrollmentAutofillStart,enrollmentScheduleErrors,enrollmentSessionStart,enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant,enrollmentLevels,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentScheduleReviewField,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import { validEnrollmentHolidayDate } from '../../utils/enrollmentCatalog';
@@ -78,6 +79,7 @@ function EnrollmentHolidayDates({config, previewOnly, disabled, lang, t, onChang
       </li>)}
     </ul>}
     {plan&&<div className="crm-class-break-summary">
+      {plan.meetings[0].teacherId&&<small>{t(['Teacher for every session','Pengajar setiap pertemuan','全部课次授课教师'])} · {plan.meetings[0].teacher}</small>}
       <div><strong>{endLabel}</strong> <time dateTime={plan.end}>{plan.end}</time>
         {plan.end!==plan.originalEnd&&<small>{t(['Originally','Tanggal awal','原结课'])} {plan.originalEnd}</small>}
       </div>
@@ -93,7 +95,7 @@ function EnrollmentHolidayDates({config, previewOnly, disabled, lang, t, onChang
     </div>}
   </AdminField>;
 }
-type Catalog = { classes: EnrollmentClassAdmin[]; courses: EnrollmentTeachingCourse[]; templates: EnrollmentTemplate[] };
+type Catalog = { classes: EnrollmentClassAdmin[]; courses: EnrollmentTeachingCourse[]; templates: EnrollmentTemplate[];teachers?:FacultyChoice[] };
 type ClassDraftConfig=Omit<EnrollmentClassConfig,'period'>&{period:EnrollmentClassConfig['period']|''};
 type Draft = { id: string; revision: number; state: 'draft' | 'published'; config: ClassDraftConfig;
   hasOrders?: boolean;
@@ -248,6 +250,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     const derived=template&&course&&enrollmentTemplateClassFields(template,course);
     if(!derived)return;
     setDraft(value=>value&&({...value,config:{...value.config,...derived,
+      teacherId:value.config.teacherType===derived.teacherType?value.config.teacherId:undefined,
       teacher:value.config.teacherType&&value.config.teacherType!==derived.teacherType?'':value.config.teacher}}));
     if(!initial)setDirty(true);
     setError('');
@@ -347,6 +350,10 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   async function save(state:Draft['state']=draft?.state??'draft') {
     if (!draft || saveBlocked || busy || pending) return;
     if(state==='published'&&(publishBlocked||!draft.config.price||firstSessionOnBreak))return;
+    if(state==='published'&&draft.state!=='published'&&!draft.config.teacherId){
+      setError(t(['Select a teacher before publishing.','Pilih pengajar sebelum menerbitkan.','请先选择授课教师。']));
+      return;
+    }
     const requestId = crypto.randomUUID();
     setError('');
     setBusy(true);
@@ -358,7 +365,13 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       if (result.status >= 500) throw Error();
       if (!result.ok) {
         const failure=await result.json();
-        setError(failure.error==='enrollment_class_schedule_review_pending'
+        setError(failure.error==='faculty_required'
+          ? t(['Select a teacher before publishing.','Pilih pengajar sebelum menerbitkan.','请先选择授课教师。'])
+          : failure.error==='faculty_unavailable'
+          ? t(['The teacher is unavailable for this class. Select another teacher.','Pengajar tidak tersedia untuk kelas ini. Pilih pengajar lain.','该教师当前不可指派给这个班次，请重新选择。'])
+          : failure.error==='faculty_assignment_fixed'
+          ? t(['This class has started. Its teacher assignment is fixed.','Kelas sudah dimulai. Penugasan pengajar dikunci.','该班次已开课，教师指派已锁定。'])
+          : failure.error==='enrollment_class_schedule_review_pending'
           ? sourceReviewMessage
           : failure.error==='enrollment_class_break_preview_only'
           ? t(['An order now exists. Reopen the editor to preview break dates.','Sudah ada pesanan. Buka ulang editor untuk melihat pratinjau tanggal libur.','该班次已有订单，请重新打开编辑器预览停课日期。'])
@@ -635,9 +648,22 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
             <AdminFormGrid>
               <AdminField as="div" data-admin-full-width="">
                 <label>{t(['Teacher','Pengajar','授课教师'])}</label>
-                <input type="text" maxLength={2500} aria-describedby={teacherHelpId} value={draft.config.teacher??''} disabled={fieldDisabled}
-                  onChange={event=>change('teacher',event.target.value)}/>
-                <small id={teacherHelpId}>{t(['Enter the name displayed to learners. Leave blank if a teacher hasn’t been assigned.','Masukkan nama yang ditampilkan kepada siswa. Kosongkan jika pengajar belum ditetapkan.','填写对学员公开的姓名。尚未排定教师时可留空。'])}</small>
+                <AdminSingleSelect label={t(['Teacher','Pengajar','授课教师'])} value={draft.config.teacherId??''}
+                  displayValue={draft.config.teacher||undefined} lang={lang} isLight={isLight} searchable
+                  disabled={fieldDisabled||Boolean(draft.config.teacherId&&draft.publishedDates&&(enrollmentInstant(draft.publishedDates.firstLesson)?.getTime()??Infinity)<=Date.now())}
+                  describedBy={teacherHelpId}
+                  emptyLabel={t(['Select a teacher','Pilih pengajar','选择教师'])}
+                  options={(catalog?.teachers??[]).filter(item=>!draft.config.teacherType||item.category===draft.config.teacherType)
+                    .map(item=>({value:item.id,label:facultyName(item.names,lang),description:facultyText(lang,facultyTeacherLabels[item.category])}))}
+                  onChange={teacherId=>{
+                    const item=catalog?.teachers?.find(item=>item.id===teacherId);
+                    if(!item)return;
+                    setDraft(current=>current&&({...current,config:{...current.config,teacherId,teacher:facultyName(item.names,'en')}}));
+                    setDirty(true);setError('');
+                  }}/>
+                <small id={teacherHelpId}>{t(['Assign one teacher before publishing. All sessions inherit that teacher.',
+                  'Tetapkan satu pengajar sebelum publikasi. Semua pertemuan memakai pengajar tersebut.',
+                  '发布前选择一位教师，班次内各课次自动继承。'])}</small>
               </AdminField>
               {selectField('period',['Time slot','Waktu','时段'],enrollmentPeriods.map(value=>({
                 value,label:value==='mixed'?t(['Weekday & weekend','Hari kerja & akhir pekan','工作日与周末']):value==='weekend'?t(['Weekend','Akhir pekan','周末']):t(['Weekday evening','Malam hari kerja','工作日晚间']),
@@ -708,7 +734,10 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
 
         <button type="button" onClick={()=>setPreview(false)}>{t(['Back to editing','Kembali mengedit','返回编辑'])}</button>
         {firstSessionOnBreak&&<p role="alert" className="crm-class-quote-feedback">{firstSessionOnBreakMessage}</p>}
-        {draft.state==='draft'&&<button type="button" data-primary="" disabled={busy||saveBlocked||publishBlocked||!!pending||!previewRow?.price||firstSessionOnBreak}
+        {draft.state==='draft'&&!draft.config.teacherId&&<p className="crm-class-quote-feedback">
+          {t(['Choose a teacher in the class editor before publishing.','Pilih pengajar pada editor kelas sebelum menerbitkan.','发布前请返回编辑并选择授课教师。'])}
+        </p>}
+        {draft.state==='draft'&&<button type="button" data-primary="" disabled={busy||saveBlocked||publishBlocked||!!pending||!previewRow?.price||firstSessionOnBreak||!draft.config.teacherId}
           onClick={()=>void save('published')}>{t(['Publish class','Terbitkan kelas','发布班次'])}</button>}
       </>}>
       {previewRow&&!previewRow.batchNumber&&<p>{t(['Batch number assigned on first publication.','Nomor angkatan ditetapkan saat pertama diterbitkan.','首次发布时自动分配期数。'])}</p>}

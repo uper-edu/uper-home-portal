@@ -40,6 +40,7 @@ export interface EnrollmentClassConfig {
   material: string;
   resources: string;
   teacher: string;
+  teacherId?: string;
 }
 
 export interface EnrollmentClassAdmin extends EnrollmentClassConfig {

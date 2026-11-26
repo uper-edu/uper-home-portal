@@ -14,6 +14,7 @@ import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { enrollmentReadiness } from './enrollmentApplication.ts';
 import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
+import {assignedFaculty,listFacultyChoices} from './faculty.ts';
 
 const path = '/api/crm/enrollment/classes';
 const kind = 'enrollment.class.save';
@@ -119,7 +120,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       }));
       const active = new Set(courses.filter(course=>course.active).map(course=>course.id));
       const canOperate = (await enrollmentReadiness(c)).accepting;
-      return { templates:await listEnrollmentTemplates(c), classes:classes.map(row=>({...row,canInsert:canOperate&&row.state==='published'&&active.has(row.courseId)&&isEnrollmentInsertionWindow(row)})), courses };
+      return { templates:await listEnrollmentTemplates(c), classes:classes.map(row=>({...row,canInsert:canOperate&&row.state==='published'&&active.has(row.courseId)&&isEnrollmentInsertionWindow(row)})), courses,teachers:await listFacultyChoices(c) };
     });
     r.set('Cache-Control', 'no-store').json({ ...data, actorId: actor.id });
   }));
@@ -164,8 +165,17 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       if(snapshot&&body.state==='published'&&!snapshot.price)invalid('enrollment_template_missing_quote',409);
       if(isPublished&&raw.period!==current.data.period)invalid('enrollment_class_batch_scope_fixed',409);
       const dates={firstLesson:raw.firstLesson,enrollmentCloses:raw.enrollmentCloses,period:raw.period,schedule:raw.schedule};
-      const teacher=raw.teacher===undefined?current?.data.teacher??'':raw.teacher;
-      const config={...(isPublished?{...current.data,...dates}:snapshot?{...snapshot,...dates}:raw),teacher};
+      const teacherId=raw.teacherId===undefined?current?.data.teacherId:raw.teacherId;
+      const existing=current?.data as EnrollmentClassConfig|undefined;
+      if(isPublished&&existing?.teacherId&&teacherId!==existing.teacherId&&(enrollmentInstant(existing.firstLesson)?.getTime()??Infinity)<=Date.now())
+        invalid('faculty_assignment_fixed',409);
+      const config={...(isPublished?{...current.data,...dates}:snapshot?{...snapshot,...dates}:raw),teacher:existing?.teacher??''};
+      const selection=teacherId&&teacherId===existing?.teacherId&&config.teacherType===existing.teacherType
+        ?{teacherId:existing.teacherId,teacher:existing.teacher}
+        :teacherId===undefined||teacherId===''?null:await assignedFaculty(c,teacherId,config.teacherType);
+      if(!selection&&!isDraft&&!isPublished)invalid('faculty_required');
+      if(selection)config.teacher=selection.teacher;
+      else if(existing?.teacherId)config.teacher='';
       const weeklySchedule=raw.weeklySchedule;
       if(weeklySchedule){
         config.schedule=enrollmentWeeklyScheduleText(weeklySchedule,config.minutes);
@@ -175,6 +185,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         invalid('enrollment_class_invalid');
       }
       const data:EnrollmentClassConfig={...validateEnrollmentClass(config,isDraft),
+        ...(selection?{teacherId:selection.teacherId}:{}),
         ...(current?.data.decisionAt!==undefined?{decisionAt:current.data.decisionAt}:{}),
         ...(isDraft&&Object.keys(scheduleReview).length?{scheduleReview}:{}),
         ...(weeklySchedule?{weeklySchedule:{days:[...new Set<number>(weeklySchedule.days)].sort((a:any,b:any)=>a-b),start:weeklySchedule.start,lessons:weeklySchedule.lessons,

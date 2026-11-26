@@ -1,6 +1,7 @@
 import {enrollmentFirstSessionMatches, enrollmentWeeklyScheduleText, type EnrollmentClassConfig} from './enrollmentCatalog';
 
-type Schedule = Pick<EnrollmentClassConfig,'firstLesson'|'weeklySchedule'|'sessions'|'minutes'>;
+type Schedule = Pick<EnrollmentClassConfig,'firstLesson'|'weeklySchedule'|'sessions'|'minutes'> &
+  Partial<Pick<EnrollmentClassConfig,'teacherId'|'teacher'>>;
 
 /** Date-only preview in the class's WIB calendar. The configured start and deadlines are never rewritten. */
 export function previewEnrollmentClassSchedule(config: Schedule, holidayDates: readonly string[]) {
@@ -13,7 +14,7 @@ export function previewEnrollmentClassSchedule(config: Schedule, holidayDates: r
   const selected=new Set(holidayDates);
   const weekdays=new Set(weeklySchedule.days);
   const originalDates:string[]=[];
-  const meetings:{date:string;periods:number}[]=[];
+  const meetings:{date:string;periods:number;teacherId?:string;teacher?:string}[]=[];
   const skippedDates:string[]=[];
   const meetingCount=Math.ceil(sessions/weeklySchedule.lessons);
   const cursor=new Date(first+'T00:00:00Z');
@@ -28,7 +29,7 @@ export function previewEnrollmentClassSchedule(config: Schedule, holidayDates: r
         if(selected.has(date))skippedDates.push(date);
         else {
           const periods=Math.min(weeklySchedule.lessons,remaining);
-          meetings.push({date,periods});
+          meetings.push({date,periods,...(config.teacherId?{teacherId:config.teacherId,teacher:config.teacher}:{})});
           remaining-=periods;
         }
       }

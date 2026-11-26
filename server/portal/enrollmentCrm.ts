@@ -11,6 +11,7 @@ import { pendingFollowUps } from '../../src/utils/crmFollowUp.ts';
 import { enrollmentLearnerNameKey, enrollmentOrderStatus } from '../../src/utils/enrollmentOrderStatus.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { assignNewLead } from './autoAssignment.ts';
+import {assignedFaculty} from './faculty.ts';
 import { canonicalIdentity, lockIdentityRegistry } from './identityConsolidation.ts';
 import { discoverIdentity, identityControls, pendingIdentity } from './identityReview.ts';
 import { contactPhoneLookupDigits, fact, invalid, normalizeContactPhone, operation } from './trustWorkflow.ts';
@@ -134,7 +135,7 @@ function displayRecord(row: any) {
     class:row.class_data ? {id:row.class_id,level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,
-    ...(row.criteria?.appointment&&{appointment:{confirmation:row.criteria.appointment.confirmation??null}}),
+    ...(row.criteria?.appointment&&{appointment:{teacherType:row.criteria.appointment.teacherType,confirmation:row.criteria.appointment.confirmation??null}}),
     attribution:row.attribution?{entry:row.attribution.entry,via:row.attribution.via,source:row.attribution.source,campaign:row.attribution.campaign,
       campaignId:row.attribution.campaignId,promotionId:row.attribution.promotionId,
       promotionName:row.attribution.promotionName,verified:row.attribution.verified}:null,
@@ -495,11 +496,10 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
     const actor=await staff(q,'crm.followup');
     const opportunityId=String(q.params.id);
     const recordId=String(q.params.recordId);
-    const {firstLessonAt,teacher,schedule}=q.body??{};
+    const {firstLessonAt,teacherId,schedule}=q.body??{};
     if(typeof firstLessonAt!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(firstLessonAt)||
       !Number.isFinite(Date.parse(firstLessonAt))||new Date(firstLessonAt).toISOString()!==firstLessonAt||
-      typeof teacher!=='string'||!teacher.trim()||teacher.length>120||typeof schedule!=='string'||schedule.length>600)invalid('enrollment_invalid_appointment');
-    const confirmation={firstLessonAt,teacher:teacher.trim(),schedule:schedule.trim()};
+      typeof teacherId!=='string'||!teacherId||typeof schedule!=='string'||schedule.length>600)invalid('enrollment_invalid_appointment');
     const result=await transact(async c=>{
       const [row]=(await c.query('SELECT state,criteria FROM enrollment_demands WHERE id=:p1 FOR UPDATE',[recordId])).rows;
       const appointment=row?.criteria?.appointment;
@@ -514,10 +514,11 @@ export function mountEnrollmentCrm(app:Express,{ wrap, staff, transact, saveProg
       if(!records.some(record=>record.kind==='demand'&&record.id===recordId))invalid('enrollment_interest_not_found',404);
       if(row.state!=='active')invalid('enrollment_demand_conflict',409);
       if(appointment.confirmation){
-        if(appointment.confirmation.firstLessonAt===confirmation.firstLessonAt&&appointment.confirmation.teacher===confirmation.teacher&&
-          appointment.confirmation.schedule===confirmation.schedule)return {confirmation:appointment.confirmation};
+        if(appointment.confirmation.firstLessonAt===firstLessonAt&&appointment.confirmation.teacherId===teacherId&&
+          appointment.confirmation.schedule===schedule.trim())return {confirmation:appointment.confirmation};
         invalid('enrollment_demand_conflict',409);
       }
+      const confirmation={firstLessonAt,...await assignedFaculty(c,teacherId,appointment.teacherType),schedule:schedule.trim()};
       await c.query('UPDATE enrollment_demands SET criteria=:p1,revision=revision+1,updated_at=UTC_TIMESTAMP(6) WHERE id=:p2',
         [{...row.criteria,appointment:{...appointment,confirmation}},recordId]);
       await fact(c,customer.id,'enrollment.private_lesson.confirmed',actor.id,{recordId,opportunityId,...confirmation});

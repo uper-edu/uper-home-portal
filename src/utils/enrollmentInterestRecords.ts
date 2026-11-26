@@ -13,7 +13,7 @@ export type PrivateLessonRegistration = {
   templateId:string; learnerName:string; learnerKey:string;
   lessons:number; minutes:number; total:number;
   teacherType?:'local'|'foreign';
-  confirmation?:{firstLessonAt:string;teacher:string;schedule:string};
+  confirmation?:{firstLessonAt:string;teacher:string;schedule:string;teacherId?:string};
 };
 
 type MatchedClass = {id:string;level:string;firstLesson:string};
