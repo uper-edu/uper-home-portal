@@ -461,6 +461,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const tokens=normalize(filters.search).split(/\s+/u).filter(Boolean);
   const now=Date.now();
   const matchesDate=enrollmentClassDateFilter(filters.date,now);
+  const teachersById=new Map(catalog?.teachers?.map(teacher=>[teacher.id,teacher]));
   const visibleClasses=catalog?.classes.flatMap(row=>{
     if(target&&row.id!==target)return [];
     const start=enrollmentInstant(row.firstLesson);
@@ -468,10 +469,13 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       (filters.period&&row.period!==filters.period)||(filters.status&&classStatus(row)!==filters.status)||
       (filters.teacher&&row.teacherType!==filters.teacher)||!matchesDate(start)))return [];
     const schedule=enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,lang)||(row.weeklySchedule?'':row.schedule);
-    const entry={row,schedule,time:start?.getTime()??null,firstSession:start?formatCrmEventTime(start.toISOString()).slice(0,16):'—'};
+    const teacher=row.teacherId?teachersById.get(row.teacherId):undefined;
+    const teacherName=(teacher&&facultyName(teacher.names,lang))||(row.teacherId?row.teacher.trim():'');
+    const teacherLine=[enrollmentTeacherLabel(row.teacherType,lang),teacherName].filter(Boolean).join(' · ');
+    const entry={row,schedule,teacherLine,time:start?.getTime()??null,firstSession:start?formatCrmEventTime(start.toISOString()).slice(0,16):'—'};
     if(target||!tokens.length)return [entry];
     const haystack=normalize([row.id,row.courseName,row.level.replace(/\s+/gu,''),enrollmentClassTitle(row,lang),
-      schedule,row.schedule,row.firstLesson,entry.firstSession,enrollmentTeacherLabel(row.teacherType,lang),row.teacher].join(' '));
+      schedule,row.schedule,row.firstLesson,entry.firstSession,teacherLine,row.teacher].join(' '));
     return tokens.every(token=>haystack.includes(token))?[entry]:[];
   }).sort((a,b)=>compareEnrollmentClassStarts(a.time,b.time,filters.sort,now)||a.row.id.localeCompare(b.row.id));
   const advancedCount=Number(!!filters.date)+Number(!!filters.teacher);
@@ -569,8 +573,8 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       {label:t(['Tuition','Biaya','学费']),numeric:true},
       t(['Status','Status','状态']),t(['Actions','Tindakan','操作']),
     ]}>
-      {visibleClasses.map(({row,firstSession,schedule}) => <tr key={row.id}>
-        <td>{enrollmentClassTitle(row,lang)}<br/><small>{enrollmentTeacherLabel(row.teacherType,lang)}</small></td><td>{firstSession}{schedule&&<><br/>{schedule}</>}</td>
+      {visibleClasses.map(({row,firstSession,schedule,teacherLine}) => <tr key={row.id}>
+        <td>{enrollmentClassTitle(row,lang)}{teacherLine&&<><br/><small>{teacherLine}</small></>}</td><td>{firstSession}{schedule&&<><br/>{schedule}</>}</td>
         <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus showDot={false} tone={row.opened||row.state==='published'?'success':'neutral'}>{t(classStatusCopy[classStatus(row)])}</AdminStatus></td>
         <td><div className="flex flex-wrap items-center gap-x-3 gap-y-1">{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)} title={t(['View enrollments','Lihat pendaftaran','查看报名'])}>{t(['View','Lihat','查看'])}</AdminRowAction>}
           {row.state!=='cancelled' && <AdminRowAction disabled={readState==='error'} onClick={() => edit(row)}>{t(['Edit', 'Ubah', '编辑'])}</AdminRowAction>}
