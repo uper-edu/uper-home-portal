@@ -6,15 +6,25 @@ import {initializeSystemDefaults as seedSystemDefaults} from './system-defaults.
 import systemDefaults from '../../src/data/system-defaults/index.ts';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { openTrialDatabase, withLock } from './database.mjs';
+import { openTrialDatabase, validateTrialDatabase, withLock } from './database.mjs';
+import {initialDefaultsMarker,readInitialBusinessDefaults} from './initial-business-defaults.mjs';
+import {parseArgs} from 'node:util';
 
-export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGuard=false,initializeSystemDefaults=true,includeEnrollment=true}={}) {
+export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGuard=false,initializeSystemDefaults=true,includeEnrollment=true,
+ initialBusinessDefaults,environment=process.env.PORTAL_ENV}={}) {
+  if(initialBusinessDefaults&&(!initializeSystemDefaults||!includeEnrollment||allowOfflineCopy||allowRestoreGuard||
+    !['dev','test','prod'].includes(environment)))throw Error('Private business defaults require a normal initial installation');
   return withLock(pool, 'schema:' + name, async connection => {
     const [guards]=await connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'access_restore_guard_%'",[name]);
     if(guards.length&&!allowRestoreGuard)throw Error('Interrupted restore: security review barrier not finalized');
     const [version] = await connection.query('SELECT VERSION() AS version');
     if (!/^8\./.test(version[0].version) || /MariaDB/i.test(version[0].version)) {
       throw Error('This schema requires standard MySQL 8; validate the company version before continuing');
+    }
+    if(initialBusinessDefaults){
+      const [tables]=await connection.execute('SELECT table_name AS name FROM information_schema.tables WHERE table_schema=?',[name]);
+      if(tables.length&&!tables.some(table=>table.name==='trial_schema_versions'))
+        throw Error('Private business defaults can only initialize an empty database');
     }
     // DDL commits implicitly in MySQL. A dirty marker exposes partial migrations.
     await connection.query('CREATE TABLE IF NOT EXISTS trial_schema_versions (version INT PRIMARY KEY,state VARCHAR(16) NOT NULL,updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)) ENGINE=InnoDB');
@@ -33,10 +43,23 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
         await applyEnrollmentCatalogMigration(connection);
         await applyEnrollmentOrdersMigration(connection);
       }
-      if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
+      if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')
+        await seedSystemDefaults(connection,{initialBusinessDefaults,environment});
       return result;
     };
-    if (versions[0]?.state === 'ready') return finish();
+    if (versions[0]?.state === 'ready') {
+      if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy'){
+        const [[row]]=await connection.execute('SELECT value FROM portal_settings WHERE id=?',[initialDefaultsMarker]);
+        const record=typeof row?.value==='string'?JSON.parse(row.value):row?.value;
+        if(initialBusinessDefaults){
+          if(record?.digest!==initialBusinessDefaults.digest)throw Error('Private business defaults can only initialize an empty database');
+          if(record.environment!==environment)throw Error('Private business defaults target environment mismatch');
+          if(record.state==='applied')return {initialBusinessDefaults:'already-applied'};
+          if(record.state!=='pending')throw Error('Invalid initial business defaults state');
+        }else if(record?.state==='pending')throw Error('Resume database initialization with its original private business defaults');
+      }
+      return finish();
+    }
     if (versions.length) throw Error('Incomplete schema migration: inspect the trial database before retrying');
     const [tables] = await connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name<>'trial_schema_versions'", [name]);
     if (tables.length) throw Error('Initial migration requires an empty trial database');
@@ -44,7 +67,10 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     const statements = (await readFile(new URL('./schema.sql', import.meta.url), 'utf8')).split(';').map(s => s.trim()).filter(Boolean);
     for (const statement of statements) await connection.query(statement.replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
     // Only new installations with defaults enabled supply this mode. Schema-only imports stay empty.
-    if (initializeSystemDefaults) {
+    if (initialBusinessDefaults) {
+      await connection.execute('INSERT INTO portal_settings(id,value) VALUES(?,?)',
+        [initialDefaultsMarker,JSON.stringify({digest:initialBusinessDefaults.digest,environment,state:'pending'})]);
+    } else if (initializeSystemDefaults) {
       await connection.execute(
         'INSERT INTO portal_settings(id,value) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',
         ['lark_personal_channel', JSON.stringify(systemDefaults.larkPersonalChannel)],
@@ -259,9 +285,15 @@ async function addAiExtraction(c){
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const {loadPortalEnvironment}=await import('../../server/environment.mjs');
-  loadPortalEnvironment();
+  const {values}=parseArgs({options:{'initial-defaults':{type:'string'},environment:{type:'string'}}});
+  if(values['initial-defaults']&&!values.environment)throw Error('Specify the target environment for private business defaults');
+  if(values['initial-defaults']&&process.env.PORTAL_ENV_SOURCE==='injected'&&process.env.PORTAL_ENV!==values.environment)
+    throw Error('Injected environment and private business defaults target mismatch');
+  const initialBusinessDefaults=values['initial-defaults']?await readInitialBusinessDefaults(values['initial-defaults']):undefined;
+  loadPortalEnvironment({target:values.environment});
+  const {name}=validateTrialDatabase(process.env);
   const pool = await openTrialDatabase(process.env);
-  try { console.log(await migrate(pool, new URL(process.env.MYSQL_TRIAL_URL).pathname.slice(1))); }
+  try { console.log(await migrate(pool,name,{initialBusinessDefaults})); }
   finally { await pool.end(); }
 }
 

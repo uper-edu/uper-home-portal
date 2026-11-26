@@ -7,14 +7,16 @@ import {CRM_BOT_CHANNEL} from '../../server/portal/policy.ts';
 import {findSystemLarkGroup, SYSTEM_LARK_GROUP_NAME} from '../../server/portal/larkSystemChannels.ts';
 import {GROUP_WEBHOOK_ENV_KEY, groupWebhookUsesEnvironment} from '../../server/portal/larkGroupWebhook.ts';
 import {notificationGroupIds} from '../../src/utils/notificationGroupTargets.ts';
+import {insertInitialBusinessDefaults} from './initial-business-defaults.mjs';
 
 const parseConfig = value => typeof value === 'string' ? JSON.parse(value) : value;
 
 /** Runs inside the caller's schema lock. Insert missing presets, never reset counters or custom roles. */
-export async function initializeSystemDefaults(c){
+export async function initializeSystemDefaults(c,{initialBusinessDefaults,environment}={}){
  const at=new Date().toISOString(),records=systemCampaignDefaults(at);
  await c.beginTransaction();
  try{
+  if(initialBusinessDefaults)await insertInitialBusinessDefaults(c,initialBusinessDefaults,environment);
   for(const record of records){
    const [aliases]=await c.execute("SELECT campaign_id FROM campaign_source_reviews WHERE LOWER(raw_code)=? AND status='linked'",[record.code]);
    if(aliases.some(a=>a.campaign_id!==record.id))throw Error('System campaign alias conflict: '+record.id);
