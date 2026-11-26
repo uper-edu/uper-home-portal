@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import {spawnSync} from 'node:child_process';
+import {runTool} from './chat-consultation-process.mjs';
 import {readFileSync} from 'node:fs';
 import {mkdir,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
-import {dirname,join,resolve} from 'node:path';
+import {dirname,isAbsolute,join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 
 const json=async file=>JSON.parse(await readFile(file,'utf8'));
 const task=JSON.parse(readFileSync(0,'utf8'));
 const loader=process.env.UPER_CHAT_EVAL_LOCAL_LOADER;
-assert.ok(loader?.startsWith('/'),'Configure an absolute path to the trusted local candidate loader.');
+assert.ok(loader&&isAbsolute(loader),'Configure an absolute path to the trusted local candidate loader.');
 if(task.kind==='restore_baseline'){
-  const restored=spawnSync(loader,[],{input:JSON.stringify(task),encoding:'utf8',timeout:90_000,maxBuffer:256_000});
+  const restored=runTool(loader,[],{input:JSON.stringify(task),encoding:'utf8',timeout:90_000,maxBuffer:256_000});
   assert.equal(restored.status,0,restored.stderr||restored.error?.message);
   const response=JSON.parse(restored.stdout);
   assert.ok(response.kind==='restored'&&response.buildId===task.build,'Loader did not confirm the baseline.');
@@ -28,7 +28,7 @@ const paths=[
 const work=await mkdtemp(join(tmpdir(),'chat-candidate-'));
 
 function execute(program,args,options={}){
-  const result=spawnSync(program,args,{cwd:work,encoding:'utf8',timeout:6*60_000,maxBuffer:2_000_000,...options});
+  const result=runTool(program,args,{cwd:work,encoding:'utf8',timeout:6*60_000,maxBuffer:2_000_000,...options});
   if(result.status!==0)throw Error(program+' returned '+(result.error?.message??result.status)+
     (result.stderr?.trim()?': '+result.stderr.trim().slice(-6000):''));
   return result.stdout;

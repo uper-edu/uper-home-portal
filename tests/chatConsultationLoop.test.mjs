@@ -3,12 +3,13 @@ import {spawnSync} from 'node:child_process';
 import {chmod,mkdtemp,readFile,rm,writeFile,mkdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 
 const script=new URL('../scripts/run-chat-consultation-loop.mts',import.meta.url);
 const json=async(path,value)=>writeFile(path,JSON.stringify(value));
 const evaluate=(output,...args)=>spawnSync(process.execPath,
-  ['--import','tsx',script.pathname,'--output',output,...args],{encoding:'utf8'});
+  ['--import','tsx',fileURLToPath(script),'--output',output,...args],{encoding:'utf8'});
 const read=async(path)=>JSON.parse(await readFile(path,'utf8'));
 const model='gpt-6.2-sol';
 
@@ -147,7 +148,7 @@ process.stdout.write(JSON.stringify({kind:'build',buildId:'candidate'}));`);
  ${lines[1]}
  ${lines[2]}
 `;
-    const attempt=(patch)=>spawnSync(process.execPath,[adapter.pathname],{
+    const attempt=(patch)=>spawnSync(process.execPath,[fileURLToPath(adapter)],{
       encoding:'utf8',input:JSON.stringify({kind:'repair_and_load',evidence:baseline,build:'baseline',findings:{failed:[]}}),
       env:{...process.env,UPER_CHAT_EVAL_CODEX:codingCli,UPER_CHAT_EVAL_LOCAL_LOADER:loader,TEST_PATCH:patch},
     });
@@ -180,7 +181,7 @@ const reviews=samples.map(sample=>({key:sample.key,resolved:!isLearner,severe:fa
 writeFileSync(process.argv[process.argv.indexOf('--output-last-message')+1],JSON.stringify({reviews}));`);
     await chmod(cli,0o700);
     const judge=new URL('../scripts/chat-consultation-codex-judge.mjs',import.meta.url);
-    const run=spawnSync(process.execPath,[judge.pathname],{encoding:'utf8',
+    const run=spawnSync(process.execPath,[fileURLToPath(judge)],{encoding:'utf8',
       env:{...process.env,UPER_CHAT_EVAL_CODEX:cli},input:JSON.stringify({kind:'grade',samples:[{key:'F2-1',expected:['核对原订单']}],catalog:{},intake:{}})});
     assert.equal(run.status,0,run.stderr);
     const [scored]=JSON.parse(run.stdout);

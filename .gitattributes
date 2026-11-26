@@ -9,3 +9,9 @@
 # These main contracts compare generated/reference text byte-for-byte.
 /src/components/crm/crmDictionary.json text eol=lf
 /docs/analytics/promotion-attribution-design.md text eol=lf
+
+# Byte-exact reference documents, generated sitemap and immutable exam archive.
+/docs/crm/whatsapp-hybrid.md text eol=lf
+/docs/reference/UPER_Marketing_CRM_Playbook_v2.0.html text eol=lf
+/public/sitemap.xml text eol=lf
+/src/data/hskVersions/pdf-e80a3cbaabc5-audio-1d13ab13-choice-v2.json text eol=lf

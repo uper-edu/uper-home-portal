@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import express from "express";
 import {
   publicPages,
@@ -138,7 +140,7 @@ test("Sitemap matches route catalogue and language detection; excludes private o
   );
 });
 test("Initial HTTP responses enforce private indexing policy, language, dynamic CMS and correct failure states", async () => {
-  const dir = await fs.mkdtemp("/private/tmp/uper-metadata-test-");
+  const dir = await fs.mkdtemp(join(tmpdir(), "uper-metadata-test-"));
   await fs.writeFile(
     dir + "/index.html",
     '<html lang="id"><head><!-- UPER_METADATA_START --><title>UPER</title><!-- UPER_METADATA_END --></head><body>APP</body></html>',

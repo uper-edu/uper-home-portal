@@ -1,3 +1,4 @@
+import {createPrivateFile} from '../server/privateFile.mjs';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
 import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
@@ -42,7 +43,7 @@ test('rewraps each legacy format with the environment keyring and leaves existin
     LARK_WEBHOOK_ENCRYPTION_KEY: randomBytes(32).toString('hex'),
     LARK_TEST_SIGNATURE: 'fixture-signature',
   });
-  writeFileSync(file, JSON.stringify({environment: 'dev', active: 'current', keys: {current: randomBytes(32).toString('hex')}}), {mode: 0o600});
+  createPrivateFile(file, JSON.stringify({environment: 'dev', active: 'current', keys: {current: randomBytes(32).toString('hex')}}));
   const password = 'synthetic-smtp-password';
   const webhook = new URL('12345678-1234-1234-1234-123456789abc', 'https://open.larksuite.com/open-apis/bot/v2/hook/').href;
   const account = (address: string) => ({
@@ -130,8 +131,9 @@ test('rewraps each legacy format with the environment keyring and leaves existin
 test('rotation defaults to preview and only rewraps older versions in the environment selected', async t => {
   const file = maintenanceFixture(t);
   const keys = {old:randomBytes(32).toString('hex'), next:randomBytes(32).toString('hex')};
+  createPrivateFile(file, '');
   const configure = (active: keyof typeof keys, retained:Record<string,string>=keys, environment='dev') =>
-    writeFileSync(file, JSON.stringify({environment, active, keys:retained}), {mode:0o600});
+    writeFileSync(file, JSON.stringify({environment, active, keys:retained}));
   configure('old');
   const oldRing=readCredentialKeyring();
   configure('next');

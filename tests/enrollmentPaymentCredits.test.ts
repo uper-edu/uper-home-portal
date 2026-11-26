@@ -1,16 +1,11 @@
 import assert from 'node:assert/strict';
-import {registerHooks} from 'node:module';
+import {stubModules} from './helpers/moduleStubs.mjs';
 import {test} from 'node:test';
 
-const databaseHook = registerHooks({
-  load(url,context,next) {
-    if (!url.endsWith('/cloud/mysql/runtime.mjs')) return next(url,context);
-    return {shortCircuit:true,format:'module',source:`
+const databaseHook = stubModules([['/cloud/mysql/runtime.mjs',`
       const unexpected = () => { throw Error('Payment credits test attempted to open a database'); };
       export const nativePool={},pool={},initialize=unexpected,connection=unexpected,tx=unexpected,event=unexpected,id=unexpected;
-    `};
-  },
-});
+    `]]);
 const {applyEnrollmentPaymentCredits} = await import('../server/portal/enrollmentPaymentCredits.ts');
 databaseHook.deregister();
 

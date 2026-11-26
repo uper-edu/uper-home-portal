@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {registerHooks} from 'node:module';
+import {stubModules} from './helpers/moduleStubs.mjs';
 import {test} from 'node:test';
 import {EventEmitter} from 'node:events';
 import {mysqlConnectionLimit} from '../cloud/mysql/database.mjs';
@@ -44,14 +44,7 @@ const modules = new Map([
     export const log = {info:capture,warn:capture,error:capture,debug:capture};
   `],
 ]);
-const hooks = registerHooks({
-  load(url, context, next) {
-    for (const [suffix,source] of modules) {
-      if (url.endsWith(suffix)) return {shortCircuit:true,format:'module',source};
-    }
-    return next(url,context);
-  },
-});
+const hooks = stubModules(modules);
 const {mountChat} = await import('../server/portal/chat.ts');
 hooks.deregister();
 

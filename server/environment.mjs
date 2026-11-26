@@ -1,3 +1,4 @@
+import {readPrivateFile} from './privateFile.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
@@ -69,14 +70,9 @@ const bootstrapKeys = new Set(['MYSQL_TRIAL_URL','ACCESS_INITIAL_PASSWORD','ACCE
 
 export function readBootstrapSecrets(file){
   if(!path.isAbsolute(file))throw Error('Bootstrap secret file must have an absolute path');
-  const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);
-  try{
-    const stat=fs.fstatSync(fd);
-    if(!stat.isFile()||stat.size>65536||(stat.mode&0o177))throw Error('Bootstrap secret file requires private owner permissions');
-    const values=dotenv.parse(fs.readFileSync(fd));
-    if(Object.keys(values).some(key=>!bootstrapKeys.has(key)))throw Error('Unexpected bootstrap secret name');
-    return values;
-  }finally{fs.closeSync(fd);}
+  const values=dotenv.parse(readPrivateFile(file,'Bootstrap secret file requires private owner permissions'));
+  if(Object.keys(values).some(key=>!bootstrapKeys.has(key)))throw Error('Unexpected bootstrap secret name');
+  return values;
 }
 /** @param {{env?: NodeJS.ProcessEnv, directory?: string, target?: string, file?: string}} [options] */
 export function loadPortalEnvironment({ env = process.env, directory = process.cwd(), target, file } = {}) {

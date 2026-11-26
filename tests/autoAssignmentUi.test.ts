@@ -1,5 +1,5 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';import {registerHooks} from 'node:module';
-const hook=registerHooks({load(url,c,next){return url.endsWith('.css')?{format:'module',source:'export default {}',shortCircuit:true}:next(url,c)}});
+import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';import {stubCss} from './helpers/moduleStubs.mjs';
+const hook=stubCss();
 const {CrmAutoAssignmentFields}=await import('../src/components/crm/CrmAutoAssignmentFields.tsx');hook.deregister();
 for(const lang of ['zh','en','id'] as const)test('strategies visibly listed, unsupported choices disabled '+lang,()=>{
  const html=renderToStaticMarkup(React.createElement(CrmAutoAssignmentFields,{value:{enabled:true,strategy:'round_robin',salesIds:[]},onChange:()=>{},lang}));

@@ -38,9 +38,11 @@ Claude Haiku 5.5 和 Claude Sonnet 5.5 共用同一环境的 Anthropic 凭证，
 | 设置 | 放置位置与默认值 |
 | --- | --- |
 | `PORTAL_BOOTSTRAP_SECRET_FILE` | 私有运行配置里填绝对路径。文件为 dotenv 格式，接受 `MYSQL_TRIAL_URL`、`ACCESS_INITIAL_PASSWORD` 和旧版按需使用的 `ACCESS_INITIAL_PASSWORDS_FILE`。所列变量以私有文件值为准。首次初始化员工后可移除初始密码。 |
-| `PORTAL_CREDENTIAL_KEYRING_FILE` | 私有运行配置里填绝对路径。配置文件权限为 `0600` 或只读 `0400`。以运行账号直接读取文件，容器以只读方式挂载到容器内路径。文件需独立于数据库快照。 |
+| `PORTAL_CREDENTIAL_KEYRING_FILE` | 私有运行配置里填绝对路径。macOS／Linux 权限为 `0600` 或只读 `0400`；Windows 11 见下方 ACL 要求。以运行账号直接读取文件，容器以只读方式挂载到容器内路径。文件需独立于数据库快照。 |
 | `ANTHROPIC_API_KEY` | 可选的私有环境凭证。优先在「供应商凭证」管理 Anthropic，托管凭证撤销后沿用现有规则停用环境来源。 |
 | `PORTAL_GA_DISPATCH_ENABLED` | 默认 `false`。授权外发前保留关闭。升级原本已开展 GA 外发的站点时，单独确认连续发送或暂停及队列范围。 |
+
+Windows 11 原生运行时，启动密钥文件和密钥环须位于受控的本地卷目录内，不使用重解析点文件或网络共享。应用通过 Windows PowerShell 5.1 读取已打开文件的 DACL：所有者须为当前运行账号、SYSTEM 或内置 Administrators，允许访问的条目也限于上述身份。Authenticated Users、Users、Everyone 等即使只有读取权限也会导致拒绝。不要对真实文件放宽 ACL 来排障；无法校验时保持拒绝。新建环境文件使用不继承父目录权限、只授予创建账号的 ACL，不覆盖已有文件。
 
 密钥文件是 JSON 对象，字段为 `environment`、`active` 和 `keys`。`environment` 为 `dev`、`test` 或 `prod`，`active` 为当前写入的密钥 ID。`keys` 按 ID 保存各版本密钥，每个值为 32 个随机字节的 64 字符十六进制编码。目录应只允许运维和运行账号按需访问，文件放在仓库及发布包之外。密钥版本可按受控备份策略保留和归档。
 
