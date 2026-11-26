@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
-import {chmod,mkdtemp,rm,symlink,writeFile} from 'node:fs/promises';
+import {mkdtemp,rm,symlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import test from 'node:test';
+import {createPrivateFile} from '../server/privateFile.mjs';
+import {grantFixtureReadToOthers} from './helpers/privateFileAcl.mjs';
 import mysql from 'mysql2/promise';
 import access from '../src/data/system-defaults/access.ts';
 import {cmsMediaUrl} from '../cloud/mysql/cms-media-storage.mjs';
@@ -75,12 +77,13 @@ test('requires private plain files and rejects orphaned references and nested cr
  t.after(()=>rm(dir,{recursive:true,force:true}));
  const file=join(dir,'approved.json');
  const b=await exportFixture();
- await writeFile(file,JSON.stringify(b),{mode:0o600});
+ createPrivateFile(file,JSON.stringify(b));
  assert.equal((await readInitialBusinessDefaults(file)).digest,validateInitialBusinessDefaults(b).digest);
  const alias=join(dir,'symlink.json');
- await symlink(file,alias);
- await assert.rejects(readInitialBusinessDefaults(alias));
- await chmod(file,0o644);
+ // Creating a symbolic link needs a privilege that Windows accounts may lack; the refusal is still checked where it can exist.
+ const linked=await symlink(file,alias).then(()=>true,error=>{if(process.platform==='win32'&&error.code==='EPERM')return false;throw error;});
+ if(linked)await assert.rejects(readInitialBusinessDefaults(alias));
+ grantFixtureReadToOthers(file);
  await assert.rejects(readInitialBusinessDefaults(file),/private file/);
  const broken=structuredClone(b);
  broken.classes[0].data.teacherId='missing';

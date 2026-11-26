@@ -23,7 +23,7 @@ try {
   } else {
     $stream=[IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
     try {
-      if (([IO.File]::GetAttributes($path) -band [IO.FileAttributes]::ReparsePoint) -or $stream.Length -gt 65536) {exit 2}
+      if (([IO.File]::GetAttributes($path) -band [IO.FileAttributes]::ReparsePoint) -or $stream.Length -gt [long]$request.limit) {exit 2}
       $acl=$stream.GetAccessControl()
       $raw=[Security.AccessControl.RawSecurityDescriptor]::new($acl.GetSecurityDescriptorBinaryForm(),0)
       $trusted=@($user.Value,'S-1-5-18','S-1-5-32-544')
@@ -39,25 +39,25 @@ try {
 } catch {exit 2}
 `;
 const encoded=Buffer.from(privateFileProgram,'utf16le').toString('base64');
-function windowsFile(file,op,content,reason){
+function windowsFile(file,op,content,reason,limit=65536){
   // Private local files only; don't open devices, streams or network shares.
   if (!/^[A-Za-z]:[\\/]/.test(file)||file.slice(2).includes(':')) throw Error(reason);
   if(op==='read'&&!lstatSync(file).isFile())throw Error(reason);
   const binary=path.join(process.env.SystemRoot,'System32','WindowsPowerShell','v1.0','powershell.exe');
   const result=spawnSync(binary,['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',encoded],{
-    windowsHide:true,encoding:'utf8',timeout:15_000,maxBuffer:256*1024,
-    input:JSON.stringify({op,path:Buffer.from(file,'utf8').toString('base64'),content}),
+    windowsHide:true,encoding:'utf8',timeout:limit>65536?120_000:15_000,maxBuffer:Math.max(256*1024,Math.ceil(limit/3)*4+4096),
+    input:JSON.stringify({op,path:Buffer.from(file,'utf8').toString('base64'),content,limit}),
   });
   if(result.status!==0||result.error)throw Error(reason);
   return Buffer.from(result.stdout,'base64');
 }
 
-export function readPrivateFile(file,reason='Private owner permissions required'){
-  if(process.platform==='win32')return windowsFile(file,'read',undefined,reason);
+export function readPrivateFile(file,reason='Private owner permissions required',maxBytes=65536){
+  if(process.platform==='win32')return windowsFile(file,'read',undefined,reason,maxBytes);
   const fd=openSync(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
   try{
     const stat=fstatSync(fd);
-    if(!stat.isFile()||stat.size>65536||(stat.mode&0o177))throw Error(reason);
+    if(!stat.isFile()||stat.size>maxBytes||(stat.mode&0o177))throw Error(reason);
     return readFileSync(fd);
   }finally{closeSync(fd);}
 }

@@ -28,7 +28,7 @@ Git 只保存变量名称、说明和占位符。安装、重装或升级前，�
 
 ## 使用经营预置初始化空库
 
-1. 从本地 3000 只读导出。命令在同一数据库快照中读取预置，并在被 Git 忽略的 `data/system-defaults/` 下生成权限为 `0600` 的新文件。
+1. 从本地 3000 只读导出。命令在同一数据库快照中读取预置，并在被 Git 忽略的 `data/system-defaults/` 下生成仅当前账号可访问的新文件（macOS／Linux 为 `0600`，Windows 为仅授予创建账号的 ACL）。导入时同样校验，权限过宽或为符号链接时拒绝读取。
 
    ```sh
    node --import tsx scripts/export-initial-business-defaults.mts --out data/system-defaults/business-defaults.v1.json

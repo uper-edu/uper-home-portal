@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {mkdir,writeFile} from 'node:fs/promises';
+import {createPrivateFile} from '../server/privateFile.mjs';
 import {dirname,resolve,sep} from 'node:path';
 import {parseArgs} from 'node:util';
 import {readEnvironment} from '../server/environment.mjs';
@@ -28,7 +29,9 @@ async function main(){
    await c.commit();
    await mkdir(directory,{recursive:true,mode:0o700});
    const json=JSON.stringify(bundle)+'\n';
-   await writeFile(output,json,{flag:'wx',mode:0o600});
+   // Create the owner-only file first (never overwriting), then fill it; the access rules stay as created.
+   createPrivateFile(output,'');
+   await writeFile(output,json);
    const counts=Object.fromEntries(Object.entries(bundle).filter(([,rows])=>Array.isArray(rows)).map(([key,rows])=>[key,rows.length]));
    console.log(JSON.stringify({sha256:createHash('sha256').update(json).digest('hex'),...counts,mail:bundle.mail!==null}));
   }finally{c.release();}
