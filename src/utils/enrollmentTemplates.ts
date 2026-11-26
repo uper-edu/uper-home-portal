@@ -32,6 +32,24 @@ export type EnrollmentTemplate = {
 };
 export const enrollmentTemplateFormats = ['standard','small','one-on-one'] as const;
 export const enrollmentTeacherTypes = ['local','foreign'] as const;
+
+export function compareEnrollmentTemplates(courses:readonly EnrollmentTeachingCourse[],language:string,sort='course') {
+  const ranks = new Map(courses.map(course=>[course.id,enrollmentLevels.findIndex(level=>level===course.teaching?.level)]));
+  const rank = (id:string) => {
+    const index = ranks.get(id) ?? -1;
+    return index < 0 ? enrollmentLevels.length : index;
+  };
+  const collator = new Intl.Collator(language,{numeric:true});
+  return (a:EnrollmentTemplate,b:EnrollmentTemplate) => {
+    const name = collator.compare(a.name,b.name);
+    if (sort==='name-asc'||sort==='name-desc') return (sort==='name-desc'?-name:name)||a.id.localeCompare(b.id);
+    return rank(a.courseId)-rank(b.courseId)||
+      enrollmentTemplateFormats.indexOf(a.format)-enrollmentTemplateFormats.indexOf(b.format)||
+      enrollmentTeacherTypes.indexOf(a.teacherType)-enrollmentTeacherTypes.indexOf(b.teacherType)||
+      name||a.id.localeCompare(b.id);
+  };
+}
+
 export const templateSize = {
   standard:{typical:'10–15',minimumPaid:10,capacity:15},
   small:{typical:'4–6',minimumPaid:4,capacity:6},

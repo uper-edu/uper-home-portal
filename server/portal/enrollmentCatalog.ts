@@ -170,7 +170,8 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       const timeZone=raw.timeZone===undefined?savedTimeZone:raw.timeZone;
       if(!isEnrollmentClassTimeZone(timeZone))invalid('enrollment_class_invalid');
       if(isPublished&&timeZone!==savedTimeZone)invalid('enrollment_class_timezone_fixed',409);
-      const dates={timeZone,firstLesson:raw.firstLesson,enrollmentCloses:raw.enrollmentCloses,period:raw.period,schedule:raw.schedule};
+      const dates={timeZone,firstLesson:raw.firstLesson,enrollmentCloses:raw.enrollmentCloses,
+        enrollmentClosesMode:raw.enrollmentClosesMode??current?.data.enrollmentClosesMode,period:raw.period,schedule:raw.schedule};
       const teacherId=raw.teacherId===undefined?current?.data.teacherId:raw.teacherId;
       const existing=current?.data as EnrollmentClassConfig|undefined;
       if(isPublished&&existing?.teacherId&&teacherId!==existing.teacherId&&(enrollmentInstant(existing.firstLesson,existing.timeZone)?.getTime()??Infinity)<=Date.now())
@@ -181,7 +182,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         :teacherId===undefined||teacherId===''?null:await assignedFaculty(c,teacherId,config.teacherType);
       if(!selection&&!isDraft&&!isPublished)invalid('faculty_required');
       if(selection)config.teacher=selection.teacher;
-      else if(existing?.teacherId)config.teacher='';
+      else if(existing?.teacherId||raw.teacherId==='')config.teacher='';
       const weeklySchedule=raw.weeklySchedule;
       if(weeklySchedule){
         config.schedule=enrollmentWeeklyScheduleText(weeklySchedule,config.minutes,'zh',timeZone);

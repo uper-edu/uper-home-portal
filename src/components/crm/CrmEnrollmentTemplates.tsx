@@ -17,7 +17,7 @@ import { CrmSaveFeedback } from './CrmDetailWorkspace';
 import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {AdminSingleSelect, type AdminSelectChoice} from '../admin/AdminSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
-import {defaultEnrollmentCourseName,enrollmentTemplateFormats,enrollmentTeacherTypes,enrollmentTemplateQuote,templateSize,type EnrollmentTemplate,type EnrollmentTeachingCourse} from '../../utils/enrollmentTemplates';
+import {compareEnrollmentTemplates,defaultEnrollmentCourseName,enrollmentTemplateFormats,enrollmentTeacherTypes,enrollmentTemplateQuote,templateSize,type EnrollmentTemplate,type EnrollmentTeachingCourse} from '../../utils/enrollmentTemplates';
 import {formatCurrency} from '../../utils/currency';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
@@ -71,15 +71,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
    return [item.name,c?.name,c?.teaching?.material].some(value=>value?.toLowerCase().includes(query))&&
      (!filters.level||c?.teaching?.level===filters.level)&&(!filters.quote||(item.saleUnitPrice?'ready':'missing')===filters.quote)&&
      (!filters.format||item.format===filters.format)&&(!filters.teacher||item.teacherType===filters.teacher);
- }).sort((a,b)=>{
-   const rank=(id:string)=>enrollmentLevels.findIndex(level=>level===course(id)?.teaching?.level);
-   const ar=rank(a.courseId),br=rank(b.courseId);
-   const name=a.name.localeCompare(b.name,lang,{numeric:true});
-   const byCourse=(ar<0?enrollmentLevels.length:ar)-(br<0?enrollmentLevels.length:br)||
-     Object.keys(formats).indexOf(a.format)-Object.keys(formats).indexOf(b.format)||
-     Object.keys(teachers).indexOf(a.teacherType)-Object.keys(teachers).indexOf(b.teacherType);
-   return (filters.sort==='name-desc'?-name:filters.sort==='name-asc'?name:byCourse||name)||a.id.localeCompare(b.id);
- })??[];
+ }).sort(compareEnrollmentTemplates(catalog.courses,lang,filters.sort))??[];
  const selectedVisible=visible.some(item=>item.id===selected);
  useEffect(()=>{
    if(!selected){located.current=undefined;return;}

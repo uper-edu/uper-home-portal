@@ -3,7 +3,8 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentScheduleDefaults, enrollmentScheduleLabel, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
 import {enrollmentScheduledMeetingStart,previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
-import {enrollmentTemplateClassFields} from '../src/utils/enrollmentTemplates';
+import {allowedEnrollmentClassDate,updateEnrollmentDraftFirst} from '../src/utils/enrollmentClassDraft';
+import {compareEnrollmentTemplates,enrollmentTemplateClassFields,type EnrollmentTeachingCourse,type EnrollmentTemplate} from '../src/utils/enrollmentTemplates';
 import {parseEnrollmentCourseIntroduction} from '../src/utils/enrollmentCourseIntroduction';
 import {formatCrmOperatingTime} from '../src/utils/crmOperatingTime';
 import {enrollmentDateFormatter} from '../src/utils/enrollmentDateFormat';
@@ -17,6 +18,29 @@ const sample = {
   price: 575000, standardPrice: null, learningOutcomes: 'Introduction and greetings',
   material: 'Sample materials', resources: 'Sample practice', teacher: 'Sample teacher',
 };
+
+test('class templates sort by HSK level, class type, teacher type and natural name order',()=>{
+  const course=(id:string,level:NonNullable<EnrollmentTeachingCourse['teaching']>['level']):EnrollmentTeachingCourse=>({
+    id,name:id,active:true,sessions:23,teaching:{level,minutes:45,material:'',knowledge:'',learningOutcomes:'',resources:''},
+  });
+  const template=(id:string,fields:Partial<EnrollmentTemplate>={}):EnrollmentTemplate=>({
+    id,name:'Template '+id,revision:1,courseId:'hsk2',format:'standard',teacherType:'local',
+    minimumPaid:10,capacity:15,standardUnitPrice:50000,saleUnitPrice:40000,...fields,
+  });
+  const rows=[
+    template('unknown',{courseId:'missing'}),
+    template('4b',{courseId:'hsk4b'}),
+    template('small',{format:'small'}),
+    template('foreign',{teacherType:'foreign'}),
+    template('10'),
+    template('2'),
+  ];
+  const courses=[course('hsk4b','HSK 4B'),course('hsk2','HSK 2')];
+  assert.deepEqual([...rows].sort(compareEnrollmentTemplates(courses,'zh')).map(row=>row.id),
+    ['2','10','foreign','small','4b','unknown']);
+  assert.deepEqual([...rows].sort(compareEnrollmentTemplates(courses,'zh','name-desc')).map(row=>row.id),
+    ['unknown','small','foreign','10','4b','2']);
+});
 
 test('CRM displays and filters class starts on the WIB calendar',()=>{
   const now=Date.parse('2026-11-26T17:30:00Z'); // 27 November, 00:30 WIB
@@ -201,6 +225,72 @@ test('signup cutoff defaults to midnight WIB; the old notice date does not affec
   assert.ok(!('decisionAt' in publicClass));
 });
 
+test('class drafts use the selected class calendar and link the weekly start and automatic cutoff to the first session',()=>{
+  const config={...validateEnrollmentClass(sample),timeZone:'Africa/Lagos' as const,
+    firstLesson:'',enrollmentCloses:'',enrollmentClosesMode:'automatic' as const};
+  assert.equal(allowedEnrollmentClassDate('weekend','2026-12-18'),false);
+  assert.equal(allowedEnrollmentClassDate('weekday-evening','2026-12-19'),false);
+  assert.equal(allowedEnrollmentClassDate('mixed','2026-12-18'),true);
+  assert.equal(allowedEnrollmentClassDate('mixed','2026-12-19'),true);
+  assert.equal(allowedEnrollmentClassDate('weekend','2026-02-30'),false);
+  const date=updateEnrollmentDraftFirst(config,'2026-12-19T');
+  assert.equal(date.config.enrollmentCloses,'2026-12-19T00:00');
+  assert.deepEqual(date.config.weeklySchedule.days,[6]);
+  const withTime=updateEnrollmentDraftFirst(date.config,'2026-12-19T19:00',date.autoFirstDay);
+  assert.equal(withTime.config.weeklySchedule.start,'19:00');
+  const sunday=updateEnrollmentDraftFirst(withTime.config,'2026-12-20T20:30',withTime.autoFirstDay);
+  assert.deepEqual(sunday.config.weeklySchedule.days,[7]);
+  assert.equal(sunday.config.weeklySchedule.start,'20:30');
+  assert.equal(enrollmentInstant(sunday.config.enrollmentCloses,sunday.config.timeZone)?.toISOString(),'2026-12-19T23:00:00.000Z');
+});
+
+test('a saved manual cutoff and another weekday’s custom start survive first-session changes',()=>{
+  const custom=validateEnrollmentClass({...sample,enrollmentClosesMode:'custom'});
+  const legacy=validateEnrollmentClass(sample);
+  assert.equal(custom.enrollmentClosesMode,'custom');
+  assert.equal('enrollmentClosesMode' in legacy,false);
+  assert.throws(()=>validateEnrollmentClass({...sample,enrollmentClosesMode:'unknown'}),/enrollment_class_invalid/);
+  const plan={days:[5,6,7],start:'15:00',lessons:2,startByDay:{5:'19:00',6:'15:00',7:'17:00'}};
+  const next=updateEnrollmentDraftFirst({...custom,period:'mixed',weeklySchedule:plan},'2026-12-20T16:00');
+  assert.equal(next.config.enrollmentCloses,'2026-12-19T00:00');
+  assert.deepEqual(next.config.weeklySchedule.startByDay,{5:'19:00',6:'15:00',7:'16:00'});
+  assert.equal(updateEnrollmentDraftFirst(legacy,'2026-12-20T16:00').config.enrollmentCloses,legacy.enrollmentCloses);
+  assert.equal('enrollmentClosesMode' in publicEnrollmentClass({...custom,id:'fixture',revision:1,state:'published'}),false);
+});
+
+test('the class save route persists the custom cutoff and clears an explicitly removed legacy teacher',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {mountEnrollmentCatalog}=await import('../server/portal/enrollmentCatalog');
+  const {operationContext}=await import('../server/portal/operationContext');
+  type Handler=(request:unknown,response:unknown)=>Promise<void>;
+  const posts=new Map<string,Handler>();
+  mountEnrollmentCatalog({get:()=>{},post:(path:string,handler:Handler)=>posts.set(path,handler)} as never,
+    {wrap:handler=>handler,staff:async()=>({id:'fixture'})});
+  const template={id:'fixture-template',courseId:sample.courseId,revision:1,name:'Fixture',format:'standard',
+    teacherType:'foreign',capacity:20,minimumPaid:13,saleUnitPrice:25_000,standardUnitPrice:30_000};
+  const course={name:'Fixture course',active:true,sessions:23,teaching:{level:'HSK 1',minutes:45}};
+  let saved:Record<string,unknown>|undefined;
+  const client={query:async(sql:string,parameters:unknown[]=[])=>{
+    if(sql.includes('SELECT revision,state,data FROM enrollment_classes'))return {rows:[{revision:1,state:'draft',data:sample}]};
+    if(sql.includes('SELECT value FROM portal_settings')&&parameters[0]==='enrollment_template:fixture-template')return {rows:[{value:template}]};
+    if(sql.includes('SELECT value FROM crm_courses'))return {rows:[{value:course}]};
+    if(sql.startsWith('UPDATE enrollment_classes'))saved=parameters[5] as Record<string,unknown>;
+    return {rows:[]};
+  }};
+  const handler=posts.get('/api/crm/enrollment/classes')!;
+  await operationContext.run(client,()=>handler({
+    body:{id:'fixture-class',revision:1,state:'draft',requestId:'fixture-class-write',config:{
+      ...sample,templateId:template.id,templateRevision:template.revision,teacherId:'',enrollmentClosesMode:'custom',
+      weeklySchedule:{days:[6],start:'15:00',lessons:1},
+    }},
+    headers:{origin:'http://localhost:3000'},protocol:'http',get:()=> 'localhost:3000',is:()=>true,
+  },{json:()=>{}}));
+  assert.equal(saved?.enrollmentClosesMode,'custom');
+  assert.equal(saved?.enrollmentCloses,sample.enrollmentCloses);
+  assert.equal(saved?.teacher,'');
+  assert.equal(saved?.teacherId,undefined);
+});
+
 test('first session weekday and time must match the recurring schedule in WIB',()=>{
   const weeklySchedule={days:[6,7],start:'15:00',lessons:2};
   assert.equal(validateEnrollmentClass({...sample,weeklySchedule}).firstLesson,'2026-12-19T15:00');
@@ -288,6 +378,15 @@ test('drafts retain unresolved weekly schedules and conflicts while published cl
     assert.throws(()=>validateEnrollmentClass({...config,schedule:sample.schedule}),/enrollment_class_(invalid|timeslot_mismatch|schedule_mismatch)/);
   }
   assert.throws(()=>validateEnrollmentClass({...sample,weeklySchedule:{days:[8],start:'19:00',lessons:2}},true),/enrollment_class_invalid/);
+});
+
+test('partially selected hours and minutes cannot be saved as weekly start times',()=>{
+  for(const time of ['19:',':30']){
+    assert.throws(()=>validateEnrollmentClass({...sample,weeklySchedule:{days:[6,7],start:time,lessons:1}},true),
+      /enrollment_class_invalid/);
+    assert.throws(()=>validateEnrollmentClass({...sample,weeklySchedule:{days:[6,7],start:'15:00',lessons:1,
+      startByDay:{6:'15:00',7:time}}},true),/enrollment_class_invalid/);
+  }
 });
 
 test('mixed schedules keep the actual weekday times and validate the first session against its own day', () => {

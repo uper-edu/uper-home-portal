@@ -32,16 +32,31 @@
 .crm-learner-preview button[aria-pressed="true"]{border-color:var(--admin-action);color:var(--admin-action)}
 .crm-learner-preview iframe{width:min(100%,390px);height:min(660px,62dvh);border:0;outline:1px solid var(--admin-border);border-radius:12px;background:white}
 
-.crm-class-break-summary {
+.crm-class-holidays { display: grid; gap: var(--admin-form-label-gap); }
+.crm-class-holidays [data-admin-disclosure=compact] > .crm-disclosure-body {
   display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--admin-border);
-  border-radius: 10px;
+  gap: var(--admin-form-field-gap);
+  justify-items: start;
 }
-.crm-class-break-summary > div { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.crm-class-break-summary small { color: var(--admin-muted); }
-.crm-class-break-summary small[data-tone=warning] { color: var(--admin-warning); }
+.crm-class-holiday-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--admin-form-label-gap) var(--admin-form-field-gap);
+  inline-size: 100%;
+}
+.crm-class-holiday-options .admin-calendar-date-list { flex: 1 1 min-content; }
+.crm-class-holidays small { color: var(--admin-muted); }
+.crm-class-holidays .crm-class-first-break-warning { color: var(--admin-warning); }
+.crm-class-end-date { margin: 0; }
+
+.crm-class-date-time .admin-schedule-date-time { grid-template-columns: minmax(0, 1fr); }
+@container admin-form-grid (min-width: 560px) {
+  .crm-class-date-time .admin-schedule-date-time {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--admin-form-column-gap);
+  }
+}
 
 [data-admin-form] .crm-class-per-day-choice.admin-field--choice{align-items:center}
 [data-admin-form] .crm-class-per-day-choice.admin-field--choice input[type=checkbox]:not(.admin-switch){align-self:center;width:16px;height:16px;margin:0;accent-color:var(--admin-action)}

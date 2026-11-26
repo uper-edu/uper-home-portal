@@ -39,11 +39,12 @@ type Props = {
   invalid?: boolean;
   describedBy?: string;
   dayMarks?: (selection: readonly string[]) => ReadonlyMap<string,AdminCalendarDayMark>;
+  isDateSelectable?: (day: string, mark: AdminCalendarDayMark|undefined) => boolean;
   legend?: readonly AdminCalendarDayMark[];
   selectionPreview?: (selection: readonly string[]) => ReactNode;
 };
 
-export function AdminCalendarPicker({label,placeholder,value,onChange,lang,multiple=false,anchorDate,disabled,invalid,describedBy,dayMarks,legend,selectionPreview}:Props) {
+export function AdminCalendarPicker({label,placeholder,value,onChange,lang,multiple=false,anchorDate,disabled,invalid,describedBy,dayMarks,isDateSelectable,legend,selectionPreview}:Props) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -52,6 +53,8 @@ export function AdminCalendarPicker({label,placeholder,value,onChange,lang,multi
   const [selected,setSelected] = useState<string[]>([]);
   const month = active ? monthStart(active) : '';
   const marks = month&&dayMarks ? dayMarks(selected) : undefined;
+  const canSelect = (day:string) => !isDateSelectable||isDateSelectable(day,marks?.get(day))||
+    (multiple&&selected.includes(day));
   const ui = copy[lang];
   const format = (day:string, options:Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(calendarLocale[lang],{...options,timeZone:'UTC'}).format(readDay(day));
   const focusActiveDay = () => panel.current?.querySelector<HTMLButtonElement>('button[data-current-day]')?.focus({preventScroll:true});
@@ -83,6 +86,7 @@ export function AdminCalendarPicker({label,placeholder,value,onChange,lang,multi
   }
 
   function select(day:string) {
+    if(!canSelect(day))return;
     setActive(day);
     if(!multiple){
       onChange([day]);
@@ -157,6 +161,7 @@ export function AdminCalendarPicker({label,placeholder,value,onChange,lang,multi
               return <td key={day} aria-selected={checked}>
                 <button type="button" tabIndex={day===active?0:-1} data-current-day={day===active||undefined}
                   data-adjacent={monthStart(day)!==month||undefined} data-mark={mark?.tone}
+                  aria-disabled={!canSelect(day)||undefined}
                   aria-label={mark?`${dateLabel} · ${mark.label}`:dateLabel} title={mark?.label}
                   onKeyDown={event=>navigate(event,day)} onClick={()=>select(day)}>
                   {readDay(day).getUTCDate()}

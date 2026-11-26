@@ -25,6 +25,7 @@ export interface EnrollmentClassConfig {
   timeZone?: EnrollmentClassTimeZone;
   firstLesson: string;
   enrollmentCloses: string;
+  enrollmentClosesMode?: 'automatic'|'custom';
   /** Legacy value retained when editing existing records. */
   decisionAt?: string;
   schedule: string;
@@ -88,8 +89,8 @@ export function validEnrollmentHolidayDate(value: unknown): value is string {
 export const enrollmentInstant=enrollmentWallClockInstant;
 
 export function enrollmentScheduleDefaults(firstLesson:string) {
-  if(!enrollmentInstant(firstLesson))return null;
   const date=firstLesson.slice(0,10);
+  if(!validEnrollmentHolidayDate(date))return null;
   return {enrollmentCloses:date+'T00:00'};
 }
 
@@ -129,6 +130,8 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
   const courseId = string('courseId', 100);
   const firstLesson = string('firstLesson', 16);
   const enrollmentCloses = string('enrollmentCloses', 16);
+  const enrollmentClosesMode=input.enrollmentClosesMode===undefined?undefined:
+    option('enrollmentClosesMode',['automatic','custom'] as const);
   const timeZone=input.timeZone===undefined?enrollmentTimeZone:input.timeZone;
   if(!isEnrollmentClassTimeZone(timeZone))invalidConfig();
   const start = enrollmentInstant(firstLesson,timeZone);
@@ -146,11 +149,11 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
     const plan=input.weeklySchedule as EnrollmentWeeklySchedule;
     if (!Array.isArray(plan.days) || plan.days.length > 7 ||
       plan.days.some(day=>!Number.isInteger(day)||day<1||day>7) ||
-      typeof plan.start!=='string'||(plan.start!==''&&!enrollmentSessionTime.test(plan.start)) ||
+      typeof plan.start!=='string'||(plan.start!==''&&!isEnrollmentSessionTime(plan.start)) ||
       !Number.isInteger(plan.lessons)||plan.lessons<1||plan.lessons>24 ||
       (plan.startByDay!==undefined && (!plan.startByDay||typeof plan.startByDay!=='object'||Array.isArray(plan.startByDay)||
         Object.entries(plan.startByDay).some(([day,time])=>!plan.days.includes(Number(day))||String(Number(day))!==day||
-          typeof time!=='string'||(time!==''&&!enrollmentSessionTime.test(time)))))) invalidConfig();
+          typeof time!=='string'||(time!==''&&!isEnrollmentSessionTime(time)))))) invalidConfig();
     if (!draft) {
       if (!enrollmentWeeklyScheduleText(plan, Number(input.minutes))) invalidConfig();
       if (!enrollmentTimeSlotMatches(period,plan.days))
@@ -165,6 +168,7 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
     format: option('format', enrollmentFormats),
     period,
     timeZone, firstLesson, enrollmentCloses,
+    ...(enrollmentClosesMode?{enrollmentClosesMode}:{}),
     schedule: string('schedule', 300, {optional:draft}), sessions: integer('sessions', 1000), minutes: integer('minutes', 600),
     minimumPaid, capacity, price, standardPrice,
     learningOutcomes: input.templateId&&input.learningOutcomes===undefined?'':string('learningOutcomes',2500,{optional:!!input.templateId}),
@@ -182,21 +186,25 @@ export function enrollmentSessionStart(plan:EnrollmentWeeklySchedule,day:number)
 /** Only the weekday category is checked; no evening-hour cutoff is implied. */
 export function enrollmentTimeSlotMatches(period:string,days:readonly number[]) {
   if(period==='mixed')return days.some(day=>day>=1&&day<=5)&&days.some(day=>day===6||day===7);
-  const allowed=period==='weekend'?[6,7]:period==='weekday-evening'?[1,2,3,4,5]:[];
-  return days.length>0&&days.every(day=>allowed.includes(day));
+  return days.length>0&&days.every(day=>enrollmentAllowsWeekday(period,day));
+}
+export function enrollmentAllowsWeekday(period:string,day:number) {
+  return day>=1&&day<=7&&(period==='mixed'||(period==='weekend'&&day>=6)||(period==='weekday-evening'&&day<=5));
 }
 /** firstLesson is stored as a date and time in the class calendar. Weekdays use Monday=1. */
 export function enrollmentFirstSessionMatches(firstLesson:string,plan:EnrollmentWeeklySchedule) {
   if (!enrollmentInstant(firstLesson)) return false;
   return plan.days.includes(enrollmentDateWeekday(firstLesson))&&firstLesson.slice(11)===enrollmentSessionStart(plan,enrollmentDateWeekday(firstLesson));
 }
-const enrollmentDateWeekday=(value:string)=>new Date(value.slice(0,10)+'T00:00:00Z').getUTCDay()||7;
+export const enrollmentDateWeekday=(value:string)=>new Date(value.slice(0,10)+'T00:00:00Z').getUTCDay()||7;
 export const enrollmentWeekdays=[
   ['周一','Mon','Sen'],['周二','Tue','Sel'],['周三','Wed','Rab'],['周四','Thu','Kam'],
   ['周五','Fri','Jum'],['周六','Sat','Sab'],['周日','Sun','Min'],
 ] as const;
 
-const enrollmentSessionTime=/^([01]\d|2[0-3]):[0-5]\d$/;
+export function isEnrollmentSessionTime(value:string) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
 
 /** Display-ready day and time groups in Jakarta time, with Monday as day 1. */
 export function enrollmentWeeklyScheduleGroups(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh'){
@@ -206,7 +214,7 @@ export function enrollmentWeeklyScheduleGroups(plan:EnrollmentWeeklySchedule|und
   const groups=new Map<string,string[]>();
   for(const day of [...new Set(plan.days)].sort((a,b)=>a-b)){
     const start=enrollmentSessionStart(plan,day);
-    if(typeof start!=='string'||!enrollmentSessionTime.test(start))return [];
+    if(typeof start!=='string'||!isEnrollmentSessionTime(start))return [];
     const [h,m]=start.split(':').map(Number);
     const end=h*60+m+plan.lessons*minutesPerPeriod;
     if(!Number.isInteger(end)||end>=1440)return [];
@@ -302,7 +310,7 @@ export function enrollmentScheduleErrors(config:Partial<Omit<EnrollmentClassConf
     }
     const firstDay=first?enrollmentDateWeekday(config.firstLesson!):0;
     const firstDayStart=enrollmentSessionStart(plan,firstDay);
-    if(plan.startByDay?plan.days.some(day=>!enrollmentSessionStart(plan,day)):!plan.start)
+    if(plan.startByDay?plan.days.some(day=>!isEnrollmentSessionTime(enrollmentSessionStart(plan,day))):!isEnrollmentSessionTime(plan.start))
       errors.start=t('请填写每个上课日的开始时间。','Enter a start time for each class day.','Isi waktu mulai untuk setiap hari kelas.');
     else if(first&&plan.days.includes(firstDay)&&firstDayStart!==config.firstLesson!.slice(11))
       errors.start=t(`当天课表为 ${firstDayStart}，须与首次上课的 ${config.firstLesson!.slice(11)} 一致。`,`The scheduled time ${firstDayStart} must match the first session at ${config.firstLesson!.slice(11)}.`,`Jadwal pukul ${firstDayStart} harus sama dengan pertemuan pertama pukul ${config.firstLesson!.slice(11)}.`);

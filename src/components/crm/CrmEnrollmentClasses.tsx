@@ -1,15 +1,16 @@
-import {enrollmentClassTimeZones,enrollmentTimeZone,enrollmentTimeZoneLabel,type EnrollmentClassTimeZone} from '../../utils/enrollmentDateFormat';
-import {formatCrmOperatingTime,viewerTimeZone} from '../../utils/crmOperatingTime';
+import {enrollmentClassTimeZones,enrollmentTimeZone,enrollmentTimeZoneLabel,isEnrollmentClassTimeZone,type EnrollmentClassTimeZone} from '../../utils/enrollmentDateFormat';
+import {formatCrmOperatingTime} from '../../utils/crmOperatingTime';
 import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {Plus,X} from 'lucide-react';
 import {AdminCalendarPicker, type AdminCalendarDayMark} from '../admin/AdminCalendarPicker';
-import {enrollmentScheduledMeetingStart,previewEnrollmentClassSchedule} from '../../utils/enrollmentClassSchedule';
+import {AdminDateField,AdminTimeField} from '../admin/AdminDateField';
+import {previewEnrollmentClassSchedule} from '../../utils/enrollmentClassSchedule';
 import {AdminSecondaryActions} from '../admin/AdminRecordActions';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters,type EnrollmentListCopy} from './EnrollmentSettingsListControls';
 import {CrmEnrollmentTemplates} from './CrmEnrollmentTemplates';
-import {enrollmentTemplateClassFields,type EnrollmentTeachingCourse,type EnrollmentTemplate} from '../../utils/enrollmentTemplates';
+import {compareEnrollmentTemplates,enrollmentTemplateClassFields,type EnrollmentTeachingCourse,type EnrollmentTemplate} from '../../utils/enrollmentTemplates';
 import {EnrollmentLearnerPreview} from './EnrollmentLearnerPreview';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminEditor} from '../admin/AdminEditor';
@@ -20,14 +21,15 @@ import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
 import { compareEnrollmentClassStarts,enrollmentClassDateFilter,enrollmentClassManagementPath,formatEnrollmentClassStart } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useId, useRef, useState } from 'react';
-import { AdminField, AdminFieldLabel, AdminForm, AdminRequiredNote } from '../AdminForm';
+import { AdminField, AdminForm, AdminRequiredNote } from '../AdminForm';
 import { AdminStaticField, AdminFormActions, AdminFormFeedback, AdminSavedReadError, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
 import { CrmOperationLayer } from './CrmOperationLayer';
 import { CrmSaveFeedback } from './CrmDetailWorkspace';
 import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import { AdminSingleSelect, type AdminSelectChoice } from '../admin/AdminSingleSelect';
-import {facultyName,facultyTeacherLabels,facultyText,type FacultyChoice} from '../../utils/crmFaculty';
-import { enrollmentAutofillStart,enrollmentScheduleErrors,enrollmentSessionStart,enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant,enrollmentLevels,enrollmentPeriods,enrollmentScheduleDefaults,enrollmentWeekdays,enrollmentWeeklyScheduleText,type EnrollmentScheduleReviewField,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
+import {facultyName,type FacultyChoice} from '../../utils/crmFaculty';
+import { enrollmentAllowsWeekday,enrollmentAutofillStart,enrollmentDateWeekday,enrollmentScheduleErrors,enrollmentSessionStart,enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant,enrollmentLevels,enrollmentPeriods,enrollmentWeekdays,enrollmentWeeklyScheduleText,isEnrollmentSessionTime,type EnrollmentScheduleReviewField,type EnrollmentWeeklySchedule } from '../../utils/enrollmentCatalog';
+import { allowedEnrollmentClassDate,emptyEnrollmentWeek,updateEnrollmentDraftFirst,type EnrollmentClassDraftConfig } from '../../utils/enrollmentClassDraft';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../utils/enrollmentCatalog';
 import { validEnrollmentHolidayDate } from '../../utils/enrollmentCatalog';
 import type { CrmLanguage } from '../../utils/crmLanguage';
@@ -51,11 +53,6 @@ function EnrollmentHolidayDates({config, previewOnly, disabled, lang, t, onChang
   const changeDates=previewOnly?setProposedDates:onChange;
   const firstDate=config.firstLesson.split('T')[0];
   const plan=previewEnrollmentClassSchedule(config,dates);
-  const viewerZone=viewerTimeZone();
-  const now=Date.now();
-  const nextMeeting=config.teacherId&&plan?.meetings.find(({date})=>
-    (enrollmentScheduledMeetingStart(config,date)?.getTime()??-Infinity)>=now);
-  const upcoming=nextMeeting&&enrollmentScheduledMeetingStart(config,nextMeeting.date);
   const classDay:AdminCalendarDayMark={tone:'info',label:t(['Class','Kelas','上课日'])};
   const holiday:AdminCalendarDayMark={tone:'warning',label:t(['Class break','Libur kelas','停课日'])};
   const makeup:AdminCalendarDayMark={tone:'success',label:t(['Makeup session','Kelas pengganti','补排日'])};
@@ -71,50 +68,41 @@ function EnrollmentHolidayDates({config, previewOnly, disabled, lang, t, onChang
   const label = t(['Class break dates', 'Tanggal libur kelas', '停课日期']);
   const trigger = t(['View and select dates','Lihat dan pilih tanggal','查看并选择日期']);
   const count = t([`${dates.length} selected`,`${dates.length} tanggal dipilih`,`已选 ${dates.length} 天`]);
-  return <AdminField as="div" data-admin-full-width="">
-    <span className="admin-field-label">{label}{dates.length>0&&` · ${count}`}</span>
-    {previewOnly&&<small>{t(['This class has orders. Break date changes are for preview only.',
-      'Kelas ini memiliki pesanan. Perubahan tanggal libur hanya untuk pratinjau.','此班次已有订单，停课日期变更仅供预览。'])}</small>}
-    {review}
-    <AdminCalendarPicker multiple value={dates} onChange={changeDates} label={label} placeholder={trigger}
-      lang={lang} anchorDate={validEnrollmentHolidayDate(firstDate)?firstDate:undefined} disabled={disabled}
-      dayMarks={marks} legend={[classDay,holiday,makeup]} selectionPreview={selection=>{
-        const candidate=previewEnrollmentClassSchedule(config,selection);
-        if(!candidate)return null;
-        return <>{endLabel} <strong>{candidate.end}</strong></>;
-      }}/>
-    {dates.length>0&&<ul className="admin-calendar-date-list" aria-label={label}>
-      {dates.map(saved=><li key={saved}>
-        <time dateTime={saved}>{saved}</time>
-        <button type="button" className="admin-compact-action" disabled={disabled} aria-label={t([`Remove ${saved}`,`Hapus ${saved}`,`移除 ${saved}`])}
-          onClick={()=>changeDates(dates.filter(value=>value!==saved))}><X size={15} aria-hidden="true"/></button>
-      </li>)}
-    </ul>}
-    {plan&&<div className="crm-class-break-summary">
-      {plan.meetings[0].teacherId&&<small>{t(['Teacher for every session','Pengajar setiap pertemuan','全部课次授课教师'])} · {plan.meetings[0].teacher}</small>}
-      {config.teacherId&&upcoming&&<div>
-        <strong>{t(['Next session on this device','Pertemuan berikutnya di perangkat ini','下次授课（当前设备时间）'])}</strong>{' '}
-        <time dateTime={upcoming.toISOString()}>{formatCrmOperatingTime(upcoming.toISOString(),viewerZone).slice(0,16)}</time>
-        {' · '}{viewerZone}
-      </div>}
-      <div><strong>{endLabel}</strong> <time dateTime={plan.end}>{plan.end}</time>
-        {plan.end!==plan.originalEnd&&<small>{t(['Originally','Tanggal awal','原结课'])} {plan.originalEnd}</small>}
+  return <div className="crm-class-holidays" data-admin-full-width="">
+    <AdminDisclosure density="compact" heading={label+(dates.length>0?` · ${count}`:'')}>
+      {previewOnly&&<small>{t(['This class has orders. Break date changes are for preview only.',
+        'Kelas ini memiliki pesanan. Perubahan tanggal libur hanya untuk pratinjau.','此班次已有订单，停课日期变更仅供预览。'])}</small>}
+      {review}
+      <div className="crm-class-holiday-options">
+        <AdminCalendarPicker multiple value={dates} onChange={changeDates} label={label} placeholder={trigger}
+          lang={lang} anchorDate={validEnrollmentHolidayDate(firstDate)?firstDate:undefined} disabled={disabled}
+          dayMarks={marks} isDateSelectable={(_,mark)=>!!mark} legend={[classDay,holiday,makeup]} selectionPreview={selection=>{
+            const candidate=previewEnrollmentClassSchedule(config,selection);
+            if(!candidate)return null;
+            return <>{endLabel} <strong>{candidate.end}</strong></>;
+          }}/>
+        {dates.length>0&&<ul className="admin-calendar-date-list" aria-label={label}>
+          {dates.map(saved=><li key={saved}>
+            <time dateTime={saved}>{saved}</time>
+            <button type="button" className="admin-compact-action" disabled={disabled} aria-label={t([`Remove ${saved}`,`Hapus ${saved}`,`移除 ${saved}`])}
+              onClick={()=>changeDates(dates.filter(value=>value!==saved))}><X size={15} aria-hidden="true"/></button>
+          </li>)}
+        </ul>}
       </div>
-      <small>{t([`${config.sessions} periods · ${plan.meetings.length} sessions`,
-        `${config.sessions} jam pelajaran · ${plan.meetings.length} pertemuan`,`共 ${config.sessions} 节 · ${plan.meetings.length} 次上课`])}</small>
-      {plan.makeupDates.length>0&&<small>{makeup.label} · {plan.makeupDates.join(' · ')}</small>}
-      {plan.unneededDates.length>0&&<small>{t(['No session to skip','Tidak ada pertemuan yang dilewati','未影响课次'])} · {plan.unneededDates.join(' · ')}</small>}
-      {plan.first!==firstDate&&<small role="status" data-tone="warning">{t([
+      {!!plan?.unneededDates.length&&<small>{t(['No session to skip','Tidak ada pertemuan yang dilewati','未影响课次'])} · {plan.unneededDates.join(' · ')}</small>}
+      {plan&&plan.first!==firstDate&&<small className="crm-class-first-break-warning" role="status">{t([
         `The first session falls on a break. Suggested first session: ${plan.first}. Confirm any change to the first session or registration deadline separately.`,
         `Pertemuan pertama jatuh pada hari libur. Usulan tanggal mulai: ${plan.first}. Konfirmasi perubahan tanggal mulai atau batas pendaftaran secara terpisah.`,
         `首课当天选为停课，拟顺延至 ${plan.first}。首课和报名截止保留原值，调整需另行确认。`,
       ])}</small>}
-    </div>}
-  </AdminField>;
+    </AdminDisclosure>
+    {plan&&<p className="crm-class-end-date"><strong>{endLabel}</strong> <time dateTime={plan.end}>{plan.end}</time></p>}
+  </div>;
 }
 type Catalog = { classes: EnrollmentClassAdmin[]; courses: EnrollmentTeachingCourse[]; templates: EnrollmentTemplate[];teachers?:FacultyChoice[] };
-type ClassDraftConfig=Omit<EnrollmentClassConfig,'period'>&{period:EnrollmentClassConfig['period']|''};
+type ClassDraftConfig=EnrollmentClassDraftConfig;
 type Draft = { id: string; revision: number; state: 'draft' | 'published'; config: ClassDraftConfig;
+  autoFirstDay?: number;
   hasOrders?: boolean;
   publishedDates?: Pick<EnrollmentClassConfig,'firstLesson'|'enrollmentCloses'> };
 const classFiltersDefault={search:'',level:'',format:'',period:'',status:'',date:'',teacher:'',sort:'upcoming'};
@@ -128,7 +116,7 @@ const classStatusCopy={
 const classStatus=(row:EnrollmentClassAdmin)=>row.state==='published'&&row.opened?'opened':row.state;
 const initial: ClassDraftConfig = {
   courseId: '', level: 'HSK 1', format: 'standard', period: '',
-  firstLesson: '', enrollmentCloses: '', schedule: '',
+  firstLesson: '', enrollmentCloses: '', enrollmentClosesMode:'automatic', schedule: '',
   sessions: 23, minutes: 45, minimumPaid: 10, capacity: 15, price: 0, standardPrice: null,
   learningOutcomes: '', material: '', resources: '', teacher: '',
 };
@@ -136,6 +124,9 @@ const dateTimeLabels = {
   firstLesson: ['First session', 'Pertemuan pertama', '首次上课'],
   enrollmentCloses: ['Self-service deadline', 'Batas daftar mandiri', '自助报名截止'],
 } satisfies Record<string,Copy>;
+
+type ScheduleChange = {kind:'period'; value:EnrollmentClassConfig['period']} |
+  {kind:'zone'; value:EnrollmentClassTimeZone} | {kind:'uniform'};
 
 export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShowAll, onDraftChange }: {
   lang: CrmLanguage; isLight: boolean; target?: string; createFrom?: string; onShowAll: () => void; onDraftChange: (dirty:boolean) => void;
@@ -152,6 +143,8 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const [quoteTemplateId,setQuoteTemplateId]=useState<string>();
   const [preview,setPreview]=useState(false);
   const [confirmDates,setConfirmDates]=useState(false);
+  const [scheduleChange,setScheduleChange]=useState<ScheduleChange>();
+  const [teacherCleared,setTeacherCleared]=useState(false);
   const createOpened=useRef<string|undefined>(undefined);
   const [insertion, setInsertion] = useState<{row:EnrollmentClassAdmin;requestId:string}>();
   const [dirty, setDirty] = useState(false);
@@ -252,6 +245,8 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     setSaved(false);
     setError('');
     setDirty(false);
+    setScheduleChange(undefined);
+    setTeacherCleared(false);
     if (row) {
       const { id, revision, state, opened, canInsert, hasOrders, ...config } = row;
       const publishedDates=state==='published'?{firstLesson:config.firstLesson,enrollmentCloses:config.enrollmentCloses}:undefined;
@@ -265,8 +260,10 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     const course=catalog?.courses.find(item=>item.id===template?.courseId);
     const derived=template&&course&&enrollmentTemplateClassFields(template,course);
     if(!derived)return;
+    const teacherChanged=!!draft?.config.teacherType&&draft.config.teacherType!==derived.teacherType;
+    setTeacherCleared(teacherChanged&&Boolean(draft?.config.teacherId||draft?.config.teacher));
     setDraft(value=>value&&({...value,config:{...value.config,...derived,
-      teacherId:value.config.teacherType===derived.teacherType?value.config.teacherId:undefined,
+      teacherId:value.config.teacherType&&value.config.teacherType!==derived.teacherType?'':value.config.teacherId,
       teacher:value.config.teacherType&&value.config.teacherType!==derived.teacherType?'':value.config.teacher}}));
     if(!initial)setDirty(true);
     setError('');
@@ -277,23 +274,23 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     edit();
     chooseTemplate(createFrom,{initial:true});
   },[catalog,createFrom]);
-  function change(name: keyof EnrollmentClassConfig, value: string | number | null) {
+  function changeDateTime(name:keyof typeof dateTimeLabels,value:string) {
+    if(name==='enrollmentCloses'&&value===draft?.config.enrollmentCloses)return;
     setDraft(current=>{
       if(!current)return current;
-      const config=name==='firstLesson'&&typeof value==='string'?enrollmentAutofillStart(current.config,value):{...current.config,[name]:value};
-      if(name==='firstLesson'&&current.revision===0&&typeof value==='string'){
-        const defaults=enrollmentScheduleDefaults(value);
-        const previousDate=current.config.firstLesson.split('T')[0];
-        const previous=enrollmentScheduleDefaults(previousDate+'T00:00');
-        if(defaults){
-          if(!config.enrollmentCloses||config.enrollmentCloses===previous?.enrollmentCloses)config.enrollmentCloses=defaults.enrollmentCloses;
-        }
-      }
-      return {...current,config};
+      if(name==='enrollmentCloses')return {...current,config:{...current.config,enrollmentCloses:value,enrollmentClosesMode:'custom'}};
+      if(current.state==='published')return {...current,config:enrollmentAutofillStart(current.config,value)};
+      const next=updateEnrollmentDraftFirst(current.config,value,current.autoFirstDay);
+      return {...current,...next};
     });
     setDirty(true);
   }
-  const weekly=draft?.config.weeklySchedule??{days:[],start:'',lessons:1};
+  const weekly=draft?.config.weeklySchedule??emptyEnrollmentWeek;
+  const firstDate=draft?.config.firstLesson.split('T')[0]??'';
+  const firstDay=allowedEnrollmentClassDate(draft?.config.period??'',firstDate)?enrollmentDateWeekday(firstDate):undefined;
+  const classReady=!!draft?.config.templateId||!!draft?.revision&&!!draft.config.courseId;
+  const firstReady=firstDay!==undefined&&!!enrollmentInstant(draft?.config.firstLesson,draft?.config.timeZone);
+  const linkedSchedule=draft?.state==='draft';
   const periodsLabel=t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数']);
   const classZone=draft?.config.timeZone??enrollmentTimeZone;
   const zoneLabel=enrollmentTimeZoneLabel(classZone);
@@ -305,6 +302,9 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     ? t(['Weekend classes must use Saturday or Sunday.','Kelas akhir pekan harus dijadwalkan pada Sabtu atau Minggu.','周末班的每周上课日只能选择周六、周日。'])
     : t(['Weekday evening classes must use Monday to Friday.','Kelas malam hari kerja harus dijadwalkan pada Senin hingga Jumat.','工作日晚间班的每周上课日只能选择周一至周五。']);
   const fieldErrors=draft?enrollmentScheduleErrors(draft.config,lang):{};
+  const incompleteWeeklyTime=[weekly.start,...Object.values(weekly.startByDay??{})].some(time=>time&&!isEnrollmentSessionTime(time));
+  if(incompleteWeeklyTime)fieldErrors.start=t(['Select both the hour and minute for each start time.',
+    'Pilih jam dan menit untuk setiap waktu mulai.','请选择完整的上课小时和分钟。']);
   if(draft&&!draft.config.courseId)fieldErrors.templateId=t(['Select a class template.','Pilih templat kelas.','请选择班型模板。']);
   const hasFieldErrors=Object.keys(fieldErrors).length>0;
   // New forms use the footer for missing fields and show inline feedback for entered values.
@@ -312,7 +312,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     ...fieldErrors,
     templateId:undefined,
     period:undefined,
-    firstLesson:draft.config.firstLesson.replace('T','')?fieldErrors.firstLesson:undefined,
+    firstLesson:draft.config.firstLesson.split('T')[1]?fieldErrors.firstLesson:undefined,
     enrollmentCloses:draft.config.enrollmentCloses.replace('T','')?fieldErrors.enrollmentCloses:undefined,
     start:(weekly.startByDay?Object.values(weekly.startByDay).some(Boolean):weekly.start)?fieldErrors.start:undefined,
   }:fieldErrors;
@@ -345,7 +345,8 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const publishBlocked=hasFieldErrors||hasSourceReview||!!templateUpdate;
   const draftSaveError=templateWarning||fieldErrors.templateId||fieldErrors.period||
     (!enrollmentInstant(draft?.config.firstLesson,classZone)&&fieldErrors.firstLesson)||
-    (!enrollmentInstant(draft?.config.enrollmentCloses,classZone)&&fieldErrors.enrollmentCloses)||fieldErrors.lessons;
+    (!enrollmentInstant(draft?.config.enrollmentCloses,classZone)&&fieldErrors.enrollmentCloses)||
+    (incompleteWeeklyTime&&fieldErrors.start)||fieldErrors.lessons;
   const saveError=draft?.state==='published'?validationMessages[0]:draftSaveError;
   const saveBlocked=!draft||!!saveError;
   const firstSessionOnBreak=draft?.state==='draft'&&draft.config.holidayDates?.includes(draft.config.firstLesson.slice(0,10));
@@ -354,17 +355,48 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const firstSessionOnBreakMessage=t(['The first session falls on a break. Confirm the first session and signup cutoff before publishing.',
     'Pertemuan pertama jatuh pada hari libur. Konfirmasi pertemuan pertama dan batas pendaftaran sebelum menerbitkan.',
     '首课当天已选为停课。请先确认首课及报名截止，再发布班次。']);
-  const previewRow=draft?.config.courseId&&draft.config.period
+  const previewRow=classReady&&draft?.config.courseId&&draft.config.period&&(draft.state==='published'||firstReady)
     ? {...draft.config,period:draft.config.period,id:draft.id,state:draft.state,revision:draft.revision}
     : undefined;
   function changeWeekly(values:Partial<EnrollmentWeeklySchedule>){
     const next={...weekly,...values};
     if(next.startByDay&&values.days){
-      next.startByDay=Object.fromEntries(next.days.map(day=>[day,enrollmentSessionStart(next,day)]));
+      next.startByDay=Object.fromEntries(next.days.map(day=>[day,next.startByDay?.[day]??next.start]));
     }
     setDraft(current=>current&&({...current,config:{...current.config,weeklySchedule:next,
       schedule:enrollmentWeeklyScheduleText(next,current.config.minutes,lang,current.config.timeZone)}}));
     setDirty(true);
+  }
+  function applyScheduleChange(change:ScheduleChange){
+    setScheduleChange(undefined);
+    if(change.kind==='uniform'){
+      changeWeekly({startByDay:undefined,start:firstReady?draft!.config.firstLesson.slice(11):weekly.start});
+      return;
+    }
+    setDraft(current=>{
+      if(!current)return current;
+      if(change.kind==='zone')return {...current,config:{...current.config,timeZone:change.value}};
+      const period=change.value;
+      const {firstLesson}=current.config;
+      const date=firstLesson.split('T')[0];
+      const first=allowedEnrollmentClassDate(period,date)?firstLesson:'T'+(firstLesson.split('T')[1]??'');
+      const plan=current.config.weeklySchedule??emptyEnrollmentWeek;
+      const days=plan.days.filter(day=>enrollmentAllowsWeekday(period,day));
+      const keptWeek={...plan,days,startByDay:plan.startByDay&&Object.fromEntries(
+        days.map(day=>[day,plan.startByDay?.[day]??plan.start]))};
+      return {...current,...updateEnrollmentDraftFirst({...current.config,period,weeklySchedule:keptWeek},first,current.autoFirstDay)};
+    });
+    setDirty(true);
+  }
+  function requestScheduleChange(change:ScheduleChange){
+    if(!draft)return;
+    const config=draft.config;
+    const needsConfirmation=change.kind==='period'?(!!firstDate&&!allowedEnrollmentClassDate(change.value,firstDate)||
+      weekly.days.some(day=>!enrollmentAllowsWeekday(change.value,day))):
+      change.kind==='zone'?Boolean(firstDate||config.enrollmentCloses.split('T')[0]):
+      weekly.days.some(day=>enrollmentSessionStart(weekly,day)!==(firstReady?config.firstLesson.slice(11):weekly.start));
+    if(needsConfirmation)setScheduleChange(change);
+    else applyScheduleChange(change);
   }
   function close() {
     if (busy || pending) return;
@@ -527,35 +559,36 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   </>;
   const fieldDisabled=busy||!!pending;
   const periodsHint=hintProps('lessons');
+  const startHint=hintProps('start');
   const dateTimeField=(name:keyof typeof dateTimeLabels)=>{
     const label=withZone(t(dateTimeLabels[name]));
-    const [date='',time='']=(draft?.config[name]??'').split('T');
-    const firstDate=draft?.config.firstLesson.split('T')[0];
-    const error=hintProps(name);
-    return <AdminField as="div" role="group" aria-label={label} required>
-      <AdminFieldLabel required>{label}</AdminFieldLabel>
-      <div className="admin-schedule-date-time">
-        <AdminCalendarPicker label={label+' · '+t(['Date','Tanggal','日期'])} placeholder={t(['Select date','Pilih tanggal','选择日期'])}
-          lang={lang} value={validEnrollmentHolidayDate(date)?[date]:[]}
-          anchorDate={validEnrollmentHolidayDate(firstDate)?firstDate:undefined} disabled={fieldDisabled}
-          invalid={error['aria-invalid']} describedBy={error['aria-describedby']}
-          onChange={([next])=>change(name,next+'T'+time)}/>
-        <input type="text" value={time} placeholder="HH:mm" maxLength={5} required
-          aria-label={label+' · '+t(['Time','Waktu','时间'])} {...error} disabled={fieldDisabled}
-          onChange={event=>change(name,date+'T'+event.target.value)}/>
-      </div>
-      {hint(name)}
-      {name==='firstLesson'&&sourceHint(name)}
-    </AdminField>;
+    const firstLesson=name==='firstLesson';
+    const anchorDate=validEnrollmentHolidayDate(firstDate)?firstDate:formatCrmOperatingTime(new Date().toISOString(),classZone).slice(0,10);
+    const dateAllowed=name==='firstLesson'
+      ? (day:string)=>allowedEnrollmentClassDate(draft?.config.period??'',day)
+      : linkedSchedule&&validEnrollmentHolidayDate(firstDate)?(day:string)=>day<=firstDate:undefined;
+    return <div className="crm-class-date-time" data-admin-full-width="" data-admin-stack="">
+      <AdminDateField label={label} lang={lang} withTime required
+        value={draft?.config[name]??''} onChange={value=>changeDateTime(name,value)}
+        disabled={fieldDisabled||firstLesson&&!draft?.config.period} error={inlineErrors[name]}
+        calendar={{anchorDate,isDateSelectable:dateAllowed}}/>
+      {firstLesson&&sourceHint(name)}
+    </div>;
   };
-  const selectField=(name:'courseId'|'level'|'format'|'period'|'timeZone',label:Copy,options:AdminSelectChoice[],fullWidth=false)=>
-    name==='period'&&draft?.state==='published'
-      ? <AdminStaticField label={t(label)} value={options.find(option=>option.value===draft.config.period)?.label} fullWidth={fullWidth}/>
-      : <AdminField required data-admin-full-width={fullWidth||undefined}>{t(label)}
+  const selectField=(name:'period'|'timeZone',label:Copy,options:AdminSelectChoice[])=>
+    draft?.state==='published'
+      ? <AdminStaticField label={t(label)} value={options.find(option=>option.value===(name==='timeZone'?classZone:draft.config.period))?.label}/>
+      : <AdminField required>{t(label)}
       <AdminSingleSelect label={t(label)} value={name==='timeZone'?classZone:draft?.config[name]??''} options={options} lang={lang} isLight={isLight}
-        disabled={fieldDisabled} onChange={value=>change(name,value)}/>
+        disabled={fieldDisabled} onChange={value=>{
+          if(name==='timeZone'&&isEnrollmentClassTimeZone(value)&&value!==classZone)requestScheduleChange({kind:'zone',value});
+          if(name==='period'&&value!==draft?.config.period&&enrollmentPeriods.some(period=>period===value))
+            requestScheduleChange({kind:'period',value:value as EnrollmentClassConfig['period']});
+        }}/>
       {hint(name)}
     </AdminField>;
+  const teacherLabel=t(['Teacher','Pengajar','授课教师']);
+  const unassigned=t(['Unassigned','Belum ditugaskan','未分配']);
   return <section className="crm-course-catalog" ref={catalogPanel}>
     <AdminTopicHeader title={title} isLight={isLight}
       subtitle={t(['Create classes from templates, set lesson schedules and preview before publishing.','Buat kelas dari templat, atur jadwal, dan lihat pratinjau sebelum menerbitkan.','从班型模板创建班次，维护上课时间并预览发布。'])} actions={<>
@@ -640,7 +673,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
                 {saveError}
               </AdminFormFeedback>}
               <button type="button" className="crm-work-button" disabled={busy} onClick={close}>{t(['Cancel', 'Batal', '取消'])}</button>
-              <button type="button" className="crm-work-button" disabled={busy} onClick={()=>setPreview(true)}>
+              <button type="button" className="crm-work-button" disabled={busy||!previewRow} onClick={()=>setPreview(true)}>
                 {t(['Preview for learners','Pratinjau siswa','学员预览'])}</button>
               <button type="submit" data-primary="" disabled={busy||saveBlocked}>{draft.state==='draft'?t(['Save draft','Simpan draf','保存草稿']):t(['Save','Simpan','保存'])}</button></>}
       </>}>
@@ -649,20 +682,20 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
             loading={false} onClick={refresh}/>}
           {pending && <CrmSaveFeedback state={busy?"saving":"unknown"} lang={lang}>{!busy&&checkMessage}</CrmSaveFeedback>}
           {templateUpdate&&updatedFields&&<AdminFormSection title={t(['Template updated','Templat diperbarui','模板已更新'])}
-            description={t(['Review the latest template before applying it. Your schedule and teacher will be kept.','Periksa templat terbaru sebelum menerapkannya. Jadwal dan pengajar Anda tetap tersimpan.','请核对后采用最新模板。已填写的课表、日期和授课教师会保留。'])}>
+            description={t(['Review the latest template before applying it. Your schedule and dates will be kept.','Periksa templat terbaru sebelum menerapkannya. Jadwal dan tanggal tetap tersimpan.','请核对后采用最新模板。已填写的课表和日期会保留。'])}>
             <AdminFormSummary fields={[
               [t(['Current enrollment total','Total pendaftaran saat ini','当前报名总价']),formatCurrency(draft.config.price,lang)],
               [t(['Latest enrollment total','Total pendaftaran terbaru','最新报名总价']),updatedFields.price?formatCurrency(updatedFields.price,lang):t(['Quote pending','Harga belum dikonfirmasi','报价待确认'])],
               [t(['Latest standard total','Total harga standar terbaru','最新标准总价']),updatedFields.standardPrice?formatCurrency(updatedFields.standardPrice,lang):'—'],
-              [t(['Latest minimum fully paid','Minimum peserta lunas terbaru','最新开班底线']),updatedFields.minimumPaid],
-              [t(['Latest capacity','Kapasitas terbaru','最新招生上限']),updatedFields.capacity],
+              [t(['Latest minimum fully paid','Minimum peserta lunas terbaru','最新人数下限（到账为准）']),updatedFields.minimumPaid],
+              [t(['Latest capacity','Kapasitas terbaru','最新人数上限']),updatedFields.capacity],
             ]}/>
             <button type="button" className="crm-work-button" disabled={busy||!!pending} onClick={()=>chooseTemplate(templateUpdate.id)}>
               {t(['Apply latest template','Terapkan templat terbaru','采用最新模板'])}
             </button>
           </AdminFormSection>}
           <div data-admin-section-stack="open">
-          <AdminFormSection variant="subgroup" title={t(['Class template','Templat kelas','班型模板'])}>
+          <AdminFormSection variant="subgroup" title={t(['Template and course','Templat dan kursus','班型与课程'])}>
             {draft.state==='published'
               ? <AdminStaticField label={t(['Class template','Templat kelas','班型模板'])}
                   value={catalog?.templates.find(item=>item.id===draft.config.templateId)?.name}/>
@@ -670,38 +703,46 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
               {t(['Select a class template','Pilih templat kelas','选择班型模板'])}
               <AdminSingleSelect label={t(['Select a class template','Pilih templat kelas','选择班型模板'])} lang={lang} isLight={isLight}
                 value={draft.config.templateId??''} disabled={fieldDisabled}
-                options={(catalog?.templates??[]).filter(item=>item.format!=='one-on-one').map(item=>({value:item.id,
-                  label:item.name+(item.saleUnitPrice?'':' · '+t(['Quote pending','Harga belum dikonfirmasi','报价待确认']))}))}
+                options={catalog?.templates.filter(item=>item.format!=='one-on-one').sort(compareEnrollmentTemplates(catalog.courses,lang)).map(item=>({value:item.id,
+                  label:item.name+(item.saleUnitPrice?'':' · '+t(['Quote pending','Harga belum dikonfirmasi','报价待确认']))}))??[]}
                 onChange={chooseTemplate}/>
             </AdminField>}
             {hint('templateId')}
-            {!!draft.config.courseId&&<AdminFormSummary fields={[
+            {classReady&&<AdminFormSummary fields={[
               [t(['Course','Kursus','课程']),draft.config.courseName||draft.config.level,'wide'],
               [t(['Periods × minutes','Jam pelajaran × menit','节数 × 分钟']),draft.config.sessions+' × '+draft.config.minutes],
-              [t(['Teacher type','Jenis pengajar','教师类型']),draft.config.teacherType==='foreign'?t(['Foreign teacher','Pengajar asing','外教']):draft.config.teacherType==='local'?t(['Local teacher','Pengajar lokal','本土教师']):'—'],
-              [t(['Minimum fully paid','Minimum peserta lunas','足额到账开班底线']),draft.config.minimumPaid],
-              [t(['Capacity','Kapasitas','招生上限']),draft.config.capacity],
+              [t(['Enrollment total','Total harga pendaftaran','报名总价']),draft.config.price?<strong>{formatCurrency(draft.config.price,lang)}</strong>:
+                t(['Quote pending','Harga belum dikonfirmasi','报价待确认'])],
+              [t(['Teacher type','Jenis pengajar','教师类型']),draft.config.teacherType?enrollmentTeacherLabel(draft.config.teacherType,lang):'—'],
+              [t(['Minimum fully paid','Minimum peserta lunas','人数下限（到账为准）']),draft.config.minimumPaid],
+              [t(['Capacity','Kapasitas','人数上限']),draft.config.capacity],
               ...(draft.config.standardPrice?[[t(['Standard total','Total harga standar','标准总价']),<del>{formatCurrency(draft.config.standardPrice,lang)}</del>] as const]:[]),
-              [t(['Enrollment total','Total harga pendaftaran','报名总价']),draft.config.price?<strong>{formatCurrency(draft.config.price,lang)}</strong>:'—'],
             ]}/>}
-            {!!draft.config.courseId&&!draft.config.price&&<p className="crm-work-muted">{t(['Quote pending. Publication is blocked.','Harga belum dikonfirmasi. Kelas belum bisa diterbitkan.','报价待确认，可保存草稿，暂不能发布。'])}</p>}
           </AdminFormSection>
-          <AdminFormSection variant="subgroup" title={t(['Schedule and dates','Jadwal dan tanggal','本期时间安排'])}>
+          {classReady&&<>
+          <AdminFormSection variant="subgroup" title={t(['Teaching assignment','Penugasan pengajar','授课安排'])}>
             <AdminFormGrid>
               <AdminField as="div">
-                <label>{t(['Teacher','Pengajar','授课教师'])}</label>
-                <AdminSingleSelect label={t(['Teacher','Pengajar','授课教师'])} value={draft.config.teacherId??''}
-                  displayValue={draft.config.teacher||undefined} lang={lang} isLight={isLight} searchable
+                <label>{teacherLabel}</label>
+                <AdminSingleSelect label={teacherLabel} value={draft.config.teacherId??''}
+                  displayValue={draft.config.teacherId?undefined:draft.config.teacher||undefined} lang={lang} isLight={isLight} searchable
                   disabled={fieldDisabled||Boolean(draft.config.teacherId&&draft.publishedDates&&(enrollmentInstant(draft.publishedDates.firstLesson,classZone)?.getTime()??Infinity)<=Date.now())}
-                  emptyLabel={t(['Select a teacher','Pilih pengajar','选择教师'])}
-                  options={(catalog?.teachers??[]).filter(item=>!draft.config.teacherType||item.category===draft.config.teacherType)
-                    .map(item=>({value:item.id,label:facultyName(item.names,lang),description:facultyText(lang,facultyTeacherLabels[item.category])}))}
+                  emptyLabel={unassigned}
+                  options={[...(draft.state==='draft'?[{value:'',label:unassigned}]:[]),
+                    ...(catalog?.teachers??[]).filter(item=>item.active&&(!draft.config.teacherType||item.category===draft.config.teacherType))
+                    .map(item=>({value:item.id,label:facultyName(item.names,lang)})),
+                    ...(draft.config.teacherId&&draft.config.teacher&&
+                      !catalog?.teachers?.some(item=>item.active&&item.id===draft.config.teacherId&&(!draft.config.teacherType||item.category===draft.config.teacherType))
+                      ?[{value:draft.config.teacherId,label:draft.config.teacher,disabled:true}]:[])]}
                   onChange={teacherId=>{
                     const item=catalog?.teachers?.find(item=>item.id===teacherId);
-                    if(!item)return;
-                    setDraft(current=>current&&({...current,config:{...current.config,teacherId,teacher:facultyName(item.names,'en')}}));
+                    if(teacherId&&(!item?.active||(draft.config.teacherType&&draft.config.teacherType!==item.category)))return;
+                    setDraft(current=>current&&({...current,config:{...current.config,teacherId,teacher:item?facultyName(item.names,'en'):''}}));
+                    setTeacherCleared(false);
                     setDirty(true);setError('');
                   }}/>
+                {teacherCleared&&<small role="status">{t(['The previous teacher does not match this template. Select another teacher.',
+                  'Pengajar sebelumnya tidak sesuai dengan templat ini. Pilih pengajar lain.','原教师与当前班型不匹配，已清除。请重新选择。'])}</small>}
               </AdminField>
               <AdminField required={!!draft.config.templateId}>{periodsLabel}
                 <AdminSingleSelect label={periodsLabel} value={String(weekly.lessons||'')} options={periodsPerSessionChoices}
@@ -710,58 +751,81 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
                   disabled={fieldDisabled} onChange={value=>changeWeekly({lessons:Number(value)})}/>
                 {hint('lessons')}
               </AdminField>
-              {draft.state==='published'
-                ?<AdminStaticField label={t(['Class time zone','Zona waktu kelas','班次时区'])} value={t(enrollmentZoneNames[classZone])}/>
-                :selectField('timeZone',['Class time zone','Zona waktu kelas','班次时区'],enrollmentClassTimeZones.map(value=>({
+            </AdminFormGrid>
+          </AdminFormSection>
+          <AdminFormSection variant="subgroup" title={t(['Class schedule','Jadwal kelas','排课'])}>
+            <AdminFormGrid>
+              {selectField('timeZone',['Class time zone','Zona waktu kelas','班次时区'],enrollmentClassTimeZones.map(value=>({
                   value,label:t(enrollmentZoneNames[value]),
                 })))}
-              {selectField('period',['Time slot','Waktu','时段'],enrollmentPeriods.map(value=>({
+              {selectField('period',['Class day type','Jenis hari kelas','上课日类型'],enrollmentPeriods.map(value=>({
                 value,label:value==='mixed'?t(['Weekday & weekend','Hari kerja & akhir pekan','工作日与周末']):value==='weekend'?t(['Weekend','Akhir pekan','周末']):t(['Weekday evening','Malam hari kerja','工作日晚间']),
               })))}
               {dateTimeField('firstLesson')}
               <AdminField as="div" role="group" {...(weekly.days.length?hintProps('days'):{})} required={!!draft.config.templateId} data-admin-full-width="">
                 <label>{t(['Weekly class days','Hari kelas setiap minggu','每周上课日'])}</label>
-                <AdminSingleSelect multiple value="" lang={lang} isLight={isLight} disabled={fieldDisabled}
+                <AdminSingleSelect multiple value="" lang={lang} isLight={isLight} disabled={fieldDisabled||!draft.config.period}
                   label={t(['Weekly class days','Hari kelas setiap minggu','每周上课日'])}
                   emptyLabel={t(['Select weekdays','Pilih hari','请选择上课日'])} values={weekly.days.map(String)} onChange={()=>{}} onValuesChange={days=>changeWeekly({days:days.map(Number)})}
-                  options={enrollmentWeekdays.map(([zh,en,id],index)=>({value:String(index+1),label:t([en,id,zh])}))}/>
-                {weekly.days.length>0&&hint('days')}
+                  options={enrollmentWeekdays.map(([zh,en,id],index)=>{
+                    const day=index+1;
+                    return {value:String(day),label:t([en,id,zh]),disabled:
+                      (!enrollmentAllowsWeekday(draft.config.period,day)&&!weekly.days.includes(day))||
+                      (linkedSchedule&&firstDay===day&&weekly.days.includes(day))};
+                  })}/>
+                {weekly.days.length>0&&hint('days')}{sourceHint('days')}
               </AdminField>
-              <AdminField data-admin-full-width="" className="crm-class-per-day-choice">
-                <input type="checkbox" checked={!!weekly.startByDay} disabled={fieldDisabled} onChange={event=>{
+              {!linkedSchedule&&!weekly.startByDay&&
+                <AdminTimeField label={withZone(t(['Session start time','Waktu mulai pertemuan','每次开始时间']))}
+                  lang={lang} required={!!draft.config.templateId} disabled={fieldDisabled}
+                  invalid={startHint['aria-invalid']} describedBy={startHint['aria-describedby']}
+                  value={weekly.start} onChange={start=>changeWeekly({start})}/>}
+              <AdminField className="crm-class-per-day-choice" data-admin-full-width="">
+                <input type="checkbox" checked={!!weekly.startByDay}
+                  disabled={fieldDisabled||linkedSchedule&&!weekly.startByDay&&(!firstReady||weekly.days.length<2)} onChange={event=>{
                   if(event.target.checked){
-                    changeWeekly({startByDay:Object.fromEntries(weekly.days.map(day=>[day,weekly.start]))});
+                    const start=linkedSchedule&&firstReady?draft.config.firstLesson.slice(11):weekly.start;
+                    changeWeekly({start,startByDay:Object.fromEntries(weekly.days.map(day=>[day,start]))});
                   }else{
-                    changeWeekly({start:enrollmentSessionStart(weekly,weekly.days[0])||weekly.start,startByDay:undefined});
+                    if(linkedSchedule)requestScheduleChange({kind:'uniform'});
+                    else changeWeekly({start:enrollmentSessionStart(weekly,weekly.days[0])||weekly.start,startByDay:undefined});
                   }
-                }}/>
+                }} aria-describedby={inlineErrors.start?fieldHintId+'-start':undefined}/>
                 {t(['Set start times by weekday','Atur waktu mulai per hari','按上课日设置开始时间'])}
               </AdminField>
-              {weekly.startByDay ? weekly.days.map(day=>{
+              {weekly.startByDay&&weekly.days.map(day=>{
                 const dayLabel=t([enrollmentWeekdays[day-1][1],enrollmentWeekdays[day-1][2],enrollmentWeekdays[day-1][0]]);
                 const label=t([`${dayLabel} start time (${zoneLabel})`,`Waktu mulai ${dayLabel} (${zoneLabel})`,`${dayLabel}开始时间（${zoneLabel}）`]);
-                return <AdminField key={day} required={draft.state==='published'}>{label}
-                  <input type="time" aria-label={label} {...hintProps('start')} required={draft.state==='published'}
-                    value={enrollmentSessionStart(weekly,day)} disabled={fieldDisabled}
-                    onChange={event=>changeWeekly({startByDay:{...weekly.startByDay,[day]:event.target.value}})}/>
-                </AdminField>;
-              }) : <AdminField required={draft.state==='published'&&!!draft.config.templateId}>{withZone(t(['Session start time','Waktu mulai pertemuan','每次开始时间']))}
-                <input aria-label={withZone(t(['Session start time','Waktu mulai pertemuan','每次开始时间']))} {...hintProps('start')}
-                  type="time" required={draft.state==='published'&&!!draft.config.templateId} value={weekly.start} disabled={fieldDisabled}
-                  onChange={event=>changeWeekly({start:event.target.value})}/>
-              </AdminField>}
-              {(inlineErrors.start||sourceReview.start)&&<div data-admin-full-width="">{hint('start')}{sourceHint('start')}</div>}
-              <AdminStaticField fullWidth label={t(['Weekly schedule (automatic)','Jadwal mingguan (otomatis)','每周课表（自动生成）'])}
-                value={draft.config.weeklySchedule?scheduleText:draft.config.schedule}/>
-              <EnrollmentHolidayDates key={draft.id} config={draft.config} previewOnly={draft.state==='published'&&draft.hasOrders!==false} disabled={fieldDisabled} lang={lang} t={t} review={sourceHint('holidayDates')}
+                return <AdminTimeField key={day} label={label} lang={lang} required={draft.state==='published'}
+                  value={enrollmentSessionStart(weekly,day)} disabled={fieldDisabled||linkedSchedule&&day===firstDay}
+                  invalid={startHint['aria-invalid']} describedBy={startHint['aria-describedby']}
+                  onChange={value=>changeWeekly({startByDay:{...weekly.startByDay,[day]:value}})}/>;
+              })}
+              {sourceReview.start&&<div data-admin-full-width="">{sourceHint('start')}</div>}
+              {firstReady&&inlineErrors.start&&<div data-admin-full-width="">
+                {hint('start')}
+                {linkedSchedule&&!weekly.startByDay&&weekly.start!==draft.config.firstLesson.slice(11)&&
+                  <AdminRowAction disabled={fieldDisabled} onClick={()=>changeDateTime('firstLesson',draft.config.firstLesson)}>
+                    {t(['Use the first session time','Gunakan waktu pertemuan pertama','按首课时间更新课表'])}
+                  </AdminRowAction>}
+              </div>}
+              {(scheduleText||(!draft.config.weeklySchedule&&draft.config.schedule))&&
+                <AdminStaticField fullWidth label={t(['Weekly schedule','Jadwal mingguan','每周课表'])}
+                  value={draft.config.weeklySchedule?scheduleText:draft.config.schedule}/>}
+              {(!!scheduleText&&firstReady||!linkedSchedule||!!sourceReview.holidayDates||!!draft.config.holidayDates?.length)&&
+              <EnrollmentHolidayDates key={draft.id} config={draft.config} previewOnly={draft.state==='published'&&draft.hasOrders!==false}
+                disabled={fieldDisabled||(!scheduleText||!firstReady)&&!draft.config.holidayDates?.length} lang={lang} t={t} review={sourceHint('holidayDates')}
                 onChange={holidayDates=>{
                   if(holidayDates.join()===draft.config.holidayDates?.join()||(!holidayDates.length&&!draft.config.holidayDates?.length))return;
                   setDirty(true);
                   setDraft(current=>current&&({...current,config:{...current.config,holidayDates}}));
-                }}/>
-              {dateTimeField('enrollmentCloses')}
+                }}/>}
             </AdminFormGrid>
           </AdminFormSection>
+          <AdminFormSection variant="subgroup" title={t(['Self-service enrollment','Pendaftaran mandiri','自助报名'])}>
+            <AdminFormGrid>{dateTimeField('enrollmentCloses')}</AdminFormGrid>
+          </AdminFormSection>
+          </>}
           </div>
     </AdminEditor>}
     {quoteTemplateId&&<CrmEnrollmentTemplates lang={lang} isLight={isLight} onDraftChange={setQuoteDirty}
@@ -838,6 +902,26 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     {discard && <AdminDiscardDialog lang={lang} isLight={isLight} onKeep={() => setDiscard(false)} onDiscard={() => {
       setDiscard(false); setDirty(false); setDraft(undefined); setInsertion(undefined); setError('');
     }}/>}
+    {scheduleChange&&draft&&<AdminConfirmation light={isLight}
+      title={scheduleChange.kind==='period'?t(['Change the time slot?','Ubah waktu kelas?','更改上课日类型？']):
+        scheduleChange.kind==='zone'?t(['Change the time zone?','Ubah zona waktu?','更改班次时区？']):
+        t(['Use the first session time for every day?','Gunakan waktu pertemuan pertama setiap hari?','所有上课日改用首课时间？'])}
+      description={scheduleChange.kind==='period'?t([
+        'Incompatible dates and weekly days will be cleared. The time and any custom deadline will be kept.',
+        'Tanggal dan hari kelas yang tidak sesuai akan dikosongkan. Jam dan batas pendaftaran khusus tetap disimpan.',
+        '不符合新时段的首课日期和上课日会被清除。已填写的时间和手动报名截止将保留。',
+      ]):scheduleChange.kind==='zone'?t([
+        'The entered dates and times stay the same in the new local time zone.',
+        'Tanggal dan jam yang sudah dimasukkan menjadi waktu lokal di zona waktu baru.',
+        '已填写的日期和钟点将按新时区解释。',
+      ]):t([
+        'This removes the individual start times you entered.',
+        'Waktu mulai yang diatur untuk tiap hari akan dihapus.',
+        '已设置的分日开始时间将被清除。',
+      ])}
+      cancelLabel={t(['Back to editing','Kembali ke pengeditan','返回编辑'])}
+      confirmLabel={t(['Confirm change','Konfirmasi perubahan','确认更改'])}
+      onCancel={()=>setScheduleChange(undefined)} onConfirm={()=>applyScheduleChange(scheduleChange)}/>}
     {confirmDates&&draft?.publishedDates&&<AdminConfirmation light={isLight}
       title={t(['Confirm changes to class dates?','Konfirmasi perubahan tanggal kelas?','确认修改班次日期？'])}
       description={t(['Review the changed dates in the class time zone before saving.','Periksa perubahan tanggal dalam zona waktu kelas sebelum menyimpan.','请核对以下班次当地时间，再确认保存。'])}
