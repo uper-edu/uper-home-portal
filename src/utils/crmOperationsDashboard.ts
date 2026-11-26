@@ -159,6 +159,15 @@ export type DashboardTraffic={
   landings:DashboardLandingCounts;channels:DashboardTrafficChannel[];otherChannels:DashboardTrafficChannel|null;
   devices?:{coveredDays:number;homepageCoveredDays?:number;rows:DashboardTrafficDevice[]};
 };
+export const enrollmentFunnelSteps=['landed','viewedClass','started','reserved','savedProof'] as const;
+export type EnrollmentFunnelCounts=Record<typeof enrollmentFunnelSteps[number],number>;
+export type EnrollmentFunnelChannel=EnrollmentFunnelCounts&{source:string;medium:string};
+export type EnrollmentFunnelCampaign=EnrollmentFunnelChannel&{campaignId:string;campaign:string};
+export type DashboardEnrollmentFunnel={
+  from:string;to:string;firstCovered:string;lastCovered:string;coveredDays:number;expectedDays:number;fetchedAt:string;
+  missingSessionViews:number;totals:EnrollmentFunnelCounts;channels:EnrollmentFunnelChannel[];
+  campaigns:EnrollmentFunnelCampaign[];campaignsOmitted:number;
+};
 export const dashboardDay=86_400_000;
 export const dashboardDate=(time:number)=>new Date(time+7*3_600_000).toISOString().slice(0,10);
 export function dashboardReportingDates(from:string,to:string,now=Date.now()){
@@ -229,6 +238,7 @@ export type DashboardWallboard={
   priorDay:{orders:number;paid:number;net:number|null};
   dailyPaid:{date:string;paid:number;previous:number;net:number|null;previousNet:number|null}[];
   traffic:DashboardTraffic|null;
+  enrollmentFunnel?:DashboardEnrollmentFunnel|null;
   channels:DashboardChannelOutcome[];
   kpiPlan?:DashboardKpiPlan;
 };
@@ -237,6 +247,7 @@ export type DashboardSnapshot={
   period:{from:string;to:string;compareFrom:string;compareTo:string};
   trafficPeriod:{from:string;to:string};
   traffic?:DashboardTraffic|null;
+  enrollmentFunnel?:DashboardEnrollmentFunnel|null;
   adSpend?:DashboardAdSpend|null;
   wallboard?:DashboardWallboard;
   teaching?:DashboardTeaching|null;

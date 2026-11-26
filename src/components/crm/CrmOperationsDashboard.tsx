@@ -11,7 +11,8 @@ import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {CrmDashboardKpiList} from './CrmDashboardKpiList';
 import {canManageDashboardKpi,dashboardAdSpendScale,dashboardChannelKey,dashboardFormats,dashboardKpiMonthProgress,dashboardLandingPages,dashboardLevels,dashboardPath,dashboardPeriods,dashboardScopes,dashboardTopics,readDashboardFilters,
   dashboardChannelLeaders,dashboardPaymentSampleIssue,dashboardRateComparisonMinimum,dashboardSupply,
-  type DashboardAdSpend,type DashboardCash,type DashboardEconomicsRow,type DashboardFilters,type DashboardKpiTarget,type DashboardLandingPage,type DashboardMovementPage,
+  type DashboardAdSpend,type DashboardCash,type DashboardEconomicsRow,type DashboardEnrollmentFunnel,type DashboardFilters,type DashboardKpiTarget,type DashboardLandingPage,type DashboardMovementPage,
+  type EnrollmentFunnelCounts,
   type DashboardLandingCounts,type DashboardSnapshot,type DashboardSource,type DashboardSources,type DashboardTeaching,type DashboardTeachingRow,type DashboardTopic,
   type DashboardTraffic,type DashboardTrafficChannel} from '../../utils/crmOperationsDashboard';
 import type {AccessEmployee} from '../../utils/accessControl';
@@ -51,6 +52,8 @@ const gaSourceTitle=(row:Pick<DashboardTrafficChannel,'source'|'medium'>,t:Trans
 const gaDates=(data:DashboardTraffic)=>sameDate(data.from,data.to)+' · WIB';
 const gaFreshness=(data:DashboardTraffic,t:Translate)=>t('gaSnapshotTime')+' '+formatWib(data.fetchedAt)+' WIB';
 const gaCoverage=(data:DashboardTraffic,t:Translate)=>t('gaDaysCovered')+' '+data.coveredDays+' / '+data.expectedDays;
+const enrollmentFunnelCoverage=(data:DashboardEnrollmentFunnel,t:Translate)=>
+  t('enrollmentFunnel')+' · '+sameDate(data.firstCovered,data.lastCovered)+' WIB · '+t('gaDaysCovered')+' '+data.coveredDays+' / '+data.expectedDays;
 function paymentSampleNote(metrics:DashboardSnapshot['current'],t:Translate,count:(value:number)=>string){
   const issue=dashboardPaymentSampleIssue(metrics);
   if(!issue)return null;
@@ -313,7 +316,7 @@ function wallboardSourceIdentified(source:DashboardSource){
 
 function wallboardChannels(data:DashboardSnapshot){
   type Row={source:DashboardSource;orders:number;eligible:number;paid:number;noProof:number;withProof:number;
-    first:number;previousFirst:number;sessions?:number;spend:Map<string,number>};
+    first:number;previousFirst:number;sessions?:number;funnel?:EnrollmentFunnelCounts;spend:Map<string,number>};
   const rows=new Map<string,Row>();
   function channel(source:DashboardSource){
     const key=dashboardChannelKey(source);
@@ -338,14 +341,18 @@ function wallboardChannels(data:DashboardSnapshot){
   for(const item of data.wallboard?.traffic?.channels??[]){
     channel({...item,key:'',kind:'verified'}).sessions=item.sessions;
   }
+  for(const item of data.wallboard?.enrollmentFunnel?.channels??[]){
+    channel({...item,key:'',kind:'verified'}).funnel=item;
+  }
   for(const item of data.adSpend?.campaigns??[]){
     if(!item.mapping||!item.channel)continue;
     const {spend}=channel({...item.channel,key:'',kind:'verified'});
     spend.set(item.currency,(spend.get(item.currency)??0)+item.amount);
   }
   const all=[...rows.values()];
-  const selected=all.filter(row=>row.first||row.previousFirst||row.orders||row.sessions||row.spend.size)
-    .sort((a,b)=>b.first-a.first||b.orders-a.orders||(b.sessions??0)-(a.sessions??0)||a.source.key.localeCompare(b.source.key));
+  const selected=all.filter(row=>row.first||row.previousFirst||row.orders||row.sessions||row.funnel?.landed||row.spend.size)
+    .sort((a,b)=>b.first-a.first||b.orders-a.orders||(b.sessions??0)-(a.sessions??0)||
+      (b.funnel?.landed??0)-(a.funnel?.landed??0)||a.source.key.localeCompare(b.source.key));
   const verified=selected.filter(row=>row.source.kind==='verified');
   const paid=verified.filter(row=>[...row.spend.values()].some(amount=>amount>0)).slice(0,2);
   const primary=[...new Set([...paid,...verified])].slice(0,4);
@@ -381,7 +388,8 @@ function WallboardChannels({data,rows,t,lang}:{data:DashboardSnapshot;rows:Retur
         return <tr key={row.source.key} data-source-pending={!ranked||undefined}>
           <th scope="row">{source}</th>
           {metric(row.sessions===undefined?'—':number.format(row.sessions),leaders[index].sessions)}
-          <td>—</td>
+          {metric(row.funnel?.landed?percent.format(row.funnel.started/row.funnel.landed):'—',false,
+            row.funnel?.landed?number.format(row.funnel.started)+'/'+number.format(row.funnel.landed):undefined)}
           {metric(rate===undefined?'—':percent.format(rate),leaders[index].rate,
             rate!==undefined?number.format(row.paid)+'/'+number.format(row.eligible):undefined)}
           {metric(number.format(row.first),leaders[index].first,
@@ -395,7 +403,8 @@ function WallboardChannels({data,rows,t,lang}:{data:DashboardSnapshot;rows:Retur
     <p className="ops-dash-caption">{t('tvChannelPeriods')} · {sameDate(data.period.from,data.period.to)} WIB · {t('versus')} {sameDate(data.period.compareFrom,data.period.compareTo)}</p>
     <p className="ops-dash-caption">{traffic?gaCoverage(traffic,t):t('trafficGap')} · {t('sourceCoverage')} {coverage.verified}/{coverage.total}
       {spend?.currencies.map(row=>' · '+t('tvMappedSpend')+' '+row.currency+' '+(row.amount?percent.format(row.mapped/row.amount):'—'))}</p>
-    <p className="ops-dash-caption">{t('tvNeedsEvents')}</p>
+    <p className="ops-dash-caption">{data.wallboard?.enrollmentFunnel?
+      enrollmentFunnelCoverage(data.wallboard.enrollmentFunnel,t):t('enrollmentFunnelGap')} · {t('tvNeedsEvents')}</p>
   </Panel>;
 }
 
@@ -637,6 +646,46 @@ function AcquisitionTraffic({data,t,filtered}:{data:DashboardTraffic|null|undefi
         <p className="ops-dash-caption">{t('gaDaysCovered')} {data.devices.coveredDays} / {data.expectedDays}</p>
       </AdminDisclosure>:<p className="ops-dash-caption">{t('deviceGap')}</p>}
     </>:<p className="ops-dash-caption">{t('trafficGap')}</p>}
+    {filtered&&<p className="ops-dash-caption">{t('gaSiteScope')}</p>}
+  </Panel>;
+}
+
+function AcquisitionEnrollmentFunnel({data,t,lang,filtered}:{data:DashboardEnrollmentFunnel|null|undefined;t:Translate;
+  lang:CrmLanguage;filtered:boolean}){
+  const number=new Intl.NumberFormat(languageTag[lang]);
+  const percent=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
+  const steps=[['landed','enrollmentFunnelLanded'],['started','enrollmentFunnelStarted'],['reserved','enrollmentFunnelReserved'],
+    ['savedProof','enrollmentFunnelProof']] as const;
+  return <Panel title={t('enrollmentFunnel')} aside={data?<span>{sameDate(data.from,data.to)} · WIB</span>:undefined}>
+    {data?<>
+      {data.totals.landed?<ul className="ops-dash-stages" aria-label={t('enrollmentFunnel')}>
+        {steps.map(([step,label])=>{
+          const share=data.totals[step]/data.totals.landed;
+          return <li key={step}><span>{t(label)}</span><strong>{number.format(data.totals[step])} · {percent.format(share)}</strong>
+            <i aria-hidden="true" style={{width:share*100+'%'}}/></li>;
+        })}
+      </ul>:<p>{t('enrollmentFunnelNoLandings')}</p>}
+      {data.totals.landed>0&&<p className="ops-dash-caption">
+        {t('enrollmentFunnelViewed')} · {number.format(data.totals.viewedClass)} · {percent.format(data.totals.viewedClass/data.totals.landed)}
+      </p>}
+      <p className="ops-dash-caption">{t('enrollmentFunnelBasis')}</p>
+      <p className="ops-dash-caption">{enrollmentFunnelCoverage(data,t)} · {t('gaSnapshotTime')} {formatWib(data.fetchedAt)} WIB</p>
+      {data.coveredDays<data.expectedDays&&<p className="ops-dash-caption">{t('gaPartial')}</p>}
+      {data.missingSessionViews>0&&<p className="ops-dash-caption">
+        {t('enrollmentFunnelMissing')} · {number.format(data.missingSessionViews)}
+      </p>}
+      {data.campaigns.length>0&&<AdminDisclosure heading={t('enrollmentFunnelByCampaign')} density="compact">
+        <Table headers={[t('source'),t('enrollmentFunnelCampaign'),...steps.map(([,label])=>t(label)),t('tvApplicationRate')]}>
+          {data.campaigns.map(row=><tr key={JSON.stringify([row.source,row.medium,row.campaignId||row.campaign])}>
+            <th scope="row">{gaSourceTitle(row,t)}</th>
+            <td>{[row.campaign,row.campaignId].filter((value,index,values)=>value&&values.indexOf(value)===index).join(' · ')||'—'}</td>
+            {steps.map(([step])=><td key={step}>{number.format(row[step])}</td>)}
+            <td>{row.landed?percent.format(row.started/row.landed):'—'}</td>
+          </tr>)}
+        </Table>
+        {data.campaignsOmitted>0&&<p className="ops-dash-caption">{t('enrollmentFunnelOmitted')} · {number.format(data.campaignsOmitted)}</p>}
+      </AdminDisclosure>}
+    </>:<p className="ops-dash-caption">{t('enrollmentFunnelGap')}</p>}
     {filtered&&<p className="ops-dash-caption">{t('gaSiteScope')}</p>}
   </Panel>;
 }
@@ -982,6 +1031,7 @@ function Acquisition({data,t,lang,isLight,canManageCampaigns,filtered}:{data:Das
   const cohorts:[DashboardWord,number][]=[['completedWindow',current.mature],['paidInTime',current.paidWithinWindow],['observing',current.observing]];
   return <>
     <AcquisitionTraffic data={data.traffic} t={t} filtered={filtered}/>
+    <AcquisitionEnrollmentFunnel data={data.enrollmentFunnel} t={t} lang={lang} filtered={filtered}/>
     {canManageCampaigns&&<AcquisitionAdSpend data={data.adSpend??null} t={t} lang={lang} filtered={filtered}/>}
     <AcquisitionSources data={data} t={t} lang={lang} canManageCampaigns={canManageCampaigns}/>
     <AcquisitionReservations outcomes={data.reservationOutcomes} t={t} lang={lang} isLight={isLight}/>

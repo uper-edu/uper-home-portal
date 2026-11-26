@@ -157,9 +157,12 @@ export function trackEnrollmentStep(...step:
 ) {
   if (typeof window==='undefined'||learnerPreviewToken()) return false;
   const [event,receiptKey]=step;
-  return withAnalytics((current,captured)=>receiptKey!==undefined
-    ?current.confirmed(event,receiptKey,true,{},captured)
-    :current.track(event,{},captured),true);
+  const href=window.location.href;
+  return withAnalytics((current,captured)=>{
+    if(receiptKey!==undefined)return current.confirmed(event,receiptKey,true,{},captured);
+    if(window.location.href===href)current.page(captured);
+    return current.track(event,{},captured);
+  },true);
 }
 export const trackPageView = (_path?: string, _title?: string) =>
   withAnalytics(current => current.page());

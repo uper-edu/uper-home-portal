@@ -1032,6 +1032,7 @@
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2)\n      ON DUPLICATE KEY UPDATE value=IF(value->>'$.fetchedAt'<:p3,:p2,value)": {
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2)\n      ON DUPLICATE KEY UPDATE value=IF(value->>'$.fetchedAt'<:p3,:p2,value)",
     "sources": [
+      "server/portal/operationsDashboardEnrollmentFunnel.ts",
       "server/portal/operationsDashboardTraffic.ts"
     ]
   },
@@ -4001,6 +4002,7 @@
   "SELECT value FROM portal_settings WHERE id BETWEEN :p1 AND :p2": {
     "sql": "SELECT value FROM portal_settings WHERE id BETWEEN :p1 AND :p2",
     "sources": [
+      "server/portal/operationsDashboardEnrollmentFunnel.ts",
       "server/portal/operationsDashboardTraffic.ts"
     ]
   },

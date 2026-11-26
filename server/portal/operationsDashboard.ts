@@ -8,6 +8,7 @@ import {readEnrollmentManagementSummaries} from './enrollmentManagement.ts';
 import {readEnrollmentFinancePendingSummary} from './enrollmentFinanceWorklist.ts';
 import type {Employee} from './identity.ts';
 import {readGaTraffic,trafficEnvironment} from './operationsDashboardTraffic.ts';
+import {readEnrollmentFunnel} from './operationsDashboardEnrollmentFunnel.ts';
 import {readDashboardKpiEditorPlan,readDashboardKpiList,readDashboardKpiPlan,saveDashboardKpiEditorPlan} from './operationsDashboardKpi.ts';
 import {readDashboardAdSpend} from './operationsDashboardAdSpend.ts';
 import {readDashboardTeaching} from './operationsDashboardTeaching.ts';
@@ -443,6 +444,7 @@ export async function readOperationsDashboardSnapshot(c:Client,actor:Employee,fi
   const from=date(selectedWindow.start),to=date(Math.min(selectedWindow.end,windows.today.start)-1);
   const environment=trafficEnvironment(process.env.PORTAL_ENV??'dev');
   const traffic=reportTopic==='acquisition'||reportTopic==='wallboard'?await readGaTraffic(c,environment,from,to,now):undefined;
+  const enrollmentFunnel=reportTopic==='acquisition'?await readEnrollmentFunnel(c,environment,from,to,now):undefined;
   const completeMonthEnd=date(windows.today.start-1);
   const monthFrom=date(windows.current.start);
   const adSpend=scope.marketing&&(reportTopic==='acquisition'||television)?
@@ -457,12 +459,13 @@ export async function readOperationsDashboardSnapshot(c:Client,actor:Employee,fi
       dailyPaid:daily.map((row,index)=>({date:row.date,paid:row.paid,previous:previous[index].paid,
         net:row.cash?.net??null,previousNet:previous[index].cash?.net??null})),
       traffic:await readGaTraffic(c,environment,monthFrom,completeMonthEnd,now),channels,
+      enrollmentFunnel:await readEnrollmentFunnel(c,environment,monthFrom,completeMonthEnd,now),
       kpiPlan:await readDashboardKpiPlan(c,environment,now,scope.finance)};
   }
   const economicsView=reportTopic==='economics'&&scope.operations&&scope.finance;
   const teachingView=reportTopic==='teaching'&&scope.operations;
   const lessonReport=teachingView||economicsView?await readDashboardTeaching(c,environment,{from,to,level:filters.level,format:filters.format,now},economicsView):null;
-  return {asOf:new Date(now).toISOString(),period:periods(windows),trafficPeriod:shortWindow(windows.latest),traffic,adSpend,wallboard,
+  return {asOf:new Date(now).toISOString(),period:periods(windows),trafficPeriod:shortWindow(windows.latest),traffic,enrollmentFunnel,adSpend,wallboard,
     teaching:teachingView?lessonReport?.teaching:undefined,economics:economicsView?lessonReport?.economics:undefined,
     current:current.metrics,compare:compare.metrics,today:today.metrics,
     sources:current.sources,compareSources:compare.sources,latestSources:latest.sources,entries:current.entries,latestEntries:latest.entries,

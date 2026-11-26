@@ -372,9 +372,9 @@ export function createAnalyticsClient(options: {
   };
   return {
     track,
-    page() {
+    page(captured?:AnalyticsParams) {
       try {
-        const context = options.context(),
+        const context = captured ?? options.context(),
           key = [context.page_location, context.language, context.promotion_link_id, context.campaign_name, context.campaign_source, context.campaign_medium, context.campaign_content, context.entry_point].join("|");
         if (key === lastPage) return false;
         // Clear prior route source overrides; untagged pages leave attribution to GA's session rules.
