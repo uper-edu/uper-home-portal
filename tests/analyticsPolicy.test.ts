@@ -162,6 +162,25 @@ test("enrollment click and landing-page visit stay distinct and exclude order id
   assert.equal(events[1][2].page_path,"/enrollment");
   assert.ok(!JSON.stringify(f.events).includes("PRIVATE-ORDER"));
 });
+test("class acquisition routes emit a shared path without class or order identifiers", () => {
+  const f=fixture();
+  f.navigate("http://localhost:3000/enrollment/PRIVATE-CLASS/?apply=1&email=private@example.test");
+  assert(f.client.page());
+  const events=f.events.filter(([kind])=>kind==="event");
+  assert.equal(events[0][1],"page_view");
+  assert.equal(events[0][2].page_location,"http://localhost:3000/enrollment/:class");
+  assert.equal(events[0][2].page_path,"/enrollment/:class");
+  assert.doesNotMatch(JSON.stringify(events),/PRIVATE-CLASS|private@|apply=1/);
+  assert.equal(make("https://uperedu.com/enrollment/").page_path,"/enrollment");
+  for(const path of [
+    "payment?order=PRIVATE-ORDER", "mine", "mine/demands/PRIVATE-RECORD", "assist",
+    "interest", "help/payment", "PRIVATE-CLASS?order=PRIVATE-ORDER",
+  ]){
+    const context=make("https://uperedu.com/enrollment/"+path);
+    assert.equal(context.page_path,"/other");
+    assert.doesNotMatch(JSON.stringify(context),/PRIVATE/);
+  }
+});
 test("a click can finish promotion lookup after routing and keeps the original page",async t=>{
   const sent:any[][]=[];
   const origin='http://localhost:3000';

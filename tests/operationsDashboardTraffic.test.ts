@@ -54,6 +54,20 @@ test('GA4 snapshot uses the selected property, stream and event scope and reconc
   assert.equal(testGa.requests[0].filter.andGroup.expressions[2].filter.stringFilter.value,'internal_test');
 });
 
+test('GA4 folds public class landings into enrollment and keeps payment outside acquisition',async()=>{
+  const entries=[
+    ...detail.slice(0,3),
+    makeRow(1,'20261122','instagram','paid_social','/enrollment/:class'),
+    makeRow(1,'20261122','instagram','paid_social','/enrollment/payment'),
+    detail[4],
+  ];
+  const days=await fetchGaTraffic('prod',from,to,'fixture',now,fakeGa({entries}).request);
+  assert.deepEqual(days[1].segments.map(row=>[row.landing,row.sessions]),[
+    ['link',1],['enrollment',1],['other',1],['unknown',2],
+  ]);
+  assert.equal(days[1].devices.find(row=>row.landing==='enrollment')?.sessions,1);
+});
+
 test('GA4 rejects timezone mismatch, truncated data, unbalanced dimensions and partial current days',async()=>{
   for(const [meta,message] of [
     [{timeZone:'UTC'},/Asia\/Jakarta/],

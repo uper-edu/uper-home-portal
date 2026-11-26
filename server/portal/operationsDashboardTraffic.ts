@@ -36,6 +36,7 @@ const maxRows=10_000;
 function landingGroup(value:string):DashboardLandingPage{
   if(value==='/')return 'homepage';
   const path=value.replace(/\/$/,'');
+  if(path==='/enrollment/:class')return 'enrollment';
   if(path==='/enrollment'||path==='/chat'||path==='/link')return path.slice(1) as DashboardLandingPage;
   return value===''||value==='(not set)'?'unknown':'other';
 }
