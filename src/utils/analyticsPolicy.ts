@@ -169,6 +169,10 @@ export const ANALYTICS_EVENTS = new Set([
   "consultation_send",
   "consultation_result",
   "advisor_request",
+  "enrollment_class_view",
+  "enrollment_application_start",
+  "enrollment_seat_reserved",
+  "enrollment_proof_saved",
   "crm_customer_view",
   "crm_filter_change",
   "crm_progress_open",
@@ -396,12 +400,13 @@ export function createAnalyticsClient(options: {
       key: string,
       confirmed: boolean,
       params: Record<string, unknown> = {},
+      captured?: AnalyticsParams,
     ) {
       try {
         if (!confirmed || !key || !ANALYTICS_EVENTS.has(event)) return false;
         const receipt = event + ":" + key;
         if (receipts.has(receipt)) return false;
-        if (!track(event, { ...params, status: "saved" })) return false;
+        if (!track(event, { ...params, status: "saved" }, captured)) return false;
         receipts.add(receipt);
         try {
           options.storage?.setItem(

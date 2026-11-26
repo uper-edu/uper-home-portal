@@ -244,6 +244,30 @@ test("confirmed conversions deduplicate queries/retries across a page reload and
   assert.ok(!JSON.stringify(f.events).includes("PRIVATE-OP"));
   assert(!f.client.track("unapproved_event", { text: "private" }));
 });
+test("enrollment steps retain the original safe campaign context and deduplicate confirmed business receipts", () => {
+  const f = fixture();
+  const campaign = make("https://uperedu.com/enrollment/class-1?apply=1&utm_source=meta&utm_medium=paid_social");
+  const payment = make("https://uperedu.com/enrollment/payment?order=private-enrollment-order");
+  assert(f.client.track("enrollment_class_view", {}, campaign));
+  assert(f.client.track("enrollment_application_start", {}, campaign));
+  assert(f.client.confirmed("enrollment_seat_reserved", "private-enrollment-order", true, {
+    email: "private@example.com", order_id: "private-enrollment-order",
+  }, campaign));
+  assert(f.client.confirmed("enrollment_proof_saved", "private-enrollment-order", true, {
+    amount: 920000, reference: "private-bank-reference",
+  }, payment));
+  const reloaded = createAnalyticsClient(f.options);
+  assert(!reloaded.confirmed("enrollment_seat_reserved", "private-enrollment-order", true));
+  assert(!reloaded.confirmed("enrollment_proof_saved", "private-enrollment-order", true));
+  assert.deepEqual(f.events.map((args) => args[1]), [
+    "enrollment_class_view", "enrollment_application_start",
+    "enrollment_seat_reserved", "enrollment_proof_saved",
+  ]);
+  assert.equal(f.events[2][2].campaign_source, "meta");
+  assert.equal(f.events[2][2].page_location, "https://uperedu.com/enrollment/:class");
+  assert.equal(f.events[3][2].page_location, "https://uperedu.com/other");
+  assert.doesNotMatch(JSON.stringify(f.events), /private-|private@|920000/);
+});
 test("blocked storage, malformed context and analytics transport failures never throw into business operations", () => {
   const c = createAnalyticsClient({
     id: "G-TEST",

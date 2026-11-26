@@ -1,6 +1,7 @@
 import {EnrollmentClassName} from './EnrollmentClassName';
 import {EnrollmentContactFields} from './EnrollmentContactFields';
 import {createBrowserUuid} from '../utils/browserUuid';
+import {trackEnrollmentStep} from '../utils/analytics';
 import {visitorScope} from '../services/visitorScope';
 import {preloadEnrollmentNavigation,readEnrollmentClassDetails,type PublicEnrollmentAppointment} from '../services/enrollmentClassDetails';
 import {watchReadReconnect} from '../services/readReconnect';
@@ -887,6 +888,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     // Keep the original receipt lookup available if the learner left this form.
     if(!formActive())return;
     if(typeof result?.id!=='string'||!result.id)throw Error('enrollment_operation_unconfirmed');
+    trackEnrollmentStep('enrollment_seat_reserved',result.id);
     setApplicationRecovery(undefined);
     if(!forAnother&&(emailConfirmed||applicationClass))rememberVisitorContact?.(owner,{fullName:name,email,whatsapp:phone});
     clearDraft();
@@ -921,6 +923,9 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     }
   }
   const hasApplicationClass=!!applicationClass;
+  useEffect(()=>{
+    if(hasApplicationClass&&classId&&!full)trackEnrollmentStep('enrollment_application_start');
+  },[hasApplicationClass,classId,full]);
   useEffect(()=>{
     if(!hasApplicationClass||!emailConfirmed||busy||!pendingApplication||applicationRecovery?.requestId!==requestId)return;
     const {afterNetworkRevision}=applicationRecovery;
@@ -1096,6 +1101,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   function finishProof(saved:Order){
     if(!formActive())return;
     if(!order||!isOrderView(saved,order.id))throw Error('enrollment_operation_unconfirmed');
+    trackEnrollmentStep('enrollment_proof_saved',saved.id);
     setError(current=>current==='enrollment_operation_unconfirmed'?'':current);
     // A supplemental proof can be saved without changing the order's payment status.
     setConfirmedProofOrderId(saved.status==='proof_review'?undefined:saved.id);

@@ -26,7 +26,7 @@ import {learnerPreviewToken} from '../utils/enrollmentLearnerPreview';
 import {linkHubReturnUrl,promotionEntryUrl} from '../utils/promotionNavigation';
 import {normalizeEnrollmentChatSelection} from '../utils/enrollmentChatJourney';
 import {isPlainLinkClick,readChatRecommendation,readEnrollmentPosition,rememberEnrollment,rememberEnrollmentPosition,returnAlongJourney,type ChatJourneyState,type EnrollmentPosition} from '../utils/chatJourneyNavigation';
-import {trackEvent} from '../utils/analytics';
+import {trackEnrollmentStep,trackEvent} from '../utils/analytics';
 import {enrollmentOrderReturnParam,EnrollmentJourneyLink,useEnrollmentJourneyState,useEnrollmentRecordReturn} from '../components/EnrollmentJourneyLink';
 import './enrollment.css';
 
@@ -393,6 +393,10 @@ export default function Enrollment() {
     return '/enrollment/' + encodeURIComponent(id) + '?' + query.toString();
   };
   const selected = classes?.find(row => row.id === classId);
+  const viewedClass=!previewToken&&!application&&!rulesPage&&!failed?selected?.id:undefined;
+  useEffect(()=>{
+    if(viewedClass)trackEnrollmentStep('enrollment_class_view');
+  },[viewedClass]);
   const {rows,privateLessons,levelCounts}=useMemo(()=>{
     const rows:PublicEnrollmentClass[]=[];
     const privateLessons:PublicEnrollmentAppointment[]=[];

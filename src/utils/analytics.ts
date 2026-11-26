@@ -1,4 +1,5 @@
 import {lookupPromotion} from './promotionLookup';
+import {learnerPreviewToken} from './enrollmentLearnerPreview';
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -150,6 +151,16 @@ export const trackEvent = (event: string, params: Record<string, unknown> = {}) 
   withAnalytics((current,captured) => current.track(event, params, captured),event==='link_click');
 export const trackReceipt = (event: string, key: string, params: Record<string, unknown> = {}, confirmed = true) =>
   withAnalytics(current => current.confirmed(event, key, confirmed, params));
+export function trackEnrollmentStep(...step:
+  | [event:'enrollment_class_view'|'enrollment_application_start']
+  | [event:'enrollment_seat_reserved'|'enrollment_proof_saved',receiptKey:string]
+) {
+  if (typeof window==='undefined'||learnerPreviewToken()) return false;
+  const [event,receiptKey]=step;
+  return withAnalytics((current,captured)=>receiptKey!==undefined
+    ?current.confirmed(event,receiptKey,true,{},captured)
+    :current.track(event,{},captured),true);
+}
 export const trackPageView = (_path?: string, _title?: string) =>
   withAnalytics(current => current.page());
 export function usePageTracking() {
