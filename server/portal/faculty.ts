@@ -43,6 +43,14 @@ export async function assignedFaculty(db:Client,id:unknown,category?:string){
   const selected=choice(profile);
   return {teacherId:selected.id,teacher:facultyName(selected.names,'en')};
 }
+// Only already-published classes may retain their original assignment without revalidation.
+export async function classFaculty(db:Client,teacherId:unknown,category:string|undefined,published:boolean,
+  previous?:{teacherId?:string;teacher?:string;teacherType?:string}){
+  if(teacherId===undefined||teacherId==='')return null;
+  if(published&&previous?.teacherId&&teacherId===previous.teacherId&&category===previous.teacherType)
+    return {teacherId:previous.teacherId,teacher:previous.teacher??''};
+  return assignedFaculty(db,teacherId,category);
+}
 export async function readFacultyRates(db:Client,id:string,lock=false){
   return await readValue<FacultyRates>(db,key('rate',checkedFacultyId(id)),lock)??blankRates;
 }

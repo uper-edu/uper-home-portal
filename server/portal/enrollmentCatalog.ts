@@ -14,7 +14,7 @@ import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { enrollmentReadiness } from './enrollmentApplication.ts';
 import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
-import {assignedFaculty,listFacultyChoices} from './faculty.ts';
+import {classFaculty,listFacultyChoices} from './faculty.ts';
 
 const path = '/api/crm/enrollment/classes';
 const kind = 'enrollment.class.save';
@@ -170,9 +170,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       if(isPublished&&existing?.teacherId&&teacherId!==existing.teacherId&&(enrollmentInstant(existing.firstLesson)?.getTime()??Infinity)<=Date.now())
         invalid('faculty_assignment_fixed',409);
       const config={...(isPublished?{...current.data,...dates}:snapshot?{...snapshot,...dates}:raw),teacher:existing?.teacher??''};
-      const selection=teacherId&&teacherId===existing?.teacherId&&config.teacherType===existing.teacherType
-        ?{teacherId:existing.teacherId,teacher:existing.teacher}
-        :teacherId===undefined||teacherId===''?null:await assignedFaculty(c,teacherId,config.teacherType);
+      const selection=await classFaculty(c,teacherId,config.teacherType,isPublished,existing);
       if(!selection&&!isDraft&&!isPublished)invalid('faculty_required');
       if(selection)config.teacher=selection.teacher;
       else if(existing?.teacherId)config.teacher='';

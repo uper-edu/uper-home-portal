@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assignedFaculty,listFacultyChoices,readFacultyFile,readFacultyProfile,readFacultyRateDetails,readFacultyRates,saveFacultyProfile,saveFacultyRates} from '../server/portal/faculty.ts';
+import {classFaculty,assignedFaculty,listFacultyChoices,readFacultyFile,readFacultyProfile,readFacultyRateDetails,readFacultyRates,saveFacultyProfile,saveFacultyRates} from '../server/portal/faculty.ts';
 import {quoteTeacherSettlement,readTeacherSettlements,saveTeacherSettlement} from '../server/portal/operationsDashboardTeacherSettlements.ts';
 import {facultyEffectiveDate,facultyFields,facultyLanguages,facultyRateOn,type FacultyTerm} from '../src/utils/crmFaculty.ts';
 import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule.ts';
@@ -77,6 +77,13 @@ test('published plans inherit one active teacher through holidays and the same c
   await saveFacultyProfile(db,teacher,{...profile,revision:1,active:false},'mock-ops');
   assert.equal((await listFacultyChoices(db)).length,0);
   await assert.rejects(assignedFaculty(db,teacher),{status:409});
+  const previous={...chosen,teacherType:'foreign'};
+  await assert.rejects(classFaculty(db,teacher,'foreign',false,previous),{status:409});
+  assert.deepEqual(await classFaculty(db,teacher,'foreign',true,previous),chosen);
+  await saveFacultyProfile(db,teacher,{...profile,revision:2,category:'local'},'mock-ops');
+  await assert.rejects(classFaculty(db,teacher,'foreign',false,previous),{status:409});
+  await saveFacultyProfile(db,second,profile,'mock-ops');
+  assert.equal((await classFaculty(db,second,'foreign',false,previous))?.teacherId,second);
   assert.equal(plan?.meetings[0].teacherId,teacher);
 });
 
