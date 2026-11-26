@@ -12,12 +12,12 @@ import {Settings } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { containPaneKeys, revealRecord } from '../adminScroll';
 import { interestOption } from '../../utils/enrollmentInterestCopy';
-import { formatCrmEventTime } from '../../utils/crmOperatingTime';
+import { crmInstant, formatCrmEventTime } from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
 import type { AccessEmployee } from '../../utils/accessControl';
 import { canViewEnrollmentManagement, enrollmentManagementScopes, enrollmentClassManagementPath, enrollmentRosterStates,
-  enrollmentClassPageSize, enrollmentClassShortfall, filterEnrollmentClasses, readEnrollmentClassFilters, writeEnrollmentClassFilters,
+  enrollmentClassPageSize, enrollmentClassShortfall, filterEnrollmentClasses, formatEnrollmentClassStart, readEnrollmentClassFilters, writeEnrollmentClassFilters,
   type EnrollmentClassFilters,
   type EnrollmentClassSummary, type EnrollmentRosterEntry, type EnrollmentRosterState } from '../../utils/crmEnrollmentManagement';
 import { CrmEnrollmentSupport } from './CrmEnrollmentResolution';
@@ -265,7 +265,10 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
       row.available?t(['剩 '+row.available+' 席',row.available+' seats left',row.available+' kursi tersisa']):t(['已满班','Full','Kelas penuh'])}</strong>
     {row.status!=='cancelled'&&<small>{row.occupied} / {row.capacity} {t(['席已占','seats reserved','kursi terisi'])}</small>}
   </>;
-  const firstLesson=(row:EnrollmentClassSummary)=>t(['首课','First session','Pertemuan pertama'])+' '+formatCrmEventTime(row.firstLessonAt).slice(0,16);
+  const firstLesson=(row:EnrollmentClassSummary)=>{
+    const time=formatEnrollmentClassStart(crmInstant(row.firstLessonAt));
+    return t(['首课','First session','Pertemuan pertama'])+' '+(time?time+' WIB':'—');
+  };
   const owner=(row:EnrollmentRosterEntry)=>row.customerId
     ?(row.owner?employees.find(employee=>employee.id===row.owner)?.displayName??row.owner:t(['未分配','Unassigned','Belum ditugaskan'])):'—';
 
@@ -291,9 +294,9 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
         {value:'full',label:t(['已满班','Full','Kelas penuh'])},
         {value:'closed',label:t(['自助报名已截止','Self-service closed','Pendaftaran mandiri ditutup'])},
       ]}/>
-    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['首课日期','First-session date','Tanggal pertemuan pertama'])} value={classFilters.date}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['首课日期（WIB）','First-session date (WIB)','Tanggal pertemuan pertama (WIB)'])} value={classFilters.date}
       onChange={date=>changeClassFilters({date})} options={[
-        {value:'',label:t(['全部首课日期','All first-session dates','Semua tanggal pertemuan pertama'])},
+        {value:'',label:t(['全部首课日期（WIB）','All first-session dates (WIB)','Semua tanggal pertemuan pertama (WIB)'])},
         {value:'7',label:t(['未来 7 天（含今天）','Next 7 days including today','7 hari ke depan termasuk hari ini'])},
         {value:'30',label:t(['未来 30 天（含今天）','Next 30 days including today','30 hari ke depan termasuk hari ini'])},
         {value:'past',label:t(['首课时间已过','First session has passed','Pertemuan pertama sudah lewat'])},

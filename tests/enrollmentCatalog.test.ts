@@ -6,6 +6,7 @@ import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedu
 import {enrollmentTemplateClassFields} from '../src/utils/enrollmentTemplates';
 import {parseEnrollmentCourseIntroduction} from '../src/utils/enrollmentCourseIntroduction';
 import {enrollmentDateFormatter} from '../src/utils/enrollmentDateFormat';
+import {enrollmentClassDateFilter,formatEnrollmentClassStart} from '../src/utils/crmEnrollmentManagement';
 import {enrollmentCoursePresets} from '../src/data/system-defaults/courses';
 
 const sample = {
@@ -15,6 +16,23 @@ const sample = {
   price: 575000, standardPrice: null, learningOutcomes: 'Introduction and greetings',
   material: 'Sample materials', resources: 'Sample practice', teacher: 'Sample teacher',
 };
+
+test('CRM displays and filters class starts on the WIB calendar',()=>{
+  const now=Date.parse('2026-11-26T17:30:00Z'); // 27 November, 00:30 WIB
+  const starts=enrollmentInstant('2026-11-27T19:00');
+  assert.equal(formatEnrollmentClassStart(starts),'2026-11-27 19:00');
+  const nextSeven=enrollmentClassDateFilter('7',now);
+  assert.equal(nextSeven(starts),true);
+  assert.equal(nextSeven(enrollmentInstant('2026-11-27T00:29')),false);
+  assert.equal(nextSeven(enrollmentInstant('2026-12-03T23:59')),true);
+  assert.equal(nextSeven(enrollmentInstant('2026-12-04T00:00')),false);
+  const nextThirty=enrollmentClassDateFilter('30',now);
+  assert.equal(nextThirty(enrollmentInstant('2026-12-26T23:59')),true);
+  assert.equal(nextThirty(enrollmentInstant('2026-12-27T00:00')),false);
+  const past=enrollmentClassDateFilter('past',now);
+  assert.equal(past(enrollmentInstant('2026-11-27T00:29')),true);
+  assert.equal(past(enrollmentInstant('2026-11-27T00:30')),false);
+});
 
 test('a new class uses course and template terms without copying teaching descriptions',()=>{
   const teaching={level:'HSK 1' as const,minutes:45,material:'Textbook',knowledge:'Topics',learningOutcomes:'Goals',resources:'Practice'};

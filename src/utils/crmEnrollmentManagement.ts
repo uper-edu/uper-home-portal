@@ -1,6 +1,7 @@
 import type { EnrollmentClosureReason } from './enrollmentOrderStatus';
 import { permittedRecord, type AccessEmployee } from './accessControl';
-import { crmInstant, formatCrmEventTime } from './crmOperatingTime';
+import { crmInstant, formatCrmOperatingTime } from './crmOperatingTime';
+import { enrollmentTimeZone } from './enrollmentDateFormat';
 
 export const enrollmentManagementScopes = (actor:AccessEmployee) => ({
   followup: actor.active!==false && actor.permissions.includes('crm.read') && actor.permissions.includes('crm.followup'),
@@ -97,15 +98,19 @@ export function enrollmentClassShortfall(row:EnrollmentClassSummary) {
   return Math.max(0,row.minimumPaid-row.counts.paid);
 }
 
+export function formatEnrollmentClassStart(time:Date|null){
+  return time?formatCrmOperatingTime(time.toISOString(),enrollmentTimeZone).slice(0,16):'';
+}
+
 export function enrollmentClassDateFilter(value:string,now=Date.now()){
   if(!value)return (_time:Date|null)=>true;
-  const today=formatCrmEventTime(new Date(now).toISOString()).slice(0,10);
+  const today=formatEnrollmentClassStart(new Date(now)).slice(0,10);
   const lastDay=value==='7'||value==='30'
     ?new Date(Date.parse(today+'T00:00:00Z')+(Number(value)-1)*86_400_000).toISOString().slice(0,10):'';
   return (time:Date|null)=>{
     if(!time)return false;
     if(value==='past')return time.getTime()<now;
-    const date=formatCrmEventTime(time.toISOString()).slice(0,10);
+    const date=formatEnrollmentClassStart(time).slice(0,10);
     return time.getTime()>=now&&date>=today&&date<=lastDay;
   };
 }
@@ -132,7 +137,7 @@ export function filterEnrollmentClasses(
     const instant=crmInstant(row.firstLessonAt);
     if(!matchesDate(instant))return [];
     if(tokens.length){
-      const displayed=instant?formatCrmEventTime(row.firstLessonAt):'';
+      const displayed=formatEnrollmentClassStart(instant);
       const haystack=normalize([title(row),row.level.replace(/\s+/gu,''),row.id,row.schedule,displayed].join(' '));
       if(!tokens.every(token=>haystack.includes(token)))return [];
     }

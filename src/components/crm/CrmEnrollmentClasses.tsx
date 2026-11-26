@@ -16,8 +16,7 @@ import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
-import { compareEnrollmentClassStarts,enrollmentClassDateFilter,enrollmentClassManagementPath } from '../../utils/crmEnrollmentManagement';
-import {formatCrmEventTime} from '../../utils/crmOperatingTime';
+import { compareEnrollmentClassStarts,enrollmentClassDateFilter,enrollmentClassManagementPath,formatEnrollmentClassStart } from '../../utils/crmEnrollmentManagement';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AdminField, AdminFieldLabel, AdminForm, AdminRequiredNote } from '../AdminForm';
 import { AdminStaticField, AdminFormActions, AdminFormFeedback, AdminSavedReadError, AdminFormGrid, AdminFormSection, AdminFormSummary } from '../AdminFormLayout';
@@ -473,7 +472,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     const teacher=row.teacherId?teachersById.get(row.teacherId):undefined;
     const teacherType=enrollmentTeacherLabel(row.teacherType,lang);
     const teacherDetail=row.teacherId?(teacher&&facultyName(teacher.names,lang))||row.teacher.trim():unassignedTeacher;
-    const entry={row,schedule,teacherType,teacherDetail,time:start?.getTime()??null,firstSession:start?formatCrmEventTime(start.toISOString()).slice(0,16):'—'};
+    const entry={row,schedule,teacherType,teacherDetail,time:start?.getTime()??null,firstSession:formatEnrollmentClassStart(start)||'—'};
     if(target||!tokens.length)return [entry];
     const haystack=normalize([row.id,row.courseName,row.level.replace(/\s+/gu,''),enrollmentClassTitle(row,lang),
       schedule,row.schedule,row.firstLesson,entry.firstSession,teacherType,teacherDetail,row.teacher].join(' '));
@@ -484,11 +483,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={label} all={all} options={options}
       value={filters[field]} onChange={value=>changeFilters({[field]:value})}/>;
   const additionalFilters=<>
-    {select('date',['First-session date','Tanggal pertemuan pertama','首课日期'],[
+    {select('date',['First-session date (WIB)','Tanggal pertemuan pertama (WIB)','首课日期（WIB）'],[
       {value:'7',label:t(['Next 7 days including today','7 hari ke depan termasuk hari ini','未来 7 天（含今天）'])},
       {value:'30',label:t(['Next 30 days including today','30 hari ke depan termasuk hari ini','未来 30 天（含今天）'])},
       {value:'past',label:t(['First session has passed','Pertemuan pertama sudah lewat','首课时间已过'])},
-    ],['All first-session dates','Semua tanggal pertemuan pertama','全部首课日期'])}
+    ],['All first-session dates (WIB)','Semua tanggal pertemuan pertama (WIB)','全部首课日期（WIB）'])}
     {select('teacher',['Teacher type','Jenis pengajar','教师类型'],(['local','foreign'] as const).map(value=>({value,label:enrollmentTeacherLabel(value,lang)})),
       ['All teacher types','Semua jenis pengajar','全部教师类型'])}
   </>;
@@ -570,7 +569,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
         :listState==='error'&&catalog?t(['Refresh failed. Showing the last loaded classes.','Gagal menyegarkan. Kelas yang terakhir dimuat masih ditampilkan.','刷新失败，仍显示上次读取的班次。']):undefined}
       onRetry={refresh}/>}
     {!!visibleClasses?.length&&<AdminListTable label={title} className="crm-course-list" busy={readState==='loading'} headers={[
-      t(['Class','Kelas','班次']),{label:t(['Schedule','Jadwal','课表']),sort:target?undefined:filters.sort==='oldest'?'ascending':filters.sort==='latest'?'descending':'other'},
+      t(['Class','Kelas','班次']),{label:t(['Schedule · WIB','Jadwal · WIB','课表 · WIB']),sort:target?undefined:filters.sort==='oldest'?'ascending':filters.sort==='latest'?'descending':'other'},
       {label:t(['Tuition','Biaya','学费']),numeric:true},
       t(['Status','Status','状态']),t(['Actions','Tindakan','操作']),
     ]}>
@@ -578,7 +577,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
         <td>{enrollmentClassTitle(row,lang)}{(teacherType||teacherDetail)&&<><br/><small>
           {teacherType}{teacherType&&teacherDetail&&' · '}
           {row.teacherId?teacherDetail:<AdminStatus tone="danger" showDot={false}>{teacherDetail}</AdminStatus>}
-        </small></>}</td><td>{firstSession}{schedule&&<><br/>{schedule}</>}</td>
+        </small></>}</td><td>{firstSession}{schedule&&<><br/>{schedule.replace(/ WIB$/u,'')}</>}</td>
         <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus showDot={false} tone={row.opened||row.state==='published'?'success':'neutral'}>{t(classStatusCopy[classStatus(row)])}</AdminStatus></td>
         <td><div className="flex flex-wrap items-center gap-x-3 gap-y-1">{row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)} title={t(['View enrollments','Lihat pendaftaran','查看报名'])}>{t(['View','Lihat','查看'])}</AdminRowAction>}
           {row.state!=='cancelled' && <AdminRowAction disabled={readState==='error'} onClick={() => edit(row)}>{t(['Edit', 'Ubah', '编辑'])}</AdminRowAction>}
