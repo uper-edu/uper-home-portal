@@ -40,6 +40,7 @@ const enrollmentZoneNames:Record<EnrollmentClassTimeZone,Copy>={
   'Asia/Jakarta':['Jakarta (WIB)','Jakarta (WIB)','雅加达（WIB）'],
   'Africa/Lagos':['Lagos (WAT)','Lagos (WAT)','拉各斯（WAT）'],
 };
+const periodsPerSessionChoices=[1,2,3,4].map(periods=>({value:String(periods),label:String(periods)}));
 
 function EnrollmentHolidayDates({config, previewOnly, disabled, lang, t, onChange, review}:{
   config:ClassDraftConfig; previewOnly:boolean; disabled:boolean; lang:CrmLanguage;
@@ -140,7 +141,6 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   lang: CrmLanguage; isLight: boolean; target?: string; createFrom?: string; onShowAll: () => void; onDraftChange: (dirty:boolean) => void;
 }) {
   const t = ([en, id, zh]: Copy) => lang === 'zh' ? zh : lang === 'id' ? id : en;
-  const teacherHelpId=useId();
   const fieldHintId=useId();
   const [catalog, setCatalog] = useState<Catalog>();
   const [readState,setReadState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
@@ -294,6 +294,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
     setDirty(true);
   }
   const weekly=draft?.config.weeklySchedule??{days:[],start:'',lessons:1};
+  const periodsLabel=t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数']);
   const classZone=draft?.config.timeZone??enrollmentTimeZone;
   const zoneLabel=enrollmentTimeZoneLabel(classZone);
   const withZone=(label:string)=>label+(lang==='zh'?'（'+zoneLabel+'）':' ('+zoneLabel+')');
@@ -306,8 +307,17 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const fieldErrors=draft?enrollmentScheduleErrors(draft.config,lang):{};
   if(draft&&!draft.config.courseId)fieldErrors.templateId=t(['Select a class template.','Pilih templat kelas.','请选择班型模板。']);
   const hasFieldErrors=Object.keys(fieldErrors).length>0;
-  const hint=(name:string)=>fieldErrors[name]?<small id={fieldHintId+'-'+name} role="alert">{fieldErrors[name]}</small>:null;
-  const hintProps=(name:string)=>({'aria-invalid':!!fieldErrors[name]||undefined,'aria-describedby':fieldErrors[name]?fieldHintId+'-'+name:undefined});
+  // New forms use the footer for missing fields and show inline feedback for entered values.
+  const inlineErrors:Record<string,string|undefined>=draft?.revision===0?{
+    ...fieldErrors,
+    templateId:undefined,
+    period:undefined,
+    firstLesson:draft.config.firstLesson.replace('T','')?fieldErrors.firstLesson:undefined,
+    enrollmentCloses:draft.config.enrollmentCloses.replace('T','')?fieldErrors.enrollmentCloses:undefined,
+    start:(weekly.startByDay?Object.values(weekly.startByDay).some(Boolean):weekly.start)?fieldErrors.start:undefined,
+  }:fieldErrors;
+  const hint=(name:string)=>inlineErrors[name]?<small id={fieldHintId+'-'+name} role="alert">{inlineErrors[name]}</small>:null;
+  const hintProps=(name:string)=>({'aria-invalid':!!inlineErrors[name]||undefined,'aria-describedby':inlineErrors[name]?fieldHintId+'-'+name:undefined});
   const currentTemplate=draft?.state==='draft'&&catalog?.templates.find(item=>item.id===draft.config.templateId);
   const templateUpdate=currentTemplate&&currentTemplate.revision!==draft?.config.templateRevision?currentTemplate:undefined;
   const updatedCourse=templateUpdate&&catalog?.courses.find(item=>item.id===templateUpdate.courseId);
@@ -333,9 +343,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
   const validationMessages=[fieldErrors.templateId,fieldErrors.period,fieldErrors.firstLesson,fieldErrors.days,fieldErrors.start,
     fieldErrors.lessons,fieldErrors.enrollmentCloses,templateWarning,hasSourceReview&&sourceReviewMessage].filter(Boolean);
   const publishBlocked=hasFieldErrors||hasSourceReview||!!templateUpdate;
-  const saveBlocked=!draft||!!templateUpdate||!draft.config.courseId||!draft.config.period||
-    !enrollmentInstant(draft.config.firstLesson,classZone)||!enrollmentInstant(draft.config.enrollmentCloses,classZone)||!!fieldErrors.lessons||
-    (draft.state==='published'&&publishBlocked);
+  const draftSaveError=templateWarning||fieldErrors.templateId||fieldErrors.period||
+    (!enrollmentInstant(draft?.config.firstLesson,classZone)&&fieldErrors.firstLesson)||
+    (!enrollmentInstant(draft?.config.enrollmentCloses,classZone)&&fieldErrors.enrollmentCloses)||fieldErrors.lessons;
+  const saveError=draft?.state==='published'?validationMessages[0]:draftSaveError;
+  const saveBlocked=!draft||!!saveError;
   const firstSessionOnBreak=draft?.state==='draft'&&draft.config.holidayDates?.includes(draft.config.firstLesson.slice(0,10));
   const datesToConfirm=(['firstLesson','enrollmentCloses'] as const).filter(key=>
     draft?.publishedDates&&draft.config[key]!==draft.publishedDates[key]);
@@ -514,6 +526,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
       ['All teacher types','Semua jenis pengajar','全部教师类型'])}
   </>;
   const fieldDisabled=busy||!!pending;
+  const periodsHint=hintProps('lessons');
   const dateTimeField=(name:keyof typeof dateTimeLabels)=>{
     const label=withZone(t(dateTimeLabels[name]));
     const [date='',time='']=(draft?.config[name]??'').split('T');
@@ -623,8 +636,8 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
         else void save();
       }} footer={<>
           {pending ? <button type="button" className="crm-work-button" disabled={busy} onClick={() => void check().catch(() => {})}>{t(['Check save result', 'Periksa hasil simpan', '查询保存结果'])}</button>
-            : <>{saveBlocked&&validationMessages[0]&&<AdminFormFeedback state="error" lang={lang} className="crm-class-quote-feedback">
-                {validationMessages[0]}
+            : <>{saveError&&<AdminFormFeedback state="error" lang={lang} className="crm-class-quote-feedback">
+                {saveError}
               </AdminFormFeedback>}
               <button type="button" className="crm-work-button" disabled={busy} onClick={close}>{t(['Cancel', 'Batal', '取消'])}</button>
               <button type="button" className="crm-work-button" disabled={busy} onClick={()=>setPreview(true)}>
@@ -675,12 +688,11 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
           </AdminFormSection>
           <AdminFormSection variant="subgroup" title={t(['Schedule and dates','Jadwal dan tanggal','本期时间安排'])}>
             <AdminFormGrid>
-              <AdminField as="div" data-admin-full-width="">
+              <AdminField as="div">
                 <label>{t(['Teacher','Pengajar','授课教师'])}</label>
                 <AdminSingleSelect label={t(['Teacher','Pengajar','授课教师'])} value={draft.config.teacherId??''}
                   displayValue={draft.config.teacher||undefined} lang={lang} isLight={isLight} searchable
                   disabled={fieldDisabled||Boolean(draft.config.teacherId&&draft.publishedDates&&(enrollmentInstant(draft.publishedDates.firstLesson,classZone)?.getTime()??Infinity)<=Date.now())}
-                  describedBy={teacherHelpId}
                   emptyLabel={t(['Select a teacher','Pilih pengajar','选择教师'])}
                   options={(catalog?.teachers??[]).filter(item=>!draft.config.teacherType||item.category===draft.config.teacherType)
                     .map(item=>({value:item.id,label:facultyName(item.names,lang),description:facultyText(lang,facultyTeacherLabels[item.category])}))}
@@ -690,9 +702,13 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
                     setDraft(current=>current&&({...current,config:{...current.config,teacherId,teacher:facultyName(item.names,'en')}}));
                     setDirty(true);setError('');
                   }}/>
-                <small id={teacherHelpId}>{t(['Assign one teacher before publishing. All sessions inherit that teacher.',
-                  'Tetapkan satu pengajar sebelum publikasi. Semua pertemuan memakai pengajar tersebut.',
-                  '发布前选择一位教师，班次内各课次自动继承。'])}</small>
+              </AdminField>
+              <AdminField required={!!draft.config.templateId}>{periodsLabel}
+                <AdminSingleSelect label={periodsLabel} value={String(weekly.lessons||'')} options={periodsPerSessionChoices}
+                  displayValue={weekly.lessons>4?String(weekly.lessons):undefined} lang={lang} isLight={isLight}
+                  invalid={periodsHint['aria-invalid']} describedBy={periodsHint['aria-describedby']}
+                  disabled={fieldDisabled} onChange={value=>changeWeekly({lessons:Number(value)})}/>
+                {hint('lessons')}
               </AdminField>
               {draft.state==='published'
                 ?<AdminStaticField label={t(['Class time zone','Zona waktu kelas','班次时区'])} value={t(enrollmentZoneNames[classZone])}/>
@@ -734,8 +750,7 @@ export function CrmEnrollmentClasses({ lang, isLight, target, createFrom, onShow
                   type="time" required={draft.state==='published'&&!!draft.config.templateId} value={weekly.start} disabled={fieldDisabled}
                   onChange={event=>changeWeekly({start:event.target.value})}/>
               </AdminField>}
-              {(fieldErrors.start||sourceReview.start)&&<div data-admin-full-width="">{hint('start')}{sourceHint('start')}</div>}
-              <AdminField required={!!draft.config.templateId}>{t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数'])}<input aria-label={t(['Periods per session','Jam pelajaran per pertemuan','每次上课节数'])} {...hintProps('lessons')} type="number" min="1" max="24" required={!!draft.config.templateId} value={weekly.lessons||''} disabled={fieldDisabled} onChange={e=>changeWeekly({lessons:Number(e.target.value)})}/>{hint('lessons')}</AdminField>
+              {(inlineErrors.start||sourceReview.start)&&<div data-admin-full-width="">{hint('start')}{sourceHint('start')}</div>}
               <AdminStaticField fullWidth label={t(['Weekly schedule (automatic)','Jadwal mingguan (otomatis)','每周课表（自动生成）'])}
                 value={draft.config.weeklySchedule?scheduleText:draft.config.schedule}/>
               <EnrollmentHolidayDates key={draft.id} config={draft.config} previewOnly={draft.state==='published'&&draft.hasOrders!==false} disabled={fieldDisabled} lang={lang} t={t} review={sourceHint('holidayDates')}
