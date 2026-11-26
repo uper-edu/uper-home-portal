@@ -2,7 +2,7 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import Re
 test('all operation topics provide three aligned translations and field errors route to the right topic',()=>{
  const firstGroup=operationGroupOrder[0];
  assert.equal(operationGroups[firstGroup][2],'管理与工作时间');
- assert.deepEqual(enrollmentSettingSections.map(section=>section.id),['courses','enrollment-templates','enrollment-classes','enrollment-rules','enrollment-mail']);
+ assert.deepEqual(enrollmentSettingSections.map(section=>section.id),['courses','enrollment-templates','enrollment-classes','faculty','enrollment-rules','enrollment-mail']);
  assert.ok(enrollmentSettingSections.every(section=>section.title.length===3&&section.title.every(Boolean)));
  assert.ok(!operationSections.some(section=>enrollmentSettingSections.some(setting=>setting.id===String(section.id))));
  assert.equal(new Set(operationSections.map(section=>section.id)).size,operationSections.length);

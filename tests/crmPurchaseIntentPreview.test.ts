@@ -113,20 +113,25 @@ test('private lesson confirmation requires record scope and saves once on the or
       if(sql==='SELECT * FROM enrollment_opportunities WHERE id=:p1')return {rows:[{id:existingId,lead_id:customerId,level:'HSK 1',revision:1}]};
       if(sql.includes('SELECT id,profile FROM portal_leads'))return {rows:[{id:customerId,profile:{id:customerId,owner,identityLifecycle:'independent'}}]};
       if(sql.includes('LEFT JOIN enrollment_demands'))return {rows:[{kind:'demand',record_id:linked?'fixture-request':'other-request',state,criteria}]};
+      if(sql==='SELECT value FROM portal_settings WHERE id=:p1 FOR SHARE'){
+        assert.deepEqual(args,['faculty:profile:faculty-fixture']);
+        return {rows:[{value:{id:'faculty-fixture',category:'local',active:true,content:{en:{name:'Lina Zhang'}}}}]};
+      }
       if(sql.includes('UPDATE enrollment_demands')){criteria=args[0];writes++;return {rows:[]};}
       if(sql.includes('INSERT INTO crm_facts')){facts++;return {rows:[]};}
       assert.fail('Unexpected SQL: '+sql);
     }}),
   });
-  const confirmation={firstLessonAt:'2026-12-12T02:00:00.000Z',teacher:'Lina Zhang',schedule:'Saturdays'};
-  async function save(body=confirmation,origin='http://localhost:3000'){
+  const request={firstLessonAt:'2026-12-12T02:00:00.000Z',teacherId:'faculty-fixture',schedule:'Saturdays'};
+  const confirmation={...request,teacher:'Lina Zhang'};
+  async function save(body=request,origin='http://localhost:3000'){
     let result:unknown;
     const reply={set:()=>reply,json:(data:unknown)=>{result=data;}} as unknown as Response;
     await handlers.get(route)({params:{id:existingId,recordId:'fixture-request'},body,protocol:'http',headers:{origin},
       get:()=> 'localhost:3000',is:()=>true} as unknown as Request, reply);
     return result;
   }
-  await assert.rejects(save(confirmation,'https://other.example.invalid'),/origin_rejected/);
+  await assert.rejects(save(request,'https://other.example.invalid'),/origin_rejected/);
   linked=false;
   await assert.rejects(save(),/interest_not_found/);
   linked=true;
@@ -137,7 +142,7 @@ test('private lesson confirmation requires record scope and saves once on the or
   actor.scope='all';
   assert.deepEqual(await save(),{confirmation});
   assert.deepEqual(await save(),{confirmation});
-  await assert.rejects(save({...confirmation,teacher:'Another teacher'}),/enrollment_demand_conflict/);
+  await assert.rejects(save({...request,teacherId:'another-teacher'}),/enrollment_demand_conflict/);
   state='withdrawn';
   await assert.rejects(save(),/conflict|forbidden/);
   assert.equal(writes,1);
