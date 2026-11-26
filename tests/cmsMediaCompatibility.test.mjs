@@ -6,8 +6,9 @@ import {cmsMediaUrl} from '../cloud/mysql/cms-media-storage.mjs';
 async function readMedia(row,asset='a'.repeat(64)+'.webp'){
  const routes=new Map(),queries=[];
  const app={get(route,...handlers){routes.set(route,handlers);},post(){},delete(){},use(){}};
- const db={async execute(sql,args){queries.push({sql,args});if(sql.startsWith('INSERT INTO cms_collections'))return [{}];if(sql.startsWith('SELECT mime,content,cos_url FROM cms_media'))return [row?[row]:[]];throw Error('Unexpected query');}};
+ const db={async execute(sql,args){queries.push({sql,args});if(sql.startsWith('SELECT mime,content,cos_url FROM cms_media'))return [row?[row]:[]];throw Error('Unexpected query');}};
  await mountSite(app,{db,platform:{},mediaStorage:{}});
+ assert.deepEqual(queries,[],'mounting CMS routes must not seed the database');
  const response={statusCode:200,headers:{},set(headers){Object.assign(this.headers,headers);return this;},status(status){this.statusCode=status;return this;},send(body){this.body=body;return this;},json(body){this.body=body;return this;},redirect(status,url){this.statusCode=status;this.location=url;return this;}};
  await routes.get('/images/uploads/:asset')[0]({params:{asset}},response);
  return {response,queries};

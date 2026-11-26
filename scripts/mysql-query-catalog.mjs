@@ -15,6 +15,7 @@ const sources = fs
     "cloud/mysql/cms-media-upload.mjs",
     "cloud/mysql/cms-seed.mjs",
     "cloud/mysql/runtime.mjs",
+    "cloud/mysql/startup-database.mjs",
     "scripts/portal-migrate.ts",
     "scripts/crm-channel-map.ts",
   ]);

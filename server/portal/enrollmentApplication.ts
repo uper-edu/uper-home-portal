@@ -177,13 +177,24 @@ export async function enrollmentReadiness(c:Client,policy?:ReturnType<typeof enr
   return (await readEnrollmentIntake(c,policy)).readiness;
 }
 
+export function startEnrollmentMaintenance(){
+  if(!enrollmentServicePolicy().servicing)return;
+  const maintenanceMode=async()=>enrollmentServicePolicy(process.env,(await enrollmentMailDelivery()).mode);
+  startEnrollmentWeeklySimulation(enrollTx,async()=>{
+    const current=await maintenanceMode();
+    return current.simulation&&current.maintenance;
+  });
+  const maintenance=async()=>(await maintenanceMode()).maintenance;
+  startEnrollmentVacancySimulation(enrollTx,lockClass,maintenance);
+  startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass},maintenance);
+}
+
 export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor }: {
   wrap: (fn: Route) => (q: Request, r: Response) => void;
   staff: (q: Request, permission: string) => Promise<Employee>;
   visitor: (q:Request,r:Response)=>Promise<{id:string}>;
 }) {
   const policy = enrollmentServicePolicy();
-  const maintenanceMode=async()=>enrollmentServicePolicy(process.env,(await enrollmentMailDelivery()).mode);
   mountEnrollmentRules(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   mountEnrollmentBank(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
   const base = '/api/enrollment';
@@ -236,13 +247,6 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     return actor;
   };
   mountEnrollmentCardTargets(app,wrap,staff,financeActor,enrollTx);
-  startEnrollmentWeeklySimulation(enrollTx,async()=>{
-    const current=await maintenanceMode();
-    return current.simulation&&current.maintenance;
-  });
-  const maintenance=async()=>(await maintenanceMode()).maintenance;
-  startEnrollmentVacancySimulation(enrollTx,lockClass,maintenance);
-  startEnrollmentPriorityTransferSimulation({transact:moneyTx,lockOrder,lockClass},maintenance);
   mountEnrollmentResolution(app,{wrap,post,transact:moneyTx,read:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
 
   post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {

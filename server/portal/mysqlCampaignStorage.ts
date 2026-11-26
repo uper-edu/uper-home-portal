@@ -4,7 +4,7 @@ import {auditLog} from './audit.ts';
 import {attachEnrollmentEvidence} from './enrollmentEvidence.ts';
 import {campaignScheduleError} from "../../src/utils/campaignWorkspace.ts";
 import {sourceKey, readCampaignAlias} from './attribution.ts';
-import {assertEditableCampaign,canonicalCampaignId,organicCampaignRecord} from '../../src/utils/organicCampaign.ts';
+import {assertEditableCampaign,canonicalCampaignId} from '../../src/utils/organicCampaign.ts';
 import {campaignsContext} from '../../cloud/mysql/campaign-context.mjs';
 import {pool,tx} from '../portal/store.ts';
 import {platform,allowed} from '../portal/identity.ts';
@@ -202,5 +202,3 @@ export async function trackCampaignImpression(code:string){code=canonicalCampaig
 export function getEnrichedCampaigns(leads:any[]=[]){const campaigns=loadCampaigns();const resolved=leads.filter(p=>campaigns.filter(c=>matchesCampaign(p,c)).length<=1);return campaigns.map(c=>({...c,stats:{...c.stats,...campaignMetrics(resolved,c),roi:null}}));}
 export async function getCampaignByIdOrCode(input:string){const canonical=canonicalCampaignId(input);const key=(await readCampaignAlias(pool,canonical) || canonical).toLowerCase();return loadCampaigns().find(c=>[c.id,c.code,c.name,c.nameEn].some(v=>v?.toLowerCase()===key));}
 export function synthesizeCampaignAiAssets(data:any){const title=data.name;const details=[data.startDate,data.startTime,data.venue,data.city].filter(Boolean).join(' · ');const link=CAMPAIGN_LINK_PLACEHOLDER;const assets={posterHeading:title,posterSubheading:details,socialCopy:[title,details,link.toString()].join('\n'),whatsappInvitation:[title,details,link.toString()].join('\n'),chatWelcomeGreeting:title,presentationOutline:(data.keyTopics||[]).join('\n'),deskTentBullets:data.keyTopics||[]};return {...assets,idAssets:assets,enAssets:assets};}
-
-export async function ensureOrganicCampaign(){const record=organicCampaignRecord();await pool.query("INSERT INTO trial_campaigns(id,code,config) VALUES(:p1,:p1,:p2) ON DUPLICATE KEY UPDATE id=id",[record.id,record]);const existing=(await pool.query("SELECT config FROM trial_campaigns WHERE id=:p1 AND code=:p1",[record.id])).rows[0]?.config;if(!existing?.systemManaged)throw Error("Reserved organic campaign conflicts with an existing record; review without rewriting history");}

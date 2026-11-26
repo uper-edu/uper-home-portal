@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { openTrialDatabase } from "./database.mjs";
 import { bindSql, validateSql } from "./sql.mjs";
-import { migrate } from "./migrate.mjs";
+import { verifyStartupDatabase } from "./startup-database.mjs";
 const raw = await openTrialDatabase(process.env);
 export const nativePool = raw;
 const database = decodeURIComponent(new URL(process.env.MYSQL_TRIAL_URL).pathname.slice(1));
@@ -52,7 +52,7 @@ function dayKey(stamp, timezone) {
     .join("");
 }
 export async function initialize() {
-  await migrate(raw, database);
+  await verifyStartupDatabase(raw, database, process.env);
 }
 export async function connection() {
   const c = await raw.getConnection();

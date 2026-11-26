@@ -3,7 +3,7 @@ import {isAiAdministrator} from '../../src/utils/aiServicePolicy.ts';
 import {operationContext} from './operationContext.ts';
 import {mountIntegrationCredentials} from './integrationCredentialAdmin.ts';
 import {groupCredential,larkApplication} from './integrationCredentialTargets.ts';
-import {initializeEnrollmentMailDelivery,mountEnrollmentMail,startEnrollmentMail} from './enrollmentMail.ts';
+import {mountEnrollmentMail} from './enrollmentMail.ts';
 import {promotionEntryPoint,promotionEvidenceKeys} from '../../src/utils/promotionNavigation.ts';
 import {mountCourseRoutes} from './courseCatalog.ts';
 import { mountEnrollmentManagement } from './enrollmentManagement.ts';
@@ -64,7 +64,6 @@ import { mountAccessHandovers } from "./accessHandovers.ts";
 import { mountAccessRecovery } from "./accessRecovery.ts";
 import { accessRestoreGate } from "./accessRecoveryState.ts";
 import { trustedOrigin, validMutationOrigin } from "./accessTransport.ts";
-import {initializeTeamlessAccess} from "./teamlessAccess.ts";
 import {mountAiServiceConfig} from './aiServiceConfig.ts';
 import {mountGoalReviewRoute} from './goalReview.ts';
 import {mountAccessManagement} from './accessManagement.ts';
@@ -84,15 +83,15 @@ import {
   followupReply,
   type FollowupAction,
 } from "./followup.ts";
-import { initializeLocalAccounts, mountLocalAuth } from "./localAuth.ts";
+import { mountLocalAuth } from "./localAuth.ts";
 import { normalizeCrmMessage } from "../../src/utils/crmMessageTime.ts";
 import { safeHskResult } from "../../src/data/hskReportHistory.ts";
 import type { Express, Request, Response } from "express";
 import {LARK_GROUP,notificationGroupIds} from "../../src/utils/notificationGroupTargets.ts";
 import {deleteNotificationGroupChannel, lockNotificationGroupChannels, notificationGroupPolicyReferences} from "./notificationGroupChannels.ts";
 import {deleteNotificationPolicy} from "./notificationPolicyDeletion.ts";
-import {findSystemLarkGroup, isSystemLarkGroup, readSystemLarkGroupIds, systemLarkGroupName} from "./larkSystemChannels.ts";
-import {isolatedLarkRuntime,migrateLarkChannelModes,personalLarkChannel,PERSONAL_CHANNEL_SETTING} from "./larkChannelModes.ts";
+import {isSystemLarkGroup, readSystemLarkGroupIds, systemLarkGroupName} from "./larkSystemChannels.ts";
+import {isolatedLarkRuntime,personalLarkChannel,PERSONAL_CHANNEL_SETTING} from "./larkChannelModes.ts";
 import { encryptGroupWebhook, groupWebhookUsesEnvironment, publicGroupChannelConfig, usesEnvironmentGroupWebhook, usesLegacyProductionGroupWebhook, validWebhook } from "./larkGroupWebhook.ts";
 import { findLarkChannelTest, planGroupChannelTest, recordLarkChannelTest, sendGroupChannelTest, type LarkChannelTestReceipt } from "./larkGroupChannelTest.ts";
 import { larkBindings } from "./larkApp.ts";
@@ -116,8 +115,6 @@ import {
 import { platform, allowed, type Employee } from "./identity.ts";
 import {
   defaults,
-  defaultRules,
-  CRM_BOT_CHANNEL,
   isRetiredNotificationEvent,
   validate,
   sla,
@@ -316,65 +313,6 @@ async function attachLeadAttention(e: any, leads: any[], snapshot?: string) {
   }
 
 }
-async function initializeDailySummaryPolicy() {
-  await tx(async (c) => {
-    const ruleId = "daily.digest";
-    const row = (await c.query(
-      "SELECT version,config FROM notification_rules WHERE id=:p1 FOR UPDATE",
-      [ruleId],
-    )).rows[0];
-    // Only remove the migration hold. A later intentional pause must survive restart.
-    if (row?.config.event !== ruleId || !row.config.requiresRoutingReview) return;
-    const config = { ...row.config };
-    delete config.requiresRoutingReview;
-    delete config.team;
-    delete config.teams;
-    const version = Number(row.version) + 1;
-    await c.query(
-      "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3) ON DUPLICATE KEY UPDATE id=id",
-      [ruleId, row.version, row.config],
-    );
-    await c.query(
-      "UPDATE notification_rules SET config=:p2,version=:p3,enabled=true,effective_at=UTC_TIMESTAMP(6) WHERE id=:p1",
-      [ruleId, config, version],
-    );
-    await c.query(
-      "INSERT INTO rule_versions(id,version,config) VALUES(:p1,:p2,:p3)",
-      [ruleId, version, config],
-    );
-    await c.query(
-      "INSERT INTO portal_audit(actor,action,data) VALUES('system','notification.daily_summary.enabled',:p1)",
-      [{ id: ruleId, version }],
-    );
-  });
-}
-
-/** Initialize missing system records in the existing database/account order. */
-export async function initializePortalDefaults() {
-  await initialize();
-  await tx(c => migrateLarkChannelModes(c));
-  await initializeLocalAccounts();
-  const systemGroup = findSystemLarkGroup(
-    (await pool.query("SELECT id,config FROM notification_channels ORDER BY id")).rows, [],
-  );
-  for (const r of defaultRules)
-    await pool.query(
-      "INSERT INTO notification_rules(id,version,config,enabled) VALUES(:p1,1,:p2,true) ON DUPLICATE KEY UPDATE id=id",
-      [r.event, r.group === CRM_BOT_CHANNEL && systemGroup ? {...r, group: systemGroup.id} : r],
-    );
-  await initializeTeamlessAccess();
-  await initializeDailySummaryPolicy();
-  await pool.query(
-    "INSERT INTO portal_settings(id,value) VALUES('sla',:p1) ON DUPLICATE KEY UPDATE id=id",
-    [{
-      ...defaults,
-      hotHours: DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.hot.value,
-      warmHours: DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.warm.value,
-      coldHours: DEFAULT_CRM_POLICY_CONFIG.firstResponseSla.cold.value,
-    }],
-  );
-}
-
 export async function mountPortal(app: Express) {
   if (!databaseConfigured()) {
     app.use(
@@ -390,8 +328,7 @@ export async function mountPortal(app: Express) {
     );
     return;
   }
-  await initializePortalDefaults();
-  await initializeEnrollmentMailDelivery();
+  await initialize(); // Read-only preflight; never initialize or repair the database on boot.
   mountCourseRoutes(app,{wrap,staff});
   app.use(accessRestoreGate);
   mountEnrollmentCatalog(app, { wrap, staff });
@@ -400,7 +337,6 @@ export async function mountPortal(app: Express) {
   mountEnrollmentApplication(app, { wrap, staff, visitor });
   mountOperationsDashboard(app, wrap, staff);
   mountEnrollmentMail(app,{wrap,staff});
-  startEnrollmentMail();
   mountAccessOperations(app);
   mountLocalAuth(app, (req) => platform.authenticate(req));
   mountAccessHandovers(app);
