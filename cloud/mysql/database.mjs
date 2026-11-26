@@ -26,6 +26,34 @@ export function validateTrialDatabase(env, platform = process.platform) {
 
 export const mysqlConnectionLimit = 8;
 
+export async function configureMysqlUtc(connection) {
+  try {
+    await connection.query("SET time_zone='+00:00'");
+    return connection;
+  } catch (error) {
+    connection.destroy();
+    throw error;
+  }
+}
+
+export function withUtcMysqlSessions(pool) {
+  const getConnection = async () => configureMysqlUtc(await pool.getConnection());
+  const run = async (method, args) => {
+    const connection = await getConnection();
+    try {
+      return await connection[method](...args);
+    } finally {
+      connection.release();
+    }
+  };
+  return {
+    getConnection,
+    query: (...args) => run('query', args),
+    execute: (...args) => run('execute', args),
+    end: () => pool.end(),
+  };
+}
+
 export async function openTrialDatabase(env) {
   const { url, name } = validateTrialDatabase(env);
   const { default: mysql } = await import('mysql2/promise');
@@ -36,7 +64,7 @@ export async function openTrialDatabase(env) {
   if (tlsRequired && isIP(url.hostname.replace(/^\[|\]$/g,''))) throw Error('Verified MySQL TLS requires a DNS hostname, not an IP address');
   if (tlsRequired && !env.MYSQL_CA_PEM) throw Error('Remote MySQL requires a trusted CA certificate');
   if (env.PORTAL_DEPLOYMENT === 'company-trial' && env.MYSQL_TRIAL_SOCKET) throw Error('Company trial requires verified TCP TLS, not a local socket');
-  return mysql.createPool({
+  return withUtcMysqlSessions(mysql.createPool({
     host: url.hostname, port: Number(url.port || 3306), user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password), database: name,
     socketPath: env.MYSQL_TRIAL_SOCKET || undefined,
@@ -44,13 +72,12 @@ export async function openTrialDatabase(env) {
     connectionLimit: mysqlConnectionLimit, connectTimeout: 10000, timezone: 'Z',
     supportBigNumbers: true, bigNumberStrings: true, dateStrings: true,
     multipleStatements: false,
-  });
+  }));
 }
 
 export async function transaction(pool, operation) {
   const connection = await pool.getConnection();
   try {
-    await connection.query("SET time_zone = '+00:00'");
     await connection.query("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
     await connection.beginTransaction();
     const result = await operation(connection);

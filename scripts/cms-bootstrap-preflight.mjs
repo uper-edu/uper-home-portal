@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import {configureMysqlUtc} from '../cloud/mysql/database.mjs';
 import {splitSql,parseInsert,fingerprint} from './lib/mysql-dump.mjs';
 import {identityDifferences} from './lib/bootstrap-safety.mjs';
 
@@ -17,7 +18,7 @@ export async function inspectBootstrap({source,credentials,output}){
  for(const sql of statements){const m=/^INSERT INTO `([^`]+)`/i.exec(sql);if(m&&selected.includes(m[1]))accounts[m[1]].push(...parseInsert(sql).rows);}
  if(!accounts.crm_users.length||!accounts.access_roles.length||!accounts.access_state.length)throw Error('Missing identity bootstrap data');
  const bundle=JSON.parse(await fs.readFile(new URL('../cloud/mysql/seeds/cms/v2/bundle.json',import.meta.url)));
- const db=await mysql.createConnection({host:env.MYSQL_HOST,port:Number(env.MYSQL_PORT),user:env.MYSQL_USER,password:env.MYSQL_PASSWORD,database:env.MYSQL_DATABASE,dateStrings:true,supportBigNumbers:true,bigNumberStrings:true});
+ const db=await configureMysqlUtc(await mysql.createConnection({host:env.MYSQL_HOST,port:Number(env.MYSQL_PORT),user:env.MYSQL_USER,password:env.MYSQL_PASSWORD,database:env.MYSQL_DATABASE,timezone:'Z',dateStrings:true,supportBigNumbers:true,bigNumberStrings:true}));
  try{
   await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');await db.query('START TRANSACTION WITH CONSISTENT SNAPSHOT');
   const [tables]=await db.query('SHOW TABLES');

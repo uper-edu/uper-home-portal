@@ -510,7 +510,6 @@ test('the public catalog reader skips seat counts only for scoped metadata reque
   const steps:string[]=[];
   let unavailable=false;
   t.mock.method(nativePool,'getConnection',async()=>({
-    query:async(sql:string)=>{assert.equal(sql,"SET time_zone='+00:00'");steps.push('connection setup');},
     execute:async(sql:string,parameters:unknown[])=>{
       const appointment=sql.includes('template, c.value');
       steps.push(appointment?'appointment select':'class select');
@@ -524,10 +523,10 @@ test('the public catalog reader skips seat counts only for scoped metadata reque
     release:()=>steps.push('release'),
   }));
   assert.deepEqual((await handle({classId:'class-fixture'})).classes,[]);
-  assert.deepEqual(steps.splice(0),['connection setup','class select','release']);
+  assert.deepEqual(steps.splice(0),['class select','release']);
   assert.deepEqual((await handle({appointmentId:'fixture'})).appointments,[]);
-  assert.deepEqual(steps.splice(0),['connection setup','appointment select','release']);
+  assert.deepEqual(steps.splice(0),['appointment select','release']);
   unavailable=true;
   await assert.rejects(handle({classId:'class-fixture'}),/fixture read failed/);
-  assert.deepEqual(steps,['connection setup','class select','release']);
+  assert.deepEqual(steps,['class select','release']);
 });

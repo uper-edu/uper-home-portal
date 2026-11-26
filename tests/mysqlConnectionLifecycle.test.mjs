@@ -1,35 +1,58 @@
 import assert from 'node:assert/strict';
-import {registerHooks} from 'node:module';
 import {test} from 'node:test';
+import {withUtcMysqlSessions} from '../cloud/mysql/database.mjs';
 
-test('a MySQL session setup failure discards the checked-out connection', async t => {
-  const key=Symbol.for('uper.mysqlSetupFailureFixture');
+const setUtc="SET time_zone='+00:00'";
+
+test('pooled leases, queries and prepared statements all set UTC before using MySQL',async()=>{
+  const calls=[];
+  const result=[[{id:'mock-row'}],[]];
+  const connection={
+    async query(...args){calls.push(args);return result;},
+    async execute(...args){calls.push(args);return result;},
+    release(){calls.push('release');},
+  };
+  const pool=withUtcMysqlSessions({getConnection:async()=>connection,end:async()=>calls.push('end')});
+  assert.equal(await pool.query('SELECT ?', [1]),result);
+  assert.equal(await pool.execute('SELECT ?', [2]),result);
+  const lease=await pool.getConnection();
+  assert.equal(lease,connection);
+  lease.release();
+  await pool.end();
+  assert.deepEqual(calls,[
+    [setUtc],['SELECT ?',[1]],'release',
+    [setUtc],['SELECT ?',[2]],'release',
+    [setUtc],'release','end',
+  ]);
+});
+
+test('a MySQL session setup failure discards the checked-out connection',async()=>{
   const failure=new Error('setting session time zone failed');
   let discarded=0;
-  globalThis[key]={
+  const pool=withUtcMysqlSessions({
     getConnection:async()=>({
       query:async(sql)=>{
-        assert.equal(sql,"SET time_zone='+00:00'");
+        assert.equal(sql,setUtc);
         throw failure;
       },
+      execute:()=>assert.fail('Business SQL reached an uninitialized session'),
       destroy:()=>{discarded++;},
       release:()=>assert.fail('Uninitialized session returned to pool'),
     }),
-  };
-  const hook=registerHooks({
-    load(url,context,next) {
-      if(url.endsWith('/cloud/mysql/database.mjs'))return {format:'module',shortCircuit:true,
-        source:`export const openTrialDatabase=()=>globalThis[Symbol.for('uper.mysqlSetupFailureFixture')];
-          export const validateTrialDatabase=()=>{throw Error('Unexpected CLI validation');};
-          export const withLock=()=>{throw Error('Unexpected migration');};`};
-      return next(url,context);
-    },
   });
-  t.after(()=>{hook.deregister();delete globalThis[key];});
-  const previous=process.env.MYSQL_TRIAL_URL;
-  process.env.MYSQL_TRIAL_URL='mysql://fixture.invalid/fixture';
-  t.after(()=>{if(previous===undefined)delete process.env.MYSQL_TRIAL_URL;else process.env.MYSQL_TRIAL_URL=previous;});
-  const {connection}=await import('../cloud/mysql/runtime.mjs');
-  await assert.rejects(connection(),error=>error===failure);
-  assert.equal(discarded,1);
+  for(const borrow of [()=>pool.getConnection(),()=>pool.query('SELECT 1'),()=>pool.execute('SELECT 1')]){
+    await assert.rejects(borrow(),error=>error===failure);
+  }
+  assert.equal(discarded,3);
+});
+
+test('a business statement failure returns the initialized connection to the pool',async()=>{
+  const calls=[];
+  const failure=new Error('statement failed');
+  const pool=withUtcMysqlSessions({getConnection:async()=>({
+    query:async(sql)=>{calls.push(sql);if(sql!==setUtc)throw failure;},
+    release:()=>calls.push('release'),
+  })});
+  await assert.rejects(pool.query('SELECT 1'),error=>error===failure);
+  assert.deepEqual(calls,[setUtc,'SELECT 1','release']);
 });
