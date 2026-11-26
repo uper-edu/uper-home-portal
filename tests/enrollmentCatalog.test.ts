@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import { enrollmentClassTitle,enrollmentTeacherLabel,enrollmentInstant, enrollmentScheduleDefaults, enrollmentScheduleLabel, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validateEnrollmentClass } from '../src/utils/enrollmentCatalog';
-import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
+import {enrollmentScheduledMeetingStart,previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule';
 import {enrollmentTemplateClassFields} from '../src/utils/enrollmentTemplates';
 import {parseEnrollmentCourseIntroduction} from '../src/utils/enrollmentCourseIntroduction';
+import {formatCrmOperatingTime} from '../src/utils/crmOperatingTime';
 import {enrollmentDateFormatter} from '../src/utils/enrollmentDateFormat';
 import {enrollmentClassDateFilter,formatEnrollmentClassStart} from '../src/utils/crmEnrollmentManagement';
 import {enrollmentCoursePresets} from '../src/data/system-defaults/courses';
@@ -32,6 +33,32 @@ test('CRM displays and filters class starts on the WIB calendar',()=>{
   const past=enrollmentClassDateFilter('past',now);
   assert.equal(past(enrollmentInstant('2026-11-27T00:29')),true);
   assert.equal(past(enrollmentInstant('2026-11-27T00:30')),false);
+});
+
+test('WAT classes use their own calendar and the same occurrence crosses into Saturday in Asia',()=>{
+  const raw={...sample,timeZone:'Africa/Lagos',period:'weekday-evening',firstLesson:'2026-11-27T19:00',
+    enrollmentCloses:'2026-11-27T00:00',weeklySchedule:{days:[5],start:'19:00',lessons:1}};
+  const cohort={...validateEnrollmentClass(raw),weeklySchedule:raw.weeklySchedule};
+  assert.equal(validateEnrollmentClass(sample).timeZone,'Asia/Jakarta');
+  assert.throws(()=>validateEnrollmentClass({...raw,timeZone:'America/Vancouver'}),/enrollment_class_invalid/);
+  assert.throws(()=>validateEnrollmentClass({...raw,enrollmentCloses:'2026-11-27T00:01'}),/enrollment_class_invalid/);
+  assert.equal(cohort.timeZone,'Africa/Lagos');
+  assert.equal(publicEnrollmentClass({...cohort,id:'fixture',revision:1,state:'published'}).timeZone,'Africa/Lagos');
+  assert.equal(enrollmentScheduleLabel(cohort,'zh'),'每周五 19:00–19:45 WAT');
+  const schedule=previewEnrollmentClassSchedule(cohort,['2026-12-04'])!;
+  assert.deepEqual(schedule.meetings.slice(0,2).map(row=>row.date),['2026-11-27','2026-12-11']);
+  const first=enrollmentScheduledMeetingStart(cohort,schedule.meetings[0].date)!;
+  assert.equal(first.toISOString(),'2026-11-27T18:00:00.000Z');
+  assert.equal(formatEnrollmentClassStart(first,cohort.timeZone),'2026-11-27 19:00');
+  assert.equal(formatCrmOperatingTime(first.toISOString(),'Asia/Jakarta').slice(0,16),'2026-11-28 01:00');
+  assert.equal(formatCrmOperatingTime(first.toISOString(),'Asia/Shanghai').slice(0,16),'2026-11-28 02:00');
+  assert.equal(isEnrollmentInsertionWindow(cohort,Date.parse('2026-11-26T22:59:59Z')),false);
+  assert.equal(isEnrollmentInsertionWindow(cohort,Date.parse('2026-11-26T23:00:00Z')),true);
+
+  const within7=enrollmentClassDateFilter('7',Date.parse('2026-11-26T17:30:00Z'));
+  assert.equal(within7(enrollmentInstant('2026-12-02T23:59',cohort.timeZone),cohort.timeZone),true);
+  assert.equal(within7(enrollmentInstant('2026-12-03T00:00',cohort.timeZone),cohort.timeZone),false);
+  assert.equal(within7(enrollmentInstant('2026-12-03T23:59')),true);
 });
 
 test('a new class uses course and template terms without copying teaching descriptions',()=>{
@@ -123,7 +150,7 @@ test('class break preview skips a selected date in the extended schedule across 
 
 test('the first class uses WIB with an explicit cutoff and decision time', () => {
   const config = validateEnrollmentClass(sample);
-  assert.deepEqual(config, sample);
+  assert.deepEqual(config, {...sample,timeZone:'Asia/Jakarta'});
   assert.equal(enrollmentInstant(config.firstLesson)?.toISOString(), '2026-12-19T08:00:00.000Z');
   assert.equal(validateEnrollmentClass({ ...sample, enrollmentCloses: '2026-12-18T10:00' }).enrollmentCloses, '2026-12-18T10:00');
   for (const change of [

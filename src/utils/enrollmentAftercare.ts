@@ -1,3 +1,4 @@
+import {isEnrollmentClassTimeZone} from './enrollmentDateFormat';
 import type {PublicEnrollmentClass} from './enrollmentCatalog';
 
 export function enrollmentRefundEstimate({ price, received, refunded, transferred, sessions, delivered }: {
@@ -35,7 +36,7 @@ export type EnrollmentAftercare = {
 
 export function readEnrollmentAftercare(value:unknown):EnrollmentAftercare|undefined {
   const details=value as Partial<EnrollmentAftercare>|null|undefined;
-  const isCourse=(row:AftercareCourse|null|undefined)=>typeof row?.firstLesson==='string'&&
+  const isCourse=(row:AftercareCourse|null|undefined)=>typeof row?.firstLesson==='string'&&(row.timeZone===undefined||isEnrollmentClassTimeZone(row.timeZone))&&
     [row.level,row.format,row.period,row.schedule,row.teacherType].every(item=>item==null||typeof item==='string');
   if(typeof details?.originalClassState!=='string'||!isCourse(details.currentClass)||
     typeof details.refund?.mode!=='string'||!Array.isArray(details.transfers)||

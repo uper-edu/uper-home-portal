@@ -1,12 +1,13 @@
+import type {EnrollmentClassTimeZone} from '../utils/enrollmentDateFormat';
 import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import {enrollmentInstant} from '../utils/enrollmentCatalog';
 import {interestText, type InterestLanguage} from '../utils/enrollmentInterestCopy';
 import {enrollmentSupportPath} from '../utils/enrollmentSupportNavigation';
 
-export function EnrollmentJoiningNote({firstLesson,now,language}:{
-  firstLesson?:string;now:number;language:InterestLanguage;
+export function EnrollmentJoiningNote({firstLesson,timeZone,now,language}:{
+  firstLesson?:string;timeZone?:EnrollmentClassTimeZone;now:number;language:InterestLanguage;
 }) {
-  const lessonTime=enrollmentInstant(firstLesson);
+  const lessonTime=enrollmentInstant(firstLesson,timeZone);
   if(!lessonTime||now<lessonTime.valueOf())return null;
   return <p>{interestText(language,[
     '已到原定首课时间。','The scheduled first lesson time has arrived.','Waktu sesi pertama yang dijadwalkan sudah tiba.',

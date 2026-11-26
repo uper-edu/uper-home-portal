@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Clock3, Copy, Landmark, Upload } from 'lucide-react';
 import { enrollmentInstant, enrollmentTeacherLabel, enrollmentClassTitle, enrollmentScheduleLabel, type PublicEnrollmentClass } from '../utils/enrollmentCatalog';
 import { formatCurrency } from '../utils/currency';
-import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
+import {enrollmentDateFormatter,enrollmentTimeZoneLabel,type EnrollmentClassTimeZone} from '../utils/enrollmentDateFormat';
 import type {AftercareCourse} from '../utils/enrollmentAftercare';
 import {nextPaymentClockDelay,paymentMinuteMs} from '../utils/enrollmentPaymentClock';
 import {EnrollmentJoiningNote} from './EnrollmentJoiningNote';
@@ -25,6 +25,7 @@ export type EnrollmentOrder = {
   creditIn?: number;
   creditOut?: number;
   deadline: string;
+  timeZone?: EnrollmentClassTimeZone;
   bank?: EnrollmentBank;
   bankDetailsInvalid?: boolean;
   serverClockOffsetMs?: number;
@@ -68,7 +69,8 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   const bank = deadlinePassed || existingTransferOnly ? undefined : order.bank;
   const hasBalance = !!bank && (awaitingPayment || showTopUp || order.status === 'partial'&&!order.payment);
   const cohort=classInfo?{...course,...classInfo}:course;
-  const classStart=enrollmentInstant(cohort?.firstLesson);
+  const timeZone=cohort?.timeZone??order.timeZone;
+  const classStart=enrollmentInstant(cohort?.firstLesson,timeZone);
   const cutoff=hasDeadline?deadline.valueOf():NaN;
   const firstLesson=hasBalance?classStart?.valueOf()??NaN:NaN;
   useEffect(() => {
@@ -100,7 +102,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
     return () => window.clearTimeout(id);
   }, [copied, copyFailed]);
 
-  const dayFormat = enrollmentDateFormatter(language,'shortDay');
+  const dayFormat = enrollmentDateFormatter(language,'shortDay',timeZone);
   const minutes = Math.max(0, Math.ceil((deadline.valueOf() - serverNow) / paymentMinuteMs));
   const hours = Math.floor(minutes / 60);
   const shortMinutes = minutes % 60;
@@ -163,13 +165,13 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       </div>}
       {schedule&&<p>{schedule}</p>}
       {order.learnerName&&<p>{t('学员姓名','Learner name','Nama siswa')} · {order.learnerName}</p>}
-      {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} now={serverNow} language={language}/>}
+      {hasBalance && <EnrollmentJoiningNote firstLesson={cohort?.firstLesson} timeZone={timeZone} now={serverNow} language={language}/>}
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}
       {!!order.creditIn&&<p>{t('旧订单已冲抵','Credit applied from an earlier order','Dana pesanan sebelumnya yang digunakan')} · {formatCurrency(order.creditIn,language)}</p>}
     </div>
     {order.status === 'awaiting_payment' && Number.isFinite(deadline.valueOf()) && <div className="enrollment-payment-deadline">
       <span><Clock3 size={16} aria-hidden="true"/>{minutes ? timeLeft : t('付款时间已到', 'Payment deadline reached', 'Batas pembayaran tercapai')}</span>
-      <time dateTime={deadline.toISOString()}>{dayFormat.format(deadline)} {enrollmentDateFormatter(language,'time').format(deadline)} WIB <span>{t('截止', 'deadline', 'batas')}</span></time>
+      <time dateTime={deadline.toISOString()}>{dayFormat.format(deadline)} {enrollmentDateFormatter(language,'time',timeZone).format(deadline)} {enrollmentTimeZoneLabel(timeZone)} <span>{t('截止', 'deadline', 'batas')}</span></time>
     </div>}
     {hasBalance ? <>
       <div className="enrollment-payment-amount">
@@ -232,7 +234,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
               <option value="">{t('请选择','Select a transfer','Pilih transfer')}</option>
               <option value="new">{t('新一笔已完成的转账','A new transfer already made','Transfer baru yang sudah dilakukan')}</option>
               {previousTransfers.map(row=><option key={row.id} value={row.id}>
-                {t('补充原凭证','Add to an earlier transfer','Tambahkan bukti transfer sebelumnya')} · {enrollmentDateFormatter(language,'dateTime').format(new Date(row.submittedAt))} WIB{row.amount!==undefined?' · '+formatCurrency(row.amount,language):''}
+                {t('补充原凭证','Add to an earlier transfer','Tambahkan bukti transfer sebelumnya')} · {enrollmentDateFormatter(language,'dateTime',timeZone).format(new Date(row.submittedAt))} {enrollmentTimeZoneLabel(timeZone)}{row.amount!==undefined?' · '+formatCurrency(row.amount,language):''}
               </option>)}
             </select>
           </label>}

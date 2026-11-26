@@ -1,3 +1,4 @@
+import {enrollmentDateFormatter,enrollmentTimeZoneLabel} from '../../src/utils/enrollmentDateFormat.ts';
 import {enrollmentReadinessMessage} from '../../src/utils/enrollmentReadinessCopy.ts';
 import { readPublicEnrollmentAppointments, readPublicEnrollmentClasses } from './enrollmentCatalog.ts';
 import { enrollmentReadiness } from './enrollmentApplication.ts';
@@ -202,8 +203,7 @@ export async function chatEnrollmentAction(
       const matched=classes.filter(row=>levels.some(requested=>enrollmentLevelMatches(requested,row.level))&&
         (!format||row.format===format)&&(!period||row.period===period)&&
         (!intent.batchNumber||row.batchNumber===intent.batchNumber)&&
-        (!intent.earliestDate||row.firstLesson.slice(0,10)>=intent.earliestDate)&&
-        (!intent.latestDate||row.firstLesson.slice(0,10)<=intent.latestDate));
+        enrollmentFirstDateMatches(intent,row));
       const specific=intent.batchNumber||intent.earliestDate||intent.latestDate||
         intent.detailFields.some(field=>['class_size','teacher','outcomes','seats'].includes(field));
       const comparison=kind==='specifications'&&!intent.referenceIds.length&&levels.length>1
@@ -446,15 +446,14 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
       if(rows.length===1&&!action.inspection&&!question&&!action.detailFields?.length&&!maximum&&
         !action.intakePaused&&!action.firstDateConflict&&!action.referenceUnavailable&&!action.missingClassLevels?.length&&!conflict&&
         !action.linkOnlyClassIds?.includes(first.id)&&first.price>0&&hasRoom){
-        const starts=enrollmentInstant(first.firstLesson);
+        const starts=enrollmentInstant(first.firstLesson,first.timeZone);
         if(starts){
-          const date=new Intl.DateTimeFormat({zh:'zh-CN',en:'en-GB',id:'id-ID'}[lang],{
-            month:'long',day:'numeric',timeZone:'Asia/Jakarta',
-          }).format(starts);
+          const date=enrollmentDateFormatter(lang,'day',first.timeZone).format(starts);
+          const clock=first.firstLesson.slice(11)+' '+enrollmentTimeZoneLabel(first.timeZone);
           const title=enrollmentClassTitle(first,lang);
-          return t(`建议先看 ${title}。首课是 ${date} ${first.firstLesson.slice(11)} WIB。`,
-            `I’d suggest ${title}. The first session is ${date} at ${first.firstLesson.slice(11)} WIB.`,
-            `Saya sarankan ${title}. Kelas pertama pada ${date}, pukul ${first.firstLesson.slice(11)} WIB.`);
+          return t(`建议先看 ${title}。首课是 ${date} ${clock}。`,
+            `I’d suggest ${title}. The first session is ${date} at ${clock}.`,
+            `Saya sarankan ${title}. Kelas pertama pada ${date}, pukul ${clock}.`);
         }
       }
       const sameClassType=first&&rows.every(row=>row.level===first.level&&row.format===first.format&&row.period===first.period);
@@ -493,7 +492,7 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
           `${row.price%periods===0?'':'about '}${amount(Math.round(row.price/periods))}/period`,
           `${row.price%periods===0?'':'sekitar '}${amount(Math.round(row.price/periods))}/jam pelajaran`):'';
         const standard=row.standardPrice&&row.standardPrice>row.price?t(`标准总价 ${amount(row.standardPrice)}`,`standard total ${amount(row.standardPrice)}`,`total harga normal ${amount(row.standardPrice)}`):'';
-        const weekly=enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,lang);
+        const weekly=enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,lang,row.timeZone);
         const plan=row.weeklySchedule;
         const sessionLength=weekly&&plan&&plan.lessons>1?t(`每次 ${plan.lessons} 节，共 ${plan.lessons*row.minutes} 分钟`,
           `${plan.lessons} periods (${plan.lessons*row.minutes} min) per session`,`${plan.lessons} jam pelajaran (${plan.lessons*row.minutes} menit) per sesi`):'';
@@ -501,7 +500,7 @@ export function enrollmentReply(action:EnrollmentGuideAction,lang:EnrollmentGuid
         const details={
           duration:[quantity,sessionLength],price:row.price>0?[t(`实付总价 ${amount(row.price)}`,`current total ${amount(row.price)}`,`total biaya saat ini ${amount(row.price)}`),
             ...(priceBreakdown?[standard,unit]:[])]:[],
-          first:[`${t('首课','First class','Kelas pertama')} ${row.firstLesson.replace('T',' ')} WIB`],
+          first:[`${t('首课','First class','Kelas pertama')} ${row.firstLesson.replace('T',' ')} ${enrollmentTimeZoneLabel(row.timeZone)}`],
           weekly:[weekly||t('详细周课表暂无法核实','weekly schedule not currently verified','jadwal mingguan belum dapat diverifikasi'),
             ...(requested?.includes('duration')?[]:[sessionLength])],seats:[availability],
           materials:[material||t('教材待确认','Textbook to be confirmed','Buku perlu dikonfirmasi')],teacher:[teacher,row.teacher?.trim()?t(`授课教师 ${row.teacher.trim()}`,`Teacher: ${row.teacher.trim()}`,`Pengajar: ${row.teacher.trim()}`):

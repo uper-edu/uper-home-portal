@@ -1,3 +1,5 @@
+import {enrollmentClassZoneOffsets,enrollmentTimeZone,enrollmentTimeZoneLabel} from './enrollmentDateFormat';
+import {formatCrmOperatingTime} from './crmOperatingTime';
 import {enrollmentFormats,enrollmentInstant,enrollmentLevels,enrollmentPeriods,enrollmentSessionStart,enrollmentWeekdays,enrollmentWeeklyScheduleText,type PublicEnrollmentClass} from './enrollmentCatalog';
 import {promotionJourneyUrl} from './promotionNavigation';
 
@@ -13,7 +15,7 @@ const periods:readonly string[]=enrollmentPeriods;
 const formats:readonly string[]=enrollmentFormats;
 const quoteFormats=[...formats,'one-on-one'];
 type EnrollmentGuideClass=Pick<PublicEnrollmentClass,'id'|'level'|'courseName'|'batchNumber'|'period'|'format'|
-  'firstLesson'|'weeklySchedule'|'schedule'|'minutes'|'price'|'availability'> &
+  'firstLesson'|'timeZone'|'weeklySchedule'|'schedule'|'minutes'|'price'|'availability'> &
   Partial<Pick<PublicEnrollmentClass,'sessions'|'teacherType'|'standardPrice'|'opened'|'material'|'learningOutcomes'|'teacher'|'classSize'>>;
 
 export type EnrollmentGuideAction={
@@ -66,14 +68,14 @@ export function sharedEnrollmentComparison(action:EnrollmentGuideAction){
   const [first,second]=rows;
   const plan=first.weeklySchedule;
   const periods=first.sessions;
-  const schedule=enrollmentWeeklyScheduleText(plan,first.minutes,'en');
+  const schedule=enrollmentWeeklyScheduleText(plan,first.minutes,'en',first.timeZone);
   if(!plan||!schedule||!periods||!(first.price>0)||first.id===second.id||
     first.level!==second.level||first.format!==second.format||first.period!==second.period||
     first.minutes!==second.minutes||periods!==second.sessions||plan.lessons!==second.weeklySchedule?.lessons||
     first.price!==second.price||first.standardPrice!==second.standardPrice||
-    !rows.every(row=>Number.isSafeInteger(row.batchNumber)&&Number(row.batchNumber)>0&&enrollmentInstant(row.firstLesson))||
+    !rows.every(row=>Number.isSafeInteger(row.batchNumber)&&Number(row.batchNumber)>0&&enrollmentInstant(row.firstLesson,row.timeZone))||
     first.batchNumber===second.batchNumber||first.firstLesson.slice(0,10)===second.firstLesson.slice(0,10)||
-    schedule!==enrollmentWeeklyScheduleText(second.weeklySchedule,second.minutes,'en'))return;
+    schedule!==enrollmentWeeklyScheduleText(second.weeklySchedule,second.minutes,'en',second.timeZone))return;
   return {rows:[first,second] as const,plan,periods};
 }
 export const enrollmentAppointmentRequested=(action:EnrollmentGuideAction)=>action.kind==='appointment'||
@@ -233,8 +235,8 @@ export function enrollmentLevelMatches(requested:string,actual:string){
 
 export function enrollmentGuideRows(entries:PublicEnrollmentClass[],limit=2):EnrollmentGuideClass[]{
   return entries.slice(0,limit).map(({
-    id,level,courseName,batchNumber,period,format,firstLesson,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes,teacher,classSize,
-  })=>({id,level,courseName,batchNumber,period,format,firstLesson,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes,teacher,classSize}));
+    id,level,courseName,batchNumber,period,format,firstLesson,timeZone,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes,teacher,classSize,
+  })=>({id,level,courseName,batchNumber,period,format,firstLesson,timeZone,weeklySchedule,schedule,sessions,minutes,price,availability,teacherType,standardPrice,opened,material,learningOutcomes,teacher,classSize}));
 }
 
 export function enrollmentClassComparison(levels:readonly string[],entries:PublicEnrollmentClass[]){
@@ -252,7 +254,7 @@ export function repeatedEnrollmentCards(action:EnrollmentGuideAction,history:Enr
   return action.rows?.filter(row=>{
     const previous=history.find(item=>item.rows?.some(candidate=>candidate.id===row.id))?.rows?.find(candidate=>candidate.id===row.id);
     return previous&&previous.availability===row.availability&&previous.opened===row.opened&&
-      previous.price===row.price&&previous.firstLesson===row.firstLesson;
+      previous.price===row.price&&previous.firstLesson===row.firstLesson&&enrollmentTimeZoneLabel(previous.timeZone)===enrollmentTimeZoneLabel(row.timeZone);
   }).map(row=>row.id)??[];
 }
 
@@ -260,9 +262,13 @@ export function enrollmentScheduleConflict(intent:EnrollmentIntent,row:PublicEnr
   const {days,earliest,latest,latestEnd,windows}=intent;
   const plan=row.weeklySchedule;
   if(!plan||intent.needsReview)return undefined;
-  return plan.days.map(day=>{
-    const start=enrollmentSessionStart(plan,day);
-    if(!validClock(start))return undefined;
+  const offsetHours=enrollmentClassZoneOffsets[enrollmentTimeZone]-enrollmentClassZoneOffsets[row.timeZone??enrollmentTimeZone];
+  return plan.days.map(classDay=>{
+    const localStart=enrollmentSessionStart(plan,classDay);
+    if(!validClock(localStart))return undefined;
+    const shiftedMinutes=minuteOfDay(localStart)+offsetHours*60;
+    const day=(classDay-1+Math.floor(shiftedMinutes/1440))%7+1;
+    const start=endOfSession('00:00',shiftedMinutes%1440);
     const end=endOfSession(start,row.minutes*plan.lessons);
     const window=windows?.find(entry=>entry.day===day);
     const fits=(!days||days.includes(day))&&(!windows||!!window)&&
@@ -382,7 +388,10 @@ export function enrollmentClassMatchesTiming(intent:EnrollmentIntent,row:PublicE
 }
 
 export function enrollmentFirstDateMatches({earliestDate,latestDate}:EnrollmentIntent,row:PublicEnrollmentClass){
-  const date=row.firstLesson.slice(0,10);
+  if(!earliestDate&&!latestDate)return true;
+  const instant=enrollmentInstant(row.firstLesson,row.timeZone);
+  if(!instant)return false;
+  const date=formatCrmOperatingTime(instant.toISOString(),enrollmentTimeZone).slice(0,10);
   return (!earliestDate||date>=earliestDate)&&(!latestDate||date<=latestDate);
 }
 
@@ -411,7 +420,8 @@ export function matchEnrollmentGuidance(intent:EnrollmentIntent,classes:PublicEn
     row.weeklySchedule.days.every(day=>validClock(enrollmentSessionStart(row.weeklySchedule!,day))));
   const conflictFor=(row:PublicEnrollmentClass)=>enrollmentScheduleConflict(intent,row);
   const matching=verifiable.filter(row=>enrollmentClassMatchesTiming(intent,row))
-    .sort((a,b)=>a.firstLesson.localeCompare(b.firstLesson)||a.id.localeCompare(b.id));
+    .sort((a,b)=>(enrollmentInstant(a.firstLesson,a.timeZone)?.getTime()??Infinity)-
+      (enrollmentInstant(b.firstLesson,b.timeZone)?.getTime()??Infinity)||a.id.localeCompare(b.id));
   const requested=intent.referenceIds.flatMap(id=>matching.filter(row=>row.id===id));
   const options=intent.referenceIds.length?requested:matching;
   const available=options.filter(row=>row.availability!=='full');

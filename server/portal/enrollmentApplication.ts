@@ -1,3 +1,4 @@
+import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
 import {measureEnrollmentPhase} from '../requestTracing.ts';
 import {enrollmentSessionCookie,enrollmentVisitorDigest,inspectEnrollmentEmailSession,readEnrollmentEmailSession,readEnrollmentSessionDigest,revokeEnrollmentEmailSession} from './enrollmentVisitorSession.ts';
 import {dispatchEnrollmentMail,enrollmentMailDelivery,enrollmentMailDeliveryState,enrollmentMailbox,enrollmentMailReadiness} from './enrollmentMail.ts';
@@ -86,7 +87,7 @@ function activeAssistanceEmail(offer?:{email:string;active:number}) {
 async function lockClass(c: Client, classId: string) {
   const row = (await c.query(
     `SELECT id,course_id,state,data,revision,
-      LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,
+      LEAST(enrollment_closes_at, ${classOpeningMidnight()})>UTC_TIMESTAMP(6) AS accepting,
       COALESCE((SELECT JSON_EXTRACT(value,'$.active')=true FROM crm_courses WHERE id=enrollment_classes.course_id),0) AS course_active
       FROM enrollment_classes WHERE id=:p1 FOR UPDATE`,
     [classId])).rows[0];
@@ -106,18 +107,18 @@ async function lockOrder(c: Client, id: string, email?: string) {
   return { order, cohort };
 }
 
-function view(row: any, classState: string) {
+function view(row: any, classState: string, timeZone=row.class_time_zone??row.class_data?.timeZone) {
   const status = enrollmentOrderStatus(row.state,classState);
   return { id: row.id, classId: row.class_id, status: status === 'recovered' ? 'expired' : status,
-    restored: status === 'recovered', learnerName: row.data?.name, price: row.price,
+    timeZone, restored: status === 'recovered', learnerName: row.data?.name, price: row.price,
     received: Number(row.received), closureReason:enrollmentClosureReason(row.state,row.data?.closureReason), deadline: row.payment_due_at.replace(' ', 'T') + 'Z',
     ...(row.data?.creditIn?{creditIn:Number(row.data.creditIn)}:{}),...(row.data?.creditOut?{creditOut:Number(row.data.creditOut)}:{}) };
 }
 
-async function learnerPaymentView(c:Client,order:any,classState:string) {
+async function learnerPaymentView(c:Client,order:any,classState:string,timeZone?:string) {
   const rows=await readEnrollmentLearnerPaymentRows(c,[order.id]);
   const {payment,transfers}=enrollmentLearnerPayment(order,classState,withEnrollmentReceiptProofLinks(rows.get(order.id),order.data?.learnerReceiptProofLinks));
-  return {...view(order,classState),payment,transfers,
+  return {...view(order,classState,timeZone),payment,transfers,
     bank:payment.action==='transfer'||payment.action==='top_up'?order.data.bank:undefined};
 }
 
@@ -273,21 +274,21 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       const confirmed=(await c.query('SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1',[cohort.id])).rows[0];
       const transfers=canSelectTransfer(order,cohort)?(await c.query(`
         SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
-        WHERE e.id<>:p1 AND e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+        WHERE e.id<>:p1 AND e.state='published' AND LEAST(e.enrollment_closes_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)
           AND JSON_EXTRACT(c.value,'$.active')=true AND e.data->>'$.level'=:p2 AND e.data->>'$.format'=:p3
           AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
             AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
           WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))
             < CAST(e.data->>'$.capacity' AS UNSIGNED)
         ORDER BY e.first_lesson_at,e.id`,[cohort.id,cohort.data.level,cohort.data.format])).rows.map(row=>({
-          id:row.id,level:row.data.level,format:row.data.format,period:row.data.period,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
+          id:row.id,level:row.data.level,format:row.data.format,period:row.data.period,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,timeZone:row.data.timeZone,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
           weeklySchedule:row.data.weeklySchedule,minutes:row.data.minutes,sessions:row.data.sessions,
         })):[];
       const status=await enrollmentAftercareStatus(c,order.id);
       const lateProofSubmitted=(order.state==='expired'||enrollmentClosureReason(order.state,order.data?.closureReason)==='learner_cancelled')&&verified===0&&!order.data?.creditOut&&
         (await c.query('SELECT 1 FROM enrollment_proofs WHERE order_id=:p1 LIMIT 1',[order.id])).rows.length>0;
       return { originalClassState:cohort.state, currentClass:{
-        level:cohort.data.level,format:cohort.data.format,period:cohort.data.period,batchNumber:cohort.data.batchNumber,teacherType:cohort.data.teacherType,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
+        level:cohort.data.level,format:cohort.data.format,period:cohort.data.period,batchNumber:cohort.data.batchNumber,teacherType:cohort.data.teacherType,timeZone:cohort.data.timeZone,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
         weeklySchedule:cohort.data.weeklySchedule,minutes:cohort.data.minutes,sessions:cohort.data.sessions,
         opened:!!confirmed,
       }, lateProofSubmitted, priorityRequested:typeof order.data?.priority==='boolean' ? order.data.priority : undefined,
@@ -423,7 +424,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     if(!actor&&await applyEnrollmentPaymentCredits(c,{order:reserved,cohort},lockOrder))
       reserved=(await c.query(reservedOrderSql,[id])).rows[0];
     if(Number(reserved.received)<price)await orderNotice(c,'seat_reserved',id,undefined,{price:price-Number(reserved.received)});
-    return view(reserved,cohort.state);
+    return view(reserved,cohort.state,cohort.data.timeZone);
   }
 
   const assistanceToken=(token:unknown)=>{
@@ -459,14 +460,14 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
           invalid('enrollment_class_unavailable',409);
         await expireSeats(c,classId);
         if(await takenSeats(c,classId)>=cohort.data.capacity)invalid('enrollment_class_full',409);
-        const id=randomUUID(),{firstLesson,schedule,weeklySchedule,minutes,price,period,format}=cohort.data;
+        const id=randomUUID(),{timeZone,firstLesson,schedule,weeklySchedule,minutes,price,period,format}=cohort.data;
         const digest=token===undefined?sha(id):assistanceToken(token);
         await c.query(`UPDATE enrollment_assisted_applications SET expires_at=UTC_TIMESTAMP(6)
           WHERE opportunity_id=:p1 AND order_id IS NULL AND expires_at>UTC_TIMESTAMP(6)`,[opportunityId]);
         await c.query(`INSERT INTO enrollment_assisted_applications(id,token_digest,opportunity_id,customer_id,class_id,class_revision,
           actor,email,data,expires_at,created_at) VALUES(:p1,:p2,:p3,:p4,:p5,:p6,:p7,:p8,:p9,UTC_TIMESTAMP(6)+INTERVAL 24 HOUR,UTC_TIMESTAMP(6))`,
           [id,digest,opportunityId,customer.id,classId,cohort.revision,actor.id,email,
-            {name,phone,quote:{level,firstLesson,schedule,weeklySchedule,minutes,price,period,format},termsVersion:1,lang:['zh','en','id'].includes(lang)?lang:'en'}]);
+            {name,phone,quote:{level,timeZone,firstLesson,schedule,weeklySchedule,minutes,price,period,format},termsVersion:1,lang:['zh','en','id'].includes(lang)?lang:'en'}]);
         const expiry=(await c.query("SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expiresAt FROM enrollment_assisted_applications WHERE id=:p1",[id])).rows[0];
         return {id,expiresAt:expiry.expiresAt,lang:['zh','en','id'].includes(lang)?lang:'en'};
       });
@@ -512,7 +513,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       if(!saved||saved.email!==email)invalid('enrollment_assistance_unavailable',404);
       if(saved.order_id){
         const {order,cohort}=await lockOrder(c,saved.order_id,email);
-        return view(order,cohort.state);
+        return view(order,cohort.state,cohort.data.timeZone);
       }
       if(!Number(saved.active))invalid('enrollment_assistance_unavailable',404);
       const cohort=await lockClass(c,saved.class_id);
@@ -539,7 +540,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     if(!uuid.test(requestId))invalid('enrollment_invalid_application');
     const result=await enrollTx(async(c:Client)=>{
       const email=await session(c,q);
-      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state FROM enrollment_orders o
+      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state, b.data->>'$.timeZone' AS class_time_zone FROM enrollment_orders o
         JOIN enrollment_classes b ON b.id=o.class_id WHERE o.email=:p1 AND o.request_id=:p2`,[email,requestId]);
       return row?{state:'saved',order:view(row,row.class_state)}:{state:'unconfirmed'};
     });
@@ -562,13 +563,14 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       const existing = (await c.query('SELECT * FROM enrollment_orders WHERE email=:p1 AND request_id=:p2', [email, requestId])).rows[0];
       if (existing) {
         if (existing.fingerprint !== fingerprint) invalid('enrollment_request_conflict', 409);
-        return view(existing,existing.class_id===classId ? cohort.state :
-          (await c.query('SELECT state FROM enrollment_classes WHERE id=:p1',[existing.class_id])).rows[0]?.state);
+        const registeredClass=existing.class_id===classId?cohort:
+          (await c.query('SELECT state,data FROM enrollment_classes WHERE id=:p1',[existing.class_id])).rows[0];
+        return view(existing,registeredClass?.state,registeredClass?.data?.timeZone);
       }
       const active = (await c.query("SELECT value FROM crm_courses WHERE id=:p1 FOR SHARE", [cohort.course_id])).rows[0]?.value.active;
       if (!allowsEnrollment(cohort) || active !== true) invalid('enrollment_class_unavailable', 409);
       const existingSeat = await activeLearnerOrder(c,classId,email,name);
-      if (existingSeat) return view(existingSeat,cohort.state);
+      if (existingSeat) return view(existingSeat,cohort.state,cohort.data.timeZone);
       const seats = await takenSeats(c,classId);
       if (Number(seats) >= cohort.data.capacity) invalid('enrollment_class_full', 409);
       return reserveSeat(c,cohort,seats,{email,name:name.trim(),phone,requestId,fingerprint,price:cohort.data.price,priority,source:q.body.source});
@@ -608,7 +610,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
           AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,
         o.data,e.state AS class_state,e.data AS class_data,
-        i.id AS invitation_id,DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS invitation_deadline,
+        i.id AS invitation_id,i.time_zone AS invitation_time_zone,DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS invitation_deadline,
         o.payment_due_at>=UTC_TIMESTAMP(6) AS before_due,
         (e.state='published' AND (o.state='partial' OR
           (o.state IN ('awaiting_payment','proof_review') AND o.payment_due_at>=UTC_TIMESTAMP(6)))) AS needs_payment,
@@ -618,10 +620,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
         LEFT JOIN LATERAL (SELECT MAX(recorded_at) AS latest FROM enrollment_notification_receipts
           WHERE subject_id=o.id AND channel='email') n ON TRUE
-        LEFT JOIN LATERAL (SELECT offer.id,offer.created_at,offer.expires_at FROM enrollment_transfer_invitations offer
+        LEFT JOIN LATERAL (SELECT offer.id,offer.created_at,offer.expires_at,target.data->>'$.timeZone' AS time_zone FROM enrollment_transfer_invitations offer
           JOIN enrollment_classes target ON target.id=offer.target_class_id AND target.state='published'
           WHERE offer.order_id=o.id AND offer.source_class_id=o.class_id AND offer.state='offered'
-            AND LEAST(offer.expires_at, DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+            AND LEAST(offer.expires_at, ${classOpeningMidnight('target.')})>UTC_TIMESTAMP(6)
             AND e.state='cancelled' AND o.state IN ('paid','recovered')
           ORDER BY offer.created_at DESC,offer.id LIMIT 1) i ON TRUE
         WHERE o.email=:p1 ORDER BY (i.id IS NOT NULL OR needs_payment) DESC,updated_at_iso DESC,o.id DESC LIMIT 100`, [email]);
@@ -635,7 +637,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
         return { ...view(row,row.class_state), level: row.class_data.level, firstLesson: row.class_data.firstLesson,
           classCancelled:row.class_state==='cancelled',updatedAt:row.updated_at_iso,payment,
           needsPayment:['transfer','top_up','support'].includes(payment.action),
-          invitation:row.invitation_id?{id:row.invitation_id,deadline:row.invitation_deadline}:undefined };
+          invitation:row.invitation_id?{id:row.invitation_id,deadline:row.invitation_deadline,timeZone:row.invitation_time_zone??undefined}:undefined };
       });
       return {orders,applications,verifiedEmail:email};
     });
@@ -647,7 +649,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const result = await enrollTx(async (c: Client) => {
       const verifiedEmail = await session(c,q);
       const { order,cohort } = await lockOrder(c, String(q.params.id), verifiedEmail);
-      return { ...await learnerPaymentView(c,order,cohort.state), verifiedEmail, phoneDisplay:enrollmentPhoneDisplay(order.data?.phone) };
+      return { ...await learnerPaymentView(c,order,cohort.state,cohort.data.timeZone), verifiedEmail, phoneDisplay:enrollmentPhoneDisplay(order.data?.phone) };
     });
     r.set('Cache-Control', 'no-store').json(result);
   }));
@@ -658,7 +660,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     if(!uuid.test(String(id))||!uuid.test(String(uploadId)))invalid('enrollment_invalid_proof');
     const result=await enrollTx(async(c:Client)=>{
       const email=await session(c,q);
-      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state, p.id AS saved_proof,
+      const {rows:[row]}=await c.query(`SELECT o.*, b.state AS class_state, b.data->>'$.timeZone' AS class_time_zone, p.id AS saved_proof,
         o.payment_due_at>=UTC_TIMESTAMP(6) AS before_due,
         (o.upload_id=:p3 AND o.upload_expires_at>=UTC_TIMESTAMP(6)) AS upload_active
         FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id
@@ -680,7 +682,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       // A delayed finish may have committed while this retry waited for the
       // same order lock. Return its result before opening another upload.
       if(previousUploadId&&(await c.query('SELECT id FROM enrollment_proofs WHERE id=:p1 AND order_id=:p2',
-        [previousUploadId,order.id])).rows.length)return {state:'saved',order:await learnerPaymentView(c,order,cohort.state)};
+        [previousUploadId,order.id])).rows.length)return {state:'saved',order:await learnerPaymentView(c,order,cohort.state,cohort.data.timeZone)};
       if (!allowsEnrollmentProof(order.state,order.data?.closureReason)) invalid('enrollment_proof_not_available', 409);
       if (Number(order.upload_active)) {
         if (previousUploadId && previousUploadId===order.upload_id &&
@@ -706,7 +708,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     const result = await measureEnrollmentPhase(r,'transaction',()=>enrollTx(async (c: Client) => {
       const { order,cohort } = await lockOrder(c, String(q.params.id), await session(c, q));
       const prior = (await c.query('SELECT order_id FROM enrollment_proofs WHERE id=:p1', [uploadId])).rows[0];
-      if (prior?.order_id === order.id) return learnerPaymentView(c,order,cohort.state);
+      if (prior?.order_id === order.id) return learnerPaymentView(c,order,cohort.state,cohort.data.timeZone);
       if (order.upload_id !== uploadId || !Number(order.upload_active) || !allowsEnrollmentProof(order.state,order.data?.closureReason)) {
         invalid('enrollment_upload_expired', 409);
       }
@@ -743,7 +745,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       }
       await c.query('UPDATE enrollment_orders SET state=:p1,activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL WHERE id=:p2', [state,order.id]);
       await proofNotices(c,order.id,cohort.id,proof.digest,cohort.data.level);
-      return learnerPaymentView(c,{...order,state},cohort.state);
+      return learnerPaymentView(c,{...order,state},cohort.state,cohort.data.timeZone);
     }));
     if (!result) invalid('enrollment_invalid_proof');
     r.json(result);
@@ -912,7 +914,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       const receiptData={...order.data,learnerReceiptProofLinks:{...order.data?.learnerReceiptProofLinks,[ref]:receiptProofId}};
       if(linking){
         await c.query('UPDATE enrollment_orders SET data=:p1,activity_at=UTC_TIMESTAMP(6) WHERE id=:p2',[receiptData,id]);
-        return {order:view(order,cohort.state)};
+        return {order:view(order,cohort.state,cohort.data.timeZone)};
       }
       try {
         await c.query(`INSERT INTO enrollment_receipts(reference,order_id,amount,actor,settled_at,receiving_account,created_at)
@@ -935,7 +937,7 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
       const summary=await updateEnrollmentPayment(c,{order,cohort},received,state,receiptData);
       await applyEnrollmentPaymentCredits(c,{order:{...order,data:receiptData,state,received},cohort},lockOrder);
       const latest=(await c.query('SELECT * FROM enrollment_orders WHERE id=:p1',[id])).rows[0];
-      return {order:view(latest,cohort.state),...summary};
+      return {order:view(latest,cohort.state,cohort.data.timeZone),...summary};
     })));
     r.json(result);
   });

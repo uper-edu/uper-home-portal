@@ -1,9 +1,9 @@
-import {enrollmentFirstSessionMatches, enrollmentWeeklyScheduleText, type EnrollmentClassConfig} from './enrollmentCatalog';
+import {enrollmentFirstSessionMatches, enrollmentInstant, enrollmentSessionStart, enrollmentWeeklyScheduleText, type EnrollmentClassConfig} from './enrollmentCatalog';
 
 type Schedule = Pick<EnrollmentClassConfig,'firstLesson'|'weeklySchedule'|'sessions'|'minutes'> &
-  Partial<Pick<EnrollmentClassConfig,'teacherId'|'teacher'>>;
+  Partial<Pick<EnrollmentClassConfig,'teacherId'|'teacher'|'timeZone'>>;
 
-/** Date-only preview in the class's WIB calendar. The configured start and deadlines are never rewritten. */
+/** Date-only preview in the class's calendar. The configured start and deadlines are never rewritten. */
 export function previewEnrollmentClassSchedule(config: Schedule, holidayDates: readonly string[]) {
   const {firstLesson,weeklySchedule,sessions,minutes}=config;
   if(!weeklySchedule||!enrollmentWeeklyScheduleText(weeklySchedule,minutes)||
@@ -47,4 +47,11 @@ export function previewEnrollmentClassSchedule(config: Schedule, holidayDates: r
     first:meetings[0].date,
     end:meetings[meetings.length-1].date,
   };
+}
+
+/** Build the actual occurrence from its date and start in the class's calendar. */
+export function enrollmentScheduledMeetingStart(config:Schedule,date:string){
+  if(!config.weeklySchedule)return null;
+  const day=new Date(date+'T00:00:00Z').getUTCDay()||7;
+  return enrollmentInstant(date+'T'+enrollmentSessionStart(config.weeklySchedule,day),config.timeZone);
 }

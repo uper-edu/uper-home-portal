@@ -6,7 +6,7 @@ import {visitorScope} from '../services/visitorScope';
 import {preloadEnrollmentNavigation,readEnrollmentClassDetails,type PublicEnrollmentAppointment} from '../services/enrollmentClassDetails';
 import {watchReadReconnect} from '../services/readReconnect';
 import {readPendingDemand,sameDemandDraft,submitPendingDemand,type DemandReceipt,type PendingDemand} from '../services/enrollmentDemandSubmission';
-import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
+import {enrollmentDateFormatter,enrollmentTimeZoneLabel,type EnrollmentClassTimeZone} from '../utils/enrollmentDateFormat';
 import {enrollmentCodeInput,enrollmentPost,postEnrollmentProof,readEnrollmentAftercareResponse,readEnrollmentOperation,readEnrollmentEmailAddress,readEnrollmentInterestsResponse,readEnrollmentOrderResponse,readEnrollmentOrdersResponse,recoverEnrollmentOperation,requestEnrollmentEmailCode,signOutEnrollmentEmail,submitEnrollmentInterest,verifyEnrollmentEmail,watchEnrollmentEmailSession} from '../services/enrollmentSession';
 import {readVisitorContact,readEnrollmentDraft,writeEnrollmentDraft,subscribeVisitorContact} from '../services/visitorContact';
 import {getStudentContext} from '../services/studentProfileStorage';
@@ -14,7 +14,7 @@ import {enrollmentCodeRequestErrors,enrollmentReadinessMessage} from '../utils/e
 import {enrollmentDemandPrefill} from '../utils/enrollmentGuidance';
 import {useEnrollmentPhoneField} from './useEnrollmentPhoneField';
 import type {EnrollmentIntakeTools} from './EnrollmentIntake';
-import { enrollmentCopy, enrollmentClassTitle,enrollmentFixedLessonDuration,enrollmentPrivateLessonTitle, enrollmentScheduleLabel, enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
+import { enrollmentCopy, enrollmentInstant, enrollmentClassTitle,enrollmentFixedLessonDuration,enrollmentPrivateLessonTitle, enrollmentScheduleLabel, enrollmentTeacherLabel } from '../utils/enrollmentCatalog';
 import { allowsEnrollmentProof, enrollmentOrderTone, enrollmentStatuses } from '../utils/enrollmentOrderStatus';
 import type {EnrollmentCancellationFeedback} from '../utils/enrollmentCancellation';
 import {enrollmentPhoneDisplay} from '../utils/enrollmentInterests';
@@ -54,7 +54,7 @@ function isOrderView<T extends Partial<Order>>(receipt:T|null|undefined,orderId:
     typeof receipt.status==='string'&&Object.hasOwn(enrollmentStatuses,receipt.status)&&
     typeof receipt.restored==='boolean'&&Number.isFinite(receipt.received);
 }
-type OrderSummary = Order & {level:string;firstLesson:string;classCancelled?:boolean;updatedAt?:string;needsPayment?:boolean;invitation?:{id:string;deadline:string}};
+type OrderSummary = Order & {level:string;firstLesson:string;classCancelled?:boolean;updatedAt?:string;needsPayment?:boolean;invitation?:{id:string;deadline:string;timeZone?:EnrollmentClassTimeZone}};
 type EnrollmentListCard = {key:string;active:boolean;completed?:boolean;updatedAt?:string|null;needsAction:boolean;card:ReactNode};
 type AssistedApplication={id:string;name:string;quote:{level:string;format:string;firstLesson:string;schedule:string;price:number};
   createdAt:string;expiresAt:string;active:boolean};
@@ -1477,15 +1477,14 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       </div>
     </form>}
   </div>;
-  const dayFormat = enrollmentDateFormatter(language,'day');
-  function displayDate(value: string) {
-    const date = new Date(value.slice(0,10) + 'T00:00:00+07:00');
-    return Number.isFinite(date.valueOf()) ? dayFormat.format(date) : '';
+  function displayDate(value:string,timeZone?:EnrollmentClassTimeZone) {
+    const date=enrollmentInstant(value.slice(0,10)+'T00:00',timeZone);
+    return date?enrollmentDateFormatter(language,'day',timeZone).format(date):'';
   }
-  function classTitle(level: string, firstLesson: string, id: string) {
+  function classTitle(level: string, firstLesson: string, id: string,timeZone?:EnrollmentClassTimeZone) {
     const course = waitlistClass?.id===id ? waitlistClass : recordClasses.get(id);
     if(course)return enrollmentClassTitle(course,language);
-    return [level,displayDate(firstLesson)].filter(Boolean).join(' · ');
+    return [level,displayDate(firstLesson,timeZone)].filter(Boolean).join(' · ');
   }
   if (waitlistClass || demandOnly) {
     const completed = joined || savedDemand;
@@ -1565,11 +1564,12 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         contact={{name,phone,fields:learnerFields,checkPhone:phoneField.check}} draft={{owner,key:formKey+':criteria'}}/>}
     </>;
   }
-  function paymentDeadline(value: string) {
+  function paymentDeadline(value: string,timeZone?:EnrollmentClassTimeZone) {
     const date = new Date(value);
     if (!Number.isFinite(date.valueOf())) return '';
-    const time = enrollmentDateFormatter(language,'time').format(date);
-    return t([dayFormat.format(date)+' '+time+' WIB 截止','Due '+dayFormat.format(date)+' at '+time+' WIB','Batas '+dayFormat.format(date)+' pukul '+time+' WIB']);
+    const time=enrollmentDateFormatter(language,'time',timeZone).format(date)+' '+enrollmentTimeZoneLabel(timeZone);
+    const day=enrollmentDateFormatter(language,'day',timeZone).format(date);
+    return t([day+' '+time+' 截止','Due '+day+' at '+time,'Batas '+day+' pukul '+time]);
   }
   const mineParams = new URLSearchParams(params);
   mineParams.delete('order');
@@ -1629,10 +1629,10 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
           ? recordEntry(key+'-balance',orderPath(row.id),t(['查看补款','View balance','Lihat sisa tagihan']),true)
           : undefined;
     return {key,active,completed,updatedAt:row.updatedAt,needsAction:active&&!!primary,card:
-      <EnrollmentListRecord category={t(['报名申请','Application','Pendaftaran'])} title={recordTitle(key,orderPath(row.id),classTitle(row.level,row.firstLesson,row.classId))}
+      <EnrollmentListRecord category={t(['报名申请','Application','Pendaftaran'])} title={recordTitle(key,orderPath(row.id),classTitle(row.level,row.firstLesson,row.classId,row.timeZone))}
         status={status} tone={enrollmentOrderTone(row.status,{restored:row.restored,classCancelled:row.classCancelled,needsAction:!!primary&&!proofWaiting})} primary={primary}>
-        {row.invitation&&<p>{t(['待答复转班邀请','Transfer invitation awaiting reply','Undangan pindah kelas menunggu jawaban'])} · {paymentDeadline(row.invitation.deadline)}</p>}
-        {payable&&<p className="enrollment-record-next"><strong>{formatCurrency(Math.max(0,row.price-row.received),language)}</strong>{paymentDeadline(row.deadline)&&<time dateTime={row.deadline}>{paymentDeadline(row.deadline)}</time>}</p>}
+        {row.invitation&&<p>{t(['待答复转班邀请','Transfer invitation awaiting reply','Undangan pindah kelas menunggu jawaban'])} · {paymentDeadline(row.invitation.deadline,row.invitation.timeZone)}</p>}
+        {payable&&<p className="enrollment-record-next"><strong>{formatCurrency(Math.max(0,row.price-row.received),language)}</strong>{paymentDeadline(row.deadline,row.timeZone)&&<time dateTime={row.deadline}>{paymentDeadline(row.deadline,row.timeZone)}</time>}</p>}
         {topUp&&row.payment?.balance!=null&&<p>{row.payment.estimated?t(['预计剩余应付','Estimated balance','Perkiraan sisa tagihan']):t(['剩余应付','Balance due','Sisa tagihan'])} · {formatCurrency(row.payment.balance,language)}</p>}
         {!row.payment&&row.status==='partial'&&row.needsPayment&&<p>{t(['还需补款','Balance due','Sisa tagihan'])} · {formatCurrency(Math.max(0,row.price-row.received),language)}</p>}
         {row.classCancelled&&row.status==='awaiting_payment'&&<p>{t(['原班已停止收款','Payment for the original class is closed','Pembayaran untuk kelas asal ditutup'])}</p>}
@@ -1678,7 +1678,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const related = new URLSearchParams(mineParams);
     if (row.orderId) related.set('order',row.orderId);
     return <div className="enrollment-interest-detail">
-      <EnrollmentRecordSummary language={language} title={classTitle(row.level,row.firstLesson,row.classId)} schedule={schedule} teacherType={course?.teacherType} firstLesson={course?.firstLesson}
+      <EnrollmentRecordSummary language={language} title={classTitle(row.level,row.firstLesson,row.classId,row.timeZone)} schedule={schedule} teacherType={course?.teacherType} firstLesson={course?.firstLesson??row.firstLesson} timeZone={course?.timeZone??row.timeZone}
         status={t(waitlistStates[row.state])} tone={available?'confirmed':waiting?'progress':'full'}>
         <EnrollmentDetailFields fields={[[t(['学员姓名','Learner name','Nama siswa']),row.learnerName]]}/>
       </EnrollmentRecordSummary>
@@ -1784,7 +1784,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         <h2 id="enrollment-demand-matches" className="enrollment-record-section-title">{t(['匹配班次','Matching classes','Kelas yang cocok'])}</h2>
         <ul className="enrollment-demand-matches">
           {matches.map(match=>{
-            const title=<EnrollmentClassName title={classTitle(match.level,match.firstLesson,match.id)}/>;
+            const title=<EnrollmentClassName title={classTitle(match.level,match.firstLesson,match.id,match.timeZone)}/>;
             const schedule=enrollmentScheduleLabel(recordClasses.get(match.id),language);
             return <li key={match.id}>
               <h3 className="enrollment-class-heading">{matches.length===1?title:
@@ -1808,7 +1808,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     const available=waiting&&row.available;
     const key='waitlist-'+row.id;
     return {key,active:waiting,updatedAt:row.updatedAt,needsAction:available,card:
-      <EnrollmentListRecord category={t(['候补','Waitlist','Daftar tunggu'])} title={recordTitle(key,recordPath('waitlist',row.id),classTitle(row.level,row.firstLesson,row.classId))}
+      <EnrollmentListRecord category={t(['候补','Waitlist','Daftar tunggu'])} title={recordTitle(key,recordPath('waitlist',row.id),classTitle(row.level,row.firstLesson,row.classId,row.timeZone))}
         status={available?t(['有空位','Seats available','Kursi tersedia']):t(waitlistStates[row.state])}
         tone={available?'confirmed':waiting?'progress':'full'}
         primary={available&&recordEntry(key+'-apply',classFromRecord(row.classId,'waitlist',row.id),applyText,true)}>
@@ -1883,6 +1883,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   proofParams.set('proof','upload');
   const showListEmailIdentity=!!recordsEmail.current&&!!listHeading&&showRecordList;
   const summaryClass=aftercare?.currentClass??resultCourse;
+  const orderTimeZone=summaryClass?.timeZone??order?.timeZone;
   const summarySchedule=enrollmentScheduleLabel(summaryClass,language);
   const showPaymentForm=payment&&!!order&&!!canUpload&&!checkingRecords&&!loadingOrder&&!waitingForAftercare&&!showAftercare&&!showOrderResult;
   const rejectedProof=showPaymentForm&&['enrollment_invalid_proof','enrollment_upload_expired','enrollment_invalid_proof_amount','enrollment_invalid_proof_transfer','enrollment_origin_rejected'].includes(error);
@@ -2006,12 +2007,12 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
           showTopUp={isBalanceLink&&order.payment?.action==='top_up'}
           submittingProof={submittingProof} proofUploadFailed={rejectedProof} proofFeedback={proofFeedback}/>
       </div> : <>
-        <EnrollmentRecordSummary language={language} teacherType={summaryClass?.teacherType} firstLesson={summaryClass?.firstLesson} title={(summaryClass&&enrollmentClassTitle(summaryClass,language))||t(['班次报名','Class application','Pendaftaran kelas'])}
+        <EnrollmentRecordSummary language={language} teacherType={summaryClass?.teacherType} firstLesson={summaryClass?.firstLesson} timeZone={orderTimeZone} title={(summaryClass&&enrollmentClassTitle(summaryClass,language))||t(['班次报名','Class application','Pendaftaran kelas'])}
           status={status} tone={enrollmentOrderTone(order.status,{restored:order.restored,classCancelled})} schedule={summarySchedule}
           sessions={summaryClass?.sessions??resultCourse?.sessions} minutes={summaryClass?.minutes??resultCourse?.minutes}
           statusSection={{kind:'enrollment',fields:[
             [t(['付款截止','Payment deadline','Batas pembayaran']),order.status==='awaiting_payment'&&Number.isFinite(Date.parse(order.deadline))&&
-              <time dateTime={order.deadline}>{enrollmentDateFormatter(language,'dateTime').format(new Date(order.deadline))} WIB</time>],
+              <time dateTime={order.deadline}>{enrollmentDateFormatter(language,'dateTime',orderTimeZone).format(new Date(order.deadline))} {enrollmentTimeZoneLabel(orderTimeZone)}</time>],
           ]}}
           additionalFields={[
             [t(['待付金额','Amount due','Jumlah tagihan']),!paymentBar&&<span className="enrollment-main-amount">{formatCurrency(Math.max(0,order.price-order.received),language)}</span>],

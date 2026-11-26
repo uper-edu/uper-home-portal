@@ -7,7 +7,7 @@ import {trackEvent} from '../utils/analytics';
 import {chatPromotionParams,type ChatOrigin,type ChatSource} from '../services/portalChat';
 import {isPlainLinkClick,rememberChat,type ChatMessageAnchor} from '../utils/chatJourneyNavigation';
 import {formatCurrency} from '../utils/currency';
-import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
+import {enrollmentDateFormatter,enrollmentTimeZoneLabel} from '../utils/enrollmentDateFormat';
 import {preloadEnrollmentNavigation,readEnrollmentClassDetails} from '../services/enrollmentClassDetails';
 import {loadEnrollmentIntake} from '../services/enrollmentFormModule';
 import {watchReadReconnect} from '../services/readReconnect';
@@ -159,10 +159,11 @@ export function ChatEnrollmentGuide({action,language,entry,origin,anchor,compari
     const approximate=first.price%periods!==0;
     const showFirstTime=action.detailFields?.includes('first')||first.firstLesson.slice(11)!==second.firstLesson.slice(11);
     const dateFormat=enrollmentDateFormatter(lang,
-      first.firstLesson.slice(0,4)!==second.firstLesson.slice(0,4)?'shortDayWithYear':'shortDay');
+      first.firstLesson.slice(0,4)!==second.firstLesson.slice(0,4)?'shortDayWithYear':'shortDay',first.timeZone);
+    const zoneLabel=enrollmentTimeZoneLabel(first.timeZone);
     return <div className="chat-comparison">
       <dl className="chat-comparison-facts">
-        <div><dt>{t('课表（WIB）','Schedule (WIB)','Jadwal (WIB)')}</dt>
+        <div><dt>{t(`课表（${zoneLabel}）`,`Schedule (${zoneLabel})`,`Jadwal (${zoneLabel})`)}</dt>
           <dd className="chat-comparison-schedule"><ChatClassSchedule row={first} language={lang}/></dd></div>
         <div><dt>{t('全程学费','Total tuition','Total biaya')}</dt>
           <dd><strong className="chat-comparison-price chat-value">{formatCurrency(first.price,lang)}</strong>
@@ -176,13 +177,14 @@ export function ChatEnrollmentGuide({action,language,entry,origin,anchor,compari
         `Total ${periods} jam pelajaran · ${plan.lessons} per sesi (${plan.lessons*first.minutes} menit)`)}</p>
       <div className="chat-class-options" role="group" aria-label={t('选择要查看的班次','Choose a class to view','Pilih kelas untuk dilihat')}>
         {comparison.rows.map(row=>{
-          const date=dateFormat.format(enrollmentInstant(row.firstLesson)!);
-          const firstSession=showFirstTime?`${date} ${row.firstLesson.slice(11)} WIB`:date;
+          const starts=enrollmentInstant(row.firstLesson,row.timeZone)!;
+          const date=dateFormat.format(starts);
+          const firstSession=showFirstTime?`${date} ${row.firstLesson.slice(11)} ${zoneLabel}`:date;
           return <Link key={row.id} to={classHref(row.id)} className="chat-class-option" onClick={onClick}
             aria-label={t(`查看第 ${row.batchNumber} 期，首课 ${firstSession}`,`View batch ${row.batchNumber}, first session ${firstSession}`,`Lihat angkatan ${row.batchNumber}, kelas pertama ${firstSession}`)}>
             <span className="chat-class-option-info">
               <span>{t(`第 ${row.batchNumber} 期首课`,`Batch ${row.batchNumber} · First session`,`Angkatan ${row.batchNumber} · Kelas pertama`)}</span>
-              <time dateTime={`${row.firstLesson}+07:00`}><strong className="chat-value">{date}</strong>{showFirstTime&&<small className="chat-value">{row.firstLesson.slice(11)} WIB</small>}</time>
+              <time dateTime={starts.toISOString()}><strong className="chat-value">{date}</strong>{showFirstTime&&<small className="chat-value">{row.firstLesson.slice(11)} {zoneLabel}</small>}</time>
             </span>
             <span className="chat-class-option-action">{t('查看','View','Lihat')}</span>
           </Link>;

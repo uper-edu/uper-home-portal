@@ -5,22 +5,22 @@ import {Link} from 'react-router-dom';
 import type {MouseEventHandler} from 'react';
 import {BookOpen,CalendarDays,ChevronRight,Clock3} from 'lucide-react';
 import {formatCurrency} from '../utils/currency';
-import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
-import {enrollmentCopy,enrollmentClassSizeText,enrollmentClassTitle,enrollmentScheduleLabel,enrollmentTeacherLabel,enrollmentWeeklyScheduleGroups,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {enrollmentDateFormatter,enrollmentTimeZoneLabel} from '../utils/enrollmentDateFormat';
+import {enrollmentCopy,enrollmentClassSizeText,enrollmentClassTitle,enrollmentInstant,enrollmentScheduleLabel,enrollmentTeacherLabel,enrollmentWeeklyScheduleGroups,type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import './enrollment-class-card.css';
 
 type Language='zh'|'en'|'id';
 type EnrollmentCardRow=Pick<PublicEnrollmentClass,'level'|'format'|'period'|'batchNumber'|'teacherType'|
-  'firstLesson'|'minutes'|'weeklySchedule'|'schedule'|'opened'|'price'|'availability'> &
+  'firstLesson'|'timeZone'|'minutes'|'weeklySchedule'|'schedule'|'opened'|'price'|'availability'> &
   Partial<Pick<PublicEnrollmentClass,'sessions'|'standardPrice'|'learningOutcomes'|'material'|'resources'|'teacher'|'classSize'>>;
 
 export function ChatClassSchedule({row,language,withZone=false}:{
-  row:Pick<EnrollmentCardRow,'weeklySchedule'|'schedule'|'minutes'>;language:Language;withZone?:boolean;
+  row:Pick<EnrollmentCardRow,'weeklySchedule'|'schedule'|'minutes'|'timeZone'>;language:Language;withZone?:boolean;
 }){
   const groups=enrollmentWeeklyScheduleGroups(row.weeklySchedule,row.minutes,language);
   if(!groups.length)return <span>{row.schedule}</span>;
   return <span className="chat-schedule-groups">{groups.map(({days,time},i)=><span key={time}>
-    {days} <span className="chat-value">{time}{withZone&&i===groups.length-1?' WIB':''}</span>
+    {days} <span className="chat-value">{time}{withZone&&i===groups.length-1?' '+enrollmentTimeZoneLabel(row.timeZone):''}</span>
   </span>)}</span>;
 }
 
@@ -29,8 +29,8 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
   availabilitySnapshot?:boolean;onNavigate?:MouseEventHandler<HTMLAnchorElement>;navigationState?:unknown;chatPresentation?:boolean;chatPrimaryAction?:boolean;
 }){
  const t=(zh:string,en:string,id:string)=>enrollmentCopy(language,[zh,en,id]);
- const dateValue=new Date(row.firstLesson+':00+07:00');
- const date=Number.isFinite(dateValue.valueOf())?enrollmentDateFormatter(language,'day').format(dateValue).replaceAll(' ','\u00a0'):'';
+ const dateValue=enrollmentInstant(row.firstLesson,row.timeZone);
+ const date=dateValue?enrollmentDateFormatter(language,'day',row.timeZone).format(dateValue).replaceAll(' ','\u00a0'):'';
  const dateLabel=date?(row.opened?t(date+'开课','Starts '+date,'Mulai '+date):t('首课 '+date,'First session '+date,'Pertemuan pertama '+date)):t('首课待确认','Start date pending','Tanggal mulai belum dikonfirmasi');
  const size=enrollmentClassSizeText(row.classSize,language);
  const periods=row.sessions&&row.sessions>0?row.sessions:undefined;
@@ -81,8 +81,8 @@ export function EnrollmentClassPreview({row,language,titleLink,actionLink,showDe
        <EnrollmentDetailFields fields={[
          [t('授课教师','Teacher','Pengajar'),teacherName||teacherLabel,teacherName&&teacherLabel],
          [t('每周课表','Weekly schedule','Jadwal mingguan'),schedule],
-         [t('首课时间','First class','Pertemuan pertama'),date
-           ? <time dateTime={dateValue.toISOString()}>{enrollmentDateFormatter(language,'dateTime').format(dateValue)} WIB</time>
+         [t('首课时间','First class','Pertemuan pertama'),dateValue
+           ? <time dateTime={dateValue.toISOString()}>{enrollmentDateFormatter(language,'dateTime',row.timeZone).format(dateValue)} {enrollmentTimeZoneLabel(row.timeZone)}</time>
            : t('待确认','To be confirmed','Belum dikonfirmasi')],
          [t('开班状态','Class opening','Status pembukaan kelas'),row.opened?t('已确认开班','Confirmed','Dikonfirmasi'):undefined],
          [t('班级规模','Class size','Ukuran kelas'),size,statusAtSize&&badge],

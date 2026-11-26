@@ -1,7 +1,7 @@
 import type { EnrollmentClosureReason } from './enrollmentOrderStatus';
 import { permittedRecord, type AccessEmployee } from './accessControl';
 import { crmInstant, formatCrmOperatingTime } from './crmOperatingTime';
-import { enrollmentTimeZone } from './enrollmentDateFormat';
+import { enrollmentTimeZone,type EnrollmentClassTimeZone } from './enrollmentDateFormat';
 
 export const enrollmentManagementScopes = (actor:AccessEmployee) => ({
   followup: actor.active!==false && actor.permissions.includes('crm.read') && actor.permissions.includes('crm.followup'),
@@ -16,7 +16,7 @@ export const enrollmentRosterStates=['awaiting_payment','proof_review','partial'
 export type EnrollmentRosterState=typeof enrollmentRosterStates[number];
 export type EnrollmentClassSummary={
   id:string; batchNumber?:number;teacherType?:'local'|'foreign'; level:string; format:'standard'|'small'; period:'weekday-evening'|'weekend'|'mixed'; schedule:string;
-  firstLessonAt:string; capacity:number; minimumPaid:number;
+  timeZone?:EnrollmentClassTimeZone;firstLessonAt:string; capacity:number; minimumPaid:number;
   status:'recruiting'|'opened'|'cancelled'|'closed'; accepting:boolean;
   counts:Record<EnrollmentRosterState,number>; occupied:number; available:number;
 };
@@ -98,20 +98,26 @@ export function enrollmentClassShortfall(row:EnrollmentClassSummary) {
   return Math.max(0,row.minimumPaid-row.counts.paid);
 }
 
-export function formatEnrollmentClassStart(time:Date|null){
-  return time?formatCrmOperatingTime(time.toISOString(),enrollmentTimeZone).slice(0,16):'';
+export function formatEnrollmentClassStart(time:Date|null,timeZone:EnrollmentClassTimeZone=enrollmentTimeZone){
+  return time?formatCrmOperatingTime(time.toISOString(),timeZone).slice(0,16):'';
 }
 
 export function enrollmentClassDateFilter(value:string,now=Date.now()){
-  if(!value)return (_time:Date|null)=>true;
-  const today=formatEnrollmentClassStart(new Date(now)).slice(0,10);
-  const lastDay=value==='7'||value==='30'
-    ?new Date(Date.parse(today+'T00:00:00Z')+(Number(value)-1)*86_400_000).toISOString().slice(0,10):'';
-  return (time:Date|null)=>{
+  const bounds=new Map<EnrollmentClassTimeZone,{today:string;lastDay:string}>();
+  return (time:Date|null,timeZone:EnrollmentClassTimeZone=enrollmentTimeZone)=>{
+    if(!value)return true;
     if(!time)return false;
     if(value==='past')return time.getTime()<now;
-    const date=formatEnrollmentClassStart(time).slice(0,10);
-    return time.getTime()>=now&&date>=today&&date<=lastDay;
+    let range=bounds.get(timeZone);
+    if(!range){
+      const today=formatEnrollmentClassStart(new Date(now),timeZone).slice(0,10);
+      const lastDay=value==='7'||value==='30'
+        ?new Date(Date.parse(today+'T00:00:00Z')+(Number(value)-1)*86_400_000).toISOString().slice(0,10):'';
+      range={today,lastDay};
+      bounds.set(timeZone,range);
+    }
+    const date=formatEnrollmentClassStart(time,timeZone).slice(0,10);
+    return time.getTime()>=now&&date>=range.today&&date<=range.lastDay;
   };
 }
 
@@ -135,9 +141,9 @@ export function filterEnrollmentClasses(
     const seats=row.accepting?(row.available>0?'available':'full'):'closed';
     if(filters.seats&&seats!==filters.seats)return [];
     const instant=crmInstant(row.firstLessonAt);
-    if(!matchesDate(instant))return [];
+    if(!matchesDate(instant,row.timeZone))return [];
     if(tokens.length){
-      const displayed=formatEnrollmentClassStart(instant);
+      const displayed=formatEnrollmentClassStart(instant,row.timeZone);
       const haystack=normalize([title(row),row.level.replace(/\s+/gu,''),row.id,row.schedule,displayed].join(' '));
       if(!tokens.every(token=>haystack.includes(token)))return [];
     }

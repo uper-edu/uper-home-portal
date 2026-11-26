@@ -1,3 +1,4 @@
+import {enrollmentTimeZoneLabel} from '../../utils/enrollmentDateFormat';
 import {enrollmentClassTitle,enrollmentCopy} from '../../utils/enrollmentCatalog';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminListTable,AdminListState,AdminListPagination} from '../admin/AdminList';
@@ -266,8 +267,8 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     {row.status!=='cancelled'&&<small>{row.occupied} / {row.capacity} {t(['席已占','seats reserved','kursi terisi'])}</small>}
   </>;
   const firstLesson=(row:EnrollmentClassSummary)=>{
-    const time=formatEnrollmentClassStart(crmInstant(row.firstLessonAt));
-    return t(['首课','First session','Pertemuan pertama'])+' '+(time?time+' WIB':'—');
+    const time=formatEnrollmentClassStart(crmInstant(row.firstLessonAt),row.timeZone);
+    return t(['首课','First session','Pertemuan pertama'])+' '+(time?time+' '+enrollmentTimeZoneLabel(row.timeZone):'—');
   };
   const owner=(row:EnrollmentRosterEntry)=>row.customerId
     ?(row.owner?employees.find(employee=>employee.id===row.owner)?.displayName??row.owner:t(['未分配','Unassigned','Belum ditugaskan'])):'—';
@@ -294,9 +295,9 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
         {value:'full',label:t(['已满班','Full','Kelas penuh'])},
         {value:'closed',label:t(['自助报名已截止','Self-service closed','Pendaftaran mandiri ditutup'])},
       ]}/>
-    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['首课日期（WIB）','First-session date (WIB)','Tanggal pertemuan pertama (WIB)'])} value={classFilters.date}
+    <AdminSingleSelect lang={lang} isLight={isLight} label={t(['首课日期（班次当地时间）','First-session date (class time zone)','Tanggal pertemuan pertama (zona kelas)'])} value={classFilters.date}
       onChange={date=>changeClassFilters({date})} options={[
-        {value:'',label:t(['全部首课日期（WIB）','All first-session dates (WIB)','Semua tanggal pertemuan pertama (WIB)'])},
+        {value:'',label:t(['全部首课日期','All first-session dates','Semua tanggal pertemuan pertama'])},
         {value:'7',label:t(['未来 7 天（含今天）','Next 7 days including today','7 hari ke depan termasuk hari ini'])},
         {value:'30',label:t(['未来 30 天（含今天）','Next 30 days including today','30 hari ke depan termasuk hari ini'])},
         {value:'past',label:t(['首课时间已过','First session has passed','Pertemuan pertama sudah lewat'])},

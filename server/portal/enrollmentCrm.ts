@@ -132,7 +132,7 @@ function displayRecord(row: any) {
   return {
     id:row.record_id,kind:row.kind,opportunityId:row.opportunity_id,state:enrollmentOrderStatus(row.state,row.class_state),createdAt:row.record_created_at_iso??null,
     learnerName:row.learner_name,paymentDueAt:row.payment_due_at,firstReviewDueAt:row.first_review_due_at,
-    class:row.class_data ? {id:row.class_id,level:row.class_data.level,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
+    class:row.class_data ? {id:row.class_id,level:row.class_data.level,timeZone:row.class_data.timeZone,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,opened:!!row.opened_at} : null,
     price:row.price===null?null:Number(row.price),received:row.received===null?null:Number(row.received),
     criteria:row.criteria?{level:row.criteria.level,period:row.criteria.period,format:row.criteria.format,notes:row.criteria.notes}:null,
     ...(row.criteria?.appointment&&{appointment:{teacherType:row.criteria.appointment.teacherType,confirmation:row.criteria.appointment.confirmation??null}}),

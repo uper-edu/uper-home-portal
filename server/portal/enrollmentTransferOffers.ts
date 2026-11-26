@@ -1,3 +1,4 @@
+import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
 import { randomUUID } from 'node:crypto';
 import { canSelectTransfer } from '../../src/utils/enrollmentAftercare.ts';
 import { allowsEnrollment, expireSeats, reconcileWaitlist, takenSeats } from './enrollmentInterests.ts';
@@ -20,15 +21,15 @@ export async function createEnrollmentTransferInvitation(c:Client,orderId:string
   await c.query(`INSERT INTO enrollment_transfer_invitations
     (id,order_id,source_class_id,target_class_id,actor,state,expires_at,created_at)
     SELECT :p1,:p2,:p3,e.id,:p4,'offered',LEAST(TIMESTAMPADD(HOUR,:p6,UTC_TIMESTAMP(6)), e.enrollment_closes_at,
-      DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR),UTC_TIMESTAMP(6)
-    FROM enrollment_classes e WHERE e.id=:p5 AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)`,
+      ${classOpeningMidnight('e.')}),UTC_TIMESTAMP(6)
+    FROM enrollment_classes e WHERE e.id=:p5 AND LEAST(e.enrollment_closes_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)`,
   [invitationId,orderId,sourceClassId,actor,target.id,replyHours]);
   const expiry=(await c.query("SELECT DATE_FORMAT(expires_at,'%Y-%m-%dT%H:%i:%sZ') AS replyBy FROM enrollment_transfer_invitations WHERE id=:p1",[invitationId])).rows[0];
   if(!expiry) return null;
   await reconcileWaitlist(c,target,await takenSeats(c,target.id));
   await orderNotice(c,'transfer_invitation',orderId,invitationId,{
     targetClass:target.data.level,targetFormat:target.data.format,targetPeriod:target.data.period,
-    targetFirstLesson:target.data.firstLesson,targetSchedule:target.data.schedule,
+    targetTimeZone:target.data.timeZone,targetFirstLesson:target.data.firstLesson,targetSchedule:target.data.schedule,
     targetWeeklySchedule:target.data.weeklySchedule,targetMinutes:target.data.minutes,replyBy:expiry.replyBy,
   });
   return {invitationId,replyBy:expiry.replyBy};
@@ -63,7 +64,7 @@ export function startEnrollmentPriorityTransferSimulation({transact,lockOrder,lo
         // Once an invitation exists, an expired or rejected invitation must not reserve another seat automatically.
         if(previous) return;
         const options=(await c.query(`SELECT id FROM enrollment_classes
-          WHERE state='published' AND LEAST(enrollment_closes_at, DATE(first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+          WHERE state='published' AND LEAST(enrollment_closes_at, ${classOpeningMidnight()})>UTC_TIMESTAMP(6)
             AND data->>'$.level'=:p1 AND data->>'$.format'=:p2 ORDER BY first_lesson_at,id`,
         [cohort.data.level,cohort.data.format])).rows;
         for(const option of options){

@@ -1,3 +1,4 @@
+import {enrollmentTimeZone,enrollmentTimeZoneLabel} from '../../src/utils/enrollmentDateFormat.ts';
 import {createHash} from 'node:crypto';
 import {enrollmentMailDeliveryState,enrollmentMailbox} from './enrollmentMail.ts';
 import {smtpRecipientPolicy} from './enrollmentMailRecipientPolicy.ts';
@@ -33,7 +34,7 @@ export async function sendAssistanceMail(c:Client,offer:any,attempt:string){
   const {mode}=mailState.delivery;
   const local=enrollmentMailbox(mode);
   const {id,email,data,expiresAt}=offer;
-  const content={salutation:data.name,language:data.lang,class:data.quote.level,format:data.quote.format,period:data.quote.period,firstLesson:data.quote.firstLesson,
+  const content={salutation:data.name,language:data.lang,class:data.quote.level,format:data.quote.format,period:data.quote.period,timeZone:data.quote.timeZone,firstLesson:data.quote.firstLesson,
     schedule:data.quote.schedule,weeklySchedule:data.quote.weeklySchedule,minutes:data.quote.minutes,
     price:data.quote.price,deadline:expiresAt,url:enrollmentAssistancePath(id,data.lang)};
   const message=renderEnrollmentEmail('assistance_confirmation',{...content,assistanceId:id});
@@ -68,7 +69,7 @@ export async function orderNotice(c:Client,kind:Notice,orderId:string,discrimina
   const language=row.attribution?.lang??'en';
   const content={
     salutation:row.data.name, language, orderId, orderState:row.state,
-    class:row.class_data.level,format:row.class_data.format,period:row.class_data.period,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,
+    class:row.class_data.level,format:row.class_data.format,period:row.class_data.period,timeZone:row.class_data.timeZone,firstLesson:row.class_data.firstLesson,schedule:row.class_data.schedule,
     weeklySchedule:row.class_data.weeklySchedule,minutes:row.class_data.minutes,
     deadline:row.deadline,...facts,url:enrollmentOrderEmailPath(kind,language,orderId,discriminator),
   };
@@ -80,7 +81,7 @@ export async function interestNotice(c:Client,kind:'waitlist_vacancy'|'demand_ma
   const type=kind==='waitlist_vacancy'?'waitlist':'demand';
   const attribution=(await c.query('SELECT attribution FROM enrollment_record_attribution WHERE kind=:p1 AND record_id=:p2',[type,interestId])).rows[0]?.attribution;
   const language=attribution?.lang??'en';
-  const content={language,classId:cohort.id,class:cohort.data.level,format:cohort.data.format,period:cohort.data.period,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
+  const content={language,classId:cohort.id,class:cohort.data.level,format:cohort.data.format,period:cohort.data.period,timeZone:cohort.data.timeZone,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
     weeklySchedule:cohort.data.weeklySchedule,minutes:cohort.data.minutes,price:cohort.data.price,
     url:'/enrollment/'+encodeURIComponent(cohort.id)+'?'+new URLSearchParams({lang:language})};
   await record(c,'email:'+kind+':'+interestId+':'+cohort.id+':'+cycle,'email',kind,interestId,{
@@ -106,11 +107,11 @@ export async function classOpeningNotices(c:Client,cohort:any) {
   const [totals]=rows;
   const {pendingParticipants,pendingAmount,pendingUnknownCount}=await pendingEnrollmentProofTotals(c,totals.cutoff,cohort.id);
   await record(c,'lark:class:'+cohort.id,'lark','class_confirmed',cohort.id,{
-    title:'已确认开班',level:cohort.data.level, firstLesson:cohort.data.firstLesson,timezone:'Asia/Jakarta',
+    title:'已确认开班',level:cohort.data.level, firstLesson:cohort.data.firstLesson,timezone:cohort.data.timeZone??enrollmentTimeZone,
     paid:Number(totals.paid), minimumPaid:cohort.data.minimumPaid, capacity:cohort.data.capacity,
     verifiedReceipts:Number(totals.received), waiting:Number(totals.waiting), pending:pendingParticipants,pendingAmount,pendingUnknownCount,
     ...enrollmentCard('class',cohort.id,'已确认开班',{
-      班次:cohort.data.level,首课时间:cohort.data.firstLesson.replace('T',' ')+' WIB',
+      班次:cohort.data.level,首课时间:cohort.data.firstLesson.replace('T',' ')+' '+enrollmentTimeZoneLabel(cohort.data.timeZone),
       足额到账:Number(totals.paid)+' / '+cohort.data.minimumPaid,招生上限:cohort.data.capacity,
       核实实收:cardMoney(Number(totals.received)),待核实人数:pendingParticipants,
       待核实金额:pendingMoney(pendingAmount,pendingUnknownCount),待付款人数:Number(totals.waiting),

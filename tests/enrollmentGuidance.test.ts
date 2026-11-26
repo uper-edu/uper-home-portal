@@ -12,6 +12,16 @@ const sample=(overrides:Partial<PublicEnrollmentClass>={}):PublicEnrollmentClass
   weeklySchedule:{days:[6,7],start:'15:00',lessons:1},schedule:'',minutes:45,sessions:23,
   learningOutcomes:'',material:'',resources:'',teacher:'',...overrides,
 });
+test('Chat matches the WAT Friday class against the equivalent Saturday WIB window',()=>{
+  const row=sample({timeZone:'Africa/Lagos',period:'weekday-evening',firstLesson:'2026-11-27T19:00',
+    weeklySchedule:{days:[5],start:'19:00',lessons:1}});
+  const criteria={kind:'recommend',level:'HSK 1',earliestDate:'2026-11-28',latestDate:'2026-11-28'};
+  const saturday=normalizeEnrollmentIntent({...criteria,windows:[{day:6,earliest:'01:00',latestStart:'01:00'}]})!;
+  assert.equal(matchEnrollmentGuidance(saturday,[row]).rows?.[0].timeZone,'Africa/Lagos');
+  const friday=normalizeEnrollmentIntent({...criteria,windows:[{day:5,earliest:'19:00',latestStart:'19:00'}]})!;
+  assert.equal(matchEnrollmentGuidance(friday,[row]).rows,undefined);
+});
+
 const normalized=(overrides:Record<string,unknown>={})=>normalizeEnrollmentIntent({
   kind:'recommend',level:'HSK 1',period:'weekend',days:[6,7],earliest:'12:00',latest:'17:59',...overrides,
 })!;

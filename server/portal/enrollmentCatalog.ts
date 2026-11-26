@@ -1,3 +1,5 @@
+import {enrollmentTimeZone,isEnrollmentClassTimeZone} from '../../src/utils/enrollmentDateFormat.ts';
+import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
 import {portalPublicOrigin} from './enrollmentEmail.ts';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
@@ -54,7 +56,7 @@ export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeo
       FROM enrollment_classes e
       JOIN crm_courses c ON c.id=e.course_id
       LEFT JOIN enrollment_class_openings g ON g.class_id=e.id
-      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)
         AND JSON_EXTRACT(c.value,'$.active')=true
         AND (:p1 IS NULL OR e.id IN (:p2))
       ORDER BY e.first_lesson_at,e.id
@@ -79,7 +81,7 @@ export async function readPublicEnrollmentClassReference(c: Parameters<Parameter
     SELECT e.data
     FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
     WHERE e.id=:p1 AND e.state='published'
-      AND LEAST(e.enrollment_closes_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+      AND LEAST(e.enrollment_closes_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)
       AND JSON_EXTRACT(c.value,'$.active')=true
   `, [classId])).rows[0] as {data: EnrollmentClassConfig} | undefined;
   if (!row) return null;
@@ -164,12 +166,16 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       if(template&&!snapshot)invalid('enrollment_template_invalid');
       if(snapshot&&body.state==='published'&&!snapshot.price)invalid('enrollment_template_missing_quote',409);
       if(isPublished&&raw.period!==current.data.period)invalid('enrollment_class_batch_scope_fixed',409);
-      const dates={firstLesson:raw.firstLesson,enrollmentCloses:raw.enrollmentCloses,period:raw.period,schedule:raw.schedule};
+      const savedTimeZone=current?.data.timeZone??enrollmentTimeZone;
+      const timeZone=raw.timeZone===undefined?savedTimeZone:raw.timeZone;
+      if(!isEnrollmentClassTimeZone(timeZone))invalid('enrollment_class_invalid');
+      if(isPublished&&timeZone!==savedTimeZone)invalid('enrollment_class_timezone_fixed',409);
+      const dates={timeZone,firstLesson:raw.firstLesson,enrollmentCloses:raw.enrollmentCloses,period:raw.period,schedule:raw.schedule};
       const teacherId=raw.teacherId===undefined?current?.data.teacherId:raw.teacherId;
       const existing=current?.data as EnrollmentClassConfig|undefined;
-      if(isPublished&&existing?.teacherId&&teacherId!==existing.teacherId&&(enrollmentInstant(existing.firstLesson)?.getTime()??Infinity)<=Date.now())
+      if(isPublished&&existing?.teacherId&&teacherId!==existing.teacherId&&(enrollmentInstant(existing.firstLesson,existing.timeZone)?.getTime()??Infinity)<=Date.now())
         invalid('faculty_assignment_fixed',409);
-      const config={...(isPublished?{...current.data,...dates}:snapshot?{...snapshot,...dates}:raw),teacher:existing?.teacher??''};
+      const config={...(isPublished?{...current.data,...dates}:snapshot?{...snapshot,...dates}:{...raw,timeZone}),teacher:existing?.teacher??''};
       const selection=teacherId&&teacherId===existing?.teacherId&&config.teacherType===existing.teacherType
         ?{teacherId:existing.teacherId,teacher:existing.teacher}
         :teacherId===undefined||teacherId===''?null:await assignedFaculty(c,teacherId,config.teacherType);
@@ -178,7 +184,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       else if(existing?.teacherId)config.teacher='';
       const weeklySchedule=raw.weeklySchedule;
       if(weeklySchedule){
-        config.schedule=enrollmentWeeklyScheduleText(weeklySchedule,config.minutes);
+        config.schedule=enrollmentWeeklyScheduleText(weeklySchedule,config.minutes,'zh',timeZone);
         if(!isDraft&&!config.schedule)invalid('enrollment_class_invalid');
         config.weeklySchedule=weeklySchedule;
       }else if(snapshot||current?.data?.weeklySchedule){
@@ -215,7 +221,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         await c.query('UPDATE portal_settings SET value=:p2 WHERE id=:p1',[key,{...counter,last:data.batchNumber}]);
       }
       const revision = body.revision + 1;
-      const fields = [data.courseId, revision, body.state, enrollmentInstant(data.firstLesson), enrollmentInstant(data.enrollmentCloses), data];
+      const fields = [data.courseId, revision, body.state, enrollmentInstant(data.firstLesson,data.timeZone), enrollmentInstant(data.enrollmentCloses,data.timeZone), data];
       if (current) {
         await c.query('UPDATE enrollment_classes SET course_id=:p1,revision=:p2,state=:p3,first_lesson_at=:p4,enrollment_closes_at=:p5,data=:p6,updated_at=UTC_TIMESTAMP(6) WHERE id=:p7', [...fields, body.id]);
       } else {

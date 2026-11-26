@@ -1,3 +1,5 @@
+import {isEnrollmentClassTimeZone,type EnrollmentClassTimeZone} from './enrollmentDateFormat';
+
 export const demandLevels = ['HSK 1','HSK 2','HSK 3','HSK 4','unsure','other'] as const;
 export const demandPeriods = ['weekday-day','weekday-evening','weekend','mixed','any','other'] as const;
 export const demandFormats = ['standard','small','one-on-one','any','other'] as const;
@@ -16,7 +18,7 @@ export type PrivateLessonRegistration = {
   confirmation?:{firstLessonAt:string;teacher:string;schedule:string;teacherId?:string};
 };
 
-type MatchedClass = {id:string;level:string;firstLesson:string};
+type MatchedClass = {id:string;level:string;firstLesson:string;timeZone?:EnrollmentClassTimeZone};
 const waitlistStates = ['waiting','converted','withdrawn','closed'] as const;
 export type WaitlistState = typeof waitlistStates[number];
 type WaitlistItem = MatchedClass & {
@@ -33,7 +35,8 @@ export type Interests = {waitlist:WaitlistItem[];demands:DemandItem[]};
 export function parseEnrollmentInterests(data:unknown):Interests {
   const interests = data as Partial<Interests> | null | undefined;
   const isClass = (row:MatchedClass | null) => typeof row?.id==='string' &&
-    typeof row.level==='string' && typeof row.firstLesson==='string';
+    typeof row.level==='string' && typeof row.firstLesson==='string' &&
+    (row.timeZone===undefined||isEnrollmentClassTimeZone(row.timeZone));
   const optionalString = (value:unknown) => value==null || typeof value==='string';
   const validAppointment = (row:DemandItem) => {
     const item=row.appointment;

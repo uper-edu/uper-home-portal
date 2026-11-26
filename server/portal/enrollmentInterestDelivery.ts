@@ -1,3 +1,4 @@
+import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
 import {demandMatches} from '../../src/utils/enrollmentInterests.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
@@ -16,7 +17,7 @@ export async function enrollmentInterestStillAvailable(c:Client,event:string,rec
       AND t.expires_at>UTC_TIMESTAMP(6)) AS occupied
     FROM enrollment_classes e JOIN crm_courses course ON course.id=e.course_id
     WHERE e.id=:p1 AND e.state='published' AND JSON_EXTRACT(course.value,'$.active')=true
-      AND LEAST(e.enrollment_closes_at,DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)`,[classId])).rows;
+      AND LEAST(e.enrollment_closes_at,${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)`,[classId])).rows;
   if(!cohort||Number(cohort.occupied)>=cohort.data.capacity)return false;
 
   if(mail.kind==='waitlist_vacancy'){

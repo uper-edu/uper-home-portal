@@ -1,3 +1,4 @@
+import {classOpeningMidnight,classFirstLessonLocal} from './enrollmentClassTimeSql.ts';
 import type { Express, Request, Response } from 'express';
 import type { Employee } from './identity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
@@ -47,12 +48,12 @@ export async function enrollmentAftercareStatus(c:Client,id:string,includeRefund
   const invitations=(await c.query(`SELECT i.id,i.target_class_id,
     DATE_FORMAT(i.expires_at,'%Y-%m-%dT%H:%i:%sZ') AS expires_at_iso,
     CASE WHEN i.state='offered'
-      AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)<=UTC_TIMESTAMP(6)
+      AND LEAST(i.expires_at, ${classOpeningMidnight('e.')})<=UTC_TIMESTAMP(6)
       THEN 'expired' ELSE i.state END AS state,e.data
     FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
     WHERE i.order_id=:p1 ORDER BY i.created_at DESC`,[id])).rows.map(row=>({
       id:row.id,targetClassId:row.target_class_id,expiresAt:row.expires_at_iso,
-      state:row.state,level:row.data.level,format:row.data.format,period:row.data.period,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
+      state:row.state,level:row.data.level,format:row.data.format,period:row.data.period,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,timeZone:row.data.timeZone,firstLesson:row.data.firstLesson,schedule:row.data.schedule,
       weeklySchedule:row.data.weeklySchedule,minutes:row.data.minutes,sessions:row.data.sessions,
     }));
   const refund=includeRefund?await refundLedger(c,id):null;
@@ -195,10 +196,10 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
           o.created_at,EXISTS(SELECT 1 FROM enrollment_class_openings g WHERE g.class_id=e.id) AS opened,
           EXISTS(SELECT 1 FROM enrollment_transfers x WHERE x.order_id=o.id) AS transferred,
           (e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price) AS can_transfer,
-          (SELECT MAX(LEAST(i.expires_at,DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR))
+          (SELECT MAX(LEAST(i.expires_at,${classOpeningMidnight('target.')}))
             FROM enrollment_transfer_invitations i JOIN enrollment_classes target ON target.id=i.target_class_id
             WHERE i.order_id=o.id AND i.state='offered'
-              AND LEAST(i.expires_at,DATE(target.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)) AS reply_by
+              AND LEAST(i.expires_at,${classOpeningMidnight('target.')})>UTC_TIMESTAMP(6)) AS reply_by
         FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
         LEFT JOIN enrollment_customer_records link ON link.kind='order' AND link.record_id=o.id
         LEFT JOIN portal_leads existing ON existing.id=link.lead_id
@@ -207,7 +208,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
           AND COALESCE(canonical.profile->>'$.identityLifecycle','')<>'pending'
           AND e.state='cancelled' AND o.state IN ('paid','recovered') AND o.received>=o.price))
           AND (:p3='' OR o.class_id=:p3)
-          AND (:p4='' OR LOCATE(:p4,LOWER(CONCAT_WS(' ',o.id,o.data->>'$.name',e.id,e.data->>'$.level',e.data->>'$.schedule',DATE_FORMAT(e.first_lesson_at + INTERVAL 7 HOUR,'%Y-%m-%d'))))>0)
+          AND (:p4='' OR LOCATE(:p4,LOWER(CONCAT_WS(' ',o.id,o.data->>'$.name',e.id,e.data->>'$.level',e.data->>'$.schedule',DATE_FORMAT(${classFirstLessonLocal('e.')},'%Y-%m-%d'))))>0)
           AND (:p5<>'' OR o.state IN ('awaiting_payment','proof_review','partial','paid','recovered')
             OR (o.received>0 AND o.state IN ('expired','ended')))
       ) scoped
@@ -306,7 +307,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         sameClass(cohort.id,q.body.classId);
         const existing=(await c.query(`SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
           WHERE i.order_id=:p1 AND i.state='offered'
-            AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+            AND LEAST(i.expires_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)
           FOR UPDATE OF i`,[id])).rows[0];
         if(existing) invalid('enrollment_active_invitation',409);
         const next=await target(c,cohort,order,to);
@@ -335,7 +336,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         if(invitationId){
           const invite=(await c.query(`SELECT i.id FROM enrollment_transfer_invitations i JOIN enrollment_classes e ON e.id=i.target_class_id
             WHERE i.id=:p1 AND i.order_id=:p2 AND i.source_class_id=:p3 AND i.target_class_id=:p4 AND i.state='offered'
-              AND LEAST(i.expires_at, DATE(e.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6)
+              AND LEAST(i.expires_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)
             FOR UPDATE OF i`,[invitationId,id,cohort.id,targetClassId])).rows[0];
           if(!invite) invalid('enrollment_invitation_expired',409);
         }

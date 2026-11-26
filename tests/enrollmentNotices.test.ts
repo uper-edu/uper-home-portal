@@ -50,6 +50,39 @@ test('enrollment notices enqueue with one consistent mail configuration read',as
   assert.equal(receipts.at(-1)?.[5],'simulated');
 });
 
+test('a simulated enrollment receipt uses WAT for class facts and the payment deadline',async()=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {orderNotice,classOpeningNotices}=await import('../server/portal/enrollmentNotices');
+  const payloads:Record<string,unknown>[]=[];
+  const cohort={id:'wat-fixture-class',data:{level:'HSK 1',timeZone:'Africa/Lagos',firstLesson:'2026-11-27T19:00',
+    weeklySchedule:{days:[5],start:'19:00',lessons:1},minutes:45,minimumPaid:5,capacity:10}};
+  const client={query:async(sql:string,args:unknown[] = [])=>{
+    if(sql.includes('enrollment_mail_configuration'))return {rows:[]};
+    if(sql.includes('INSERT INTO enrollment_notification_receipts')){
+      assert.equal(args[5],'simulated');
+      payloads.push(args[4] as Record<string,unknown>);
+      return {rows:[]};
+    }
+    if(sql.includes('AS cutoff'))return {rows:[{cutoff:'2026-11-26 19:00:00.000000',paid:5,received:5,waiting:0}]};
+    if(sql.includes('JOIN enrollment_proofs'))return {rows:[]};
+    if(sql.includes('FROM enrollment_orders'))return {rows:[{
+      email:'wat-fixture@example.invalid',data:{name:'Fixture'},attribution:{lang:'zh'},
+      class_data:cohort.data,
+      deadline:'2026-11-26T17:30:00Z',
+    }]};
+    assert.fail('Unexpected query: '+sql);
+  }};
+  await orderNotice(client,'seat_reserved','wat-fixture');
+  await classOpeningNotices(client,cohort);
+  assert.equal(payloads.length,2);
+  assert.match(String(payloads[0].text),/19:00 WAT/);
+  assert.match(String(payloads[0].text),/19:00–19:45 WAT/);
+  assert.match(String(payloads[0].text),/18:30 WAT/);
+  assert.equal(String(payloads[0].text).includes('WIB'),false);
+  assert.equal(payloads[1].timezone,'Africa/Lagos');
+  assert.match(JSON.stringify(payloads[1]),/2026-11-27 19:00 WAT/);
+});
+
 test('refund deadline counts configured working dates across a weekend',()=>{
   const calendar={timezone:'Asia/Jakarta',workDays:[1,2,3,4,5],endTime:'17:00'};
   assert.equal(workingDayDeadline(new Date('2026-11-13T08:00:00Z'),3,calendar),'2026-11-18T10:00:00.000Z');

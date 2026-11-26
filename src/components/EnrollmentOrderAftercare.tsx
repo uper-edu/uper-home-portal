@@ -1,3 +1,4 @@
+import {enrollmentDateFormatter,enrollmentTimeZoneLabel,type EnrollmentClassTimeZone} from '../utils/enrollmentDateFormat';
 import {EnrollmentClassName} from './EnrollmentClassName';
 import { useState } from 'react';
 import { ArrowRight, Check, Clock3, Copy as CopyIcon } from 'lucide-react';
@@ -5,7 +6,7 @@ import {EnrollmentOrderInformation,EnrollmentRecordActions,EnrollmentRecordSumma
 import {EnrollmentJourneyLink} from './EnrollmentJourneyLink';
 import { formatCurrency } from '../utils/currency';
 import {EnrollmentPaymentInformation,EnrollmentSubmittedTransfers} from './EnrollmentPaymentInformation';
-import {enrollmentClassTitle,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
+import {enrollmentClassTitle,enrollmentInstant,enrollmentScheduleLabel, type PublicEnrollmentClass} from '../utils/enrollmentCatalog';
 import { interestOption, interestText, type InterestLanguage } from '../utils/enrollmentInterestCopy';
 import type { EnrollmentOrder } from './EnrollmentPayment';
 import {enrollmentSupportPath} from '../utils/enrollmentSupportNavigation';
@@ -75,16 +76,19 @@ export function EnrollmentOrderAftercare({
   function courseTitle(value?: Course, fallback?: Course, expected = false) {
     if (!value) return t(['报名编号','Order number','Nomor pendaftaran'])+' · '+order.id;
     if(value.period||fallback?.period)return enrollmentClassTitle({...fallback,...value},language);
-    const date = new Date(value.firstLesson.slice(0,10)+'T00:00:00+07:00');
-    const day = Number.isFinite(date.valueOf()) ? dateFormat.format(date) : '';
+    const date=enrollmentInstant(value.firstLesson,value.timeZone);
+    const day=date?enrollmentDateFormatter(language,'day',value.timeZone).format(date):'';
     const format = value.format ?? fallback?.format;
     const dayLabel = day && t(expected
       ? ['首课 '+day,'First session '+day,'Pertemuan pertama '+day] : [day+'开课','Starts '+day,'Mulai '+day]);
     return [value.level ?? fallback?.level,format && interestOption(language,format),dayLabel].filter(Boolean).join(' · ');
   }
 
+  const invitationDeadline=(date:Date,timeZone?:EnrollmentClassTimeZone)=>Number.isFinite(date.valueOf())?
+    enrollmentDateFormatter(language,'shortDay',timeZone).format(date)+' '+
+    enrollmentDateFormatter(language,'time',timeZone).format(date)+' '+enrollmentTimeZoneLabel(timeZone):'';
   const classCard = (value?: Course, label?: string, isOriginal = false, status?: string, tone:'pending'|'confirmed'|'full'='full') =>
-    <EnrollmentRecordSummary language={language} teacherType={value?.teacherType??course?.teacherType} firstLesson={value?.firstLesson} title={courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}
+    <EnrollmentRecordSummary language={language} teacherType={value?.teacherType??course?.teacherType} firstLesson={value?.firstLesson} timeZone={value?.timeZone??(isOriginal?order.timeZone:undefined)} title={courseTitle(value,course,value?.opened===false || (isOriginal&&closed))}
       schedule={enrollmentScheduleLabel(value,language)} sessions={value?.sessions} minutes={value?.minutes}
       statusSection={enrollmentDetail&&!view?{kind:'enrollment'}:undefined}
       status={status??(isOriginal&&closed?originalClosed:undefined)} tone={tone}>
@@ -93,7 +97,7 @@ export function EnrollmentOrderAftercare({
   const actions = (primary?: React.ReactNode, secondary?: React.ReactNode) =>
     <>
       {!view&&order.payment&&<EnrollmentPaymentInformation order={order} language={language} includeBalance={false}/>}
-      {!view&&<EnrollmentSubmittedTransfers transfers={order.transfers} language={language}/>}
+      {!view&&<EnrollmentSubmittedTransfers transfers={order.transfers} language={language} timeZone={course?.timeZone??order.timeZone}/>}
       <EnrollmentOrderInformation order={order} language={language} verifiedEmail={verifiedEmail}/>
       <EnrollmentRecordActions primary={primary} secondary={<>
         {secondary}
@@ -187,7 +191,7 @@ export function EnrollmentOrderAftercare({
     heading = t(['转班邀请','Transfer invitation','Undangan pindah kelas']);
     const offered = invitation.state==='offered' && order.status==='paid_cancelled';
     const date = new Date(invitation.expiresAt);
-    const reply = Number.isFinite(date.valueOf()) ? dateFormat.format(date)+' '+timeFormat.format(date)+' WIB' : '';
+    const reply = invitationDeadline(date,invitation.timeZone);
     const seatLabel = invitation.state==='declined'
       ? t(['你已拒绝这次安排，目标班席位已释放。','You declined this invitation. The seat was released.','Anda menolak undangan ini. Kursi telah dilepas.'])
       : invitation.state==='expired' ? t(['答复时间已过，目标班席位已释放。','The reply deadline passed and the seat was released.','Batas waktu jawaban terlewati dan kursi dilepas.'])
@@ -315,7 +319,7 @@ export function EnrollmentOrderAftercare({
       : paidPart && allowRefundContact ? link(support,refundContactPath,true)
       : undefined;
     const replyDate = activeInvitation && new Date(activeInvitation.expiresAt);
-    const replyBy = replyDate && Number.isFinite(replyDate.valueOf()) ? dateFormat.format(replyDate)+' '+timeFormat.format(replyDate)+' WIB' : '';
+    const replyBy = replyDate?invitationDeadline(replyDate,activeInvitation?.timeZone):'';
     body = <>
       {classCard(course,undefined,closed)}
       <article className="enrollment-detail-section">

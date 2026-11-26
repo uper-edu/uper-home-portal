@@ -132,11 +132,11 @@ test('proof retry checks the old receipt under the order lock before replacing a
     if(sql.includes('FROM enrollment_email_sessions'))return {rows:[{email:verified}]};
     if(sql.startsWith('SELECT o.*, b.state')){
       assert.deepEqual(args,[orderId,verified,oldId]);
-      return {rows:verified===email?[{...order,class_state:'published',saved_proof:receipt?oldId:null,
+      return {rows:verified===email?[{...order,class_state:'published',class_time_zone:'Africa/Lagos',saved_proof:receipt?oldId:null,
         upload_active:uploadId===oldId&&uploadActive?1:0}]:[]};
     }
     if(sql.startsWith('SELECT id,class_id,email FROM enrollment_orders'))return {rows:[order]};
-    if(sql.includes('FROM enrollment_classes WHERE id=:p1 FOR UPDATE'))return {rows:[{id:classId,state:'published'}]};
+    if(sql.includes('FROM enrollment_classes WHERE id=:p1 FOR UPDATE'))return {rows:[{id:classId,state:'published',data:{timeZone:'Africa/Lagos'}}]};
     if(sql.startsWith("UPDATE enrollment_orders SET state='expired'"))return {rows:[]};
     if(sql.includes('FROM enrollment_orders WHERE id=:p1 FOR UPDATE')){
       operations.push('lock order');
@@ -201,8 +201,8 @@ test('proof retry checks the old receipt under the order lock before replacing a
     const check='GET '+path+'/:uploadId/result',restart='POST '+path+'/start';
     assert.deepEqual(await invoke(check),{state:'unconfirmed',proofTransport:'binary-v1',uploadActive:false});
     receipt=true;
-    const saved=await invoke(restart) as {state:string;order:{id:string};uploadId?:string};
-    assert.deepEqual([saved.state,saved.order.id,saved.uploadId],['saved',orderId,undefined]);
+    const saved=await invoke(restart) as {state:string;order:{id:string;timeZone:string};uploadId?:string};
+    assert.deepEqual([saved.state,saved.order.id,saved.order.timeZone,saved.uploadId],['saved',orderId,'Africa/Lagos',undefined]);
     assert.deepEqual(operations.splice(0),['lock order','check receipt','read payment summary']);
 
     receipt=false;

@@ -1,6 +1,6 @@
 import type {EnrollmentOrder} from './EnrollmentPayment';
 import {EnrollmentDetailFields,EnrollmentDetailSection,EnrollmentStatusBadge} from './EnrollmentRecordLayout';
-import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
+import {enrollmentDateFormatter,enrollmentTimeZoneLabel,type EnrollmentClassTimeZone} from '../utils/enrollmentDateFormat';
 import {enrollmentCopy} from '../utils/enrollmentCatalog';
 import {formatCurrency} from '../utils/currency';
 import type {EnrollmentLearnerTransfer} from '../utils/enrollmentLearnerPayments';
@@ -24,12 +24,12 @@ export function EnrollmentPaymentInformation({order,language,includeBalance=true
   ]}/>;
 }
 
-export function EnrollmentSubmittedTransfers({transfers,language}:{transfers?:EnrollmentLearnerTransfer[];language:Language}) {
+export function EnrollmentSubmittedTransfers({transfers,language,timeZone}:{transfers?:EnrollmentLearnerTransfer[];language:Language;timeZone?:EnrollmentClassTimeZone}) {
   if(!transfers?.length)return null;
   const t=(labels:readonly [string,string,string])=>enrollmentCopy(language,labels);
   const money=(amount:number)=>formatCurrency(amount,language);
   const notProvided=t(['未填写','Not provided','Tidak diisi']);
-  const time=(value:string)=>enrollmentDateFormatter(language,'dateTime').format(new Date(value))+' WIB';
+  const time=(value:string)=>enrollmentDateFormatter(language,'dateTime',timeZone).format(new Date(value))+' '+enrollmentTimeZoneLabel(timeZone);
   const transferFields=(row:EnrollmentLearnerTransfer)=><EnrollmentDetailFields fields={[
     [t(['申报转账金额','Reported transfer amount','Nominal yang dilaporkan']),row.amount===undefined?notProvided:money(row.amount),
       row.verifiedAmount===undefined&&<EnrollmentStatusBadge status={t(['待财务核实','Awaiting verification','Menunggu verifikasi'])} tone="progress"/>],

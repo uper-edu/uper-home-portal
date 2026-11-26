@@ -3,7 +3,7 @@ import {useLayoutEffect,useRef,type ReactNode} from 'react';
 import {enrollmentCopy,enrollmentFixedLessonDuration,enrollmentInstant,enrollmentTeacherLabel} from '../utils/enrollmentCatalog';
 import type {InterestLanguage} from '../utils/enrollmentInterestCopy';
 import type {EnrollmentOrder} from './EnrollmentPayment';
-import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
+import {enrollmentDateFormatter,enrollmentTimeZoneLabel,type EnrollmentClassTimeZone} from '../utils/enrollmentDateFormat';
 import {formatCurrency} from '../utils/currency';
 import type {EnrollmentStatusTone} from '../utils/enrollmentOrderStatus';
 import {maskEnrollmentEmail} from '../utils/enrollmentEmailIdentity';
@@ -145,14 +145,14 @@ export function EnrollmentRecordStatus({label,status,tone,fields,description}:{
   </section>;
 }
 
-export function EnrollmentRecordSummary({title,status,tone='pending',schedule,teacherType,firstLesson,sessions,minutes,language,additionalFields,statusSection,children}: {
-  title:string;status?:string;tone?:EnrollmentStatusTone;schedule?:string;teacherType?:'local'|'foreign';firstLesson?:string;
+export function EnrollmentRecordSummary({title,status,tone='pending',schedule,teacherType,firstLesson,timeZone,sessions,minutes,language,additionalFields,statusSection,children}: {
+  title:string;status?:string;tone?:EnrollmentStatusTone;schedule?:string;teacherType?:'local'|'foreign';firstLesson?:string;timeZone?:EnrollmentClassTimeZone;
   sessions?:number;minutes?:number;
   language:InterestLanguage;additionalFields?:ReadonlyArray<EnrollmentDetailField>;children?:ReactNode;
   statusSection?:{kind:'enrollment'|'booking';fields?:ReadonlyArray<EnrollmentDetailField>;description?:ReactNode};
 }) {
   const t=(copy:readonly [string,string,string])=>enrollmentCopy(language,copy);
-  const firstDate=enrollmentInstant(firstLesson);
+  const firstDate=enrollmentInstant(firstLesson,timeZone);
   const booking=statusSection?.kind==='booking';
   const statusLabel=booking?t(['约课状态','Booking status','Status penjadwalan']):
     t(['报名状态','Enrollment status','Status pendaftaran']);
@@ -165,7 +165,7 @@ export function EnrollmentRecordSummary({title,status,tone='pending',schedule,te
     <EnrollmentDetailFields heading={courseHeading} fields={[
       [t(['授课教师','Teacher','Pengajar']),enrollmentTeacherLabel(teacherType,language)],
       [t(['首课时间','First class','Pertemuan pertama']),firstDate&&<time dateTime={firstDate.toISOString()}>
-        {enrollmentDateFormatter(language,'dateTime').format(firstDate)} WIB
+        {enrollmentDateFormatter(language,'dateTime',timeZone).format(firstDate)} {enrollmentTimeZoneLabel(timeZone)}
       </time>],
       [t(['每周课表','Weekly schedule','Jadwal mingguan']),schedule],
       [t(['课时安排','Lesson duration','Durasi pelajaran']),

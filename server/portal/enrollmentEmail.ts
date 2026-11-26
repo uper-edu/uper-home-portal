@@ -1,3 +1,4 @@
+import {enrollmentTimeZone,enrollmentTimeZoneLabel,enrollmentWallClockInstant,type EnrollmentClassTimeZone} from '../../src/utils/enrollmentDateFormat.ts';
 import {enrollmentWeeklyScheduleText,type EnrollmentWeeklySchedule} from '../../src/utils/enrollmentCatalog.ts';
 import { enrollmentRuleDefaults } from '../../src/utils/enrollmentRules.ts';
 import { formatCurrency } from '../../src/utils/currency.ts';
@@ -54,6 +55,7 @@ type Facts = {language:unknown; salutation?:string; class?:string; firstLesson?:
   deadline?:string; url?:string; assistanceId?:string; orderId?:string; price?:number; received?:number; expected?:number; refunded?:number;
   format?:string; period?:string; installment?:number; targetClass?:string; targetFirstLesson?:string;
   weeklySchedule?:EnrollmentWeeklySchedule; minutes?:number;
+  timeZone?:EnrollmentClassTimeZone; targetTimeZone?:EnrollmentClassTimeZone;
   targetWeeklySchedule?:EnrollmentWeeklySchedule; targetMinutes?:number;
   targetFormat?:string; targetPeriod?:string; targetSchedule?:string; replyBy?:string; sendBy?:string; orderState?:string};
 const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -70,12 +72,15 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts,env=p
   const language=facts.language==='zh'||facts.language==='id'?facts.language:'en';
   const tr=(copy:Copy)=>copy[language==='zh'?0:language==='id'?2:1];
   const amount=(value?:number)=>value===undefined?'':formatCurrency(value,language);
-  const asWib=(value?:string)=>{
+  const when=(value?:string,timeZone=facts.timeZone??enrollmentTimeZone)=>{
     if(!value)return '';
-    const parsed=new Date(value);
-    return Number.isNaN(parsed.getTime())?'':new Intl.DateTimeFormat(language==='en'?'en-GB':language==='id'?'id-ID':'zh-CN',{dateStyle:'medium',timeStyle:'short',hourCycle:'h23',timeZone:'Asia/Jakarta'}).format(parsed)+' WIB';
+    const parsed=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(value)
+      ?enrollmentWallClockInstant(value.slice(0,16),timeZone):new Date(value);
+    return !parsed||!Number.isFinite(parsed.valueOf())?'':new Intl.DateTimeFormat(
+      language==='en'?'en-GB':language==='id'?'id-ID':'zh-CN',
+      {dateStyle:'medium',timeStyle:'short',hourCycle:'h23',timeZone},
+    ).format(parsed)+' '+enrollmentTimeZoneLabel(timeZone);
   };
-  const when=(value?:string)=>value?asWib(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(value)?value+'+07:00':value):'';
   const detail=(label:Copy,value?:string)=>value?.trim()?tr(label)+' · '+value.trim():'';
   const classIdentity=(level?:string,format?:string,period?:string)=>[
     level?.trim(),
@@ -104,8 +109,8 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts,env=p
   const firstClassLabel:Copy=kind==='class_cancelled'||kind==='transfer_invitation'
     ?['原定首课','Original first session','Jadwal awal pertemuan pertama']
     :['计划首课','Scheduled first session','Jadwal pertemuan pertama'];
-  const schedule=enrollmentWeeklyScheduleText(facts.weeklySchedule,facts.minutes??45,language)||facts.schedule;
-  const targetSchedule=enrollmentWeeklyScheduleText(facts.targetWeeklySchedule,facts.targetMinutes??45,language)||facts.targetSchedule;
+  const schedule=enrollmentWeeklyScheduleText(facts.weeklySchedule,facts.minutes??45,language,facts.timeZone)||facts.schedule;
+  const targetSchedule=enrollmentWeeklyScheduleText(facts.targetWeeklySchedule,facts.targetMinutes??45,language,facts.targetTimeZone)||facts.targetSchedule;
   const classDetails=otp?[]:[
     detail(kind==='transfer_invitation'?['原班次','Original class','Kelas asal']:['班次','Class','Kelas'],className),
     detail(firstClassLabel,when(facts.firstLesson)),
@@ -165,7 +170,7 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts,env=p
     otp_mine:[tr(['返回「我的报名」输入验证码。','Return to My Enrollments and enter the code.','Kembali ke Pendaftaran Saya dan masukkan kode ini.'])],
     assistance_confirmation:[
       detail(['学费','Tuition','Biaya kursus'],amount(facts.price)),
-      detail(['确认截止','Confirmation deadline','Batas konfirmasi'],asWib(facts.deadline)),
+      detail(['确认截止','Confirmation deadline','Batas konfirmasi'],when(facts.deadline)),
       ...classDetails,
       tr(['验证邮箱并确认取得席位后，即可查看转账信息。',
         'Verify your email and confirm your application. Once your seat is reserved, you can view the bank transfer instructions.',
@@ -173,7 +178,7 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts,env=p
     ],
     seat_reserved:[
       detail(['待付金额','Amount due','Jumlah yang harus dibayar'],amount(facts.price)),
-      detail(['付款及提交凭证截止','Payment and proof-of-transfer deadline','Batas pembayaran dan unggah bukti transfer'],asWib(facts.deadline)),
+      detail(['付款及提交凭证截止','Payment and proof-of-transfer deadline','Batas pembayaran dan unggah bukti transfer'],when(facts.deadline)),
       ...classDetails,
       tr(['财务核实足额到账后，报名才算成功。','Enrollment is complete once full payment is verified.','Pendaftaran selesai setelah pembayaran penuh terverifikasi.']),
     ],
@@ -190,9 +195,9 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts,env=p
     ],
     class_cancelled:[cancellation,...classDetails],
     transfer_invitation:[
-      detail(['答复截止','Reply deadline','Batas waktu menjawab'],asWib(facts.replyBy)),
+      detail(['答复截止','Reply deadline','Batas waktu menjawab'],when(facts.replyBy,facts.targetTimeZone??facts.timeZone)),
       detail(['可转入班次','New class','Kelas baru'],classIdentity(facts.targetClass,facts.targetFormat,facts.targetPeriod)),
-      detail(['新班首课','New first session','Pertemuan pertama kelas baru'],when(facts.targetFirstLesson)),
+      detail(['新班首课','New first session','Pertemuan pertama kelas baru'],when(facts.targetFirstLesson,facts.targetTimeZone??enrollmentTimeZone)),
       detail(['新班每周课表','New class weekly schedule','Jadwal mingguan kelas baru'],targetSchedule),
       detail(['原班次','Original class','Kelas asal'],className),
       detail(['原定首课','Original first session','Jadwal awal pertemuan pertama'],when(facts.firstLesson)),
@@ -203,7 +208,7 @@ export function renderEnrollmentEmail(kind:EnrollmentEmailKind,facts:Facts,env=p
     ],
     refund_accepted:[
       detail(['退款金额','Refund amount','Jumlah pengembalian dana'],amount(facts.expected)),
-      ...(facts.expected===0?[]:[detail(['预计发出时间','Expected refund dispatch by','Perkiraan batas waktu pengiriman dana'],asWib(facts.sendBy))]),
+      ...(facts.expected===0?[]:[detail(['预计发出时间','Expected refund dispatch by','Perkiraan batas waktu pengiriman dana'],when(facts.sendBy,enrollmentTimeZone))]),
       ...(facts.expected===0?[]:[tr(['退款将退回原付款账户。','The refund will be returned to the account used for the original payment.','Dana akan dikembalikan ke rekening yang digunakan untuk pembayaran awal.'])]),
       detail(['班次','Class','Kelas'],className),
     ],

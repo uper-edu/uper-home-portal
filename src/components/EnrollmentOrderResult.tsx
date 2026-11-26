@@ -10,7 +10,7 @@ import { interestText, type InterestLanguage } from '../utils/enrollmentInterest
 import type {AftercareCourse} from '../utils/enrollmentAftercare';
 import {enrollmentOrderTone} from '../utils/enrollmentOrderStatus';
 import {EnrollmentPaymentInformation,EnrollmentSubmittedTransfers} from './EnrollmentPaymentInformation';
-import {enrollmentDateFormatter} from '../utils/enrollmentDateFormat';
+import {enrollmentDateFormatter,enrollmentTimeZoneLabel} from '../utils/enrollmentDateFormat';
 
 type Copy = readonly [string, string, string];
 
@@ -39,7 +39,8 @@ export function EnrollmentOrderResult({ order, enrollmentDetail, verifiedEmail, 
   const opened = classInfo?.opened??course?.opened;
   const cancelled = classState === 'cancelled';
   const firstLesson=classInfo?.firstLesson??course?.firstLesson;
-  const openingClock=useEnrollmentOpeningClock(!paid&&!cancelled?firstLesson:undefined,order.serverClockOffsetMs);
+  const timeZone=classInfo?.timeZone??course?.timeZone??order.timeZone;
+  const openingClock=useEnrollmentOpeningClock(!paid&&!cancelled?firstLesson:undefined,order.serverClockOffsetMs,timeZone);
   const schedule = enrollmentScheduleLabel(classInfo,language) || enrollmentScheduleLabel(course,language);
   const title = enrollmentClassTitle({...course,...classInfo},language);
   const support = t(['联系销售或客服','Contact sales or support','Hubungi tim penjualan atau layanan pelanggan']);
@@ -65,11 +66,11 @@ export function EnrollmentOrderResult({ order, enrollmentDetail, verifiedEmail, 
 
   return <div className="enrollment-order-result">
     <div className="enrollment-result-body">
-      <EnrollmentRecordSummary language={language} teacherType={classInfo?.teacherType??course?.teacherType} firstLesson={!cancelled?firstLesson:undefined} title={title||t(['班次报名','Class application','Pendaftaran kelas'])} schedule={schedule}
+      <EnrollmentRecordSummary language={language} timeZone={timeZone} teacherType={classInfo?.teacherType??course?.teacherType} firstLesson={!cancelled?firstLesson:undefined} title={title||t(['班次报名','Class application','Pendaftaran kelas'])} schedule={schedule}
         sessions={classInfo?.sessions??course?.sessions} minutes={classInfo?.minutes??course?.minutes}
         statusSection={enrollmentDetail?{kind:'enrollment',description:reviewDescription,fields:[
           [t(['付款截止','Payment deadline','Batas pembayaran']),hasReviewDeadline&&<time dateTime={order.deadline}>
-            {enrollmentDateFormatter(language,'dateTime').format(new Date(order.deadline))} WIB
+            {enrollmentDateFormatter(language,'dateTime',timeZone).format(new Date(order.deadline))} {enrollmentTimeZoneLabel(timeZone)}
           </time>],
         ]}:undefined}
         tone={enrollmentOrderTone(order.status,{restored:order.restored,needsAction:!!payableBalance&&(reportedPartial||!paymentWaiting&&!pendingProof)})} status={t(paid
@@ -79,12 +80,12 @@ export function EnrollmentOrderResult({ order, enrollmentDetail, verifiedEmail, 
             : ['凭证待财务核实','Proof awaiting verification','Bukti menunggu verifikasi'])}>
         {cancelled ? <p>{t(['原班已确认不开班。','The original class will not open.','Kelas asal tidak dibuka.'])}</p>
           : opened && <p>{t(['已确认开班','Class opening confirmed','Pembukaan kelas dikonfirmasi'])}</p>}
-        {!paid && !cancelled && <EnrollmentJoiningNote firstLesson={firstLesson}
+        {!paid && !cancelled && <EnrollmentJoiningNote firstLesson={firstLesson} timeZone={timeZone}
           now={openingClock} language={language}/>}
       </EnrollmentRecordSummary>
       <EnrollmentPaymentInformation order={order} language={language} includeBalance={!payableBalance}/>
       {paymentWaiting&&!payableBalance&&<p>{t(['请等待核验。如果已有转账，可以提交对应凭证。','Please wait for verification. If you already transferred funds, you can submit the proof.','Tunggu hasil verifikasi. Jika sudah transfer, Anda dapat mengirim buktinya.'])}</p>}
-      <EnrollmentSubmittedTransfers transfers={order.transfers} language={language}/>
+      <EnrollmentSubmittedTransfers transfers={order.transfers} language={language} timeZone={timeZone}/>
       <EnrollmentOrderInformation order={order} language={language} verifiedEmail={verifiedEmail}/>
       {inReview&&!enrollmentDetail&&<section className="enrollment-detail-section">
         <h2 className="enrollment-record-section-title">{t(['下一步','What happens next','Langkah berikutnya'])}</h2>

@@ -1,3 +1,4 @@
+import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
 import type { Express, Request, Response } from 'express';
 import { allowed, type Employee } from './identity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
@@ -13,7 +14,7 @@ type Scope=ReturnType<typeof enrollmentManagementScopes>;
 // Keep the live view read-only. Use the admission deadline rules even if the expiry worker has not run yet.
 const orderState=`CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
   AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END`;
-const inviteDeadline=`LEAST(i.expires_at,DATE(b.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)`;
+const inviteDeadline=`LEAST(i.expires_at,${classOpeningMidnight('b.')})`;
 const orders=`SELECT o.class_id,o.id,o.id AS record_id,'order' AS kind,${orderState} AS state,
     o.data->>'$.name' AS name,o.email,o.data->>'$.phone' AS phone,o.price,o.received,o.payment_due_at AS due_at,o.data->>'$.closureReason' AS recorded_closure
   FROM enrollment_orders o WHERE (:p1 IS NULL OR o.class_id=:p1)`;
@@ -44,7 +45,7 @@ export async function readEnrollmentManagementSummaries(c:Client,actor:Employee,
     )
     SELECT b.id,b.state,b.data,b.first_lesson_at,g.class_id IS NOT NULL AS opened,
       b.state='published' AND JSON_EXTRACT(course.value,'$.active')=true
-        AND LEAST(b.enrollment_closes_at,DATE(b.first_lesson_at + INTERVAL 7 HOUR) - INTERVAL 7 HOUR)>UTC_TIMESTAMP(6) AS accepting,
+        AND LEAST(b.enrollment_closes_at,${classOpeningMidnight('b.')})>UTC_TIMESTAMP(6) AS accepting,
       counts.state AS entry_state,counts.amount
     FROM enrollment_classes b JOIN crm_courses course ON course.id=b.course_id
     LEFT JOIN enrollment_class_openings g ON g.class_id=b.id LEFT JOIN counts ON counts.class_id=b.id
@@ -59,7 +60,7 @@ export async function readEnrollmentManagementSummaries(c:Client,actor:Employee,
       const accepting=Number(row.accepting)===1;
       const status=row.state==='cancelled'?'cancelled':Number(row.opened)===1?'opened':accepting?'recruiting':'closed';
       cohort={id:row.id,batchNumber:row.data.batchNumber,teacherType:row.data.teacherType,level:row.data.level,format:row.data.format,period:row.data.period,schedule:row.data.schedule,
-        firstLessonAt:row.first_lesson_at,capacity:row.data.capacity,minimumPaid:row.data.minimumPaid,status,accepting,
+        timeZone:row.data.timeZone,firstLessonAt:row.first_lesson_at,capacity:row.data.capacity,minimumPaid:row.data.minimumPaid,status,accepting,
         counts:{awaiting_payment:0,proof_review:0,partial:0,paid:0,held:0,waiting:0,history:0},occupied:0,available:0};
       classes.set(row.id,cohort);
     }

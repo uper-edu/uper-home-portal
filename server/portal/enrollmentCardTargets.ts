@@ -31,7 +31,7 @@ export function mountEnrollmentCardTargets(app:Express,wrap:Wrap,staff:Staff,fin
           JOIN enrollment_notification_receipts p ON p.event_key=CONCAT('lark:class:',b.id) WHERE b.id=:p1`,[id])).rows[0];
         if(!cohort) invalid('enrollment_notice_target_not_found',404);
         const {paid,minimumPaid,capacity,verifiedReceipts,waiting,pending,pendingAmount,pendingUnknownCount}=cohort.payload;
-        return {type,id,level:cohort.data.level,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
+        return {type,id,level:cohort.data.level,timeZone:cohort.data.timeZone,firstLesson:cohort.data.firstLesson,schedule:cohort.data.schedule,
           paid,minimumPaid,capacity,received:verifiedReceipts,waiting,pending,pendingAmount,pendingUnknownCount};
       }
       const order=(await c.query(`SELECT o.id,o.state,o.price,o.received,b.state AS class_state,b.data AS class_data,

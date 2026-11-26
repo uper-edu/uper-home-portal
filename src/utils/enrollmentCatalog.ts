@@ -1,3 +1,4 @@
+import {enrollmentTimeZone, enrollmentTimeZoneLabel, enrollmentWallClockInstant, isEnrollmentClassTimeZone, type EnrollmentClassTimeZone} from './enrollmentDateFormat';
 import type {EnrollmentCourseIntroduction} from './enrollmentCourseIntroduction';
 
 export const enrollmentLevels = ['HSK 1', 'HSK 2', 'HSK 3', 'HSK 4', 'HSK 4A', 'HSK 4B'] as const;
@@ -21,6 +22,7 @@ export interface EnrollmentClassConfig {
   format: typeof enrollmentFormats[number];
   /** Legacy key for the time slot, such as weekend. */
   period: typeof enrollmentPeriods[number];
+  timeZone?: EnrollmentClassTimeZone;
   firstLesson: string;
   enrollmentCloses: string;
   /** Legacy value retained when editing existing records. */
@@ -53,12 +55,12 @@ export interface EnrollmentClassAdmin extends EnrollmentClassConfig {
   hasOrders?: boolean;
 }
 
-function enrollmentOpeningDayStart(firstLesson: string) {
-  return enrollmentInstant(firstLesson) && enrollmentInstant(firstLesson.slice(0, 10) + 'T00:00');
+function enrollmentOpeningDayStart(firstLesson: string,timeZone?:EnrollmentClassTimeZone) {
+  return enrollmentInstant(firstLesson,timeZone) && enrollmentInstant(firstLesson.slice(0, 10) + 'T00:00',timeZone);
 }
 
-export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 'firstLesson'>, now = Date.now()) {
-  const startsOn = enrollmentOpeningDayStart(cohort.firstLesson);
+export function isEnrollmentInsertionWindow(cohort: Pick<EnrollmentClassConfig, 'firstLesson'|'timeZone'>, now = Date.now()) {
+  const startsOn = enrollmentOpeningDayStart(cohort.firstLesson,cohort.timeZone);
   return startsOn !== null && now >= startsOn.valueOf();
 }
 
@@ -83,13 +85,7 @@ export function validEnrollmentHolidayDate(value: unknown): value is string {
     Number(value.slice(0, 4)) > 0 && enrollmentInstant(value + 'T00:00') !== null;
 }
 
-export function enrollmentInstant(value: unknown): Date | null {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
-  const date = new Date(value + ':00+07:00');
-  if (!Number.isFinite(date.valueOf())) return null;
-  const jakarta = new Date(date.valueOf() + 7 * 3600000).toISOString().slice(0, 16);
-  return jakarta === value ? date : null;
-}
+export const enrollmentInstant=enrollmentWallClockInstant;
 
 export function enrollmentScheduleDefaults(firstLesson:string) {
   if(!enrollmentInstant(firstLesson))return null;
@@ -98,13 +94,13 @@ export function enrollmentScheduleDefaults(firstLesson:string) {
 }
 
 export function publicEnrollmentClass(record: EnrollmentClassAdmin): PublicEnrollmentClass {
-  const { id, level, courseName, batchNumber, format, period, firstLesson, schedule, weeklySchedule, sessions, minutes, teacherType, price,
+  const { id, level, courseName, batchNumber, format, period, timeZone, firstLesson, schedule, weeklySchedule, sessions, minutes, teacherType, price,
     standardPrice, learningOutcomes, material, resources, teacher } = record;
   const maximum=record.capacity;
   // The advertised range describes group size. It is independent of the opening threshold.
   const usualMinimum=format==='standard'&&maximum===15?10:format==='small'&&maximum===6?4:undefined;
   const classSize=Number.isSafeInteger(maximum)&&maximum>0?{maximum,usualMinimum}:undefined;
-  return { id, level, courseName, batchNumber, format, period, firstLesson, schedule, weeklySchedule, sessions, minutes, teacherType, price, classSize,
+  return { id, level, courseName, batchNumber, format, period, timeZone, firstLesson, schedule, weeklySchedule, sessions, minutes, teacherType, price, classSize,
     standardPrice, learningOutcomes, material, resources, teacher };
 }
 
@@ -133,9 +129,11 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
   const courseId = string('courseId', 100);
   const firstLesson = string('firstLesson', 16);
   const enrollmentCloses = string('enrollmentCloses', 16);
-  const start = enrollmentInstant(firstLesson);
-  const startOfOpeningDay = enrollmentOpeningDayStart(firstLesson);
-  const closes = enrollmentInstant(enrollmentCloses);
+  const timeZone=input.timeZone===undefined?enrollmentTimeZone:input.timeZone;
+  if(!isEnrollmentClassTimeZone(timeZone))invalidConfig();
+  const start = enrollmentInstant(firstLesson,timeZone);
+  const startOfOpeningDay = enrollmentOpeningDayStart(firstLesson,timeZone);
+  const closes = enrollmentInstant(enrollmentCloses,timeZone);
   const capacity = integer('capacity', 200);
   const period = option('period', enrollmentPeriods);
   const minimumPaid = integer('minimumPaid', capacity);
@@ -166,7 +164,7 @@ export function validateEnrollmentClass(raw: Record<string, unknown> | null | un
     level: option('level', enrollmentLevels),
     format: option('format', enrollmentFormats),
     period,
-    firstLesson, enrollmentCloses,
+    timeZone, firstLesson, enrollmentCloses,
     schedule: string('schedule', 300, {optional:draft}), sessions: integer('sessions', 1000), minutes: integer('minutes', 600),
     minimumPaid, capacity, price, standardPrice,
     learningOutcomes: input.templateId&&input.learningOutcomes===undefined?'':string('learningOutcomes',2500,{optional:!!input.templateId}),
@@ -187,7 +185,7 @@ export function enrollmentTimeSlotMatches(period:string,days:readonly number[]) 
   const allowed=period==='weekend'?[6,7]:period==='weekday-evening'?[1,2,3,4,5]:[];
   return days.length>0&&days.every(day=>allowed.includes(day));
 }
-/** firstLesson is stored as a local WIB date and time. Weekdays use Monday=1. */
+/** firstLesson is stored as a date and time in the class calendar. Weekdays use Monday=1. */
 export function enrollmentFirstSessionMatches(firstLesson:string,plan:EnrollmentWeeklySchedule) {
   if (!enrollmentInstant(firstLesson)) return false;
   return plan.days.includes(enrollmentDateWeekday(firstLesson))&&firstLesson.slice(11)===enrollmentSessionStart(plan,enrollmentDateWeekday(firstLesson));
@@ -224,14 +222,14 @@ export function enrollmentWeeklyScheduleGroups(plan:EnrollmentWeeklySchedule|und
   }));
 }
 
-export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh'){
+export function enrollmentWeeklyScheduleText(plan:EnrollmentWeeklySchedule|undefined,minutesPerPeriod:number,lang:'zh'|'en'|'id'='zh',timeZone?:EnrollmentClassTimeZone){
   const groups=enrollmentWeeklyScheduleGroups(plan,minutesPerPeriod,lang);
-  return groups.length?groups.map(({days,time})=>days+' '+time).join(lang==='zh'?'；':' / ')+' WIB':'';
+  return groups.length?groups.map(({days,time})=>days+' '+time).join(lang==='zh'?'；':' / ')+' '+enrollmentTimeZoneLabel(timeZone):'';
 }
 
-export function enrollmentScheduleLabel(row:Partial<Pick<PublicEnrollmentClass,'weeklySchedule'|'minutes'|'schedule'>>|undefined,language:'zh'|'en'|'id') {
+export function enrollmentScheduleLabel(row:Partial<Pick<PublicEnrollmentClass,'weeklySchedule'|'minutes'|'schedule'|'timeZone'>>|undefined,language:'zh'|'en'|'id') {
   if (!row) return '';
-  const localized = row.minutes === undefined ? '' : enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,language);
+  const localized = row.minutes === undefined ? '' : enrollmentWeeklyScheduleText(row.weeklySchedule,row.minutes,language,row.timeZone);
   return localized || row.schedule || '';
 }
 
@@ -269,7 +267,7 @@ export function enrollmentFixedLessonDuration(lessons:number,minutes:number,lang
 }
 
 /** Seed empty recurring fields from the first session without replacing an existing schedule. */
-export function enrollmentAutofillStart<T extends {firstLesson:string;weeklySchedule?:EnrollmentWeeklySchedule;minutes:number; schedule:string}>(config:T,firstLesson:string):T {
+export function enrollmentAutofillStart<T extends {firstLesson:string;weeklySchedule?:EnrollmentWeeklySchedule;minutes:number; schedule:string;timeZone?:EnrollmentClassTimeZone}>(config:T,firstLesson:string):T {
   const next={...config,firstLesson};
   const weekly=config.weeklySchedule;
   if(enrollmentInstant(firstLesson)&&!weekly?.startByDay&&(!weekly?.days.length||!weekly.start)){
@@ -278,7 +276,7 @@ export function enrollmentAutofillStart<T extends {firstLesson:string;weeklySche
       start:weekly?.start||firstLesson.slice(11),
       lessons:weekly?.lessons??1,
     };
-    next.schedule=enrollmentWeeklyScheduleText(next.weeklySchedule,config.minutes);
+    next.schedule=enrollmentWeeklyScheduleText(next.weeklySchedule,config.minutes,'zh',config.timeZone);
   }
   return next;
 }
@@ -286,11 +284,11 @@ export function enrollmentScheduleErrors(config:Partial<Omit<EnrollmentClassConf
   const errors:Record<string,string>={};
   const t=(zh:string,en:string,id:string)=>({zh,en,id})[language];
   const plan=config.weeklySchedule??{days:[],start:'',lessons:1};
-  const first=enrollmentInstant(config.firstLesson),closes=enrollmentInstant(config.enrollmentCloses);
+  const first=enrollmentInstant(config.firstLesson,config.timeZone),closes=enrollmentInstant(config.enrollmentCloses,config.timeZone);
   if(!config.period)errors.period=t('请选择时段。','Select a time slot.','Pilih waktu kelas.');
   if(!first)errors.firstLesson=t('请填写完整的首次上课日期和时间。','Enter the full first session date and time.','Isi tanggal dan waktu pertemuan pertama.');
   if(!closes)errors.enrollmentCloses=t('请填写自助报名截止日期和时间。','Enter the self-service enrollment deadline.','Isi batas waktu pendaftaran mandiri.');
-  else if(first&&closes>enrollmentInstant(config.firstLesson!.slice(0,10)+'T00:00')!)errors.enrollmentCloses=t('自助报名最晚须在开课当天 00:00 截止。','Self-service enrollment must close by 00:00 on the first session day.','Pendaftaran mandiri harus ditutup paling lambat pukul 00.00 pada hari pertama kelas.');
+  else if(first&&closes>enrollmentOpeningDayStart(config.firstLesson!,config.timeZone)!)errors.enrollmentCloses=t('自助报名最晚须在开课当天 00:00 截止。','Self-service enrollment must close by 00:00 on the first session day.','Pendaftaran mandiri harus ditutup paling lambat pukul 00.00 pada hari pertama kelas.');
   if(config.templateId||plan){
     if(!plan?.days.length)errors.days=t('请至少选择一个每周上课日。','Select at least one weekly class day.','Pilih minimal satu hari kelas setiap minggu.');
     else if(config.period&&!enrollmentTimeSlotMatches(config.period,plan.days))errors.days=config.period==='mixed'

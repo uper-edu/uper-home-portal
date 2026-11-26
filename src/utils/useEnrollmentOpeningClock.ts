@@ -1,10 +1,11 @@
+import type {EnrollmentClassTimeZone} from './enrollmentDateFormat';
 import {useEffect,useState} from 'react';
 import {enrollmentInstant} from './enrollmentCatalog';
 import {nextPaymentClockDelay} from './enrollmentPaymentClock';
 
-export function useEnrollmentOpeningClock(firstLesson?:string,clockOffset=0) {
+export function useEnrollmentOpeningClock(firstLesson?:string,clockOffset=0,timeZone?:EnrollmentClassTimeZone) {
   const [now,setNow]=useState(Date.now);
-  const start=enrollmentInstant(firstLesson)?.valueOf();
+  const start=enrollmentInstant(firstLesson,timeZone)?.valueOf();
   useEffect(()=>{
     if(start===undefined)return;
     let timer:number|undefined;
