@@ -1,5 +1,5 @@
 import type {Express,Request,Response} from 'express';
-import {dashboardChannelKey,dashboardScopes,readDashboardFilters,type DashboardCash,type DashboardChange,type DashboardChannelOutcome,type DashboardCohort,type DashboardFilters,
+import {canManageDashboardKpi,dashboardChannelKey,dashboardScopes,readDashboardFilters,type DashboardCash,type DashboardChange,type DashboardChannelOutcome,type DashboardCohort,type DashboardFilters,
   type DashboardMetrics,type DashboardMovementPage,type DashboardQueueAges,type DashboardReservationOutcome,type DashboardSnapshot,type DashboardSource,type DashboardSources,type DashboardTrend} from '../../src/utils/crmOperationsDashboard.ts';
 import {enrollmentManagementScopes} from '../../src/utils/crmEnrollmentManagement.ts';
 import {crmInstant} from '../../src/utils/crmOperatingTime.ts';
@@ -8,7 +8,7 @@ import {readEnrollmentManagementSummaries} from './enrollmentManagement.ts';
 import {readEnrollmentFinancePendingSummary} from './enrollmentFinanceWorklist.ts';
 import type {Employee} from './identity.ts';
 import {readGaTraffic,trafficEnvironment} from './operationsDashboardTraffic.ts';
-import {readDashboardKpiPlan} from './operationsDashboardKpi.ts';
+import {readDashboardKpiEditorPlan,readDashboardKpiList,readDashboardKpiPlan,saveDashboardKpiEditorPlan} from './operationsDashboardKpi.ts';
 import {readDashboardAdSpend} from './operationsDashboardAdSpend.ts';
 import {readDashboardTeaching} from './operationsDashboardTeaching.ts';
 import {tx} from './store.ts';
@@ -474,6 +474,27 @@ export async function readOperationsDashboardSnapshot(c:Client,actor:Employee,fi
 
 export function mountOperationsDashboard(app:Express,wrap:(fn:(q:Request,r:Response)=>Promise<unknown>)=>(q:Request,r:Response)=>void,
   staff:(q:Request,permission:string)=>Promise<Employee>){
+  app.get('/api/crm/operations-dashboard/kpi',wrap(async(q,r)=>{
+    const actor=await staff(q,'crm.dashboard.kpi.manage');
+    if(!canManageDashboardKpi(actor))invalid('dashboard_kpi_forbidden',403);
+    const environment=trafficEnvironment(process.env.PORTAL_ENV??'dev');
+    r.set('Cache-Control','private, no-store').json(await tx(c=>
+      readDashboardKpiList(c,environment,dashboardScopes(actor).finance,Date.now())));
+  }));
+  app.get('/api/crm/operations-dashboard/kpi/:month',wrap(async(q,r)=>{
+    const actor=await staff(q,'crm.dashboard.kpi.manage');
+    if(!canManageDashboardKpi(actor))invalid('dashboard_kpi_forbidden',403);
+    const environment=trafficEnvironment(process.env.PORTAL_ENV??'dev');
+    r.set('Cache-Control','private, no-store').json(await tx(c=>
+      readDashboardKpiEditorPlan(c,environment,String(q.params.month),dashboardScopes(actor).finance,Date.now())));
+  }));
+  app.put('/api/crm/operations-dashboard/kpi/:month',wrap(async(q,r)=>{
+    const actor=await staff(q,'crm.dashboard.kpi.manage');
+    if(!canManageDashboardKpi(actor))invalid('dashboard_kpi_forbidden',403);
+    const environment=trafficEnvironment(process.env.PORTAL_ENV??'dev');
+    r.set('Cache-Control','private, no-store').json(await tx(c=>
+      saveDashboardKpiEditorPlan(c,environment,String(q.params.month),q.body,{...actor,finance:dashboardScopes(actor).finance})));
+  }));
   app.get('/api/crm/operations-dashboard',wrap(async(q,r)=>{
     const actor=await staff(q,'crm.read');
     if(!dashboardScopes(actor).view)invalid('dashboard_forbidden',403);

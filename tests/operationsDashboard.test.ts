@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type {Express,Request,Response} from 'express';
-import {dashboardChannelLeaders,dashboardPath,dashboardPaymentSampleIssue,dashboardRateComparisonMinimum,dashboardScopes,dashboardSupply,dashboardTopics,readDashboardFilters} from '../src/utils/crmOperationsDashboard.ts';
+import {dashboardChannelLeaders,dashboardKpiMonthProgress,dashboardPath,dashboardPaymentSampleIssue,dashboardRateComparisonMinimum,dashboardScopes,dashboardSupply,dashboardTopics,readDashboardFilters} from '../src/utils/crmOperationsDashboard.ts';
 import {dashboardKpiPlan,parseDashboardKpiImport,readDashboardKpiPlan,storeDashboardKpiPlan} from '../server/portal/operationsDashboardKpi.ts';
 import dashboardMetricsGuide from '../src/components/crm/dashboardMetricsGuide.json';
 import type {EnrollmentClassSummary} from '../src/utils/crmEnrollmentManagement.ts';
@@ -111,24 +111,24 @@ test('operating periods cut at Jakarta midnight and compare the same portion of 
   assert.throws(()=>dashboardWindows({...filters,period:'custom',from:'2026-11-25',to:'2026-11-26'},now),/dashboard_invalid_period/);
 });
 
-test('wallboard keeps approved monthly targets and selects the latest eligible checkpoint for each metric',()=>{
+test('wallboard exposes monthly targets while ignoring historical milestone data',()=>{
   const saved={targets:{first:260,paid:320,net:280_000_000,paymentRate:.62},milestones:{
     '2026-10-25':{first:500,net:500},
     '2026-11-23':{first:220,paid:290,net:242_000_000},
     '2026-11-25':{first:226,paid:-1},
     '2026-11-26':{first:229,paid:299,net:285_000_000},
   }};
-  const plan=dashboardKpiPlan(saved,'2026-11-25',true);
+  const plan=dashboardKpiPlan(saved,true);
   assert.deepEqual(plan,{
-    first:{target:260,planned:{date:'2026-11-25',value:226}},
-    paid:{target:320,planned:{date:'2026-11-23',value:290}},
-    net:{target:280_000_000,planned:{date:'2026-11-23',value:242_000_000}},
+    first:{target:260},
+    paid:{target:320},
+    net:{target:280_000_000},
     paymentRate:.62,
   });
-  assert.deepEqual(dashboardKpiPlan(saved,'2026-11-25',false),{...plan,net:undefined});
-  assert.deepEqual(dashboardKpiPlan({targets:{first:0,paid:1.5,net:'300',paymentRate:62}},'2026-11-25',true),
+  assert.deepEqual(dashboardKpiPlan(saved,false),{...plan,net:undefined});
+  assert.deepEqual(dashboardKpiPlan({targets:{first:0,paid:1.5,net:'300',paymentRate:62}},true),
     {first:undefined,paid:undefined,net:undefined,paymentRate:undefined});
-  assert.deepEqual(dashboardKpiPlan({targets:{paid:320,paymentRate:0}},'2026-11-25',true),
+  assert.deepEqual(dashboardKpiPlan({targets:{paid:320,paymentRate:0}},true),
     {first:undefined,paid:{target:320},net:undefined,paymentRate:0});
 });
 
@@ -139,7 +139,18 @@ test('wallboard reads the current WIB monthly plan within the active environment
     assert.deepEqual(args,['dashboard_monthly_kpi_v1:dev:2026-12']);
     return {rows:[{value:{targets:{first:260},milestones:{'2026-12-01':{first:0}}}}]};
   }},'dev',now,true);
-  assert.deepEqual(plan.first,{target:260,planned:{date:'2026-12-01',value:0}});
+  assert.deepEqual(plan.first,{target:260});
+});
+
+test('KPI elapsed time uses the snapshot instant and the length of the WIB calendar month',()=>{
+  const start=Date.parse('2026-10-31T17:00:00Z');
+  const next=Date.parse('2026-11-30T17:00:00Z');
+  assert.equal(dashboardKpiMonthProgress(start),0);
+  assert.equal(dashboardKpiMonthProgress(Date.parse('2026-11-15T17:00:00Z')),.5);
+  assert.equal(dashboardKpiMonthProgress(Date.parse('2026-11-01T05:00:00Z')),1/60);
+  assert.ok(dashboardKpiMonthProgress(next-1)>.9999);
+  assert.equal(dashboardKpiMonthProgress(next),0);
+  assert.equal(dashboardKpiMonthProgress(Date.parse('2024-02-14T05:00:00Z')),13.5/29);
 });
 
 test('known confirmations are unique by purchase and first payment is unique by verified learner',()=>{
@@ -276,13 +287,19 @@ test('overview splits WIB days and reconciles order-source, format and level cha
 
 test('dashboard routes reject unauthorized aggregate and financial reads before storage is touched',async()=>{
   const handlers=new Map<string,(q:Request,r:Response)=>Promise<unknown>>();
-  const app={get(path:string,handler:(q:Request,r:Response)=>Promise<unknown>){handlers.set(path,handler);}} as unknown as Express;
+  const app={get(path:string,handler:(q:Request,r:Response)=>Promise<unknown>){handlers.set(path,handler);},
+    put(path:string,handler:(q:Request,r:Response)=>Promise<unknown>){handlers.set('PUT '+path,handler);}} as unknown as Express;
   let actor=sales;
   mountOperationsDashboard(app,handler=>handler,async()=>actor);
   const res={} as Response;
   await assert.rejects(handlers.get('/api/crm/operations-dashboard')!({} as Request,res),{status:403});
   actor=manager;
   await assert.rejects(handlers.get('/api/crm/operations-dashboard/cash')!({} as Request,res),{status:403});
+  await assert.rejects(handlers.get('/api/crm/operations-dashboard/kpi')!({} as Request,res),{status:403});
+  await assert.rejects(handlers.get('/api/crm/operations-dashboard/kpi/:month')!({} as Request,res),{status:403});
+  actor={...manager,grants:{'crm.read':['own'],'crm.dashboard.kpi.manage':['all']},
+    permissions:[...manager.permissions,'crm.dashboard.kpi.manage']};
+  await assert.rejects(handlers.get('PUT /api/crm/operations-dashboard/kpi/:month')!({} as Request,res),{status:403});
   actor=finance;
   await assert.rejects(handlers.get('/api/crm/operations-dashboard/cash')!({originalUrl:'/api/crm/operations-dashboard/cash?page=-1'} as Request,res),{status:400});
 });

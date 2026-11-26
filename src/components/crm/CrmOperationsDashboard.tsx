@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
-import {ArrowUpRight,Maximize,Minimize} from 'lucide-react';
+import {ArrowUpRight,Maximize,Minimize,SlidersHorizontal} from 'lucide-react';
 import {AdminTopicFrame} from '../AdminTopicFrame';
 import {AdminContentNav} from '../admin/AdminContentNav';
 import {AdminPageHeader} from '../admin/AdminPageHeader';
@@ -8,7 +8,8 @@ import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {AdminDateField} from '../admin/AdminDateField';
 import {AdminDisclosure} from '../admin/AdminDisclosure';
-import {dashboardAdSpendScale,dashboardChannelKey,dashboardFormats,dashboardLandingPages,dashboardLevels,dashboardPath,dashboardPeriods,dashboardScopes,dashboardTopics,readDashboardFilters,
+import {CrmDashboardKpiList} from './CrmDashboardKpiList';
+import {canManageDashboardKpi,dashboardAdSpendScale,dashboardChannelKey,dashboardFormats,dashboardKpiMonthProgress,dashboardLandingPages,dashboardLevels,dashboardPath,dashboardPeriods,dashboardScopes,dashboardTopics,readDashboardFilters,
   dashboardChannelLeaders,dashboardPaymentSampleIssue,dashboardRateComparisonMinimum,dashboardSupply,
   type DashboardAdSpend,type DashboardCash,type DashboardEconomicsRow,type DashboardFilters,type DashboardKpiTarget,type DashboardLandingPage,type DashboardMovementPage,
   type DashboardLandingCounts,type DashboardSnapshot,type DashboardSource,type DashboardSources,type DashboardTeaching,type DashboardTeachingRow,type DashboardTopic,
@@ -31,7 +32,8 @@ const cashComponents=['received','refunded','returned','net'] as const;
 type CashComponent=typeof cashComponents[number];
 const readLocation=()=>{
   const p=new URLSearchParams(window.location.search);
-  return {topic:dashboardTopics.find(topic=>topic===p.get('dashboardTopic'))??'overview',filter:readDashboardFilters(p)};
+  const topic=dashboardTopics.find(topic=>topic===p.get('dashboardTopic'))??'overview';
+  return {topic,filter:readDashboardFilters(p),kpiList:topic==='overview'&&p.get('dashboardKpi')==='plans'};
 };
 const filterDefaults=readDashboardFilters(new URLSearchParams());
 const periodOptions:DashboardWord[]=['month','week','days','custom'];
@@ -763,16 +765,17 @@ function WallboardKpiTrack({fill,marker,tone}:{fill:number|null;marker:number|nu
   </div>;
 }
 
-function WallboardCumulativeKpi({label,value,previous,plan,format,percent,unit,t,coverage}:{
+function WallboardCumulativeKpi({label,value,previous,plan,monthProgress,format,percent,unit,t,coverage}:{
   label:string;value:number|null;previous:number|null;plan?:DashboardKpiTarget;format:(value:number)=>string;
-  percent:(value:number)=>string;unit?:string;t:Translate;coverage?:string;
+  monthProgress:number;percent:(value:number)=>string;unit?:string;t:Translate;coverage?:string;
 }){
   const amount=(value:number)=>format(value)+(unit?' '+unit:'');
   const ratio=value!==null&&plan?value/plan.target:null;
   const scale=plan?.target??Math.max(1,value??0,previous??0);
-  const reference=plan?plan.planned?.value:previous;
-  const pace=value!==null&&plan?.planned?value-plan.planned.value:null;
-  const tone=pace!==null?pace<0?'warning':'success':ratio!==null&&ratio>=1?'success':undefined;
+  const expected=plan?Math.floor(plan.target*monthProgress):null;
+  const reference=expected??previous;
+  const pace=value!==null&&expected!==null?value-expected:null;
+  const tone=pace===null?undefined:pace<0?'warning':'success';
   return <article className="ops-dash-tv-score">
     <span>{label}</span>
     <div className="ops-dash-tv-score-value"><strong>{value===null?'—':format(value)}</strong>
@@ -783,12 +786,10 @@ function WallboardCumulativeKpi({label,value,previous,plan,format,percent,unit,t
       <span>{plan?ratio===null?'—':percent(ratio):previous===null?'—':amount(previous)}</span>
     </div>
     <WallboardKpiTrack fill={value!==null&&value>=0?value/scale:null}
-      marker={reference!=null&&reference>=0?reference/scale:null} tone={tone}/>
-    <p>{value===null?t('denied'):pace!==null&&plan?.planned?<>
+      marker={reference!==null&&reference>=0?reference/scale:null} tone={tone}/>
+    <p>{value===null?t('denied'):pace!==null&&expected!==null?<>
       <strong data-tone={tone}>{pace===0?t('tvKpiOnPace'):t(pace>0?'tvKpiAhead':'tvKpiBehind')+' '+amount(Math.abs(pace))}</strong>
-      {' · '+t('tvKpiPlan')+' '+amount(plan.planned.value)+' · '+plan.planned.date.slice(5)}
-    </>:plan?<>
-      <strong data-tone={tone}>{value>=plan.target?t('tvKpiReached'):t('tvKpiRemaining')+' '+amount(plan.target-value)}</strong>
+      {' · '+t('tvKpiPlan')+' '+amount(expected)}
     </>:<>{t('tvTargetPending')}{previous!==null&&<> · <DashboardDelta value={value-previous} format={format}/></>}</>}</p>
     {coverage&&<p className="ops-dash-caption">{coverage}</p>}
   </article>;
@@ -827,6 +828,7 @@ function WallboardRateKpi({data,t,percent,count}:{data:DashboardSnapshot;t:Trans
 function WallboardKpis({data,t,lang,compactMoney}:{data:DashboardSnapshot;t:Translate;lang:CrmLanguage;compactMoney:(value:number)=>string}){
   const number=new Intl.NumberFormat(languageTag[lang]);
   const format=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
+  const monthProgress=dashboardKpiMonthProgress(Date.parse(data.asOf));
   const kpi=data.wallboard?.kpiPlan;
   const classes=data.upcoming;
   const belowMinimum=classes.filter(row=>enrollmentClassShortfall(row)>0).length;
@@ -835,11 +837,11 @@ function WallboardKpis({data,t,lang,compactMoney}:{data:DashboardSnapshot;t:Tran
   return <section className="ops-dash-tv-scoreboard" aria-label={t('tvKpiHeading')}>
     <div className="ops-dash-tv-score-grid">
       <WallboardCumulativeKpi label={t('net')} value={data.cash?.current.net??null} previous={data.cash?.compare.net??null}
-        plan={kpi?.net} format={compactMoney} percent={value=>format.format(value)} t={t}/>
+        plan={kpi?.net} monthProgress={monthProgress} format={compactMoney} percent={value=>format.format(value)} t={t}/>
       <WallboardCumulativeKpi label={t('paid')} value={data.current.paid} previous={data.compare.paid}
-        plan={kpi?.paid} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvEnrollmentUnit')} t={t}/>
+        plan={kpi?.paid} monthProgress={monthProgress} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvEnrollmentUnit')} t={t}/>
       <WallboardCumulativeKpi label={t('first')} value={data.current.first} previous={data.compare.first}
-        plan={kpi?.first} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvLearnerUnit')} t={t}
+        plan={kpi?.first} monthProgress={monthProgress} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvLearnerUnit')} t={t}
         coverage={data.current.identityUnknown?t('firstIdentityPending')+' · '+number.format(data.current.identityUnknown):undefined}/>
       <WallboardRateKpi data={data} t={t} percent={value=>format.format(value)} count={value=>number.format(value)}/>
       <article className="ops-dash-tv-score">
@@ -1116,10 +1118,11 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
   onNavigate:(href:string)=>void;onLocation:(url:string)=>void}){
   const sections=dashboardScopes(actor);
   const [location,setLocation]=useState(readLocation);
-  const {topic,filter}=location;
+  const {topic,filter,kpiList}=location;
   const t:Translate=key=>dashboardLabel(lang,key);
   const [draft,setDraft]=useState(()=>({from:filter.from,to:filter.to}));
   const [revision,setRevision]=useState(0);
+  const canManageKpi=canManageDashboardKpi(actor);
   const [changeDimension,setChangeDimension]=useState<ChangeDimension>('level');
   const [changeMeasure,setChangeMeasure]=useState<ChangeMeasure>('paid');
   const heading=useRef<HTMLHeadingElement>(null);
@@ -1127,20 +1130,20 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
   const reportTopic=outputTopic||topic==='acquisition'||topic==='teaching'||topic==='economics';
   const query=dashboardPath(reportTopic?topic:'overview',outputTopic?filterDefaults:filter).split('?')[1];
   const accessKey=[sections.finance,sections.operations,sections.followup,sections.marketing].join('|');
-  const data=useDashboard('/api/crm/operations-dashboard?'+query,accessKey,sections.view,outputTopic,revision);
+  const data=useDashboard('/api/crm/operations-dashboard?'+query,accessKey,sections.view&&!kpiList,outputTopic,revision);
   const snapshot=data.snapshot;
   useEffect(()=>{
     const restore=()=>{const current=readLocation();setLocation(current);setDraft({from:current.filter.from,to:current.filter.to});};
     window.addEventListener('popstate',restore);
     return ()=>window.removeEventListener('popstate',restore);
   },[]);
-  const choose=(nextTopic:DashboardTopic,next:DashboardFilters=filter,focusHeading=true)=>{
-    const href=dashboardPath(nextTopic,next);
+  const choose=(nextTopic:DashboardTopic,next:DashboardFilters=filter,focusHeading=true,showKpiList=false)=>{
+    const href=dashboardPath(nextTopic,next)+(showKpiList?'&dashboardKpi=plans':'');
     window.history.pushState(window.history.state,'',href);
     onLocation(window.location.href);
-    setLocation({topic:nextTopic,filter:next});
+    setLocation({topic:nextTopic,filter:next,kpiList:showKpiList});
     if(next.from!==filter.from||next.to!==filter.to)setDraft({from:next.from,to:next.to});
-    if(nextTopic!==topic&&focusHeading)requestAnimationFrame(()=>heading.current?.focus({preventScroll:true}));
+    if((nextTopic!==topic||showKpiList!==kpiList)&&focusHeading)requestAnimationFrame(()=>heading.current?.focus({preventScroll:true}));
   };
   const chooseLink=(href:string)=>{
     const search=new URL(href,window.location.origin).searchParams;
@@ -1157,6 +1160,8 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
     <AdminPageHeader title={t('dashboard')} subtitle={snapshot?t('asOf')+' · '+formatWib(snapshot.asOf)+' WIB':'WIB'}
       headingRef={heading} actions={sections.view&&<>
         {!outputTopic&&<Link href="/crm?tab=docs#crm-guide-dashboard-metrics">{t('metricsReference')}</Link>}
+        {topic==='overview'&&canManageKpi&&<AdminPageAction icon={SlidersHorizontal} label={t('kpiSettings')}
+          onClick={()=>choose('overview',filter,true,true)}/>}
         <AdminRefreshAction label={t('refresh')} loading={data.loading} onClick={()=>setRevision(v=>v+1)}/>
       </>}/>
     {sections.view&&!outputTopic&&<div className="ops-dash-filters">
@@ -1233,12 +1238,15 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
     </>;
   }
   const main=<div className="ops-dash-main">
-    {content}
-    {snapshot&&sections.view&&<>
-      {!outputTopic&&<p className="ops-dash-period">{selected} · WIB <span>{t('previous')} {comparison}</span></p>}
-      <div className="ops-dash-content" data-wallboard={outputTopic||undefined} aria-busy={data.loading}>
-        {outputTopic?<Wallboard data={snapshot} lang={lang} t={t} stale={Boolean(data.error)} />:panels(snapshot)}
-      </div>
+    {kpiList?<CrmDashboardKpiList key={[canManageKpi,sections.finance].join('|')} lang={lang} isLight={isLight}
+      allowed={canManageKpi} headingRef={heading} onBack={()=>choose('overview')}/>:<>
+      {content}
+      {snapshot&&sections.view&&<>
+        {!outputTopic&&<p className="ops-dash-period">{selected} · WIB <span>{t('previous')} {comparison}</span></p>}
+        <div className="ops-dash-content" data-wallboard={outputTopic||undefined} aria-busy={data.loading}>
+          {outputTopic?<Wallboard data={snapshot} lang={lang} t={t} stale={Boolean(data.error)} />:panels(snapshot)}
+        </div>
+      </>}
     </>}
   </div>;
   return <section className="ops-dash" aria-label={t('dashboard')}>

@@ -7,6 +7,7 @@
   display:grid;
   gap:16px;
 }
+.ops-dash-kpi-row-action{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .ops-dash .crm-content-tabs{margin:0}
 .ops-dash .admin-directory-toggle{
   border-color:var(--admin-border);background:var(--admin-surface);color:var(--admin-action);

@@ -93,6 +93,7 @@ export const permissionCatalog = [
     "Kelola kalender dan kebijakan penjualan",
     "管理销售日历及跟进策略",
   ),
+  p("crm.dashboard.kpi.manage", "operations", "Manage monthly KPIs", "Kelola KPI bulanan", "管理月度 KPI"),
   p(
     "notifications.read",
     "operations",
@@ -326,6 +327,7 @@ export function validateRole(config: RoleConfig) {
     "crm.own",
     "campaigns.manage",
     "crm.operations.manage",
+    "crm.dashboard.kpi.manage",
     "notifications.read",
     "notifications.manage",
   ])

@@ -30,10 +30,10 @@ const words={
   tvSourcePending:['Unconfirmed','Belum dikonfirmasi','待确认'],
   tvTargetPending:['Monthly target pending setup','Target bulanan belum ditetapkan','月目标待设置'],
   tvKpiHeading:['Monthly KPIs and current operations','KPI bulanan dan kondisi terkini','月度 KPI 与经营快照'],
-  tvKpiMarker:['Marker indicates the plan, rate target or comparison noted below','Garis menandai rencana, target persentase atau pembanding yang ditulis di bawah','竖线标示计划、比率目标或下方注明的同期对照'],
+  tvKpiMarker:['Marker shows expected progress, rate target or prior period','Garis menandai sasaran berjalan, target rasio, atau periode lalu','竖线标示按时间应达值、比率目标或上月同期值'],
   tvKpiCompletion:['Target completion','Pencapaian target','完成度'],
   tvKpiComparison:['Same period last month','Periode sama bulan lalu','上月同期'],
-  tvKpiPlan:['Plan','Rencana','计划'],
+  tvKpiPlan:['Expected by now','Sasaran berjalan','按时间应达'],
   tvKpiTarget:['Target','Target','目标'],
   tvKpiNoSample:['No mature orders','Belum ada pesanan dengan periode pengamatan lengkap','暂无成熟获席样本'],
   tvKpiObserving:['Orders still in the 7-day window','Pesanan masih dalam pengamatan 7 hari','获席未满 7 天'],
@@ -41,8 +41,6 @@ const words={
   tvKpiOnPace:['On pace','Sesuai rencana','符合进度'],
   tvKpiAhead:['Ahead by','Lebih cepat sebesar','超前'],
   tvKpiBehind:['Behind by','Tertinggal sebesar','落后'],
-  tvKpiReached:['Target reached','Target tercapai','已达月目标'],
-  tvKpiRemaining:['Remaining to target','Sisa menuju target','距月目标还差'],
   tvKpiAbove:['Above target by','Di atas target sebesar','高于目标'],
   tvKpiBelow:['Below target by','Di bawah target sebesar','低于目标'],
   tvKpiAtTarget:['On target','Sesuai target','达到目标'],
@@ -132,6 +130,11 @@ const words={
   asOf:['Last updated','Terakhir diperbarui','最近更新'],
   guide:['How these figures are calculated','Cara menghitung angka','查看指标口径'],
   metricsReference:['Metric definitions','Definisi metrik','指标与统计口径'],
+  kpiSettings:['Monthly KPI settings','Pengaturan KPI bulanan','月度 KPI 设置'],
+  kpiPlans:['Monthly KPI plans','Rencana KPI bulanan','月度目标'],
+  kpiCreate:['Add monthly plan','Tambah rencana bulanan','新增月度目标'],
+  kpiEdit:['Edit monthly plan','Edit rencana bulanan','编辑月度目标'],
+  kpiView:['View monthly plan','Lihat rencana bulanan','查看月度目标'],
   trend:['Daily enrollment trend','Tren pendaftaran harian','每日足额报名趋势'],
   receiptTrend:['Daily verified receipts','Penerimaan terverifikasi harian','每日核实收款'],
   refundTrend:['Daily refunds issued','Pengembalian dana harian','每日已执行退款'],
@@ -311,3 +314,4 @@ const words={
 } as const;
 export type DashboardWord=keyof typeof words;
 export const dashboardLabel=(lang:CrmLanguage,key:DashboardWord)=>words[key][lang==='zh'?2:lang==='id'?1:0];
+export const dashboardKpiMetricLabels={net:'net',paid:'paid',first:'first',paymentRate:'rate'} as const;

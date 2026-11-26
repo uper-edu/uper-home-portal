@@ -15,13 +15,17 @@ export type DashboardFilters={
   format:typeof dashboardFormats[number]|'';
 };
 
+export function canManageDashboardKpi(actor:AccessEmployee){
+  return permittedRecord(actor,{},'crm.read')&&permittedRecord(actor,{},'crm.dashboard.kpi.manage');
+}
+
 export function dashboardScopes(actor:AccessEmployee){
   const all=(permission:string)=>permittedRecord(actor,{},permission);
   const finance=all('crm.read')&&all('crm.payments.verify');
   const operations=all('crm.read')&&all('crm.operations.manage');
   const marketing=all('crm.read')&&all('campaigns.manage');
   return {
-    view:finance||operations||marketing||all('crm.read')&&all('crm.assign'),
+    view:finance||operations||marketing||canManageDashboardKpi(actor)||all('crm.read')&&all('crm.assign'),
     finance,
     operations,
     marketing,
@@ -193,7 +197,31 @@ export type DashboardEconomicsRow=DashboardTeachingRow&{
 export type DashboardTeaching<T extends DashboardTeachingRow=DashboardTeachingRow>={
   from:string;to:string;expectedDays:number;asOf:string;cohorts:T[];
 };
-export type DashboardKpiTarget={target:number;planned?:{date:string;value:number}};
+export const dashboardKpiCumulativeKeys=['net','paid','first'] as const;
+export const dashboardKpiKeys=[...dashboardKpiCumulativeKeys,'paymentRate'] as const;
+export type DashboardKpiCumulativeKey=typeof dashboardKpiCumulativeKeys[number];
+export type DashboardKpiKey=typeof dashboardKpiKeys[number];
+export type DashboardKpiValues={
+  targets:Partial<Record<DashboardKpiKey,number>>;
+};
+export type DashboardKpiEditorPlan=DashboardKpiValues&{
+  month:string;currentMonth:string;finance:boolean;readOnly:boolean;
+  revision:string|null;updatedAt:string|null;updatedBy:string|null;
+};
+export type DashboardKpiListRow=Pick<DashboardKpiEditorPlan,'month'|'targets'|'updatedAt'|'updatedBy'>;
+export type DashboardKpiList={currentMonth:string;finance:boolean;plans:DashboardKpiListRow[]};
+export function dashboardKpiShiftMonth(month:string,offset:number){
+  const start=new Date(month+'-01T00:00:00.000Z');
+  start.setUTCMonth(start.getUTCMonth()+offset);
+  return start.toISOString().slice(0,7);
+}
+export function dashboardKpiMonthProgress(asOf:number){
+  const month=dashboardDate(asOf).slice(0,7);
+  const start=Date.parse(month+'-01T00:00:00+07:00');
+  const end=Date.parse(dashboardKpiShiftMonth(month,1)+'-01T00:00:00+07:00');
+  return (asOf-start)/(end-start);
+}
+export type DashboardKpiTarget={target:number};
 export type DashboardKpiPlan={
   first?:DashboardKpiTarget;paid?:DashboardKpiTarget;net?:DashboardKpiTarget;paymentRate?:number;
 };

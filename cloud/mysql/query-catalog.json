@@ -707,6 +707,7 @@
       "server/portal/legacyCredentialMigration.ts",
       "server/portal/notificationGroupChannels.ts",
       "server/portal/notificationPolicyDeletion.ts",
+      "server/portal/operationsDashboardKpi.ts",
       "server/portal/ownerAssignment.ts",
       "server/portal/payments.ts",
       "server/portal/runtime.ts",
@@ -1008,6 +1009,12 @@
       "server/portal/runtime.ts",
       "cloud/mysql/site.mjs",
       "scripts/portal-migrate.ts"
+    ]
+  },
+  "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2)": {
+    "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2)",
+    "sources": [
+      "server/portal/operationsDashboardKpi.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2)\n      ON DUPLICATE KEY UPDATE value=IF(value->>'$.extractedAt'<:p3,:p2,value)": {
@@ -3111,6 +3118,12 @@
     "sql": "SELECT id,value FROM crm_courses ORDER BY id",
     "sources": [
       "server/portal/enrollmentCatalog.ts"
+    ]
+  },
+  "SELECT id,value FROM portal_settings WHERE id BETWEEN :p1 AND :p2 ORDER BY id DESC": {
+    "sql": "SELECT id,value FROM portal_settings WHERE id BETWEEN :p1 AND :p2 ORDER BY id DESC",
+    "sources": [
+      "server/portal/operationsDashboardKpi.ts"
     ]
   },
   "SELECT id,value FROM portal_settings WHERE id IN ('sla','crm_policy')": {
