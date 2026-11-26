@@ -94,7 +94,8 @@
     "sql": "DELETE FROM portal_settings WHERE id=:p1",
     "sources": [
       "server/portal/enrollmentTemplates.ts",
-      "server/portal/faculty.ts"
+      "server/portal/faculty.ts",
+      "server/portal/operationsDashboardTeacherSettlements.ts"
     ]
   },
   "DELETE FROM trial_campaigns WHERE id=:p1": {
@@ -710,6 +711,7 @@
       "server/portal/notificationGroupChannels.ts",
       "server/portal/notificationPolicyDeletion.ts",
       "server/portal/operationsDashboardKpi.ts",
+      "server/portal/operationsDashboardTeacherSettlements.ts",
       "server/portal/ownerAssignment.ts",
       "server/portal/payments.ts",
       "server/portal/runtime.ts",
@@ -1016,7 +1018,8 @@
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2)": {
     "sql": "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2)",
     "sources": [
-      "server/portal/operationsDashboardKpi.ts"
+      "server/portal/operationsDashboardKpi.ts",
+      "server/portal/operationsDashboardTeacherSettlements.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2)\n      ON DUPLICATE KEY UPDATE value=IF(value->>'$.extractedAt'<:p3,:p2,value)": {
@@ -1038,7 +1041,8 @@
       "server/portal/enrollmentCatalog.ts",
       "server/portal/faculty.ts",
       "server/portal/larkChannelModes.ts",
-      "server/portal/operationsDashboardKpi.ts"
+      "server/portal/operationsDashboardKpi.ts",
+      "server/portal/operationsDashboardTeacherSettlements.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2": {
@@ -1048,7 +1052,8 @@
       "server/portal/faculty.ts",
       "server/portal/gaSettings.ts",
       "server/portal/larkSelfService.ts",
-      "server/portal/larkSettings.ts"
+      "server/portal/larkSettings.ts",
+      "server/portal/operationsDashboardTeacherSettlements.ts"
     ]
   },
   "INSERT INTO portal_settings(id,value) VALUES(:p1,JSON_OBJECT('startedAt',DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%d %H:%i:%s.%f'))) ON DUPLICATE KEY UPDATE id=id": {
@@ -2678,6 +2683,18 @@
       "server/portal/runtime.ts"
     ]
   },
+  "SELECT id, criteria->>'$.level' AS level, criteria->>'$.format' AS format,\n        criteria->>'$.appointment.confirmation.teacher' AS teacher,\n        criteria->>'$.appointment.confirmation.teacherId' AS teacher_id,\n        DATE_FORMAT(DATE_ADD(STR_TO_DATE(LEFT(criteria->>'$.appointment.confirmation.firstLessonAt',19),'%Y-%m-%dT%H:%i:%s'),\n          INTERVAL 7 HOUR),'%Y-%m-%d') AS first_lesson, NULL AS batch_number,NULL AS period,\n        criteria->>'$.appointment.minutes' AS minutes\n      FROM enrollment_demands WHERE criteria->>'$.format'='one-on-one' AND JSON_TYPE(criteria->'$.appointment.confirmation')='OBJECT'\n        AND ((:p2=1 AND BINARY id=BINARY :p1) OR (:p2=0 AND (:p1='' OR LOCATE(:p1,id)>0\n          OR LOCATE(:p1,criteria->>'$.appointment.confirmation.teacher')>0)))\n      ORDER BY criteria->>'$.appointment.confirmation.firstLessonAt' DESC,id LIMIT 30": {
+    "sql": "SELECT id, criteria->>'$.level' AS level, criteria->>'$.format' AS format,\n        criteria->>'$.appointment.confirmation.teacher' AS teacher,\n        criteria->>'$.appointment.confirmation.teacherId' AS teacher_id,\n        DATE_FORMAT(DATE_ADD(STR_TO_DATE(LEFT(criteria->>'$.appointment.confirmation.firstLessonAt',19),'%Y-%m-%dT%H:%i:%s'),\n          INTERVAL 7 HOUR),'%Y-%m-%d') AS first_lesson, NULL AS batch_number,NULL AS period,\n        criteria->>'$.appointment.minutes' AS minutes\n      FROM enrollment_demands WHERE criteria->>'$.format'='one-on-one' AND JSON_TYPE(criteria->'$.appointment.confirmation')='OBJECT'\n        AND ((:p2=1 AND BINARY id=BINARY :p1) OR (:p2=0 AND (:p1='' OR LOCATE(:p1,id)>0\n          OR LOCATE(:p1,criteria->>'$.appointment.confirmation.teacher')>0)))\n      ORDER BY criteria->>'$.appointment.confirmation.firstLessonAt' DESC,id LIMIT 30",
+    "sources": [
+      "server/portal/operationsDashboardTeacherSettlements.ts"
+    ]
+  },
+  "SELECT id, data->>'$.level' AS level, data->>'$.format' AS format, data->>'$.teacher' AS teacher,\n        DATE_FORMAT(first_lesson_at + INTERVAL 7 HOUR,'%Y-%m-%d') AS first_lesson, data->>'$.batchNumber' AS batch_number,\n        data->>'$.period' AS period,data->>'$.minutes' AS minutes,data->>'$.teacherId' AS teacher_id\n      FROM enrollment_classes WHERE state IN ('published','cancelled') AND data->>'$.format' IN ('standard','small')\n        AND ((:p2=1 AND BINARY id=BINARY :p1) OR (:p2=0 AND (:p1='' OR LOCATE(:p1,id)>0 OR LOCATE(:p1,data->>'$.teacher')>0)))\n      ORDER BY first_lesson_at DESC,id LIMIT 30": {
+    "sql": "SELECT id, data->>'$.level' AS level, data->>'$.format' AS format, data->>'$.teacher' AS teacher,\n        DATE_FORMAT(first_lesson_at + INTERVAL 7 HOUR,'%Y-%m-%d') AS first_lesson, data->>'$.batchNumber' AS batch_number,\n        data->>'$.period' AS period,data->>'$.minutes' AS minutes,data->>'$.teacherId' AS teacher_id\n      FROM enrollment_classes WHERE state IN ('published','cancelled') AND data->>'$.format' IN ('standard','small')\n        AND ((:p2=1 AND BINARY id=BINARY :p1) OR (:p2=0 AND (:p1='' OR LOCATE(:p1,id)>0 OR LOCATE(:p1,data->>'$.teacher')>0)))\n      ORDER BY first_lesson_at DESC,id LIMIT 30",
+    "sources": [
+      "server/portal/operationsDashboardTeacherSettlements.ts"
+    ]
+  },
   "SELECT id,actor,action,data,created_at FROM portal_audit WHERE action LIKE 'access.%' ORDER BY id DESC LIMIT 200": {
     "sql": "SELECT id,actor,action,data,created_at FROM portal_audit WHERE action LIKE 'access.%' ORDER BY id DESC LIMIT 200",
     "sources": [
@@ -3987,6 +4004,12 @@
       "server/portal/operationsDashboardTraffic.ts"
     ]
   },
+  "SELECT value FROM portal_settings WHERE id LIKE :p1 ESCAPE '=' ORDER BY id": {
+    "sql": "SELECT value FROM portal_settings WHERE id LIKE :p1 ESCAPE '=' ORDER BY id",
+    "sources": [
+      "server/portal/operationsDashboardTeacherSettlements.ts"
+    ]
+  },
   "SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id": {
     "sql": "SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id",
     "sources": [
@@ -4020,7 +4043,8 @@
       "server/portal/enrollmentTemplates.ts",
       "server/portal/faculty.ts",
       "server/portal/larkChannelModes.ts",
-      "server/portal/operationsDashboardKpi.ts"
+      "server/portal/operationsDashboardKpi.ts",
+      "server/portal/operationsDashboardTeacherSettlements.ts"
     ]
   },
   "SELECT value FROM portal_settings WHERE id='ai_service'": {
@@ -5090,6 +5114,7 @@
       "server/portal/faculty.ts",
       "server/portal/larkChannelModes.ts",
       "server/portal/operationsDashboardKpi.ts",
+      "server/portal/operationsDashboardTeacherSettlements.ts",
       "server/portal/runtime.ts"
     ]
   },

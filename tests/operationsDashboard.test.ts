@@ -298,6 +298,10 @@ test('dashboard routes reject unauthorized aggregate and financial reads before 
   await assert.rejects(handlers.get('/api/crm/operations-dashboard/cash')!({} as Request,res),{status:403});
   await assert.rejects(handlers.get('/api/crm/operations-dashboard/kpi')!({} as Request,res),{status:403});
   await assert.rejects(handlers.get('/api/crm/operations-dashboard/kpi/:month')!({} as Request,res),{status:403});
+  const settlements='/api/crm/operations-dashboard/teacher-settlements';
+  for(const path of [settlements,settlements+'/targets',settlements+'/rate','PUT '+settlements]){
+    await assert.rejects(handlers.get(path)!({} as Request,res),{status:403});
+  }
   actor={...manager,grants:{'crm.read':['own'],'crm.dashboard.kpi.manage':['all']},
     permissions:[...manager.permissions,'crm.dashboard.kpi.manage']};
   await assert.rejects(handlers.get('PUT /api/crm/operations-dashboard/kpi/:month')!({} as Request,res),{status:403});

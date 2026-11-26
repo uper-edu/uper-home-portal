@@ -11,6 +11,8 @@ import {readGaTraffic,trafficEnvironment} from './operationsDashboardTraffic.ts'
 import {readDashboardKpiEditorPlan,readDashboardKpiList,readDashboardKpiPlan,saveDashboardKpiEditorPlan} from './operationsDashboardKpi.ts';
 import {readDashboardAdSpend} from './operationsDashboardAdSpend.ts';
 import {readDashboardTeaching} from './operationsDashboardTeaching.ts';
+import {quoteTeacherSettlement,readTeacherSettlements,saveTeacherSettlement,teacherSettlementTargets} from './operationsDashboardTeacherSettlements.ts';
+import {validMutationOrigin} from './accessTransport.ts';
 import {tx} from './store.ts';
 import {invalid} from './trustWorkflow.ts';
 
@@ -474,6 +476,39 @@ export async function readOperationsDashboardSnapshot(c:Client,actor:Employee,fi
 
 export function mountOperationsDashboard(app:Express,wrap:(fn:(q:Request,r:Response)=>Promise<unknown>)=>(q:Request,r:Response)=>void,
   staff:(q:Request,permission:string)=>Promise<Employee>){
+  async function financeActor(q:Request){
+    const actor=await staff(q,'crm.payments.verify');
+    if(!dashboardScopes(actor).finance)invalid('dashboard_forbidden',403);
+    return actor;
+  }
+  const settlements='/api/crm/operations-dashboard/teacher-settlements';
+  app.get(settlements,wrap(async(q,r)=>{
+    await financeActor(q);
+    const environment=trafficEnvironment(process.env.PORTAL_ENV??'dev');
+    r.set('Cache-Control','private, no-store').json(await tx(c=>
+      readTeacherSettlements(c,environment,String(q.query.month??''))));
+  }));
+  app.get(settlements+'/targets',wrap(async(q,r)=>{
+    await financeActor(q);
+    const kind=q.query.kind;
+    if(kind!=='class'&&kind!=='appointment')invalid('teacher_settlement_invalid');
+    r.set('Cache-Control','private, no-store').json(await tx(c=>
+      teacherSettlementTargets(c,kind,String(q.query.search??'').trim())));
+  }));
+  app.get(settlements+'/rate',wrap(async(q,r)=>{
+    await financeActor(q);
+    const kind=q.query.kind;
+    if(kind!=='class'&&kind!=='appointment')invalid('teacher_settlement_invalid');
+    r.set('Cache-Control','private, no-store').json(await tx(c=>quoteTeacherSettlement(c,kind,String(q.query.id??''),
+      String(q.query.from??''),String(q.query.to??''))));
+  }));
+  app.put(settlements,wrap(async(q,r)=>{
+    const actor=await financeActor(q);
+    if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
+    const environment=trafficEnvironment(process.env.PORTAL_ENV??'dev');
+    r.set('Cache-Control','private, no-store').json(await tx(c=>
+      saveTeacherSettlement(c,environment,q.body,actor.id)));
+  }));
   app.get('/api/crm/operations-dashboard/kpi',wrap(async(q,r)=>{
     const actor=await staff(q,'crm.dashboard.kpi.manage');
     if(!canManageDashboardKpi(actor))invalid('dashboard_kpi_forbidden',403);

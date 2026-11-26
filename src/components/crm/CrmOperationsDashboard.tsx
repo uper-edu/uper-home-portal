@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
+import {lazy,Suspense,useEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
 import {ArrowUpRight,Maximize,Minimize,SlidersHorizontal} from 'lucide-react';
 import {AdminTopicFrame} from '../AdminTopicFrame';
 import {AdminContentNav} from '../admin/AdminContentNav';
@@ -25,6 +25,7 @@ import {dashboardLabel,type DashboardWord} from './crmOperationsDashboardText';
 import './crm-operations-dashboard.css';
 
 type Translate=(key:DashboardWord)=>string;
+const TeacherSettlements=lazy(()=>import('./CrmTeacherSettlements').then(module=>({default:module.CrmTeacherSettlements})));
 const languageTag={zh:'zh-CN',en:'en-GB',id:'id-ID'} as const;
 const financePath='/crm?tab=payments&paymentView=enrollment';
 const salesPath='/crm?tab=leads';
@@ -1206,8 +1207,14 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
     if(topic==='classes')return <Classes data={data} filter={filter} t={t} lang={lang} onNavigate={onNavigate}/>;
     if(topic==='finance')return <Finance key={query} data={data} filter={filter} lang={lang} t={t} onNavigate={onNavigate}/>;
     if(topic==='teaching')return <Teaching data={data.teaching} t={t} lang={lang} allowed={sections.operations} onNavigate={onNavigate}/>;
-    if(topic==='economics')return <CourseEconomics data={data.economics} t={t} lang={lang}
-      allowed={sections.operations&&sections.finance} onNavigate={onNavigate}/>;
+    if(topic==='economics')return <>
+      {sections.finance&&<Suspense fallback={<p role="status">{t('load')}</p>}>
+        <TeacherSettlements lang={lang} isLight={isLight} asOf={data.asOf} refresh={revision} filter={filter}
+          onFaculty={()=>onNavigate('/crm?tab=enrollment-settings&policyTopic=faculty')}/>
+      </Suspense>}
+      {(!sections.finance||sections.operations)&&<CourseEconomics data={data.economics} t={t} lang={lang}
+        allowed={sections.operations&&sections.finance} onNavigate={onNavigate}/>}
+    </>;
     return <>
       <div className="ops-dash-kpis">
         <NumberCard label={t('first')} value={count(data.current.first)} note={<>{change(data.current.first-data.compare.first)}
