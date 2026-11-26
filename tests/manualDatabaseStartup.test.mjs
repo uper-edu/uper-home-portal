@@ -8,6 +8,7 @@ import notificationDefaults from '../src/data/system-defaults/notifications.ts';
 import evergreenLinks from '../src/data/evergreenPromotionLinks.json' with {type:'json'};
 import {defaultRules} from '../server/portal/policy.ts';
 import {systemCampaignDefaults} from '../cloud/mysql/system-campaign-defaults.mjs';
+import {SYSTEM_LARK_GROUP_NAME} from '../server/portal/larkSystemChannels.ts';
 
 function fixture(){
   const tables=[...spec.baseline,...Object.keys(spec.tables)].map(name=>({name,engine:'InnoDB'}));
@@ -17,7 +18,7 @@ function fixture(){
     for(const [idx,[nu,cols]] of Object.entries(ix))indexes.push({tbl,idx,nu,cols,prefixes:0});
   }
   const versions=Array.from({length:20},(_,i)=>({version:i+1,state:'ready'}));
-  const settings={organic:1,sla:1,accounts:1,teamless:1,lark:1,mail:1};
+  const settings={organic:1,sla:1,accounts:1,teamless:1,systemGroup:1,lark:1,mail:1};
   const names=collections.map(name=>({name}));
   const rules=notificationDefaults.rules.map(rule=>({id:rule.event}));
   const presets=evergreenLinks.map(link=>({p:link.id}));
@@ -52,7 +53,7 @@ test('refuse missing, partial, offline, drifted and unprepared databases without
     [f=>f.versions[18].state='applying',/schema versions/],[f=>f.versions.unshift({version:0,state:'offline_copy'}),/schema versions/],
     [f=>f.columns.find(r=>r.col==='occurred_at').nullable='NO',/occurred_at/],
     [f=>f.indexes.find(r=>r.idx==='mail_pool_daily').cols='environment,pool_id,day_key',/mail_pool_daily/],
-    [f=>f.settings.accounts=0,/accounts/],[f=>f.settings.mail=0,/mail/],[f=>f.settings.lark=0,/lark/],[f=>f.names.pop(),/CMS collection/],
+    [f=>f.settings.accounts=0,/accounts/],[f=>f.settings.mail=0,/mail/],[f=>f.settings.lark=0,/lark/],[f=>f.settings.systemGroup=0,/systemGroup/],[f=>f.names.pop(),/CMS collection/],
     [f=>f.rules.splice(f.rules.findIndex(r=>r.id==='lead.assigned'),1),/notification rule lead\.assigned/],
     [f=>f.presets.splice(f.presets.findIndex(r=>r.p==='enroll-ig'),1),/promotion preset enroll-ig/],
   ]){const f=fixture();mutate(f);await assert.rejects(f.check,reason);}
@@ -81,7 +82,9 @@ test('manual seed SQL carries exactly the system presets that startup used to in
   const presets=[...script.matchAll(/'(\{"id":"[^']*\})'/g)].map(match=>parse(match[1]));
   const expected=systemCampaignDefaults('at').find(record=>record.id==='social-bio').promotionLinks.map(({createdAt,...link})=>link);
   assert.deepEqual(presets,expected);
+  const groupName=script.match(/CONCAT\('(Lark )',CONVERT\(0x([0-9A-F]+) USING utf8mb4\)\)/);
+  assert.equal(groupName[1]+Buffer.from(groupName[2],'hex').toString('utf8'),SYSTEM_LARK_GROUP_NAME);
   assert.doesNotMatch(script,/\b(?:DROP TABLE|TRUNCATE|FOREIGN KEY|REFERENCES|DELETE FROM|ALTER TABLE|CREATE TABLE)\b/i);
   assert.deepEqual([...script.matchAll(/INSERT INTO (\w+)/gi)].map(m=>m[1]),['notification_rules','campaign_promotion_index','portal_audit']);
-  assert.deepEqual([...script.matchAll(/UPDATE\s+(\w+)\s+SET/gi)].map(m=>m[1]),['trial_campaigns']);
+  assert.deepEqual([...script.matchAll(/UPDATE\s+(\w+)\s+SET/gi)].map(m=>m[1]),['notification_channels','trial_campaigns']);
 });

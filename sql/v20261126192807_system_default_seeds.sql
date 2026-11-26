@@ -3,16 +3,22 @@
 -- Required session input: @uper_expected_database (independently verified database name).
 -- Adds only the system presets that releases after 95eea57 used to insert during startup:
 --   1. notification rule lead.assigned (version 1, enabled) when no row with that id exists;
---   2. missing evergreen promotion presets of campaign social-bio and their index rows.
--- Existing rules (including disabled or deleted markers), custom links, short links and counters
--- are never rewritten. A conflicting reserved identity is rejected for manual review.
+--   2. missing evergreen promotion presets of campaign social-bio and their index rows;
+--   3. the system Lark group marker: when no active system group exists, the single active group
+--      still carrying a former system name is renamed to the system name and marked systemManaged.
+--      Its mode, webhook reference, limits and signing settings are kept.
+-- Existing rules (including disabled or deleted markers), custom links, short links, counters and
+-- other group channels are never rewritten. A conflicting reserved identity is rejected for manual review.
 -- Keep application and queue consumers stopped for this change. A repeated run changes nothing.
--- ASCII only: <DOT> is replaced with U+00B7 from its UTF-8 bytes, independent of the client charset.
+-- ASCII only: <DOT> (U+00B7) and the system group name are built from UTF-8 bytes, independent of the client charset.
 DELIMITER $$
 CREATE PROCEDURE uper_seed_20261126192807()
 SQL SECURITY INVOKER
 BEGIN
   DECLARE v_dot VARCHAR(4) CHARACTER SET utf8mb4 DEFAULT CONVERT(0xC2B7 USING utf8mb4);
+  DECLARE v_group_name VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT CONCAT('Lark ',CONVERT(0xE7BEA4E9809AE79FA5 USING utf8mb4));
+  DECLARE v_group_count INT DEFAULT 0;
+  DECLARE v_groups_marked INT DEFAULT 0;
   DECLARE v_rule JSON;
   DECLARE v_presets JSON;
   DECLARE v_campaign JSON;
@@ -60,6 +66,19 @@ BEGIN
     SELECT 'lead.assigned',1,v_rule,TRUE FROM DUAL
     WHERE NOT EXISTS(SELECT 1 FROM notification_rules WHERE id='lead.assigned');
   SET v_rules_added=ROW_COUNT();
+  IF NOT EXISTS(SELECT 1 FROM notification_channels WHERE COALESCE(config->>'$.deleted','false')<>'true'
+       AND (id='lark-group-default' OR COALESCE(config->>'$.systemManaged','false')='true')) THEN
+    SET v_group_count=(SELECT COUNT(*) FROM notification_channels WHERE COALESCE(config->>'$.deleted','false')<>'true'
+       AND TRIM(COALESCE(config->>'$.groupName','')) IN ('CRM Bot','CRM Lark Bot',v_group_name));
+    IF v_group_count<>1 THEN
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='System Lark group cannot be identified; manual review required';
+    END IF;
+    UPDATE notification_channels
+       SET config=JSON_SET(config,'$.groupName',v_group_name,'$.systemManaged',CAST('true' AS JSON))
+     WHERE COALESCE(config->>'$.deleted','false')<>'true'
+       AND TRIM(COALESCE(config->>'$.groupName','')) IN ('CRM Bot','CRM Lark Bot',v_group_name);
+    SET v_groups_marked=ROW_COUNT();
+  END IF;
   SET v_campaign=(SELECT config FROM trial_campaigns WHERE id='social-bio' AND code='social-bio' FOR UPDATE);
   IF v_campaign IS NULL OR NOT COALESCE(JSON_UNQUOTE(JSON_EXTRACT(v_campaign,'$.presetKey'))='social_bio_v1',FALSE) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Reserved campaign social-bio is missing or conflicting; manual review required';
@@ -93,9 +112,9 @@ BEGIN
        SET config=JSON_SET(config,'$.systemManaged',CAST('true' AS JSON),'$.promotionLinks',v_links,'$.updatedAt',v_stamp)
      WHERE id='social-bio';
   END IF;
-  IF v_rules_added+v_presets_added+v_index_added>0 THEN
+  IF v_rules_added+v_groups_marked+v_presets_added+v_index_added>0 THEN
     INSERT INTO portal_audit(actor,action,data) VALUES('manual-sql','system.defaults.seed',
-      JSON_OBJECT('rules',v_rules_added,'promotionPresets',v_presets_added,'promotionIndex',v_index_added));
+      JSON_OBJECT('rules',v_rules_added,'systemGroups',v_groups_marked,'promotionPresets',v_presets_added,'promotionIndex',v_index_added));
   END IF;
   COMMIT;
 END$$

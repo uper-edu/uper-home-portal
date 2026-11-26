@@ -47,7 +47,8 @@ export async function verifyStartupDatabase(db,name,env){
     EXISTS(SELECT 1 FROM portal_settings WHERE id='sla' AND JSON_TYPE(value)='OBJECT' AND JSON_CONTAINS_PATH(value,'all','$.hotHours','$.warmHours','$.coldHours')) AS sla,
     EXISTS(SELECT 1 FROM access_state WHERE id='policy' AND value->>'$.initialized'='true') AS accounts,
     EXISTS(SELECT 1 FROM access_state WHERE id='teamless') AS teamless,
+    EXISTS(SELECT 1 FROM notification_channels WHERE COALESCE(config->>'$.deleted','false')<>'true' AND (id='lark-group-default' OR COALESCE(config->>'$.systemManaged','false')='true')) AS systemGroup,
     EXISTS(SELECT 1 FROM portal_settings WHERE id='lark_personal_channel' AND value->>'$.mode' IN ('live','simulation') AND CAST(value->>'$.revision' AS UNSIGNED)>0) AS lark,
     EXISTS(SELECT 1 FROM enrollment_mail_configuration WHERE environment=? AND config->>'$.delivery.mode' IN ('disabled','simulation','smtp') AND CHAR_LENGTH(config->>'$.delivery.generation')>0) AS mail`,[env.PORTAL_ENV||'unconfigured']);
-  for(const key of ['organic','sla','teamless','lark','mail',...(env.PLATFORM_MODE==='local'?['accounts']:[])])requireReady(Number(settings[key])===1,`unprepared ${key} setting`);
+  for(const key of ['organic','sla','teamless','systemGroup','lark','mail',...(env.PLATFORM_MODE==='local'?['accounts']:[])])requireReady(Number(settings[key])===1,`unprepared ${key} setting`);
 }
