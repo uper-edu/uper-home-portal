@@ -1,3 +1,4 @@
+import {syntheticGroupWebhook} from "./helpers/larkGroupWebhook.ts";
 import { setupNativeTest } from "./helpers/mysql.mjs";
 import { disposeNativeTest } from "./helpers/disposeNativeTest.mjs";
 import { test } from "node:test";
@@ -5,6 +6,23 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import express from "express";
 import { defaults, schedule, sla, validate } from "../server/portal/policy";
+import { readLarkDeliveryReceipt } from "../server/portal/notificationDelivery";
+
+test("Lark delivery receipts distinguish acceptance, explicit retryable rejection, and unknown delivery", async () => {
+  const clock = new Date("2026-10-12T00:00:00Z");
+  const classify = (body: unknown, status = 200, headers?: HeadersInit) =>
+    readLarkDeliveryReceipt(Response.json(body, {status, headers}), clock);
+  assert.deepEqual(await classify({StatusCode:0}), {state:"accepted",result:"",retry:false,serverWait:0});
+  assert.deepEqual(await classify({code:11232}, 200, {"retry-after":"90"}),
+    {state:"failed",result:"HTTP 200; code 11232",retry:true,serverWait:90});
+  assert.deepEqual(await classify({code:19001,msg:"private provider detail"}),
+    {state:"failed",result:"HTTP 200; code 19001",retry:false,serverWait:0});
+  assert.deepEqual(await classify({}, 429), {state:"failed",result:"HTTP 429",retry:true,serverWait:0});
+  assert.deepEqual(await readLarkDeliveryReceipt(new Response("invalid",{status:503}),clock),
+    {state:"failed",result:"HTTP 503",retry:true,serverWait:0});
+  await assert.rejects(classify({}),/Invalid Lark receipt/);
+  await assert.rejects(readLarkDeliveryReceipt(new Response("invalid"),clock),/Invalid Lark receipt/);
+});
 test("notification schedules: closing boundary, Sunday, timezone, delay, digest and natural-hour SLA", () => {
   const r = { ...defaults };
   assert.equal(
@@ -134,6 +152,13 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>((r) => server.on("listening", r));
   const base = `http://127.0.0.1:${(server.address() as any).port}`;
+  const nativeFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    if (!String(input).startsWith(base + "/")) throw Error("Unexpected external request blocked");
+    return nativeFetch(input, init);
+  };
+  // Exercise live worker logic only after connecting to the isolated database and blocking external requests.
+  process.env.TRIAL_DATASET = "local-crm";
   async function api(path: string, body?: any, method?: string) {
     const r = await fetch(base + path, {
       method: method || (body ? "POST" : "GET"),
@@ -264,6 +289,8 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     const caseTest = (name: string, body: (context: any) => any) =>
       t.test(name, {skip: focus === "task-completion" && !focusCases.has(name) ? "Outside explicit task-completion focus" : false}, body);
     t.after(async () => {
+      globalThis.fetch = nativeFetch;
+      process.env.TRIAL_DATASET = "synthetic";
       await new Promise<void>((r) => server.close(() => r()));
       try { await pool.end(); } finally { await disposeNativeTest(fixture); }
     });
@@ -666,11 +693,10 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     await caseTest("BUG604 HTTP200 business throttling retries same job; exhaustion and unknown do not replay", async () => {
       const native=globalThis.fetch;
       process.env.TEST_POLICY_LARK="https://open.larksuite.com/open-apis/bot/v2/hook/policy-test";
-      process.env.LARK_TEST_GROUP="qa";
       const prepare=async()=>{
         await reset();
         const lid=await lead();
-        await pool.query("INSERT INTO notification_channels VALUES('qa',:p1) ON DUPLICATE KEY UPDATE config=VALUES(config)",[{mode:'live',secretRef:'TEST_POLICY_LARK'}]);
+        await pool.query("INSERT INTO notification_channels VALUES('qa',:p1) ON DUPLICATE KEY UPDATE config=VALUES(config)",[{mode:'live',encryptedWebhook:syntheticGroupWebhook('qa',process.env.TEST_POLICY_LARK!)}]);
         return job(lid,'lark','qa',{notificationPolicyVersion:2},rule({channels:['lark'],retries:[1,5,15],dedupeMinutes:0}));
       };
       const failures=async()=>Number((await pool.query("SELECT COUNT(*) AS n FROM outbox WHERE type='notification.failed'")).rows[0].n);
@@ -695,7 +721,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           mock(()=>{if(kind==='timeout')throw new DOMException('TEST timeout','TimeoutError');return kind==='malformed'?new Response('not JSON',{status:200}):new Response(JSON.stringify({code:19001}),{status:200});});
           await tick();saved=await state(jid);assert.equal(saved.state,kind==='terminal'?'failed':'unknown');assert.equal(Number(saved.attempts),1);await tick();await tick();assert.equal(calls,1,'unknown/terminal receipt must not replay');
         }
-      } finally {globalThis.fetch=native;delete process.env.TEST_POLICY_LARK;delete process.env.LARK_TEST_GROUP;}
+      } finally {globalThis.fetch=native;delete process.env.TEST_POLICY_LARK;}
     });
     await caseTest(
       "Lark Retry-After, 1/5/15 backoff and terminal failure are traceable",
@@ -709,10 +735,9 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           });
         process.env.TEST_POLICY_LARK =
           "https://open.larksuite.com/open-apis/bot/v2/hook/policy-test";
-        process.env.LARK_TEST_GROUP = "qa";
         await pool.query(
           "INSERT INTO notification_channels VALUES('qa',:p1) ON DUPLICATE KEY UPDATE config=VALUES(config)",
-          [{ mode: "live", team: "sales", secretRef: "TEST_POLICY_LARK" }],
+          [{ mode: "live", team: "sales", encryptedWebhook: syntheticGroupWebhook("qa", process.env.TEST_POLICY_LARK!) }],
         );
         const jid = await job(lid, "lark", "qa", {}, config);
         const native = globalThis.fetch;
@@ -753,7 +778,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         } finally {
           globalThis.fetch = native;
           delete process.env.TEST_POLICY_LARK;
-          delete process.env.LARK_TEST_GROUP;
         }
       },
     );
@@ -907,7 +931,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         const jid = await job(await lead());
         await tick();
         assert.equal(
-          (await api("/api/crm/notification-jobs/" + jid + "/cancel", {}))
+          (await api("/api/crm/notification-jobs/" + jid + "/cancel", {reason:"Synthetic cancellation test"}))
             .status,
           409,
         );
@@ -976,7 +1000,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             {
               mode: "simulation",
               team: "sales",
-              secretRef: "MISSING_QA_WEBHOOK",
             },
           ],
         );
@@ -1010,17 +1033,19 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       },
     );
     await caseTest(
-      "production-built mock environment still requires designated test group",
+      "production-built isolated runtime still simulates a live channel",
       async () => {
         await reset();
         const lid = await lead();
         process.env.TEST_POLICY_LARK =
           "https://open.larksuite.com/open-apis/bot/v2/hook/policy-test";
+        const dataset = process.env.TRIAL_DATASET;
         process.env.NODE_ENV = "production";
-        delete process.env.LARK_TEST_GROUP;
+        process.env.TRIAL_DATASET = "synthetic";
+
         await pool.query(
           "INSERT INTO notification_channels VALUES('qa',:p1) ON DUPLICATE KEY UPDATE config=VALUES(config)",
-          [{ mode: "live", team: "sales", secretRef: "TEST_POLICY_LARK" }],
+          [{ mode: "live", team: "sales", encryptedWebhook: syntheticGroupWebhook("qa", process.env.TEST_POLICY_LARK!) }],
         );
         const jid = await job(
           lid,
@@ -1041,9 +1066,10 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         try {
           await tick();
           assert.equal(sent, false);
-          assert.equal((await state(jid)).state, "failed");
+          assert.equal((await state(jid)).state, "simulated");
         } finally {
           globalThis.fetch = native;
+          process.env.TRIAL_DATASET = dataset;
           delete process.env.NODE_ENV;
           delete process.env.TEST_POLICY_LARK;
         }

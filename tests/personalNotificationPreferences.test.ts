@@ -8,14 +8,14 @@ const hook=registerHooks({load(url,context,next){return url.endsWith('.css')?{fo
 const {PersonalNotificationPreferencesForm}=await import('../src/components/PersonalNotificationPreferencesForm.tsx');
 hook.deregister();
 const all=personalNotificationTypes.map(t=>t[0]);
-const render=(props:any={})=>renderToStaticMarkup(React.createElement(PersonalNotificationPreferencesForm,{initial:defaultPersonalPreferences(),systemTypes:all,visibleTypes:all,deliveryEnabled:true,bound:true,isLight:true,lang:'zh',onDirty:()=>{},onBusy:()=>{},onCancel:()=>{},...props}));
+const render=(props:any={})=>renderToStaticMarkup(React.createElement(PersonalNotificationPreferencesForm,{initial:defaultPersonalPreferences(),systemTypes:all,visibleTypes:all,deliveryEnabled:true,bound:true,isLight:true,lang:'zh',onDirty:()=>{},onBusy:()=>{},onCancel:()=>{},onSaved:()=>{},...props}));
 test('required and operational notices cannot be disabled even by historical preferences',()=>{
  for(const type of all.filter(personalNotificationRequired)){assert.equal(personalNotificationAllowed({revision:1,language:'en',disabledTypes:[type]},type),true);}
  const p=normalizePersonalPreferences({revision:2,language:'id',disabledTypes:['handoff.requested','assessment.completed']});assert.deepEqual(p.disabledTypes,['assessment.completed']);assert.equal(personalNotificationAllowed(p,'assessment.completed'),false);assert.equal(personalNotificationLanguage(p,'en'),'id');assert.equal(personalNotificationLanguage(defaultPersonalPreferences(),'zh'),'zh');
 });
 test('only optional types have checkboxes; unrelated roles and unavailable types stay inline',()=>{
  const html=render({systemTypes:all.filter(k=>k!=='conversation.updated'),visibleTypes:all.filter(k=>k!=='notification.failed')});
- assert.equal((html.match(/type="checkbox"/g)||[]).length,3);assert.ok(!html.includes('通知发送异常'));assert.ok(html.includes('系统提醒'));assert.ok(html.includes('AI回复失败</span>'));assert.ok(!html.includes('账号与工作异常'));assert.ok(!html.includes('绑定成功通知'));assert.ok(html.includes('可选动态'));assert.ok(!html.includes('暂不可用'));assert.ok(html.includes('暂未开放'));assert.equal((html.match(/role="switch"/g)||[]).length,3);
+ assert.equal((html.match(/type="checkbox"/g)||[]).length,4);assert.ok(html.includes('客户已分配'));assert.ok(!html.includes('通知发送异常'));assert.ok(html.includes('系统提醒'));assert.ok(html.includes('AI回复失败</span>'));assert.ok(!html.includes('账号与工作异常'));assert.ok(!html.includes('绑定成功通知'));assert.ok(html.includes('可选动态'));assert.ok(!html.includes('暂不可用'));assert.ok(html.includes('暂未开放'));assert.equal((html.match(/role="switch"/g)||[]).length,4);
 
  assert.ok(!html.includes('检查保存结果'));assert.match(html,/取消<\/button><button[^>]*admin-personal-save-primary/);
 });

@@ -1,3 +1,4 @@
+import {formatCurrency} from '../../utils/currency';
 import type { CrmCampaignRecord } from "../../types/crmCampaign";
 import { crmLocale, type CrmLanguage } from "../../utils/crmLanguage";
 export function CrmCampaignMeasures({
@@ -108,7 +109,7 @@ export function CrmCampaignMeasures({
           </article>
         ))}
       </div>
-      <p className="crm-work-muted">{t('Verified receipts','Penerimaan terverifikasi','已核实收款')}：Rp {sum('verifiedReceived').toLocaleString(crmLocale(lang))} · {t('Refunded','Dikembalikan','已核实退款')}：Rp {sum('verifiedRefunded').toLocaleString(crmLocale(lang))} · {t('Net receipts','Penerimaan bersih','净收款')}：Rp {sum('verifiedNet').toLocaleString(crmLocale(lang))}</p>
+      <p className="crm-work-muted">{t('Verified receipts','Penerimaan terverifikasi','已核实收款')}：{formatCurrency(sum('verifiedReceived'),lang)} · {t('Refunded','Dikembalikan','已核实退款')}：{formatCurrency(sum('verifiedRefunded'),lang)} · {t('Net receipts','Penerimaan bersih','净收款')}：{formatCurrency(sum('verifiedNet'),lang)}</p>
       <details>
         <summary>
           {t(
@@ -132,8 +133,7 @@ export function CrmCampaignMeasures({
           )}
         </p>
         <p>
-          {t("Recorded amount", "Nominal tercatat", "已登记金额")}：Rp{" "}
-          {sum("totalRevenue").toLocaleString(crmLocale(lang))} ·{" "}
+          {t("Recorded amount", "Nominal tercatat", "已登记金额")}：{formatCurrency(sum("totalRevenue"),lang)} ·{" "}
           {t(
             "Enrollment records without an amount",
             "Pendaftaran kelas tanpa nominal",

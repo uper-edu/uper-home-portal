@@ -1,0 +1,12 @@
+.admin-search-field{position:relative;min-width:0;color:var(--admin-muted)}
+.admin-search-field>svg{position:absolute;inset-inline-start:12px;top:50%;transform:translateY(-50%);pointer-events:none}
+.admin-search-field>input[type=search],
+:root[data-design-style="apple"] #root .admin-search-field>input[type=search]{
+  box-sizing:border-box;width:100%;min-width:0;height:40px;margin:0;
+  padding-block:0!important;padding-inline:36px 10px!important;border:1px solid var(--admin-border)!important;border-radius:10px!important;
+  font-weight:400;font-family:inherit!important;font-size:13px!important;line-height:20px!important;
+  color:var(--admin-text)!important;background:var(--admin-surface)!important;box-shadow:none!important;
+}
+.admin-search-field>input::placeholder{color:var(--admin-muted);opacity:1}
+.admin-search-field>input:focus-visible{outline:2px solid var(--admin-focus)!important;outline-offset:2px}
+.admin-search-field>input:disabled{opacity:.55;cursor:not-allowed}

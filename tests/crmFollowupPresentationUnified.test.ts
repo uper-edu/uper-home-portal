@@ -1,5 +1,22 @@
 import test from 'node:test';import assert from 'node:assert/strict';import React from 'react';import {renderToStaticMarkup as render} from 'react-dom/server';
 import {CrmSalesBrief} from '../src/components/crm/CrmSalesBrief';import {CrmAiIndicator} from '../src/components/crm/CrmAiIndicator';import {CrmInteractionSummary} from '../src/components/crm/CrmInteractionSummary';import {CrmSimpleAttention} from '../src/components/crm/CrmSimpleAttention';import {CrmInformationHint} from '../src/components/crm/CrmImportantInformation';
+import {hasRecentFollowupGoal} from '../src/utils/crmFollowupPresentation';
+
+test('follow-up highlights only a current goal with a recent, known source occurrence',()=>{
+ const now=Date.parse('2026-11-20T12:00:00Z');
+ const lead={id:'lead',goal:'日常中文沟通',submittedAt:'2026-11-19T03:00:00Z'};
+ assert.equal(hasRecentFollowupGoal(lead,now),true);
+ assert.equal(hasRecentFollowupGoal({...lead,goal:' '},now),false);
+ assert.equal(hasRecentFollowupGoal({...lead,submittedAt:undefined},now),false);
+ assert.equal(hasRecentFollowupGoal({...lead,profileFieldMeta:{goal:{sourceType:'sales_edit'}}},now),false);
+ for(const effectiveAt of ['2026-11-12T12:00:00Z','2026-11-20T13:00:00Z']){
+  assert.equal(hasRecentFollowupGoal({...lead,profileFieldMeta:{goal:{effectiveAt}}},now),false);
+ }
+ const show=(updated:typeof lead)=>render(React.createElement(CrmSimpleAttention,{lead:updated,lang:'zh',now}));
+ assert.match(show(lead),/aria-label="学习目标"/);
+ assert.doesNotMatch(show({...lead,submittedAt:'2026-11-12T12:00:00Z'}),/aria-label="学习目标"/);
+ assert.match(show(lead),/<details[^>]*data-admin-disclosure="compact"[^>]*>[\s\S]*?已完成/);
+});
 test('follow-up marks only the retained goal while full needs stay in the profile',()=>{const lead={city:'Bandung',mode:'Offline',goal:'HSK',availability:'周六',profileFieldMeta:{city:{sourceType:'ai_customer_text',sourceFactIds:['a']},goal:{sourceType:'ai_sales_text',sourceFactIds:['b']},availability:{sourceType:'sales_edit',sourceFactIds:['c']}}},before=JSON.stringify(lead),html=render(React.createElement(CrmSalesBrief,{lead,lang:'zh',onEvidence:()=>{}}));assert.equal((html.match(/class="crm-ai-indicator"/g)||[]).length,1);assert.doesNotMatch(html,/（AI提取）|Bandung|周六/);assert.match(html,/查看主要目标的原文依据 · 销售记录/);assert.equal(JSON.stringify(lead),before);});
 test('AI explains processing without implying adoption or higher authority',()=>{const html=render(React.createElement(CrmAiIndicator));assert.match(html,/由AI根据关联原文整理/);assert.doesNotMatch(html,/采用结果见下方|已采用|已核实/);assert.match(html,/tabindex="0"/);});
 test('interaction time is plain precise information and record access has a separate named action',()=>{const event:any={id:'s',at:'2026-10-25T10:20:30Z',source:'contact',channel:'WhatsApp',result:'No Response',timeBasis:'occurred',text:'原文',undatedCount:2},before=JSON.stringify(event);const html=render(React.createElement(CrmInteractionSummary,{event,title:'销售主动联系',time:'2026-10-25 03:20:30',source:'销售记录',channel:'WhatsApp',result:'未回复',timezone:'America/Vancouver',onOpen:()=>{}}));assert.match(html,/<time dateTime="2026-10-25T10:20:30Z"/);assert.doesNotMatch(html,/<button[^>]*>[^<]*<time/);assert.match(html.replace(/<[^>]+>/g,''),/销售记录 · WhatsApp · 未回复/);assert.match(html,/data-contact-result="unanswered"/);assert.match(html,/查看原始记录：销售主动联系/);assert.match(html,/<span>记录<\/span>/);assert.match(html,/发生时间未注明记录.*2/);assert.equal(JSON.stringify(event),before);});

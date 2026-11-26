@@ -14,6 +14,10 @@ import { Link } from 'react-router-dom';
 import { cscaFaqsByLang } from '../data/cscaFaqs';
 import { useDesignStyle } from '../utils/theme';
 import ProgramFAQPortal from '../components/ProgramFAQPortal';
+import {addRouteTranslations} from '../i18n';
+import translations from '../i18n/locales/routes/csca.json';
+
+addRouteTranslations('csca', translations);
 
 const CSCA = () => {
   const { t, i18n } = useTranslation();

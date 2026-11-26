@@ -1,17 +1,20 @@
+import {syntheticGroupWebhook} from "./helpers/larkGroupWebhook.ts";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import mysql from 'mysql2/promise';
 if(!process.env.MYSQL_NATIVE_TEST_ENV)test('agreement delivery chain requires approved isolation',{skip:'Synthetic isolated MySQL only'},()=>{});
 else await test('current agreement workflow: schedule, retry, deduplicate and cancel without replay',async t=>{
  const {setupNativeTest}=await import('./helpers/mysql.mjs');const f=await setupNativeTest('agreement_chain');
- process.env.PLATFORM_MODE='local';process.env.LARK_TEST_GROUP='synthetic-channel';process.env.TEST_AGREEMENT_WEBHOOK='https://open.larksuite.com/open-apis/bot/v2/hook/synthetic';
+ process.env.PLATFORM_MODE='local';process.env.TEST_AGREEMENT_WEBHOOK='https://open.larksuite.com/open-apis/bot/v2/hook/fixture-crmTrustNotifications-1';
  const {pool,tx}=await import('../server/portal/store.ts');const {saveSimpleSalesWorkflow}=await import('../server/portal/simpleSalesWorkflow.ts');const {tick}=await import('../server/portal/worker.ts');const {defaults}=await import('../server/portal/policy.ts');
+ // The database remains synthetic. Enable the live branch only while transport is intercepted.
  const oldFetch=globalThis.fetch;let calls=0;
  globalThis.fetch=async(url)=>{assert.equal(String(url),process.env.TEST_AGREEMENT_WEBHOOK);calls++;return new Response(JSON.stringify({code:calls===1?11232:0}),{status:200,headers:{'retry-after':'90'}})};
- t.after(async()=>{globalThis.fetch=oldFetch;delete process.env.TEST_AGREEMENT_WEBHOOK;await pool.end();const c=await mysql.createConnection({user:'root',socketPath:f.socket});try{await c.query('DROP DATABASE IF EXISTS `'+f.name+'`');await c.query('DROP USER IF EXISTS '+mysql.escape(new URL(process.env.MYSQL_TRIAL_URL!).username)+'@localhost');}finally{await c.end()}});
+ process.env.TRIAL_DATASET='local-crm';
+ t.after(async()=>{globalThis.fetch=oldFetch;process.env.TRIAL_DATASET='synthetic';delete process.env.TEST_AGREEMENT_WEBHOOK;await pool.end();const c=await mysql.createConnection({user:'root',socketPath:f.socket});try{await c.query('DROP DATABASE IF EXISTS `'+f.name+'`');await c.query('DROP USER IF EXISTS '+mysql.escape(new URL(process.env.MYSQL_TRIAL_URL!).username)+'@localhost');}finally{await c.end()}});
  const now=new Date(),due=new Date(now.getTime()+3600000),lead='synthetic-agreement';
  await pool.query('INSERT INTO portal_leads(id,profile) VALUES(:p1,:p2)',[lead,{id:lead,fullName:'Maya Putri',owner:'synthetic-sales',simpleRevision:0,identityLifecycle:'independent',currentStage:'progress:proposal',followUpLogs:[]}]);
- await pool.query("INSERT INTO notification_channels(id,config) VALUES('synthetic-channel',:p1)",[{mode:'live',secretRef:'TEST_AGREEMENT_WEBHOOK',maxPerHour:100}]);
+ await pool.query("INSERT INTO notification_channels(id,config) VALUES('synthetic-channel',:p1)",[{mode:'live',encryptedWebhook:syntheticGroupWebhook('synthetic-channel',process.env.TEST_AGREEMENT_WEBHOOK!),maxPerHour:100}]);
  const rule={...defaults,event:'commitment.due',group:'synthetic-channel',channels:['lark'],recipient:'owner',sources:[],tiers:[],states:[],calendarMode:'custom',businessOnly:false,days:[0,1,2,3,4,5,6],start:'00:00',end:'23:59',timezone:'UTC',timing:'immediate',dedupeMinutes:0,retries:[1,5,15],language:'en'};
  await pool.query("INSERT INTO notification_rules(id,version,config,enabled,effective_at) VALUES('synthetic-rule',1,:p1,true,'2020-01-01')",[rule]);
  const save=(revision:number,requestId:string,extra:any)=>tx(c=>saveSimpleSalesWorkflow(c,lead,'synthetic-sales',{workflowVersion:3,recordKind:'internal',expectedRevision:revision,requestId,summary:'TEST customer confirmed course discussion',...extra},()=>true,now));

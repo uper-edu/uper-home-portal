@@ -1,7 +1,7 @@
 import {insightValueText} from '../../utils/crmClassEquipment';
 import {aiInsightDefinition} from '../../utils/crmDimensionCatalog';
 import {useCrmExtractions} from './useCrmExtractions';
-import {CrmDisclosure} from './CrmDisclosure';
+import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {CrmAiIndicator} from './CrmAiIndicator';
 import {CrmEvidenceAction} from './CrmEvidenceAction';
 import {useCrmUiText} from './CrmUiLanguage';
@@ -18,14 +18,14 @@ export function CrmCustomerInsights({lead,lang,onSource,onRefresh,embedded=false
  const item=(insight:CustomerInsight)=><article key={insight.dimension.key} className="crm-history-information-item" data-status={insight.status==='tentative'?'difference':undefined}>
   <div className="crm-history-information-heading"><strong title={aiInsightDefinition(insight.dimension).definition[lang as 'zh']||insight.dimension.definition.en}>{insightLabel(insight.dimension,lang)}<CrmAiIndicator/></strong><span className="crm-history-information-state">{ui(state(insight.current))}</span>{source(insight.current)}</div>
   <p className="crm-history-information-value">{insightValueText(insight.value,insight.dimension.key,lang)}</p>
-  <CrmDisclosure heading={ui(insight.history.length>1?'依据与历史':'原文依据')+(insight.history.length>1?' · '+insight.history.length:'')}>
+  <AdminDisclosure heading={ui(insight.history.length>1?'依据与历史':'原文依据')+(insight.history.length>1?' · '+insight.history.length:'')}>
    {insight.history.slice().reverse().map(h=><div key={h.id} className="crm-history-information-item" data-status={h.decision==='difference'?'difference':undefined}>
     <div className="crm-history-information-heading"><span className="crm-history-information-state">{ui("录入于")} {formatCrmEventTime(h.recordedAt)} · {ui(state(h))}</span>{h.id!==insight.current.id&&source(h)}</div>
     {insight.history.length>1&&insightValueText(h.value,insight.dimension.key,lang)!==h.quote&&<p className="crm-history-information-value"><span className="crm-history-information-state">{ui('整理结果')} · </span>{insightValueText(h.value,insight.dimension.key,lang)}</p>}
     <blockquote className="crm-progress-original">{insightValueText(h.value,insight.dimension.key,lang)!==h.quote&&<span className="crm-history-information-state">{ui('原文依据')} · </span>}{h.quote}</blockquote>
     {h.decision==='difference'&&<p className="crm-history-information-reason">{ui(h.reason)}</p>}
    </div>)}
-  </CrmDisclosure>
+  </AdminDisclosure>
  </article>;
  if(!current.length&&!pending&&!failed&&!extraction.error)return null;
  const content=<>

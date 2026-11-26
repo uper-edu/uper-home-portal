@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import { auditLog } from "./audit.ts";
 import { tx, pool } from "./store.ts";
 import { operationContext } from "./operationContext.ts";
@@ -14,16 +13,6 @@ import {
 const fail = (status: number, message: string): never => {
   throw Object.assign(Error(message), { status });
 };
-const canonical = (v: any): string =>
-  JSON.stringify(v, (_, x) =>
-    x && typeof x === "object" && !Array.isArray(x)
-      ? Object.fromEntries(
-          Object.keys(x)
-            .sort()
-            .map((k) => [k, x[k]]),
-        )
-      : x,
-  );
 function actionFor(path: string) {
   if (path === "/api/crm/auth/password")
     return { action: "password.self", permission: null };
@@ -62,7 +51,7 @@ export function mountAccessOperations(app: any) {
       if (!actor) fail(401, "Login required");
       const target =
         typeof q.query.actor === "string" ? q.query.actor : actor.id;
-      if (target !== actor.id && !fullAdministrator(actor))
+      if (target !== actor.id && (actor.passwordChangeRequired || !fullAdministrator(actor)))
         fail(403, "Permission denied");
       const row = (
         await pool.query(
@@ -72,6 +61,8 @@ export function mountAccessOperations(app: any) {
       ).rows[0];
       r.setHeader("Cache-Control", "no-store");
       if (!row) return r.json({ state: "unconfirmed" });
+      if (actor.passwordChangeRequired && row.action !== "/api/crm/auth/password")
+        fail(403, "password_change_required");
       const required = actionFor(row.action)?.permission;
       if (
         required &&
@@ -130,6 +121,8 @@ export function mountAccessOperations(app: any) {
             );
             const fresh = await platform.authenticate(q);
             if (!fresh) fail(401, "Login required");
+            if (fresh.passwordChangeRequired && originalPath !== "/api/crm/auth/password")
+              fail(403, "password_change_required");
             if (
               action.permission &&
               !fresh.permissions.includes(action.permission)
@@ -204,13 +197,7 @@ export function mountAccessOperations(app: any) {
         !/^[a-zA-Z0-9_-]{16,100}$/.test(q.body.operationId)
       )
         fail(400, "access_operation_required");
-      if ((process.env.ACCESS_OPERATION_KEY || "").length < 32)
-        fail(503, "access_operation_key_missing");
       const operationId = q.body.operationId;
-      const fingerprint = crypto
-        .createHmac("sha256", process.env.ACCESS_OPERATION_KEY!)
-        .update(canonical({ path: q.path, body: q.body }))
-        .digest("hex");
       let replayed = false;
       const result = await tx(async (c: any) =>
         operationContext.run(c, async () => {
@@ -236,7 +223,7 @@ export function mountAccessOperations(app: any) {
           if (receipt) {
             if (receipt.result.cancelled)
               fail(409, "access_operation_cancelled");
-            if (receipt.fingerprint !== fingerprint)
+            if (receipt.action !== q.path)
               fail(409, "access_operation_conflict");
             replayed = true;
             return receipt.result;
@@ -296,7 +283,7 @@ export function mountAccessOperations(app: any) {
               actor.id,
               operationId,
               q.path,
-              fingerprint,
+              "operation-id-v1",
               JSON.stringify(response),
             ],
           );

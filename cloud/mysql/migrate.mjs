@@ -1,12 +1,14 @@
+import {paymentAnalyticsSchemaVersion,verifyPaymentAnalyticsSchema} from './payment-analytics-schema.mjs';
 import {verifyCmsMediaSchema} from './cms-media-schema.mjs';
 import {promotionIndexEntries, syncPromotionIndex} from './promotion-index.mjs';
 import {backfillPromotionShortLinks} from './promotion-short-links.mjs';
 import {initializeSystemDefaults as seedSystemDefaults} from './system-defaults.mjs';
+import systemDefaults from '../../src/data/system-defaults/index.ts';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { openTrialDatabase, withLock } from './database.mjs';
 
-export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGuard=false,initializeSystemDefaults=true}={}) {
+export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGuard=false,initializeSystemDefaults=true,includeEnrollment=true}={}) {
   return withLock(pool, 'schema:' + name, async connection => {
     const [guards]=await connection.execute("SELECT table_name FROM information_schema.tables WHERE table_schema=? AND table_name LIKE 'access_restore_guard_%'",[name]);
     if(guards.length&&!allowRestoreGuard)throw Error('Interrupted restore: security review barrier not finalized');
@@ -21,7 +23,16 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     const [versions] = await connection.query('SELECT * FROM trial_schema_versions WHERE version=1');
     const finish=async()=>{
       await applyContentMigration(connection);
-      const result=await addPromotionShortLinks(connection);
+      await addPromotionShortLinks(connection);
+      await addPaymentAnalytics(connection);
+      const result=await addPaymentAnalyticsDispatch(connection);
+      await addPaymentAnalyticsOccurrence(connection);
+      if(includeEnrollment){
+        const credentialsDdl = await readFile(new URL('./schema-credentials-20261119162447.sql', import.meta.url), 'utf8');
+        await connection.query(credentialsDdl);
+        await applyEnrollmentCatalogMigration(connection);
+        await applyEnrollmentOrdersMigration(connection);
+      }
       if(initializeSystemDefaults&&!guards.length&&offline[0]?.state!=='offline_copy')await seedSystemDefaults(connection);
       return result;
     };
@@ -32,9 +43,88 @@ export async function migrate(pool, name, {allowOfflineCopy=false,allowRestoreGu
     await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(1,'applying')");
     const statements = (await readFile(new URL('./schema.sql', import.meta.url), 'utf8')).split(';').map(s => s.trim()).filter(Boolean);
     for (const statement of statements) await connection.query(statement.replace(/ENGINE=InnoDB$/,'ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin'));
+    // Only new installations with defaults enabled supply this mode. Schema-only imports stay empty.
+    if (initializeSystemDefaults) {
+      await connection.execute(
+        'INSERT INTO portal_settings(id,value) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',
+        ['lark_personal_channel', JSON.stringify(systemDefaults.larkPersonalChannel)],
+      );
+    }
     await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=1");
     return finish();
   });
+}
+
+async function applyEnrollmentCatalogMigration(connection) {
+  const source = await readFile(new URL('./schema-enrollment-20261114172847.sql', import.meta.url), 'utf8');
+  await connection.query(source);
+  const [columns] = await connection.query('SHOW COLUMNS FROM enrollment_classes');
+  const required = ['id', 'course_id', 'revision', 'state', 'first_lesson_at', 'enrollment_closes_at', 'data', 'updated_at'];
+  if (!required.every(name => columns.some(column => column.Field === name))) {
+    throw Error('Incomplete enrollment class schema');
+  }
+}
+
+async function applyEnrollmentOrdersMigration(connection) {
+  for (const file of ['schema-enrollment-20261114174435.sql','schema-enrollment-20261114175859.sql','schema-enrollment-20261114181313.sql','schema-enrollment-20261114182623.sql','schema-enrollment-20261114183459.sql','schema-enrollment-20261114213702.sql']) {
+    const source = await readFile(new URL(file, import.meta.url), 'utf8');
+    for (const statement of source.split(';').map(sql => sql.trim()).filter(Boolean)) {
+      await connection.query(statement);
+    }
+  }
+  const [columns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_waitlist');
+  const learnerName=columns.find(column=>column.Field==='learner_name');
+  if(!learnerName){
+    const sql=await readFile(new URL('./schema-enrollment-20261114193153.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(learnerName.Type.toLowerCase()!=='varchar(120)'||learnerName.Null!=='YES'||learnerName.Default!==null){
+    throw Error('Enrollment waitlist learner name does not match the expected schema');
+  }
+  const [proofColumns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_proofs');
+  const transferDetails=proofColumns.find(column=>column.Field==='transfer_details');
+  if(!transferDetails){
+    const sql=await readFile(new URL('./schema-enrollment-20261114234419.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(transferDetails.Type.toLowerCase()!=='json'||transferDetails.Null!=='YES'||transferDetails.Default!==null){
+    throw Error('Enrollment proof transfer details do not match the expected schema');
+  }
+  const [receiptColumns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_receipts');
+  const receivingAccount=receiptColumns.find(column=>column.Field==='receiving_account');
+  if(!receivingAccount){
+    const sql=await readFile(new URL('./schema-enrollment-20261114235011.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(receivingAccount.Type.toLowerCase()!=='varchar(160)'||receivingAccount.Null!=='YES'||receivingAccount.Default!==null){
+    throw Error('Enrollment receipt receiving account does not match the expected schema');
+  }
+  const [refundColumns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_refund_cases');
+  const refundTiming=refundColumns.find(column=>column.Field==='timing');
+  if(!refundTiming){
+    const sql=await readFile(new URL('./schema-enrollment-20261114235404.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(refundTiming.Type.toLowerCase()!=='json'||refundTiming.Null!=='YES'||refundTiming.Default!==null){
+    throw Error('Enrollment refund timing does not match the expected schema');
+  }
+  const activityDdl=(await readFile(new URL('./schema-enrollment-20261115000007.sql',import.meta.url),'utf8'))
+    .split(';').map(sql=>sql.trim());
+  for(const [index,table] of ['enrollment_orders','enrollment_waitlist'].entries()){
+    const [fields]=await connection.query('SHOW FULL COLUMNS FROM '+table);
+    const activity=fields.find(column=>column.Field==='activity_at');
+    if(!activity)await connection.query(activityDdl[index]);
+    else if(activity.Type.toLowerCase()!=='datetime(6)'||activity.Null!=='YES'||activity.Default!==null)
+      throw Error('Enrollment activity time does not match the expected schema: '+table);
+  }
+  await connection.query(await readFile(new URL('./schema-enrollment-20261115014556.sql',import.meta.url),'utf8'));
+  await connection.query(await readFile(new URL('./schema-enrollment-20261115183339.sql',import.meta.url),'utf8'));
+  const mailDdl=await readFile(new URL('./schema-enrollment-20261116191537.sql',import.meta.url),'utf8');
+  for(const statement of mailDdl.split(';').map(sql=>sql.trim()).filter(Boolean))await connection.query(statement);
+  const [mailAttemptColumns]=await connection.query('SHOW FULL COLUMNS FROM enrollment_mail_attempts');
+  const mailPoolId=mailAttemptColumns.find(column=>column.Field==='pool_id');
+  if(!mailPoolId){
+    const sql=await readFile(new URL('./schema-enrollment-20261116214753.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }else if(mailPoolId.Type.toLowerCase()!=='varchar(40)'||mailPoolId.Null!=='YES'||mailPoolId.Default!==null){
+    throw Error('Enrollment mail attempt pool does not match the expected schema');
+  }
 }
 
 async function applyContentMigration(connection){
@@ -266,5 +356,53 @@ async function addPromotionShortLinks(c) {
   } catch (error) {
     await c.rollback();
     throw error;
+  }
+}
+
+async function addPaymentAnalytics(connection) {
+  const [versions] = await connection.query('SELECT state FROM trial_schema_versions WHERE version=19');
+  const state = versions[0]?.state;
+  if (state && state !== 'applying' && state !== 'ready') throw Error('Unexpected payment analytics migration state');
+  if (!state) await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(19,'applying')");
+  if (state !== 'ready') {
+    const sql = await readFile(new URL('./schema-v19.sql',import.meta.url),'utf8');
+    await connection.query(sql.trim().replace(/;$/,''));
+  }
+  if (state !== 'ready') {
+    await verifyPaymentAnalyticsSchema(connection, 19);
+    await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=19");
+  }
+}
+
+async function addPaymentAnalyticsDispatch(connection) {
+  const [versions] = await connection.query('SELECT state FROM trial_schema_versions WHERE version=20');
+  const state = versions[0]?.state;
+  if (state && state !== 'applying' && state !== 'ready') throw Error('Unexpected payment dispatch migration state');
+  if (!state) {
+    await verifyPaymentAnalyticsSchema(connection, 19);
+    await connection.query("INSERT INTO trial_schema_versions(version,state) VALUES(20,'applying')");
+  }
+  if (state !== 'ready') {
+    const [columns] = await connection.query('SHOW FULL COLUMNS FROM crm_payment_analytics');
+    if (!columns.some(row => row.Field === 'attempted_at')) {
+      await verifyPaymentAnalyticsSchema(connection, 19);
+      const sql = await readFile(new URL('./schema-v20.sql', import.meta.url), 'utf8');
+      await connection.query(sql.trim().replace(/;$/, ''));
+    }
+  }
+  await verifyPaymentAnalyticsSchema(connection);
+  if (state !== 'ready') {
+    await connection.query("UPDATE trial_schema_versions SET state='ready',updated_at=CURRENT_TIMESTAMP(6) WHERE version=20");
+  }
+  return {version:paymentAnalyticsSchemaVersion,state:'ready',alreadyApplied:state==='ready'};
+}
+
+async function addPaymentAnalyticsOccurrence(connection) {
+  const [columns] = await connection.query('SHOW FULL COLUMNS FROM crm_payment_analytics');
+  const occurred = columns.find(column => column.Field === 'occurred_at');
+  if (!occurred) {
+    await connection.query('ALTER TABLE crm_payment_analytics ADD COLUMN occurred_at DATETIME(6) NULL');
+  } else if (occurred.Type.toLowerCase() !== 'datetime(6)' || occurred.Null !== 'YES' || occurred.Default !== null) {
+    throw Error('Payment analytics occurrence column does not match the expected schema');
   }
 }

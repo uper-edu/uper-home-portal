@@ -59,6 +59,21 @@ test("unknown management results retain only metadata in session storage and ret
       true,
     );
     assert.equal(pendingAccessOperations("TEST-actor").length, 0);
+    const passwordPath = "/api/crm/auth/password";
+    const passwordBody = { currentPassword: "TEST-wrong", newPassword: "TEST-new" };
+    let rejectedId: string | undefined;
+    globalThis.fetch = (async (_url: string, options: RequestInit) => {
+      rejectedId = JSON.parse(String(options.body)).operationId;
+      return Response.json({error: "Current password is incorrect"}, {status: 401});
+    }) as typeof fetch;
+    await assert.rejects(managementRequest("TEST-actor", passwordPath, passwordBody), /Current password is incorrect/);
+    assert.equal(pendingAccessOperations("TEST-actor").length, 0);
+    globalThis.fetch = (async (_url: string, options: RequestInit) => {
+      assert.notEqual(JSON.parse(String(options.body)).operationId, rejectedId);
+      return Response.json({error: "Login required"}, {status: 401});
+    }) as typeof fetch;
+    await assert.rejects(managementRequest("TEST-actor", passwordPath, {...passwordBody, currentPassword: "TEST-correct"}), /Login required/);
+    assert.equal(pendingAccessOperations("TEST-actor").length, 1);
   } finally {
     for (const p of pendingAccessOperations("TEST-actor"))
       forgetAccessOperation(p.operationId);

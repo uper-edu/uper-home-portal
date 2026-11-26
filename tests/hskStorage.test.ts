@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { newHskAttempt, gradeHskAttempt } from "../src/data/hskAssessment";
 import {
   readHskDraft,
+  hasHskDraft,
   writeHskDraft,
   readHskHistory,
   writeHskResult,
@@ -82,6 +83,55 @@ test("versioned local drafts restore item/skip/replay state, reject incompatible
     if (before) Object.defineProperty(globalThis, "localStorage", before);
     else delete (globalThis as any).localStorage;
   }
+});
+
+test("the draft indicator reuses validation only while the scoped draft and clock remain valid", t=>{
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"localStorage");
+  const values=new Map<string,string>();
+  let failRead=false;
+  Object.defineProperty(globalThis,"localStorage",{configurable:true,value:{
+    getItem:(key:string)=>{
+      if(failRead)throw Error("storage unavailable");
+      return values.get(key)??null;
+    },
+    setItem:(key:string,value:string)=>values.set(key,value),
+    removeItem:(key:string)=>values.delete(key),
+  }});
+  t.after(()=>{
+    selectVisitorScope("a".repeat(64));
+    if(previous)Object.defineProperty(globalThis,"localStorage",previous);
+    else Reflect.deleteProperty(globalThis,"localStorage");
+  });
+  const attempt=newHskAttempt("full",randomUUID());
+  const key=visitorKey("uper_hsk_draft_v2");
+  writeHskDraft({attempt,currentIdx:2,reviewing:false});
+  const serialized=values.get(key);
+  const originalParse=JSON.parse;
+  let reads=0;
+  t.mock.method(JSON,"parse",(value:string)=>{
+    if(value===serialized)reads++;
+    return originalParse(value);
+  });
+  for(let i=0;i<30;i++)assert.equal(hasHskDraft(),true);
+  assert.equal(reads,1);
+  assert.equal(readHskDraft()?.currentIdx,2);
+  writeHskDraft({attempt,currentIdx:999,reviewing:false});
+  assert.equal(hasHskDraft(),false);
+  values.set(key,serialized!);
+  assert.equal(hasHskDraft(),true);
+  const clock=t.mock.method(Date,"now",()=>Date.parse(attempt.startedAt)-301000);
+  assert.equal(hasHskDraft(),false);
+  clock.mock.restore();
+  assert.equal(hasHskDraft(),true);
+  failRead=true;
+  assert.equal(hasHskDraft(),false);
+  failRead=false;
+  selectVisitorScope("b".repeat(64));
+  assert.equal(hasHskDraft(),false);
+  selectVisitorScope("a".repeat(64));
+  assert.equal(hasHskDraft(),true);
+  clearHskDraft(attempt.attemptId);
+  assert.equal(hasHskDraft(),false);
 });
 
 import { getStudentContext } from "../src/services/studentProfileStorage";

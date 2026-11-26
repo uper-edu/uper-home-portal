@@ -25,13 +25,13 @@ export function historyPointSummary(point:HistorySalesPoint,lang:string){
  return main+(notes.length?' · '+notes.map(q=>crmUiText(q,lang)).join(' · '):'');
 }
 
-export function CrmHistorySalesHighlights({groupId,points,onEvidence}:{groupId:string;points:HistorySalesPoint[];onEvidence?:(citation:HistoryCitation)=>void}){
+export function CrmHistorySalesHighlights({groupId,points,onEvidence,focusedFields=[]}:{groupId:string;points:HistorySalesPoint[];onEvidence?:(citation:HistoryCitation)=>void;focusedFields?:string[]}){
  const ui=useCrmUiText(),lang=useCrmUiLanguage();
  if(!points.length)return null;
  const seen=new Set<string>(),sections=[['request','诉求与意向'],['concern','顾虑与限制'],['change','本次变化'],['context','本次提及']];
  return <section className="crm-history-sales-highlights" aria-label={ui('本条记录重点')}>
  {sections.map(([kind,title])=>{const rows=points.filter(p=>p.kind===kind);return rows.length>0&&<section key={kind} className="crm-history-business-section"><h4>{ui(title)}</h4>
- {rows.map(point=><div key={point.id} className={'crm-history-business-point'+(kind==='request'?' is-request':'')}>
+ {rows.map(point=><div key={point.id} tabIndex={focusedFields.includes(point.field)?-1:undefined} className={'crm-history-business-point'+(kind==='request'?' is-request':'')+(focusedFields.includes(point.field)?' crm-history-field-match':'')}>
   {kind!=='request'&&<span className="crm-history-business-label">{historyPointLabel(point,lang)}</span>}
   <div className="crm-history-business-value">{point.showBefore&&<><span className="crm-work-muted">{historyInformationValue(point.field,point.before,lang)}</span><span aria-label={ui('变为')}> → </span></>}<CrmSearchHighlight text={historyPointValue(point,lang)}/>
    {point.qualifiers.map(word=><span key={word} className="crm-history-business-qualifier">{ui(word)}</span>)}

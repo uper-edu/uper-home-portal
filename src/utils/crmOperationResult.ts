@@ -4,6 +4,12 @@ export function confirmCrmOperation(data: any, leadId: string, kind: string) {
     throw Error("Save response does not match this customer and action");
 }
 
+export function crmSaveFailureKind(status: number, checkingReceipt: boolean) {
+  if (checkingReceipt && status === 404) return 'receipt_missing';
+  if (!checkingReceipt && status < 500) return 'rejected';
+  return 'unknown';
+}
+
 /** A stage receipt must identify both the customer and the requested new stage. */
 export function confirmedStageLead(data:any,leadId:string,expectedStage:string|undefined){
   confirmCrmOperation(data,leadId,'stage');

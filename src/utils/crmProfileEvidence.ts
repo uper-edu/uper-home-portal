@@ -1,4 +1,12 @@
 /** Read-only profile presentation. Never infer missing evidence or adoption decisions. */
+export function reportedLevelQuestionnaires(events: any[], leadId: string, value: string) {
+  if (!value?.trim()) return [];
+  return events.filter(event => event.leadId === leadId &&
+    event.eventType === "questionnaire.submitted" &&
+    typeof event.eventId === "string" &&
+    event.payload?.answers?.reportedLevel === value);
+}
+
 export function profileFieldVisible(lead: any, field: string) {
   const value = lead[field];
   return (

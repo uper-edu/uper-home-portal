@@ -5,8 +5,8 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 - Confirm the destination remote before any push. Do not push to the former personal repository unless explicitly requested.
 - Never commit environment files containing credentials, runtime customer records in `data/`, logs, or local backups. `.env.example` contains placeholders only.
 - Stage only reviewed source and documentation changes; do not blindly stage all files.
-- Run `npm test`, `npm run lint`, `npm run build`, and `git diff --check` before syncing.
-- A request to sync code authorizes a push to the canonical repository, but does not authorize production deployment.
+- Before syncing, follow the [final-version checks](#本地开发与验证范围).
+- Confirm the delivery batch and its exact commit with the user before pushing to the canonical repository or releasing to company test. Production deployment requires separate explicit authorization.
 - Keep lesson content and grading rules unchanged during infrastructure fixes unless the user requests content changes.
 
 ## 生产发布分支
@@ -16,8 +16,21 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 - 创建或更新 `release`、推送 `release`，以及触发生产发布，各自需要明确授权。本次规范本身不创建发布、不推送、不部署。
 - 公司测试环境和本地 3000 不使用 `release` 作为开发分支。测试发布仍按当次授权的测试版本执行。
 
+## 环境变量与业务开关
+
+- 环境变量用于部署和基础设施所需的配置，例如运行环境、服务地址、连接参数、凭证注入和日志设置。禁止为已交付的业务功能、权限或管理操作新增环境变量开关。
+- 业务确需启停时，沿用现有系统配置和权限。
+- 凡需在任何环境的 `.env` 或模板中新增环境变量，必须先向用户单独说明变量名、用途、涉及环境、默认或缺失时的行为及运维影响，取得用户明确批准后才可实施。功能开发、合并或发布授权不能替代这项审批。获批后同步更新对应环境模板与发布手册。
+
 ## 本地开发与验证范围
 
+- 默认在本地 `main` 开发，在本地 3000 按改动影响做定向验收。验收通过后，按可独立验证和回退的范围提交到本地 `main`。
+- 本地代码提交累积成可以一起验收的交付批次后，核对范围、依赖和最终提交号。全量检查通过后，先请用户确认，再按授权批量同步 GitHub 和发布公司 test。
+- 公司 test 使用已同步的确切提交构建发布包。切换前记录回退版本，切换后按本批改动做定向验收。
+- 仅补记已完成发布和验收结果的文档提交，只核对文档差异并留在本地，随下一批实际代码改动一起同步 GitHub。纯验收记录不单独触发全量检查、构建或发布。
+- 日常按改动风险做定向验证。文档、注释或不改变文件内容的 Git 历史整理，检查相关差异即可。文案、样式和单个交互，验证受影响的页面和状态。权限、数据库迁移、收退款、通知等高风险改动，验证关键流程、拒绝和失败场景，并遵守下述隔离要求。
+- 对含代码或运行输入变更的交付批次，推送前对最终待推送版本执行一次 `npm test`、`npm run lint`、`npm run build` 和 `git diff --check`。同一版本已有可核对的通过记录时，直接复用。最终版本有变更时，按新版本执行。
+- 验收报告先列实际验证的流程和结果，再列未验证项、跳过原因及其对验收的影响。全量测试统计放在这些信息之后。
 - 默认只在本地3000环境开发和验证，不自行启动其他端口、独立服务或独立数据库进行开发与验收，也不自行先在其他环境开发后再合并到3000。
 - 复杂改动确需隔离时（如数据破坏、迁移、故障注入或不可控通知），先向用户说明原因、范围、数据与通知风险及回到3000的方式，取得用户对本次独立环境的明确确认后再启动。风险理由本身不构成授权；未获确认前不执行依赖隔离环境的操作，也不改在3000冒险执行。
 - 默认只验证中文电脑端，按改动选择必要的桌面布局、交互、权限及相关自动化测试。三语切换、英文／印尼文及移动端／窄屏测试，须用户明确要求后再执行，不因旧验收矩阵自动扩大范围。
@@ -32,7 +45,7 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 
 ## Zentao bug fixes
 
-- Use [fix-zentao-bugs](.agents/skills/fix-zentao-bugs/SKILL.md) for Zentao bug investigation, repair, and disposition.
+- Use [commando-fix-zentao-bugs](.agents/skills/commando-fix-zentao-bugs/SKILL.md) for Zentao bug investigation, repair, and disposition.
 - Default to manual confirmation: analyze each bug and its validity, present the final repair plan and obtain explicit human approval for that exact bug and plan before changing repair code. Explicit approval may cover an identified list of per-bug plans; implement and verify each bug separately. User-provided directions alone are not approval; material plan changes require renewed confirmation. Show remaining bugs and present the next unapproved bug for confirmation.
 - Verify fixes directly on local port 3000 with focused tests. Isolation for data destruction, migration, fault injection, or uncontrolled notifications requires prior explicit user confirmation under the local development rules above; do not start it autonomously. Accumulate fixes, then run the required full checks for the final release source, back up and publish the batch. In company test, verify the deployed version, health/login, each bug's critical path, and environment differences rather than repeating the full local suite.
 - Do not mark a repaired bug resolved in Zentao until local 3000 verification, canonical GitHub push, company-test deployment and targeted verification, and evidence upload have all succeeded. Local-only fixes remain pending delivery. Publishing and Zentao writes still require authorization; maintaining this workflow starts neither.
@@ -42,7 +55,13 @@ Canonical repository: `uper-edu/uper-home-portal` (private).
 
 ## 管理工作区设计
 
-修改CRM、CMS或系统管理的导航、布局、详情、编辑、保存反馈或响应式时，必须使用 [uper-admin-workspace-design](.agents/skills/uper-admin-workspace-design/SKILL.md)。纯后端、数据库及HSK题库任务不自动触发。此要求不授予发布或业务规则变更权限。
+修改CRM、CMS或系统管理的导航、布局、详情、编辑、保存反馈或响应式时，必须使用 [commando-uper-admin-workspace-design](.agents/skills/commando-uper-admin-workspace-design/SKILL.md)。纯后端、数据库及HSK题库任务不自动触发。此要求不授予发布或业务规则变更权限。
+
+新增或改造管理端记录详情时执行[记录详情规范](docs/design/admin-record-detail-system.md)，复用详情操作区和适用页面的记录侧栏。
+
+## 管理端搜索、下拉和内容页签
+
+CRM、CMS 和系统管理新增或调整搜索、枚举下拉与内容页签时，必须遵循[共享控件规范](docs/design/admin-list-controls.md)。使用 `AdminSearchField`、`AdminSingleSelect` 与 `AdminDetailTabs`／`AdminContentNav` 对应接入，页面只定义业务选项和布局，不复制控件样式。验收应检查展开后的选项与键盘焦点，并区分页内切换和链接导航。
 
 ## 管理界面颜色执行要求
 

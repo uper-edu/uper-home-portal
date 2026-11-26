@@ -24,6 +24,13 @@ export async function lockIdentityRegistry(db:any){
  await db.query('SELECT GET_LOCK(:p1,5)', ['crm-identity-registry-v1']);
 }
 export async function activateIdentityLead(db:any,profile:any,actor:string){
+ if(profile.entryPoint==='enrollment'&&profile.enrollmentEmailVerified){
+  const next={...profile,currentStage:'progress:unreached',tier:'Unqualified',stageUpdatedAt:profile.submittedAt,
+    identityLifecycle:'independent',identityReleasedAt:new Date().toISOString()};
+  await db.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[profile.id,next]);
+  const {assignNewLead}=await import('./autoAssignment.ts');
+  return await assignNewLead(db,profile.id,'identity_release')||next;
+ }
  const tasks=(await db.query("SELECT id FROM followup_tasks WHERE lead_id=:p1 AND kind='consultation'",[profile.id])).rows;
  if(tasks.length)return profile;
  const settings=(await db.query("SELECT value FROM portal_settings WHERE id='sla'")).rows[0]?.value;

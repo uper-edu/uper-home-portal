@@ -1,6 +1,6 @@
 import {AdminFieldLabel} from './AdminForm';
 import { crmId } from "../utils/crmIndonesian";
-import { CrmSingleSelect } from "./crm/CrmSingleSelect";
+import { AdminSingleSelect } from "./admin/AdminSingleSelect";
 export interface Choice {
   value: string;
   label: string;
@@ -40,7 +40,7 @@ export default function SearchableChoices({
   return (
     <div className="space-y-1.5 min-w-0">
       <span className="text-xs font-semibold"><AdminFieldLabel required={required}>{title}</AdminFieldLabel></span>
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={title}
         required={required}
         value={values[0] || ""}

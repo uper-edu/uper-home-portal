@@ -15,7 +15,7 @@ import {
 } from "../src/utils/accessSafetyLanguage.ts";
 for (const lang of [0, 1, 2])
   test("P0 guidance and errors are complete for language " + lang, () => {
-    assert.equal(accessSafetyGuide.length, 6);
+    assert.equal(accessSafetyGuide.length, 5);
     for (const s of accessSafetyGuide) {
       assert.ok(s.title[lang]);
       assert.ok(s.body[lang].length > 80);
@@ -67,28 +67,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
   const privateDir = await fs.mkdtemp(
     path.join(os.tmpdir(), "uper-access-p0-"),
   );
-  const authorizeRecovery = async (
-    input: any,
-    env: any = process.env,
-    backupSha256?: string,
-  ) => {
-    const operationId = crypto.randomUUID(),
-      reply = await admin.call("/api/admin/access/recovery/authorize", {
-        operationId,
-        userId: input.userId,
-        reason: input.reason,
-        enableAccount: !!input.enable,
-        restoreSystemAccess: true,
-        targetDatabase: new URL(env.MYSQL_TRIAL_URL).pathname.slice(1),
-        backupSha256,
-      });
-    assert.equal(reply.status, 200, JSON.stringify(reply.data));
-    const file = path.join(privateDir, operationId + ".authorization.json");
-    await fs.writeFile(file, JSON.stringify(reply.data.authorization), {
-      mode: 0o600,
-    });
-    input.authorizationFile = file;
-  };
   await test("Independent MySQL P0 security and management acceptance", async (t) => {
     t.after(async () => {
       await new Promise<void>((r) => server.close(() => r()));
@@ -97,7 +75,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     });
     let person: any;
     await t.test(
-      "same operation concurrently retried ten times creates one user and one audit; changed body and stale page fail",
+      "same operation concurrently retried ten times creates one user and one audit; changed body replays the original result",
       async () => {
         const body = op({
           loginId: "TEST_P0_User",
@@ -126,24 +104,17 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           ).rows.filter((r: any) => r.data.id === person.id).length,
           1,
         );
+        const altered = await admin.call("/api/admin/access/users", {
+          ...body, displayName: "TEST altered",
+        });
+        assert.equal(altered.status, 200);
+        assert.equal(altered.data.replayed, true);
+        assert.equal(altered.data.user.displayName, body.displayName);
         assert.equal(
-          (
-            await admin.call("/api/admin/access/users", {
-              ...body,
-              displayName: "TEST altered",
-            })
-          ).status,
-          409,
-        );
-        assert.equal(
-          (
-            await admin.call("/api/admin/access/users", {
-              ...body,
-              operationId: undefined,
-            })
-          ).status,
+          (await admin.call("/api/admin/access/users", {...body,operationId:undefined})).status,
           400,
         );
+
         assert.equal(
           (await sales.call("/api/admin/access/users", op(body))).status,
           403,
@@ -467,7 +438,10 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           reason: "TEST system-only role",
         });
         await admin.call("/api/admin/access/users", backupBody);
-        await backup.login("TEST_BackupAdmin", "TEST-backup-password");
+        assert.equal((await backup.login("TEST_BackupAdmin","TEST-backup-password")).status,200);
+        assert.equal((await backup.call("/api/crm/auth/password",op({
+          currentPassword:"TEST-backup-password",newPassword:"TEST-backup-personal-2026",
+        }))).status,200);
         const summary = (
           await backup.call("/api/admin/access/handovers")
         ).data.find((x: any) => x.id === h.id);
@@ -582,6 +556,14 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       "parallel administrator removal retains a complete administrator and rejects stale authorization",
       async () => {
         let data = (await admin.call("/api/admin/access")).data;
+        // Restrict this fixture to two administrators to exercise the last-admin guard.
+        const defaultAdmins = data.users.filter((u: any) => ["Ethan", "Monite"].includes(u.id));
+        for (const u of defaultAdmins) {
+          const changed = await admin.call("/api/admin/access/users/" + u.id, op({
+            ...u, roles: u.roles.filter((id: string) => id !== "access_admin"), reason: "TEST prepare last-admin race",
+          }));
+          assert.equal(changed.status, 200, JSON.stringify(changed.data));
+        }
         const a = data.users.find((u: any) => u.id === "Robert"),
           b = data.users.find((u: any) => u.loginId === "TEST_BackupAdmin");
         const replies = await Promise.all([
@@ -630,85 +612,20 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           );
           await admin.login("Robert");
         }
+        const currentUsers = (await admin.call("/api/admin/access")).data.users;
+        for (const original of defaultAdmins) {
+          const current = currentUsers.find((u: any) => u.id === original.id);
+          const restored = await admin.call("/api/admin/access/users/" + original.id, op({
+            ...current, roles: original.roles, reason: "TEST restore default administrator",
+          }));
+          assert.equal(restored.status, 200, JSON.stringify(restored.data));
+        }
       },
     );
     await t.test(
-      "offline recovery is isolated, explicit, non-escalating and produces a private record; stale confirmations fail",
+      "security checkpoints still detect account changes and tampering",
       async () => {
-        const {
-          recoveryPreview,
-          recoverAdministrator,
-          securityCheckpoint,
-          compareCheckpoint,
-        } = await import("../cloud/mysql/access-recovery.mjs");
-        const input = {
-          userId: person.id,
-          reason: "TEST approved offline recovery",
-          enable: true,
-        };
-        await authorizeRecovery(input);
-        await assert.rejects(
-          recoveryPreview({ ...process.env, PORT: "3000" }, input),
-          /restricted/,
-        );
-        await assert.rejects(
-          recoveryPreview(process.env, { ...input, enable: false }),
-          /scope mismatch/,
-        );
-        await pool.query(
-          "INSERT INTO crm_login_limits(`key`,failures) VALUES(:p1,5) ON DUPLICATE KEY UPDATE failures=5",
-          [
-            crypto
-              .createHash("sha256")
-              .update("account:" + person.id)
-              .digest("hex"),
-          ],
-        );
-        const preview = await recoveryPreview(process.env, input),
-          file = path.join(privateDir, "recovery.json");
-        await assert.rejects(
-          recoverAdministrator(
-            process.env,
-            { ...input, confirmation: "wrong", recordFile: file },
-            "TEST-new-recovery-password",
-          ),
-          /confirmation/,
-        );
-        const result = await recoverAdministrator(
-          process.env,
-          { ...input, confirmation: preview.confirmation, recordFile: file },
-          "TEST-new-recovery-password",
-        );
-        assert.equal(result.userId, person.id);
-        assert.equal((await fs.stat(file)).mode & 0o077, 0);
-        assert.doesNotMatch(
-          await fs.readFile(file, "utf8"),
-          /TEST-new-recovery-password|password_hash/,
-        );
-        assert.equal(
-          (
-            await recoverAdministrator(
-              process.env,
-              {
-                ...input,
-                confirmation: preview.confirmation,
-                recordFile: file,
-              },
-              "TEST-new-recovery-password",
-            )
-          ).replayed,
-          true,
-        );
-        const account = client();
-        assert.equal(
-          (await account.login("TEST_P0_User", "TEST-new-recovery-password"))
-            .status,
-          200,
-        );
-        const me = (await account.call("/api/crm/auth/me")).data.employee;
-        assert.ok(me.permissions.includes("access.roles"));
-        assert.equal(me.permissions.includes("cms.manage"), false);
-        assert.equal(me.permissions.includes("crm.export"), false);
+        const {securityCheckpoint, compareCheckpoint} = await import("../cloud/mysql/access-recovery.mjs");
         const checkpoint = path.join(privateDir, "checkpoint.json");
         await securityCheckpoint(process.env, checkpoint);
         assert.doesNotMatch(
@@ -747,12 +664,10 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       async () => {
         const { backup: dump, restore } =
           await import("../cloud/mysql/backup.mjs");
-        const { recoveryPreview, recoverAdministrator } =
-          await import("../cloud/mysql/access-recovery.mjs");
         const target = await fixture.createRestore(),
           file = path.join(privateDir, "restore.sql");
         const saved = await dump(process.env, file);
-        await restore(target, file, saved.sha256);
+        await restore(target, file, saved.sha256,{administrator:{id:"Robert",password:"TEST-restore-admin-temp-2026"}});
         const { openTrialDatabase } =
           await import("../cloud/mysql/database.mjs");
         const targetDb = await openTrialDatabase(target);
@@ -775,25 +690,8 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           const env = {
             ...target,
             PORT: String(restorePort),
-            PORTAL_WORKER_ENABLED: "false",
             TRIAL_FRONTEND_DIRECTORY: "",
           };
-          const input = {
-            userId: "Robert",
-            reason: "TEST restore recovery",
-            enable: true,
-          };
-          await authorizeRecovery(input, env, saved.sha256);
-          const pre = await recoveryPreview(env, input);
-          await recoverAdministrator(
-            env,
-            {
-              ...input,
-              confirmation: pre.confirmation,
-              recordFile: path.join(privateDir, "restore-admin.json"),
-            },
-            "TEST-restore-admin-password",
-          );
           child = spawn(
             process.execPath,
             [
@@ -819,11 +717,13 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           }
           assert.ok(ready, logs);
           assert.equal((await restored.login("Fadhil")).status, 423);
-          assert.equal(
-            (await restored.login("Robert", "TEST-restore-admin-password"))
-              .status,
-            200,
-          );
+          const firstLogin=await restored.login("Robert","TEST-restore-admin-temp-2026");
+          assert.equal(firstLogin.status,200);
+          assert.equal(firstLogin.data.employee.passwordChangeRequired,true);
+          const update=await restored.call("/api/crm/auth/password",op({
+            currentPassword:"TEST-restore-admin-temp-2026",newPassword:"TEST-restore-admin-password-2026",
+          }));
+          assert.equal(update.status,200,JSON.stringify(update.data));
           assert.equal((await restored.call("/api/crm/leads")).status, 423);
           const state = (await restored.call("/api/admin/access/restore")).data;
           assert.equal(
@@ -881,7 +781,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           );
           assert.equal((await restored.call("/api/crm/auth/me")).status, 401);
           assert.equal(
-            (await restored.login("Robert", "TEST-restore-admin-password"))
+            (await restored.login("Robert", "TEST-restore-admin-password-2026"))
               .status,
             200,
           );

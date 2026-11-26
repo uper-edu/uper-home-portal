@@ -6,7 +6,7 @@ import {validateExtraction,extractionDecision,extractionInstruction,EXTRACTION_V
 const observation=(quote:string,value:any)=>({kind:'field',field:'budgetAmount',value,quote,subject:'customer',temporality:'current',change:'state'} as any);
 const context={sourceType:'sales_edit',sourceFactId:'source',actor:'Robert',recordedAt:'2026-10-26T12:00:00Z',occurredAt:null,adopt:true};
 test('budget is one optional amount, with no currency/period/range fields or default zero',()=>{
- assert.deepEqual(Object.keys(profileFields).filter(k=>k.startsWith('budget')),['budgetAmount']);assert.equal(budgetPresentation({}),null);assert.equal(budgetPresentation({budgetAmount:null}),null);assert.match(budgetPresentation({budgetAmount:0})!.value,/Rp0/);
+ assert.deepEqual(Object.keys(profileFields).filter(k=>k.startsWith('budget')),['budgetAmount']);assert.equal(budgetPresentation({}),null);assert.equal(budgetPresentation({budgetAmount:null}),null);assert.match(budgetPresentation({budgetAmount:0})!.value,/Rp 0/);
  for(const field of ['budgetMin','budgetMax','budgetCurrency','budgetPeriod'])assert.throws(()=>validateProfileUpdates({[field]:1}));
  for(const value of [-1,NaN,Infinity,'1500000',{},[]])assert.throws(()=>validateProfileUpdates({budgetAmount:value}));
  assert.deepEqual(validateProfileUpdates({budgetAmount:null}),{budgetAmount:null});

@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import {pool,tx} from './store.ts';
 import {allowed} from './identity.ts';
 import {campaignSourceEvidence} from './campaignSourceEvidence.ts';
+import {isPromotionReviewPending} from '../../src/utils/promotionReviewActions.ts';
 import {matchesCampaign} from '../../src/utils/crmCampaignLink.ts';
 const fail=(status:number,message:string):never=>{throw Object.assign(Error(message),{status});};
 const permitted=(employee:any,profile?:any)=>{if(!employee||employee.active===false||!employee.permissions?.includes('campaigns.manage')||(profile&&!allowed(employee,profile)))fail(403,'Permission denied.');};
@@ -21,16 +22,37 @@ async function campaignCatalogue(db: any) {
   return rows.map((row: any) => ({...row.config, id:row.id, code:row.code}));
 }
 
-export async function listPromotionReviews(employee:any){
- permitted(employee);const canReview=await canReviewSourceAttribution(pool,employee);const campaigns=await campaignCatalogue(pool);
- const candidates = (await pool.query('SELECT id,profile FROM portal_leads')).rows.flatMap((row: any) => {
+async function promotionReviewCandidates(employee: any) {
+ const campaigns = await campaignCatalogue(pool);
+ return (await pool.query('SELECT id,profile FROM portal_leads')).rows.flatMap((row: any) => {
   if (!allowed(employee, row.profile)) return [];
   const context = reviewContext(row.profile);
   if (!context) return [];
   const matchingCampaigns = campaigns.filter((campaign: any) => matchesCampaign(row.profile, campaign));
   const campaign = matchingCampaigns.length === 1 ? matchingCampaigns[0] : null;
-  return [{...row, ...context, campaign}];
+  return [{...row, ...context, campaign, status: context.current?.status || 'pending'}];
  });
+}
+
+export async function promotionReviewCounts(employee: any) {
+ permitted(employee);
+ const counts: Record<string, number> = Object.create(null);
+ const canReview = await canReviewSourceAttribution(pool, employee);
+ let total = 0;
+ for (const row of await promotionReviewCandidates(employee)) {
+  if (!isPromotionReviewPending(row.status)) continue;
+  const campaignId = row.campaign?.id ?? '';
+  counts[campaignId] = (counts[campaignId] || 0) + 1;
+  total++;
+ }
+ // Per-campaign totals have the existing read scope; the navigation badge represents actionable work.
+ return { pendingCount: canReview ? total : 0, counts };
+}
+
+export async function listPromotionReviews(employee:any){
+ permitted(employee);
+ const canReview = await canReviewSourceAttribution(pool, employee);
+ const candidates = await promotionReviewCandidates(employee);
  if(!candidates.length)return [];
  const ids=JSON.stringify(candidates.map((r:any)=>r.id));
  const entries=(await pool.query('SELECT id,lead_id,source,attribution,updated_at FROM conversations WHERE JSON_CONTAINS(:p1,JSON_QUOTE(lead_id)) ORDER BY updated_at,id',[ids])).rows;
@@ -38,7 +60,7 @@ export async function listPromotionReviews(employee:any){
  return candidates.map((r:any)=>({
   canReview,leadId:r.id,name:r.profile.fullName||r.profile.name||r.id,rawCode:r.rawCampaign,rawPromotionLinkId:r.originalP,
   campaignId:r.campaign?.id ?? null,campaignName:r.campaign?.name ?? null,
-  exception:r.profile.promotionException ?? 'unverified_p',status:r.current?.status||'pending',revision:r.current?.revision||0,
+  exception:r.profile.promotionException ?? 'unverified_p',status:r.status,revision:r.current?.revision||0,
   resolution:r.current||null,
   evidence:campaignSourceEvidence(r.profile,entries.filter((e:any)=>e.lead_id===r.id),r.rawCampaign),
   history:audits.filter((a:any)=>a.data.leadId===r.id).slice(0,20).map((a:any)=>({actor:a.actor,at:a.created_at,...a.data})),

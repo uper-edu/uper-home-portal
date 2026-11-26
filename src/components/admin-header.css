@@ -446,3 +446,21 @@
 .runtime-copy-feedback{padding:0 16px 12px;margin:0;font-size:13px;flex-shrink:0;}
 .runtime-copy-feedback:empty{padding-bottom:0;}
 @media(max-width:600px){.runtime-version-section dl{grid-template-columns:1fr;gap:4px;}.runtime-version-section dd{margin-bottom:10px;}.runtime-value-actions{flex-direction:row;align-items:center;gap:10px;}.runtime-value-actions>:first-child{flex:1;}.runtime-copy{flex-shrink:0;}.runtime-dialog-header h2{font-size:17px;}}
+
+.crm-queue-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 21px;
+  min-height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--admin-warning-border);
+  border-radius: 999px;
+  background: var(--admin-warning-bg);
+  color: var(--admin-warning);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}

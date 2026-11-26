@@ -13,3 +13,19 @@ test('contact preparation separates phone from message actions and keeps a singl
 test('shared detail header separates record navigation from customer actions without changing the actions',async()=>{const{CrmDetailHeader}=await import('../src/components/crm/CrmDetailWorkspace');const html=render(React.createElement(CrmDetailHeader,{title:'Maya Putri',meta:'负责人：Robert',navigation:React.createElement('button',null,'客户列表'),actions:React.createElement('button',null,'准备联系')}));assert.ok(html.indexOf('客户列表')<html.indexOf('<header'));assert.match(html,/<nav[^>]*><button>客户列表<\/button><\/nav>/);assert.match(html,/<div class="crm-detail-actions"><button>准备联系<\/button><\/div>/);});
 
 test('inline customer navigation stays in the identity header, with independent business actions and full accessible names',async()=>{const{CrmDetailHeader}=await import('../src/components/crm/CrmDetailWorkspace');const html=render(React.createElement(CrmDetailHeader,{title:'Maya Putri',meta:'20261026-001 · Robert Hui',identityNavigation:{label:'客户浏览',back:React.createElement('button',{'aria-label':'返回客户列表'},'←'),adjacent:React.createElement('button',{'aria-label':'下一位客户'},'›')},actions:React.createElement('button',null,'记录进展')}));assert.ok(html.indexOf('<header')<html.indexOf('返回客户列表'));assert.match(html,/<nav class="crm-detail-record-navigation" aria-label="客户浏览">/);assert.match(html,/<h2[^>]*>Maya Putri<\/h2>/);assert.match(html,/<div class="crm-detail-actions"><button>记录进展<\/button><\/div>/);assert.doesNotMatch(html,/class="crm-detail-navigation"/);});
+
+test('operation drawers keep customer history opt-in to the CRM context and preserve action order',async()=>{
+  const {AdminOperationLayer}=await import('../src/components/admin/AdminOperationLayer');
+  const {CrmOperationLayer}=await import('../src/components/crm/CrmOperationLayer');
+  const {CrmHistoryAccess}=await import('../src/components/crm/CrmHistoryAccess');
+  const props={title:'操作',navigation:React.createElement('button',null,'上一条'),lang:'zh',isLight:true,onClose:()=>{},children:'正文'};
+  const withinCustomer=(child:React.ReactNode)=>render(React.createElement(CrmHistoryAccess.Provider,{value:()=>{}},child));
+  const crm=(options?:{history?:boolean;customerContext?:boolean})=>React.createElement(CrmOperationLayer,{...props,...options});
+  const withHistory=withinCustomer(crm());
+  assert.match(withHistory,/上一条[\s\S]*客户全景[\s\S]*aria-label="关闭"/);
+  for(const drawer of [withinCustomer(crm({history:true})),withinCustomer(crm({customerContext:false})),
+    render(crm()),withinCustomer(React.createElement(AdminOperationLayer,props))]){
+    assert.doesNotMatch(drawer,/客户全景/);
+    assert.match(drawer,/上一条[\s\S]*aria-label="关闭"/);
+  }
+});

@@ -1,4 +1,4 @@
-# REVIEW ONLY. Merge through uper-server-deploy after separate deployment authorization.
+# REVIEW ONLY. Merge through commando-uper-server-deploy after separate deployment authorization.
 services:
   api:
     image: home-api:REPLACE_WITH_RELEASE

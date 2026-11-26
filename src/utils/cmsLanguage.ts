@@ -9,6 +9,7 @@ export const cmsIndonesian: Record<string, string> = {
 "Study Tours": "Tur Studi",
 
 "Saved; a newer version is displayed.": "Tersimpan; versi lebih baru ditampilkan.",
+"Review the saved date.": "Tanggal tersimpan perlu diperiksa.",
 "Saved and reloaded.": "Tersimpan dan dimuat ulang.",
 "No committed result found yet. The original request may still be running. Check again.": "Belum ditemukan hasil tersimpan. Permintaan awal mungkin masih berjalan. Periksa lagi.",
 "Result unavailable. Your draft is retained.": "Hasil belum tersedia. Draf tetap disimpan.",
@@ -72,6 +73,7 @@ export const cmsIndonesian: Record<string, string> = {
   "Failed to load content": "Konten gagal dimuat",
   "Untitled Item": "Konten tanpa judul",
   "Item deleted": "Konten dihapus",
+  Delete: "Hapus",
   "Delete failed": "Penghapusan gagal",
   "Saved successfully!": "Konten berhasil disimpan!",
   "Save failed": "Penyimpanan gagal",
@@ -81,8 +83,6 @@ export const cmsIndonesian: Record<string, string> = {
     "Pengunggahan gagal; coba unggah gambar lagi",
   "Unable to read image": "Gambar tidak dapat dibaca",
   "Website Content & Media Center": "Konten dan media situs",
-  "Manage website content and images in seven collections.":
-    "Kelola konten dan gambar situs dalam tujuh koleksi.",
   "Total content:": "Jumlah konten:",
   "Content Collections": "Koleksi konten",
   collections: "koleksi",
@@ -90,6 +90,7 @@ export const cmsIndonesian: Record<string, string> = {
   "Saved content is stored in MySQL. Reload the website to see updates. HSK questions and scoring are managed separately.":
     "Konten yang disimpan tersimpan di MySQL. Muat ulang situs untuk melihat perubahan. Soal dan penilaian HSK dikelola secara terpisah.",
   records: "data",
+  "Search in this table": "Cari dalam koleksi ini",
   "Search in this table...": "Cari dalam koleksi ini...",
   "Refresh data": "Muat ulang data",
   "Add New Item": "Tambah konten",
@@ -163,6 +164,7 @@ export const cmsIndonesian: Record<string, string> = {
   "Irreversible: Deleted records cannot be undone. Please ensure you have backup copies if this media asset is still required.":
     "Konten yang dihapus tidak dapat dipulihkan melalui halaman ini. Pastikan tersedia cadangan jika konten masih diperlukan.",
   "Deleting...": "Menghapus...",
+  "This permanently removes the item from the website.": "Konten ini akan dihapus secara permanen dari situs.",
   "Confirm Delete": "Konfirmasi hapus",
   "Example: HSK course": "Contoh: kursus HSK",
   "Example: Open for registration": "Contoh: pendaftaran dibuka",

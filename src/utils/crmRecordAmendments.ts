@@ -21,7 +21,7 @@ export function canAmendSalesRecord(record:any,canFollowUp:boolean){return Boole
 export function amendmentSaveNotice(result:any,lang:any){
  const ui=(s:string)=>crmUiText(s,lang);
  const status:Record<string,string>={restored:'原首次联系任务已恢复至当前负责人，原期限不变；未重发旧通知。',satisfied:'首次联系仍满足要求。',needs_review:'原首次要求需管理者核对；未新增任务。'};
- return ui('补充／修正已保存。')+(status[result.firstRequirementStatus]?' '+ui(status[result.firstRequirementStatus]):'');
+ return status[result.firstRequirementStatus]?ui(status[result.firstRequirementStatus]):'';
 }
 export function firstRequirementBasis(lead:any){
  return effectiveContactRecords(lead).filter((l:any)=>

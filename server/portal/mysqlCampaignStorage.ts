@@ -14,7 +14,7 @@ import { createHash } from "node:crypto";
 import { allocateCampaignCode } from "./campaignCodeAllocation.ts";
 import { CAMPAIGN_LINK_PLACEHOLDER } from "../../src/utils/campaignCode.ts";
 import { validCampaignBudget, CAMPAIGN_BUDGET_ERROR } from "../../src/utils/campaignBudget.ts";
-import {attachPromotionShortCodes,promotionShortCodes} from './campaignPromotion.ts';
+import {attachPromotionShortCodes,hasPromotionCustomerAttribution,promotionShortCodes,removePromotionIndexes} from './campaignPromotion.ts';
 export function loadCampaigns(){return campaignsContext.getStore() || [];}
 export async function getCurrentCampaigns(employee?: any) {
  const campaigns = loadCampaigns();
@@ -31,10 +31,36 @@ export async function getCurrentCampaigns(employee?: any) {
   if (review.status === 'linked') profile.attributionCampaignId = review.campaign_id;
  }
  const resolved = profiles.filter((profile: any) => campaigns.filter(campaign => matchesCampaign(profile, campaign)).length <= 1);
+ const visibleCustomers=new Set<string>(profiles.map((profile:any)=>profile.id));
+ const journeyRows=(await pool.query(`SELECT a.attribution->>'$.campaignId' AS campaign_id,
+   a.attribution->>'$.promotionId' AS promotion_id,
+   COALESCE(NULLIF(l.profile->>'$.identityMergedInto','null'),l.id) AS customer_id,
+   COUNT(*) AS submitted,SUM(a.kind='order') AS seats,
+   SUM(a.kind='order' AND (EXISTS(SELECT 1 FROM enrollment_notification_receipts n
+     WHERE n.subject_id=a.record_id AND n.channel='email' AND n.kind IN ('payment_confirmed','payment_and_opening'))
+     OR EXISTS(SELECT 1 FROM enrollment_transfers t WHERE t.order_id=a.record_id))) AS confirmed
+   FROM enrollment_record_attribution a
+   JOIN enrollment_customer_records r ON r.kind=a.kind AND r.record_id=a.record_id
+   JOIN portal_leads l ON l.id=r.lead_id
+   WHERE JSON_EXTRACT(a.attribution,'$.verified')=true
+   GROUP BY campaign_id,promotion_id,customer_id`)).rows;
+ const enrollmentByCampaign=new Map<string,Map<string,{submitted:number;seats:number;confirmed:number}>>();
+ for(const row of journeyRows){
+  if(!visibleCustomers.has(row.customer_id))continue;
+  const links=enrollmentByCampaign.get(row.campaign_id)??new Map();
+  const totals=links.get(row.promotion_id)??{submitted:0,seats:0,confirmed:0};
+  totals.submitted+=Number(row.submitted);
+  totals.seats+=Number(row.seats);
+  totals.confirmed+=Number(row.confirmed);
+  links.set(row.promotion_id,totals);
+  enrollmentByCampaign.set(row.campaign_id,links);
+ }
  return campaigns.map(campaign => ({
   ...attachPromotionShortCodes(campaign,shortCodes),
   stats: {...campaign.stats, ...campaignMetrics(resolved, campaign), roi:null},
-  promotionResults: campaignPromotionResults(resolved, campaign),
+  promotionResults: campaignPromotionResults(resolved, campaign).map(row=>({
+   ...row,enrollmentJourney:enrollmentByCampaign.get(campaign.id)?.get(row.key),
+  })),
  }));
 }
 type CampaignSaveOperation = { kind: "create" } | { kind: "update"; id: string };
@@ -152,12 +178,22 @@ export async function deleteCampaign(id: string) {
     // Historical records can have a non-reserved ID and a reserved source code.
     assertEditableCampaign({ ...saved.config, id });
     assertEditableCampaign({ id, code: saved.code });
-    if (saved.config?.promotionLinks?.length)
-      throw campaignError("Campaign has promotion links; archive it to preserve existing links and attribution", 409);
+    const campaign = {...saved.config, id, code: saved.code};
+    const attributionConflict = "This campaign has customer attribution and cannot be deleted.";
+    const profiles = (await db.query('SELECT profile FROM portal_leads')).rows;
+    if (profiles.some(({profile}: any) => matchesCampaign(profile, campaign) ||
+      profile.identitySources?.some((source: any) => matchesCampaign(source, campaign))))
+      throw campaignError(attributionConflict, 409);
+    const linkIds: string[] = (campaign.promotionLinks ?? []).map((link: {id: string}) => link.id);
+    for (const linkId of linkIds) {
+      if (await hasPromotionCustomerAttribution(db, linkId))
+        throw campaignError(attributionConflict, 409);
+    }
     if ((await db.query("SELECT id FROM campaign_source_reviews WHERE campaign_id=:p1 LIMIT 1", [id])).rows.length)
       throw campaignError("Campaign has verified source links; preserve its attribution history", 409);
     if ((await db.query("SELECT id FROM portal_audit WHERE action='campaign.promotion.review' AND data->>'$.after.status'='linked' AND data->>'$.after.campaignId'=:p1 LIMIT 1", [id])).rows.length)
       throw campaignError("Campaign has verified source links; preserve its attribution history", 409);
+    for (const linkId of linkIds) await removePromotionIndexes(db, id, linkId);
     const result = await db.query("DELETE FROM trial_campaigns WHERE id=:p1", [id]);
     return result.rowCount > 0;
   });

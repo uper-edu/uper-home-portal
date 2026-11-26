@@ -1,5 +1,6 @@
 import {contactRestriction} from './crmContact.ts';
 import { permittedRecord, canClaimRecord } from './accessControl.ts';
+import {enrollmentNeedsNoSalesClaim} from './crmEnrollment.ts';
 export const isCrmManager = (employee: any) => employee?.active !== false && employee?.roles?.includes('crm_leader') && employee?.permissions?.includes('crm.followup');
 export const canReviewIdentityRole=(employee:any,controls:{identityReviewManagerOnly?:boolean}={})=>isCrmManager(employee)||(controls.identityReviewManagerOnly===false&&employee?.active!==false&&employee?.roles?.includes("sales")&&employee?.permissions?.includes("crm.followup"));
 export type ContactPurpose = 'sales_followup' | 'identity_verification' | 'customer_reply';
@@ -15,7 +16,7 @@ export function outreachPolicy(employee: any, lead: any, purpose: ContactPurpose
   if (restriction === 'legacy' && purpose === 'customer_reply') return 'CONTACT_REVIEW_REQUIRED';
   return null;
 }
-export const canClaimForContact = (employee: any, lead: any) => (!lead.identityReview?.ownerAssignmentManagerOnly||isCrmManager(employee)) && !lead.identityReview?.pending && canClaimRecord(employee, lead);
+export const canClaimForContact = (employee: any, lead: any) => (!lead.identityReview?.ownerAssignmentManagerOnly||isCrmManager(employee)) && !lead.identityReview?.pending && !enrollmentNeedsNoSalesClaim(lead) && canClaimRecord(employee, lead);
 const words: Record<string, [string,string,string]> = {
   IDENTITY_CONTACT_HOLD: ['A matching contact requested no further outreach. Review identity before contacting this number.','Kontak yang cocok meminta agar tidak dihubungi lagi. Verifikasi identitas sebelum menghubungi nomor ini.','匹配联系方式收到停止联系要求，请先核实身份，再处理此号码的联系安排。'],
   IDENTITY_RECORD_MERGED: ['This record has been consolidated. Open the retained customer before making changes.','Catatan ini telah digabungkan. Buka pelanggan yang dipertahankan sebelum mengubah data.','此记录已归入已有客户，请打开保留客户后操作。'],

@@ -1,0 +1,11 @@
+.crm-dashboard-kpi-form{display:grid;gap:24px;min-width:0}
+.crm-kpi-month{display:grid;gap:8px;justify-items:start}
+.crm-kpi-month p{margin:0;color:var(--admin-muted);font-size:13px}
+.crm-kpi-feedback:empty{display:none}
+.crm-kpi-feedback{display:grid;gap:12px}
+.crm-kpi-feedback>button{justify-self:start}
+.crm-kpi-latest{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:0}
+.crm-kpi-latest :is(dt,dd){margin:0}
+.crm-kpi-latest dt{color:var(--admin-muted);font-size:13px}
+.crm-kpi-latest dd{font-weight:650}
+.crm-kpi-review-actions{display:flex;gap:8px;flex-wrap:wrap}

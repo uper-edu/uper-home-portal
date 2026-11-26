@@ -52,7 +52,8 @@ test('denied scope and a foreign source cannot restore tasks or change owners',a
  await assert.rejects(f.save({targetFactId:'foreign'}),e=>(e as any).status===404);assert.equal(f.task.owner_id,'old-sales');
 });
 test('Customer 360 permits amendments only for authorized sales originals; feedback is trilingual',()=>{
+ for(const lang of ['zh','en','id'])assert.equal(amendmentSaveNotice({firstRequirementStatus:'unchanged'},lang),'');
  const sales={eventType:'followup.recorded',eventId:'fact'};assert.equal(canAmendSalesRecord(sales,true),true);assert.equal(canAmendSalesRecord(sales,false),false);
  for(const eventType of ['questionnaire.submitted','customer.message','stage.changed','assessment.completed','profile.fields_updated'])assert.equal(canAmendSalesRecord({...sales,eventType},true),false);
- for(const status of ['restored','satisfied','needs_review','unchanged']){const zh=amendmentSaveNotice({firstRequirementStatus:status},'zh');for(const lang of ['en','id'])assert.notEqual(amendmentSaveNotice({firstRequirementStatus:status},lang),zh);}
+ for(const status of ['restored','satisfied','needs_review']){const zh=amendmentSaveNotice({firstRequirementStatus:status},'zh');for(const lang of ['en','id'])assert.notEqual(amendmentSaveNotice({firstRequirementStatus:status},lang),zh);}
 });

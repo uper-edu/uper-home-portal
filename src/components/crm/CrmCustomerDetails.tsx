@@ -1,9 +1,10 @@
+import {formatCurrency} from '../../utils/currency';
 import {CrmCustomerInsights} from './CrmCustomerInsights';
 import {useCrmUiText} from './CrmUiLanguage';
-import { CrmCurrentField, CrmContactPreferences, CrmLearningGoals } from "./CrmProfileFields";
+import { CrmCurrentField, CrmContactPreferences, CrmLearningGoals, CrmReportedLevel } from "./CrmProfileFields";
 import { campaignUi } from "../../utils/campaignI18n";
 import { CrmBuyingEvidence } from "./CrmBuyingEvidence";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { crmId } from "../../utils/crmIndonesian";
 import React, { useEffect, useState } from "react";
 import type { CrmLeadRecord } from "../../types/crmLead";
@@ -60,7 +61,6 @@ export function CrmCustomerProfile({
   dynamicProfile,
   basicActions,
   contactFields,
-  communication,
   participation,
   identity,
   signalFocus,
@@ -73,7 +73,6 @@ export function CrmCustomerProfile({
   dynamicProfile?: React.ReactNode;
   basicActions?: (node: HTMLDivElement | null) => void;
   contactFields?: (node: HTMLDivElement | null) => void;
-  communication?: React.ReactNode;
   participation?: React.ReactNode;
   identity?: React.ReactNode;
   signalFocus?: { id: string; token: number };
@@ -141,7 +140,7 @@ export function CrmCustomerProfile({
       ? [
           [
             t("Recorded amount", "登记金额"),
-            `Rp ${lead.revenue.toLocaleString(crmLocale(lang))}`,
+            formatCurrency(lead.revenue,lang),
           ] as [string, React.ReactNode],
         ]
       : []),
@@ -209,7 +208,7 @@ export function CrmCustomerProfile({
         <section aria-label={ui('客户洞察')}>
           <h3>{ui('客户洞察')}</h3>
           {(lead.reportedLevel||lead.goal||lead.goals?.length||lead.mode)&&<div className="crm-insights-group"><h4>{ui('学习需求与偏好')}</h4>
-          {lead.reportedLevel&&<Facts items={[[t("Self-reported level","客户自报水平"),crmValue(lead.reportedLevel,lang)]]}/>}
+          {lead.reportedLevel&&<dl><CrmReportedLevel lead={lead} lang={lang}/></dl>}
           <dl><CrmLearningGoals lead={lead} timezone={timezone}/></dl>
           <Facts
             items={[
@@ -232,7 +231,7 @@ export function CrmCustomerProfile({
               ...(hasValue(lead.tierUpdatedAt) ? [[t("Group updated", "分组更新时间"), knownDate(lead.tierUpdatedAt, timezone, lang)] as [string,React.ReactNode]] : []),
               ...trackingItems,
             ]}/>
-        {(lead.promotionReview || lead.rawPromotionLinkId !== undefined || activityRecords.length > 0 || lead.attendanceConfirmed !== undefined) && <CrmDisclosure className="crm-acquisition-records" heading={t("Source and activity evidence", "来源与活动依据")}>
+        {(lead.promotionReview || lead.rawPromotionLinkId !== undefined || activityRecords.length > 0 || lead.attendanceConfirmed !== undefined) && <AdminDisclosure className="crm-acquisition-records" heading={t("Source and activity evidence", "来源与活动依据")}>
           <div className="crm-acquisition-body">
             {(lead.promotionReview || lead.rawPromotionLinkId !== undefined) && (
               <section className="crm-detail-subsection">
@@ -310,7 +309,7 @@ export function CrmCustomerProfile({
             )}
 
           </div>
-        </CrmDisclosure>}
+        </AdminDisclosure>}
           {signalFocus && (
             <CrmBuyingEvidence
               lead={lead}

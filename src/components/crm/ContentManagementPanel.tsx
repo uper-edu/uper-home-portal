@@ -1,11 +1,20 @@
-import {CrmSingleSelect} from './CrmSingleSelect';
+import {AdminDateField} from '../admin/AdminDateField';
+import {AdminDisclosure} from '../admin/AdminDisclosure';
+import {AdminListState} from '../admin/AdminList';
+import {AdminRowAction} from '../admin/AdminListControl';
+import {formatCurrency} from '../../utils/currency';
+import {AdminRefreshAction} from '../admin/AdminRefreshAction';
+import {AdminPageAction} from '../admin/AdminPageAction';
+import {AdminSearchField} from '../admin/AdminSearchField';
+import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {CMS_REQUEST_TIMEOUT_MS,cmsImageFingerprint,cmsSaveRequest,canRetryCms} from '../../utils/cmsRecovery';
 import {AdminFormGuide} from '../AdminFormGuide';
-import {useAdminEditorFocus} from '../useAdminEditorFocus';
-import {CrmDiscardDialog} from './CrmDetailWorkspace';
-import {AdminFormSection,AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
+import {AdminEditor} from '../admin/AdminEditor';
+import {AdminConfirmation} from '../admin/AdminConfirmation';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
+import {AdminFormGrid,AdminFormSection,AdminFormFeedback,AdminSavedReadError} from '../AdminFormLayout';
 import {AdminStatus} from '../AdminStatus';
-import {AdminField,AdminRequiredNote,AdminForm} from '../AdminForm';
+import {AdminField} from '../AdminForm';
 import {AdminTopicFrame} from "../AdminTopicFrame";
 import {BrowserMetadataGuide} from '../BrowserMetadataGuide';
 import {PageMetadata} from '../PageMetadata';
@@ -17,21 +26,15 @@ import {
   Newspaper, 
   GraduationCap, 
   Sparkles, 
-  Search, 
   Plus, 
   Edit3, 
   Trash2, 
   Upload, 
-  Check, 
-  X, 
   ExternalLink, 
   Image as ImageIcon, 
-  Save, 
-  RefreshCw,
   Award,
   Calendar,
   LayoutList,
-  AlertCircle,
   ChevronRight,
   Layers,
   AlertTriangle
@@ -60,7 +63,6 @@ export interface CmsSectionItem {
   icon: any;
   descEn: string;
   descZh: string;
-  defaultCount: number;
 }
 
 export interface CmsSectionGroup {
@@ -80,8 +82,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '合作院校库',
         icon: Building2,
         descEn: 'Chinese & global universities, school partners',
-        descZh: '中国及海外合作高校、国际教育伙伴与校区机构',
-        defaultCount: 54
+        descZh: '中国及海外合作高校、国际教育伙伴与校区机构'
       },
       {
         id: 'trendingPrograms',
@@ -89,8 +90,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '精选热门项目',
         icon: GraduationCap,
         descEn: 'HSK courses, study tours & scholarship tracks',
-        descZh: 'HSK考级班、名校游学营与奖学金直通班型',
-        defaultCount: 8
+        descZh: 'HSK考级班、名校游学营与奖学金直通班型'
       },
       {
         id: 'programGallery',
@@ -98,8 +98,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '首页项目图集',
         icon: LayoutList,
         descEn: 'Manage program images and display order',
-        descZh: '管理项目图片与展示顺序',
-        defaultCount: 0
+        descZh: '管理项目图片与展示顺序'
       },
       {
         id: 'admissionsList',
@@ -107,8 +106,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '录取捷报榜单',
         icon: Award,
         descEn: 'Offer notices, scholarship awards & certificates',
-        descZh: '清北浙大等中国名校录取通知与奖学金捷报',
-        defaultCount: 1
+        descZh: '清北浙大等中国名校录取通知与奖学金捷报'
       }
     ]
   },
@@ -122,8 +120,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '新闻动态资讯',
         icon: Newspaper,
         descEn: 'Education news, policy briefs & announcements',
-        descZh: '赴华留学政策、印尼华文教育前沿与官方公告',
-        defaultCount: 19
+        descZh: '赴华留学政策、印尼华文教育前沿与官方公告'
       },
       {
         id: 'campaigns',
@@ -131,8 +128,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '主题专案活动',
         icon: Calendar,
         descEn: 'Webinars, expos, admissions masterclasses',
-        descZh: '名师公开课、教育展会巡展与留学讲座',
-        defaultCount: 2
+        descZh: '名师公开课、教育展会巡展与留学讲座'
       },
       {
         id: 'newsPage',
@@ -140,8 +136,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '资讯频道栏目',
         icon: LayoutList,
         descEn: 'Channel classification metadata & landing banners',
-        descZh: '官网资讯中心栏目分类、封面图与频道元数据',
-        defaultCount: 7
+        descZh: '官网资讯中心栏目分类、封面图与频道元数据'
       }
     ]
   },
@@ -155,8 +150,7 @@ export const CMS_SECTION_GROUPS: CmsSectionGroup[] = [
         titleZh: '优秀学员案例',
         icon: Sparkles,
         descEn: 'Alumni testimonials, exam scores & career paths',
-        descZh: '学员真实高分见证、就业转折与赴华学习感言',
-        defaultCount: 5
+        descZh: '学员真实高分见证、就业转折与赴华学习感言'
       }
     ]
   }
@@ -174,22 +168,25 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   useEffect(()=>{let live=true;fetch('/api/cms/identity').then(r=>r.ok?r.json():Promise.reject()).then(d=>{if(!live)return;cmsActor.current=d.id;try{const saved=JSON.parse(sessionStorage.getItem('cms-pending:'+d.id)||'null');if(saved&&(!saved.actor||saved.actor===d.id)){setPendingCms({...saved,actor:d.id});setEditingItem(saved.draft);setActiveSection(saved.collection);setIsModalOpen(true);}}catch{}}).catch(()=>{});return()=>{live=false;};},[]);
 
   const [activeSection, setActiveSection] = useState<CmsSection>('partners');
+  const responsiveEditor = ['trendingPrograms', 'partners', 'news', 'admissionsList', 'campaigns', 'studentStories'].includes(activeSection);
+  const DisplaySettingsLayout = responsiveEditor ? AdminFormGrid : 'div';
   const [items, setItems] = useState<any[]>([]);
-  const [sectionCounts, setSectionCounts] = useState<Record<CmsSection, number>>({
-    partners: 54,
-    news: 19,
-    trendingPrograms: 8,
-    studentStories: 5,
-    admissionsList: 1,
-    campaigns: 2,
-    newsPage: 7,
-    programGallery: 0
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const [sectionCounts, setSectionCounts] = useState<Partial<Record<CmsSection, number>>>({});
+  const [contentRead,setContentRead] = useState<{
+    section:CmsSection;state:'loading'|'refreshing'|'ready'|'error'|'denied';hasSnapshot?:boolean;
+  }>();
+  const [awaitingSavedRead,setAwaitingSavedRead]=useState<CmsSection>();
+  const activeSectionRef=useRef(activeSection);
+  activeSectionRef.current=activeSection;
+  const contentRequests=useRef<Partial<Record<CmsSection,number>>>({});
+  const contentState=contentRead?.section===activeSection?contentRead.state:'loading';
+  const isLoading=contentState==='loading';
+  const hasSnapshot=contentRead?.section===activeSection&&!!contentRead.hasSnapshot;
+  const canChangeContent=contentState==='ready'&&!pendingCms;
   const [searchQuery, setSearchQuery] = useState('');
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const cmsDraftBase=useRef(''),editorPanel=useRef<HTMLDivElement>(null),deletePanel=useRef<HTMLDivElement>(null);
+  const cmsDraftBase=useRef('');
   const [discardDraft,setDiscardDraft]=useState(false),[isSaving,setIsSaving]=useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadTargetField, setUploadTargetField] = useState<'image' | 'certificateImage'>('image');
@@ -205,10 +202,12 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const partnerCategories = [
+    ['Chinese Universities','中国高校'], ['Indonesian Universities & Schools','印尼院校及学校'],
+    ['Educational Institutions','教育机构'], ['Corporate Partners','企业伙伴'],
+  ] as const;
   const t = (en: string, zh: string) => cmsText(en, zh, lang);
   const closeEditor=()=>{if(isSaving||isUploading||pendingCms)return;if(JSON.stringify(editingItem)!==cmsDraftBase.current){setDiscardDraft(true);return;}setIsModalOpen(false);};
-  useAdminEditorFocus(isModalOpen,editorPanel,closeEditor);
-  useAdminEditorFocus(Boolean(deleteConfirmTarget),deletePanel,()=>{if(!isDeleting)setDeleteConfirmTarget(null);});
 
   useEffect(() => {
     if (!isModalOpen) return;
@@ -225,22 +224,33 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     setTimeout(() => setNotification(null), 3500);
   };
 
-  const fetchItems = async (section: CmsSection) => {
-    setIsLoading(true);
+  const fetchItems = async (section: CmsSection, retainItems = false) => {
+    const request=(contentRequests.current[section]??0)+1;
+    contentRequests.current[section]=request;
+    const current=()=>contentRequests.current[section]===request;
+    if(activeSectionRef.current===section)setContentRead({section,state:retainItems?'refreshing':'loading',hasSnapshot:retainItems});
     try {
       const res = await fetch(`/api/cms/content/${section}`);
-      const data = await res.json();
-      if (data.success && Array.isArray(data.items)) {
-        setItems(data.items);
-        setSectionCounts(prev => ({ ...prev, [section]: data.items.length }));
-      } else {
-        setItems([]);
+      if(res.status===401||res.status===403){
+        if(current()&&activeSectionRef.current===section){
+          setItems([]);
+          setSectionCounts(prev=>({...prev,[section]:undefined}));
+          setContentRead({section,state:'denied'});
+        }
+        return;
       }
-    } catch (err: any) {
-      console.error('Failed to fetch CMS items:', err);
-      showNotification('error', t('Failed to load content', '加载内容失败'));
-    } finally {
-      setIsLoading(false);
+      if(!res.ok)throw Error();
+      const data = await res.json();
+      if(!data.success||!Array.isArray(data.items))throw Error();
+      if(!current())return;
+      setSectionCounts(prev => ({...prev,[section]:data.items.length}));
+      setAwaitingSavedRead(pending=>pending===section?undefined:pending);
+      if(activeSectionRef.current===section){
+        setItems(data.items);
+        setContentRead({section,state:'ready',hasSnapshot:true});
+      }
+    } catch {
+      if(current()&&activeSectionRef.current===section)setContentRead({section,state:'error',hasSnapshot:retainItems});
     }
   };
 
@@ -252,7 +262,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         const res = await fetch(`/api/cms/content/${sec}`);
         const data = await res.json();
         if (data.success && Array.isArray(data.items)) {
-          setSectionCounts(prev => ({ ...prev, [sec]: data.items.length }));
+          setSectionCounts(prev => contentRequests.current[sec]?prev:{...prev,[sec]:data.items.length});
         }
       } catch {}
     });
@@ -263,7 +273,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   }, [activeSection]);
 
   const handleOpenAdd = () => {
-    if(pendingCms)return;setCmsResult('');
+    if(!canChangeContent)return;setCmsResult('');
     setNotification(null);
     cmsRequestId.current=crypto.randomUUID();
     let emptyItem: any = {};
@@ -301,7 +311,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         category: '📚 HSK',
         badge: '📚 In Progress',
         desc: '',
-        price: 'IDR 1.000.000',
+        price: '',
         term: '10 Weeks',
         startDate: 'July 15, 2026',
         seats: '15 Seats',
@@ -361,7 +371,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   };
 
   const handleOpenEdit = (item: any) => {
-    if(pendingCms)return;setCmsResult('');
+    if(!canChangeContent)return;setCmsResult('');
     setNotification(null);
     cmsRequestId.current=crypto.randomUUID();
     cmsDraftBase.current=JSON.stringify(item);
@@ -370,9 +380,11 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
   };
 
   const requestDelete = (item: any) => {
+    if(!canChangeContent)return;
     const id = item._id || item.id;
     const name = item.name || item.title || t('Untitled Item', '无标题内容');
     const subtitle = item.category || item.university || item.school || item.subtitle || '';
+    setNotification(null);
     setDeleteConfirmTarget({
       id,
       name,
@@ -414,14 +426,21 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     }
   };
 
-  const finishCmsSave=async(operation:any,result:any)=>{
-    const response=await fetch(`/api/cms/content/${operation.collection}`);if(!response.ok)throw Error();
-    const data=await response.json();
-    const current=data.items.find((v:any)=>(v._id||v.id)===(result.item?._id||operation.draft?._id));
-    rememberCms(null);setCmsTone('saved');cmsRequestId.current='';
-    setEditingItem(current||null);setIsModalOpen(!!current);cmsDraftBase.current=JSON.stringify(current||null);
-    setCmsResult(current&&current._cmsVersion!==result.item?._cmsVersion?t('Saved; a newer version is displayed.','本次已保存；当前显示之后更新的版本。'):t('Saved and reloaded.','已保存并重新载入。'));
-    await fetchItems(operation.collection);
+  const finishCmsSave=async(section:CmsSection,result:{item?:any})=>{
+    const savedItem=result?.item;
+    const id=savedItem?._id||savedItem?.id;
+    if(!id)throw Error('Missing saved CMS record');
+    rememberCms(null);
+    cmsRequestId.current='';
+    cmsDraftBase.current='';
+    setCmsResult('');
+    setEditingItem(null);
+    setIsModalOpen(false);
+    setAwaitingSavedRead(section);
+    setItems(previous=>previous.some(item=>(item._id||item.id)===id)
+      ?previous.map(item=>(item._id||item.id)===id?savedItem:item)
+      :[...previous,savedItem]);
+    await fetchItems(section,true);
   };
   const checkCmsResult=async()=>{
     if(!pendingCms||isSaving||isUploading)return;
@@ -429,7 +448,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     try{const r=await fetch(`/api/cms/operations/${encodeURIComponent(pendingCms.requestId)}?kind=${pendingCms.kind}&collection=${pendingCms.collection}`,{cache:'no-store',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS)});if(!r.ok)throw Error();const data=await r.json();
       if(data.state!=='committed'){setCmsNotFound(data.state==='not_found');setCmsResult(t('No committed result found yet. The original request may still be running. Check again.','暂未查到提交结果，原请求可能仍在处理，请再次查询。'));return;}
       if(pendingCms.kind==='upload'){applyUploadedImage(data.result.url,pendingCms.collection,pendingCms.target);rememberCms(null);setCmsTone('saved');setCmsResult(t('Image upload confirmed. Save content separately.','图片上传已确认，请另行保存内容。'));}
-      else await finishCmsSave(pendingCms,data.result);
+      else await finishCmsSave(pendingCms.collection,data.result);
     }catch{setCmsResult(t('Result unavailable. Your draft is retained.','暂时无法查询结果，草稿已保留。'));}finally{setIsSaving(false);}
   };
   const handleSave = async (e: React.FormEvent) => {
@@ -443,8 +462,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     rememberCms(operation);setIsSaving(true);setCmsResult('');
     try{const res=await fetch(`/api/cms/content/${activeSection}`,{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(cmsSaveRequest(operation))});
       const data=await res.json();
-      if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');setCmsResult(t('Save rejected. Review permissions, fields or the latest version; draft retained.','保存被拒绝，请核对权限、字段或最新版本；草稿保留。'));return;}throw Error();}
-      await finishCmsSave(operation,data);
+      if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');setCmsResult(res.status===409
+        ?(lang==='zh'?'这条内容或保存请求与当前版本冲突。草稿已保留，请核对最新版本。':lang==='id'?'Konten atau permintaan simpan bertentangan dengan versi saat ini. Draf disimpan; periksa versi terbaru.':'This content or save request conflicts with the current version. The draft is retained. Review the latest version.')
+        :t('Save rejected. Review permissions, fields or the latest version; draft retained.','保存被拒绝，请核对权限、字段或最新版本；草稿保留。'));return;}throw Error();}
+      await finishCmsSave(operation.collection,data);
     }catch{setCmsResult(t('Save outcome unconfirmed. Query the result before continuing.','保存结果尚未确认，请先查询再继续。'));}finally{setIsSaving(false);}
   };
   const applyUploadedImage=(uploadedUrl:string,section:string,target:string)=>{
@@ -470,7 +491,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
       await sendCmsUpload(pendingCms,cmsUploadBody.current);return;
     }
     const operation=pendingCms;setIsSaving(true);setCmsNotFound(false);
-    try{const res=await fetch(`/api/cms/content/${operation.collection}`,{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(cmsSaveRequest(operation))});const data=await res.json();if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');}setCmsResult(t('Original retry rejected. Draft retained; query before continuing.','原请求重试被拒绝，草稿保留，请查询结果后继续。'));return;}await finishCmsSave(operation,data);}
+    try{const res=await fetch(`/api/cms/content/${operation.collection}`,{method:'POST',signal:AbortSignal.timeout(CMS_REQUEST_TIMEOUT_MS),headers:{'Content-Type':'application/json'},body:JSON.stringify(cmsSaveRequest(operation))});const data=await res.json();if(!res.ok||!data.success){if(res.status>=400&&res.status<500){rememberCms(null);setCmsTone('error');}setCmsResult(t('Original retry rejected. Draft retained; query before continuing.','原请求重试被拒绝，草稿保留，请查询结果后继续。'));return;}await finishCmsSave(operation.collection,data);}
     catch{setCmsResult(t('Save outcome unconfirmed. Query the result before continuing.','保存结果尚未确认，请先查询再继续。'));}finally{setIsSaving(false);}
   };
   const handleFileUpload=async(e:React.ChangeEvent<HTMLInputElement>)=>{
@@ -514,17 +535,10 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
     <div data-admin-form="" data-cms-theme={isLight ? "light" : "dark"} className={`rounded-2xl border transition-all ${
       isLight ? 'bg-white border-slate-200/90 shadow-sm' : 'bg-slate-900 border-slate-800'
     }`}>
-      {/* Toast Notification */}
-      {notification && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-200 ${
-          notification.type === 'success' 
-            ? 'bg-emerald-600 text-white shadow-emerald-600/20' 
-            : 'bg-rose-600 text-white shadow-rose-600/20'
-        }`}>
-          {notification.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-          <span>{notification.message}</span>
-        </div>
-      )}
+      {notification&&!isModalOpen&&!deleteConfirmTarget&&<AdminFormFeedback
+        state={notification.type==='success'?'saved':'error'} lang={lang} placement="floating">
+        {notification.message}
+      </AdminFormFeedback>}
 
       <PageMetadata lang={lang} options={{module:activeSection}}/>
       {pendingCms&&!isModalOpen&&<button type="button" onClick={()=>{setActiveSection(pendingCms.collection);setEditingItem(pendingCms.draft);setIsModalOpen(true);}}>{t('Review pending operation','查看待确认操作')}</button>}
@@ -544,10 +558,9 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
             </div>
             <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              {t(
-                'Manage website content and images in seven collections.',
-                '管理七类网站内容与图片。'
-              )}
+              {lang==='zh'? `管理 ${allSectionItems.length} 类网站内容与图片。` :
+                lang==='id'? `Kelola konten dan gambar situs dalam ${allSectionItems.length} koleksi.` :
+                  `Manage website content and images in ${allSectionItems.length} collections.`}
             </p>
           </div>
         </div>
@@ -566,15 +579,14 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
         </div>
       </div>
 
-      <details className="p-4 border-t border-slate-200 dark:border-slate-800 text-sm">
-        <summary className="cursor-pointer font-semibold">{t('CMS operating guide', 'CMS 操作指南')}</summary>
-        <div className="mt-3 space-y-3 max-w-3xl leading-relaxed">
+      <AdminDisclosure density="panel" heading={t('CMS operating guide','CMS 操作指南')}>
+        <div className="space-y-3 max-w-3xl leading-relaxed">
           <BrowserMetadataGuide lang={lang}/><AdminFormGuide lang={lang}/>
           <section><h3 className="font-semibold">{t('Workspace and preferences', '工作区与偏好')}</h3><p>{t('Use the workspace menu to open the workspaces allowed by your staff permissions. Language and theme are shared with CRM. On narrow screens, open Language and appearance.', '从工作区菜单进入有权限的后台；语言与主题在 CMS 和 CRM 间沿用。窄屏中打开“语言与外观”调整偏好。')}</p></section>
           <section><h3 className="font-semibold">{t('Content editing', '内容编辑')}</h3><p>{t('Choose a collection, search or refresh its records, then add or edit content. Save changes in the editor. Opening the website previews saved content; it does not save an open draft.', '选择内容集合，搜索或刷新记录，再新增或编辑内容。在编辑器中保存；查看网站只预览已保存的内容，不会保存尚未提交的草稿。')}</p></section>
           <p>{t('Names and saved content remain in their original language. HSK questions and scoring are not changed by interface preferences.', '姓名及已保存内容保持原文；界面偏好不改变 HSK 题库和评分。')}</p>
         </div>
-      </details>
+      </AdminDisclosure>
       {/* Main Master-Detail Body */}
       <AdminTopicFrame selection={activeSection} label={t("Content collections", "内容分类")} navigation={<>
         {/* LEFT COLUMN: Master Resource & Model Navigation Sidebar (Sticky on desktop, independent scroll) */}
@@ -607,7 +619,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                     {group.items.map((sec) => {
                       const Icon = sec.icon;
                       const isActive = activeSection === sec.id;
-                      const count = sectionCounts[sec.id] ?? sec.defaultCount;
+                      const count = sectionCounts[sec.id];
                       return (
                         <button
                           key={sec.id}
@@ -643,13 +655,13 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                             </div>
                           </div>
 
-                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 font-semibold ${
+                          {count!==undefined&&<span className={`text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 font-semibold ${
                             isActive
                               ? 'bg-primary-600 text-white'
                               : isLight ? 'bg-slate-200/70 text-slate-600' : 'bg-slate-800 text-slate-400'
                           }`}>
                             {count}
-                          </span>
+                          </span>}
                         </button>
                       );
                     })}
@@ -678,100 +690,32 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
         {/* RIGHT COLUMN: Detail Workspace Main Content Area */}
         <section aria-label={t("Content editing", "内容编辑")} className="flex-1 min-w-0 p-4 sm:p-6 flex flex-col">
-          {/* Active Category Header & Workspace Action Bar */}
-          {(() => {
-            const allItems = CMS_SECTION_GROUPS.flatMap(g => g.items);
-            const activeMeta = allItems.find(s => s.id === activeSection) || allItems[0];
-            const ActiveSectionIcon = activeMeta.icon;
+          <header className="admin-edit-header mb-3" data-theme={isLight?'light':'dark'}>
+            <div className="admin-edit-title">
+              <h2>{t(currentActiveMeta.titleEn,currentActiveMeta.titleZh)}</h2>
+              <p className="crm-work-muted">{t(currentActiveMeta.descEn,currentActiveMeta.descZh)}</p>
+            </div>
+            <div className="admin-page-actions">
+              {contentState!=='denied'&&<AdminRefreshAction label={t('Refresh data','刷新数据')}
+                loading={isLoading||contentState==='refreshing'} onClick={()=>void fetchItems(activeSection,hasSnapshot)}/>}
+              {hasSnapshot&&<AdminPageAction icon={Plus} variant="primary" disabled={!canChangeContent}
+                label={t('Add New Item','新增内容')} onClick={handleOpenAdd}/>}
+            </div>
+          </header>
 
-            return (
-              <div className={`p-4 rounded-xl border mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-950/60 border-slate-800'
-              }`}>
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-primary-600 text-white shadow-xs">
-                    <ActiveSectionIcon className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                        {t(activeMeta.titleEn, activeMeta.titleZh)}
-                      </h3>
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                        isLight ? 'bg-white border-slate-200 text-slate-600' : 'bg-slate-900 border-slate-700 text-slate-400'
-                      }`}>
-                        {items.length} {t('records', '条数据')}
-                      </span>
-                    </div>
-                    <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {t(activeMeta.descEn, activeMeta.descZh)}
-                    </p>
-                  </div>
-                </div>
+          {hasSnapshot&&<AdminSearchField className="mb-4 sm:w-60" label={t('Search in this table','搜索当前分类内容')}
+            value={searchQuery} onChange={setSearchQuery}
+            placeholder={t('Search in this table...', '搜索当前分类内容...')}/>}
 
-                {/* Action Bar (Search & Add New) */}
-                <div className="flex items-center gap-2 self-stretch sm:self-auto">
-                  <div className="relative flex-1 sm:w-60">
-                    <Search className={`w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={t(`Search in this table...`, `搜索当前分类内容...`)}
-                      className={`w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border transition-colors outline-none ${
-                        isLight 
-                          ? 'bg-white border-slate-200 text-slate-900 focus:border-primary-500' 
-                          : 'bg-slate-900 border-slate-700 text-slate-100 focus:border-primary-500'
-                      }`}
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => fetchItems(activeSection)}
-                    className={`p-1.5 rounded-xl border text-xs transition-colors cursor-pointer ${
-                      isLight ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'
-                    }`}
-                    title={t('Refresh data', '刷新数据')}
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-primary-500' : ''}`} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenAdd}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer whitespace-nowrap"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('Add New Item', '新增内容')}</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Content Grid / List */}
-          <div className="flex-1">
-            {isLoading ? (
-              <div className="py-20 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-2">
-                <RefreshCw className="w-6 h-6 animate-spin text-primary-600" />
-                <span>{t('Loading local content...', '正在加载本地数据...')}</span>
-              </div>
-            ) : filteredItems.length === 0 ? (
-              <div className={`py-16 text-center text-xs rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 ${
-                isLight ? 'border-slate-200 text-slate-400 bg-slate-50/50' : 'border-slate-800 text-slate-500 bg-slate-950/20'
-              }`}>
-                <ImageIcon className="w-8 h-8 opacity-40" />
-                <span>{t('No matching items found in this section.', '未找到符合条件的内容条目。')}</span>
-                <button
-                  type="button"
-                  onClick={handleOpenAdd}
-                  className="mt-1 text-xs text-primary-600 hover:underline font-semibold cursor-pointer"
-                >
-                  + {t('Create first record', '创建第一条数据')}
-                </button>
-              </div>
-            ) : (
+          <div className="flex-1" aria-busy={isLoading||contentState==='refreshing'}>
+            {isLoading&&<AdminListState lang={lang} state="loading"/>}
+            {contentState==='error'&&awaitingSavedRead===activeSection&&<AdminSavedReadError lang={lang} onRetry={()=>void fetchItems(activeSection,true)}/>}
+            {(contentState==='denied'||contentState==='error'&&awaitingSavedRead!==activeSection)&&<AdminListState lang={lang} state={contentState}
+              message={contentState==='error'?t('Failed to load content','加载内容失败'):undefined}
+              compact={hasSnapshot} onRetry={()=>void fetchItems(activeSection,hasSnapshot)}/>}
+            {hasSnapshot&&(filteredItems.length===0
+              ? <AdminListState lang={lang} state="empty"/>
+              : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
                 {filteredItems.map((item, idx) => {
                   const itemId = item._id || item.id || `idx-${idx}`;
@@ -840,22 +784,18 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         </span>
 
                         <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(item)}
-                            className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-medium cursor-pointer ${
-                              isLight ? 'text-slate-600 hover:bg-slate-200/60' : 'text-slate-300 hover:bg-slate-800'
-                            }`}
-                          >
-                            <Edit3 className="w-3.5 h-3.5 text-primary-500" />
-                            <span>{t('Edit', '编辑')}</span>
-                          </button>
+                          <AdminRowAction disabled={!canChangeContent} onClick={() => handleOpenEdit(item)} aria-label={t('Edit','编辑')+' · '+title}>
+                            <Edit3 size={14} aria-hidden="true"/>
+                            {t('Edit', '编辑')}
+                          </AdminRowAction>
 
                           <button
                             type="button"
+                            disabled={!canChangeContent}
                             onClick={() => requestDelete(item)}
                             className="p-1.5 rounded-lg transition-colors text-rose-500 hover:bg-rose-500/10 cursor-pointer"
                             title={t('Delete item (double confirmation required)', '删除此项（需二次确认）')}
+                            aria-label={t('Delete','删除')+' · '+title}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -865,50 +805,29 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                   );
                 })}
               </div>
-            )}
+            ))}
           </div>
         </section>
       </AdminTopicFrame>
 
-      {/* Edit / Add Modal */}
+      {/* Content editing */}
       {isModalOpen && editingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div ref={editorPanel} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="cms-editor-title" aria-busy={isSaving||isUploading} className={`admin-editor-layout w-full max-w-xl max-h-[90vh] rounded-2xl border shadow-2xl ${
-            isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
-          }`}>
-            <AdminForm lang={lang} className="admin-editor-layout admin-editor-form" onSubmit={handleSave}>
-
-              <div className={`admin-editor-heading ${
-                isLight ? 'bg-white/95 border-slate-100' : 'bg-slate-900/95 border-slate-800'
-              }`}>
-                <h3 id="cms-editor-title" className="font-bold text-sm flex items-center gap-2">
-                  <Edit3 className="w-4 h-4 text-primary-600" />
-                  <span>
-                    {editingItem._id ? t('Edit Item', '编辑内容与图片') : t('Create New Item', '新建内容')}
-                  </span>
-                </h3>
-                <AdminRequiredNote lang={lang}/>
-                <button
-                  type="button"
-                  onClick={closeEditor}
-                  disabled={isSaving||isUploading||!!pendingCms}
-                  aria-label={t('Close editor', '关闭编辑器')}
-                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                    isLight ? 'hover:bg-slate-100 text-slate-400' : 'hover:bg-slate-800 text-slate-500'
-                  }`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="admin-editor-body">
+        <AdminEditor lang={lang} light={isLight} onClose={closeEditor} onSubmit={handleSave} required
+          variant={activeSection==='trendingPrograms'?'drawer':'modal'} responsiveForm={responsiveEditor}
+          title={editingItem._id?t('Edit Item','编辑内容与图片'):t('Create New Item','新建内容')}
+          busy={isSaving||isUploading} closeDisabled={!!pendingCms}
+          footer={<>
+            <button type="button" onClick={closeEditor} disabled={isSaving||isUploading||!!pendingCms}>{t('Cancel','取消')}</button>
+            <button type="submit" data-primary="" disabled={isSaving||isUploading||!!pendingCms}>{isSaving?t('Saving…','正在保存…'):t('Save Changes','保存生效')}</button>
+          </>}
+        >
               {(pendingCms||cmsResult)&&<AdminFormFeedback state={pendingCms?'unknown':cmsTone} lang={lang}>{cmsResult||t('Operation result unconfirmed. Query before continuing.','操作结果尚未确认，请先查询再继续。')}{pendingCms&&<button type="button" disabled={isSaving||isUploading} onClick={()=>void checkCmsResult()}>{t('Query operation result','查询操作结果')}</button>}</AdminFormFeedback>}
               {pendingCms&&cmsNotFound&&<button type="button" disabled={isSaving||isUploading} onClick={()=>void retryCms()}>{t('Retry original request','重试原请求')}</button>}
               {pendingCms&&retryImage&&<label>{t('Select original image','重新选择原图片')}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={isSaving||isUploading} onChange={handleFileUpload}/></label>}
               {storageWarning&&<AdminFormFeedback state="unknown" lang={lang}>{t('Draft remains on this page; refresh recovery is not guaranteed.','本页草稿仍保留；浏览器存储不可用，刷新恢复无法保证。')}</AdminFormFeedback>}
+              {isSaving&&<AdminFormFeedback state="saving" lang={lang}/>}
+              {notification&&<AdminFormFeedback state={notification.type==='error'?'error':'saved'} lang={lang}>{notification.message}</AdminFormFeedback>}
               <fieldset style={{border:0,padding:0,margin:0,minWidth:0}} data-admin-stack="" disabled={isSaving||isUploading||!!pendingCms} aria-label={t('Content fields','内容字段')}>
-                {isSaving&&<AdminFormFeedback state="saving" lang={lang}/>}
-                {notification&&<AdminFormFeedback state={notification.type==='error'?'error':'saved'} lang={lang}>{notification.message}</AdminFormFeedback>}
                 {/* Primary Image Upload & Preview Box */}
                 <div className={`p-4 rounded-xl border ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'
@@ -1091,7 +1010,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
                 {activeSection === 'programGallery' && (
                   <AdminField as="div" required>
-                    <CrmSingleSelect
+                    <AdminSingleSelect
                       label={t('Program', '所属项目')}
                       value={editingItem.program || ''}
                       options={[
@@ -1109,21 +1028,13 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
                 {/* Conditional Fields: Partners */}
                 {activeSection === 'partners' && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <AdminFormGrid>
                     <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Category', '所属类别')}</label>
-                      <select
+                      <AdminSingleSelect label={t('Category','所属类别')} lang={lang} isLight={isLight}
                         value={editingItem.category || ''}
-                        onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
-                        className={`w-full px-3 py-1.5 rounded-lg border ${
-                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                        }`}
-                      >
-                        <option value="Chinese Universities">{t('Chinese Universities', '中国高校')}</option>
-                        <option value="Indonesian Universities & Schools">{t('Indonesian Universities & Schools', '印尼院校及学校')}</option>
-                        <option value="Educational Institutions">{t('Educational Institutions', '教育机构')}</option>
-                        <option value="Corporate Partners">{t('Corporate Partners', '企业伙伴')}</option>
-                      </select>
+                        onChange={category=>setEditingItem({...editingItem,category})}
+                        options={partnerCategories.map(([value,zh])=>({value,label:t(value,zh)}))}/>
                     </AdminField>
 
                     <AdminField as="div">
@@ -1139,7 +1050,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       />
                     </AdminField>
 
-                    <AdminField as="div" className="col-span-2">
+                    <AdminField as="div" data-admin-full-width="">
                       <label className="block font-semibold mb-1">{t('Official Website Link', '官方网址')}</label>
                       <input
                         type="url"
@@ -1151,43 +1062,41 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         }`}
                       />
                     </AdminField>
-                  </div>
+                  </AdminFormGrid>
                 )}
 
                 {/* Conditional Fields: News */}
                 {activeSection === 'news' && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Article Slug (URL path)', '文章别名 (URL路径)')}</label>
-                        <input
-                          type="text"
-                          required
-                          value={editingItem.slug?.current || ''}
-                          onChange={(e) => setEditingItem({
-                            ...editingItem,
-                            slug: { ...(editingItem.slug || {}), current: e.target.value }
-                          })}
-                          placeholder={t('Example: study-in-china-2026', '例如：study-in-china-2026')}
-                          className={`w-full px-3 py-1.5 rounded-lg border font-mono ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
+                  <div data-admin-stack="">
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Article Slug (URL path)', '文章别名 (URL路径)')}</label>
+                      <input
+                        type="text"
+                        required
+                        value={editingItem.slug?.current || ''}
+                        onChange={(e) => setEditingItem({
+                          ...editingItem,
+                          slug: { ...(editingItem.slug || {}), current: e.target.value }
+                        })}
+                        placeholder={t('Example: study-in-china-2026', '例如：study-in-china-2026')}
+                        className={`w-full px-3 py-1.5 rounded-lg border font-mono ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
 
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Original News Source Link', '原始新闻来源链接')}</label>
-                        <input
-                          type="url"
-                          value={editingItem.source || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, source: e.target.value })}
-                          placeholder="https://..."
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-                    </div>
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Original News Source Link', '原始新闻来源链接')}</label>
+                      <input
+                        type="url"
+                        value={editingItem.source || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, source: e.target.value })}
+                        placeholder="https://..."
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
 
                     <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Summary / Excerpt', '文章摘要')}</label>
@@ -1233,101 +1142,99 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
                 {/* Conditional Fields: Trending Programs */}
                 {activeSection === 'trendingPrograms' && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Category', '所属类别')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.category || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
-                          placeholder={t('Example: HSK course', '例如：HSK 课程')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Badge / Status Tag', '角标标签')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.badge || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, badge: e.target.value })}
-                          placeholder={t('Example: Open for registration', '例如：开放报名')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Tuition / Price', '学费 / 价格')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.price || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
-                          placeholder={t('Example: IDR 1,000,000', '例如：1,000,000 印尼盾')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Term Duration', '课时周期')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.term || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, term: e.target.value })}
-                          placeholder={t('Example: 10 weeks', '例如：10 周')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Start Date', '开班 / 开学时间')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.startDate || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, startDate: e.target.value })}
-                          placeholder={t('Example: 15 July 2026', '例如：2026 年 7 月 15 日')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Seats / Capacity', '名额限制')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.seats || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, seats: e.target.value })}
-                          placeholder={t('Example: 15 places', '例如：15 个名额')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-
-                      <AdminField as="div" className="col-span-2">
-                        <label className="block font-semibold mb-1">{t('Target Page Link', '跳转链接')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.link || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, link: e.target.value })}
-                          placeholder={t('Example: /hsk', '例如：/hsk')}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-                    </div>
+                  <AdminFormGrid>
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Category', '所属类别')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.category || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+                        placeholder={t('Example: HSK course', '例如：HSK 课程')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
 
                     <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Badge / Status Tag', '角标标签')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.badge || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, badge: e.target.value })}
+                        placeholder={t('Example: Open for registration', '例如：开放报名')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Tuition / Price', '学费 / 价格')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.price || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, price: e.target.value })}
+                        placeholder={`${lang==='zh'?'例如：':lang==='id'?'Contoh: ':'Example: '}${formatCurrency(1000000,lang)}`}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Term Duration', '课时周期')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.term || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, term: e.target.value })}
+                        placeholder={t('Example: 10 weeks', '例如：10 周')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Start Date', '开班 / 开学时间')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.startDate || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, startDate: e.target.value })}
+                        placeholder={t('Example: 15 July 2026', '例如：2026 年 7 月 15 日')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Seats / Capacity', '名额限制')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.seats || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, seats: e.target.value })}
+                        placeholder={t('Example: 15 places', '例如：15 个名额')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div" data-admin-full-width="">
+                      <label className="block font-semibold mb-1">{t('Target Page Link', '跳转链接')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.link || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, link: e.target.value })}
+                        placeholder={t('Example: /hsk', '例如：/hsk')}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
+
+                    <AdminField as="div" data-admin-full-width="">
                       <label className="block font-semibold mb-1">{t('Course Description & Highlights', '课程亮点与介绍')}</label>
                       <textarea
                         rows={4}
@@ -1338,12 +1245,12 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                         }`}
                       />
                     </AdminField>
-                  </div>
+                  </AdminFormGrid>
                 )}
 
                 {/* Conditional Fields: Student Stories */}
                 {activeSection === 'studentStories' && (
-                  <div className="space-y-3">
+                  <div data-admin-stack="">
                     <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('School / Company / Background', '就读院校 / 企业背景')}</label>
                       <input
@@ -1376,7 +1283,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
                 {/* Conditional Fields: Admissions List */}
                 {activeSection === 'admissionsList' && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div data-admin-stack="">
                     <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Admitted University / School', '录取院校')}</label>
                       <input
@@ -1405,7 +1312,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       />
                     </AdminField>
 
-                    <AdminField as="div" className="col-span-2">
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Scholarship Awarded', '获得奖学金类别')}</label>
                       <input
                         type="text"
@@ -1418,7 +1325,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       />
                     </AdminField>
 
-                    <AdminField as="div" className="col-span-2">
+                    <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Admission Date Range', '录取学年范围')}</label>
                       <input
                         type="text"
@@ -1435,32 +1342,29 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
 
                 {/* Conditional Fields: Campaigns */}
                 {activeSection === 'campaigns' && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Subtitle / Topic', '副标题 / 活动主题')}</label>
-                        <input
-                          type="text"
-                          value={editingItem.subtitle || ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, subtitle: e.target.value })}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
+                  <div data-admin-stack="">
+                    <AdminField as="div">
+                      <label className="block font-semibold mb-1">{t('Subtitle / Topic', '副标题 / 活动主题')}</label>
+                      <input
+                        type="text"
+                        value={editingItem.subtitle || ''}
+                        onChange={(e) => setEditingItem({ ...editingItem, subtitle: e.target.value })}
+                        className={`w-full px-3 py-1.5 rounded-lg border ${
+                          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
+                        }`}
+                      />
+                    </AdminField>
 
-                      <AdminField as="div">
-                        <label className="block font-semibold mb-1">{t('Countdown Date / Event Date', '倒计时 / 举办日期')}</label>
-                        <input
-                          type="date"
-                          value={editingItem.countdownDate ? new Date(editingItem.countdownDate).toISOString().slice(0, 10) : ''}
-                          onChange={(e) => setEditingItem({ ...editingItem, countdownDate: new Date(e.target.value).toISOString() })}
-                          className={`w-full px-3 py-1.5 rounded-lg border ${
-                            isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-700 text-white'
-                          }`}
-                        />
-                      </AdminField>
-                    </div>
+                    {(()=>{
+                      const stored=editingItem.countdownDate;
+                      const instant=stored?new Date(stored):null;
+                      const invalid=!!instant&&!Number.isFinite(instant.getTime());
+                      return <AdminDateField lang={lang} clearable
+                        label={lang==='id'?'Tanggal hitung mundur / acara':t('Countdown Date / Event Date', '倒计时 / 举办日期')}
+                        value={instant&&!invalid?instant.toISOString().slice(0,10):''}
+                        error={invalid?t('Review the saved date.','原日期待核对。'):undefined}
+                        onChange={date=>setEditingItem({...editingItem,countdownDate:date?new Date(date+'T00:00:00Z').toISOString():''})}/>;
+                    })()}
 
                     <AdminField as="div">
                       <label className="block font-semibold mb-1">{t('Campaign Details / Agenda', '活动详情安排')}</label>
@@ -1510,7 +1414,7 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                 </AdminFormSection>
                 <AdminFormSection title={t('Display settings', '展示设置')}>
                 {/* Common Settings: Active Toggle & Display Order */}
-                <div className="flex items-center justify-between gap-4">
+                <DisplaySettingsLayout className={responsiveEditor?undefined:"flex items-center justify-between gap-4"}>
                   <AdminField className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1532,186 +1436,24 @@ export default function ContentManagementPanel({ isLight, lang }: ContentManagem
                       }`}
                     />
                   </AdminField>
-                </div>
+                </DisplaySettingsLayout>
                 </AdminFormSection>
-              </fieldset></div>
-
-              {/* Modal Footer */}
-              <AdminFormActions className={`admin-editor-footer ${
-                isLight ? 'bg-white/95 border-slate-100' : 'bg-slate-900/95 border-slate-800'
-              }`}>
-                <button
-                  type="button"
-                  onClick={closeEditor}
-                  disabled={isSaving||isUploading||!!pendingCms}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
-                    isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-slate-800 text-slate-300'
-                  }`}
-                >
-                  {t('Cancel', '取消')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving||isUploading||!!pendingCms}
-                  className="px-4 py-2 rounded-xl text-xs font-medium bg-primary-600 hover:bg-primary-500 text-white flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{isSaving?t('Saving…','正在保存…'):t('Save Changes', '保存生效')}</span>
-                </button>
-              </AdminFormActions>
-            </AdminForm>
-          </div>
-        </div>
+              </fieldset>
+        </AdminEditor>
       )}
-      {discardDraft&&<CrmDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardDraft(false)} onDiscard={()=>{setDiscardDraft(false);setIsModalOpen(false);}}/>}
-      {/* Secondary Deletion Confirmation Modal (二次确认弹窗 - 严格对齐系统整体设计规范) */}
-      {deleteConfirmTarget && (
-        <div 
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity ${
-            isLight ? 'bg-slate-900/40 backdrop-blur-2xs' : 'bg-black/60 backdrop-blur-xs'
-          } animate-in fade-in duration-150`}
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isDeleting) {
-              setDeleteConfirmTarget(null);
-            }
-          }}
-        >
-          <div ref={deletePanel} tabIndex={-1} role="alertdialog" aria-modal="true" aria-labelledby="cms-delete-title"
-            className={`admin-editor-layout w-full max-w-md max-h-[90vh] rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 ${
-              isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-800 text-white'
-            }`}
-          >
-            {/* Modal Header */}
-            <div className={`admin-editor-heading ${
-              isLight ? 'bg-slate-50/70 border-slate-100' : 'bg-slate-950/50 border-slate-800/80'
-            }`}>
-              <div className="flex items-center gap-2.5">
-                <span className={`p-1.5 rounded-lg shrink-0 ${
-                  isLight ? 'bg-rose-100 text-rose-700' : 'bg-rose-950/60 text-rose-400'
-                }`}>
-                  <Trash2 className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 id="cms-delete-title" className={`font-bold text-sm leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    {t('Confirm Item Deletion', '确认删除内容条目')}
-                  </h3>
-                  <p className={`text-[10px] text-slate-400 dark:text-slate-500`}>
-                    {t('Action requires secondary confirmation', '此操作需要二次确认')}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => setDeleteConfirmTarget(null)}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  isLight ? 'hover:bg-slate-200/60 text-slate-400' : 'hover:bg-slate-800 text-slate-500'
-                }`}
-                title={t('Cancel & Close', '取消并关闭')}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="admin-editor-body cms-delete-body" data-admin-stack="">
-              <p className={`leading-relaxed text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                {t(
-                  'Are you sure you want to permanently delete this content item? Once confirmed, the data will be immediately removed from local persistence and synchronised to the official portal.',
-                  '您确定要从系统数据模型中永久删除此项内容吗？确认后将直接从本地存储移除，并即时同步下架官方网站对应前台展示。'
-                )}
-              </p>
-
-              {/* Target Item Details Card */}
-              <div className={`p-3 rounded-xl border space-y-2 ${
-                isLight ? 'bg-slate-50/70 border-slate-200/80' : 'bg-slate-950/60 border-slate-800'
-              }`}>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>
-                    {t('Content Collection:', '所属数据表:')}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] border ${
-                    isLight ? 'bg-white border-slate-200 text-primary-700' : 'bg-slate-900 border-slate-700 text-primary-400'
-                  }`}>
-                    {t(deleteConfirmTarget.sectionTitleEn || '', deleteConfirmTarget.sectionTitleZh || '')}
-                  </span>
-                </div>
-
-                <div className="flex items-start justify-between gap-3 pt-2 border-t border-slate-200/60 dark:border-slate-800">
-                  <span className={`text-[11px] shrink-0 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                    {t('Item Title:', '条目标题:')}
-                  </span>
-                  <span className="font-bold text-right text-slate-900 dark:text-white line-clamp-2">
-                    {deleteConfirmTarget.name}
-                  </span>
-                </div>
-
-                {deleteConfirmTarget.subtitle && (
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
-                    <span>{t('Category / Tag:', '分类 / 标签:')}</span>
-                    <span className="truncate max-w-[200px] text-slate-600 dark:text-slate-300 font-mono text-[10px]">
-                      {deleteConfirmTarget.subtitle}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* System Warning Banner */}
-              <div className={`p-2.5 rounded-xl border text-[11px] leading-relaxed flex items-start gap-2 ${
-                isLight 
-                  ? 'bg-rose-50/60 border-rose-200/70 text-rose-800' 
-                  : 'bg-rose-950/30 border-rose-900/60 text-rose-300'
-              }`}>
-                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
-                <span>
-                  {t(
-                    'Irreversible: Deleted records cannot be undone. Please ensure you have backup copies if this media asset is still required.',
-                    '不可逆操作提醒：此删除操作无法撤销。若后续仍需使用该素材或图文，请在删除前保留相关备份。'
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <AdminFormActions className={`admin-editor-footer ${
-              isLight ? 'bg-slate-50/60 border-slate-100' : 'bg-slate-950/40 border-slate-800/80'
-            }`}>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => setDeleteConfirmTarget(null)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                  isLight 
-                    ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs' 
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                }`}
-              >
-                {t('Cancel', '取消')}
-              </button>
-
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={handleConfirmDelete}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 active:scale-95 text-white flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isDeleting ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>{t('Deleting...', '正在删除...')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{t('Confirm Delete', '确认删除')}</span>
-                  </>
-                )}
-              </button>
-            </AdminFormActions>
-          </div>
-        </div>
-      )}
+      {discardDraft&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscardDraft(false)} onDiscard={()=>{setDiscardDraft(false);setIsModalOpen(false);}}/>}
+      {deleteConfirmTarget&&<AdminConfirmation light={isLight} busy={isDeleting} danger closeOnBackdrop
+        title={t('Confirm Item Deletion','确认删除内容条目')}
+        description={t('This permanently removes the item from the website.','删除后，这项内容将从官网下架，且无法撤销。')}
+        cancelLabel={t('Cancel','取消')} confirmLabel={isDeleting?t('Deleting...','正在删除...'):t('Confirm Delete','确认删除')}
+        onCancel={()=>setDeleteConfirmTarget(null)} onConfirm={()=>void handleConfirmDelete()}
+      >
+        <p className="cms-delete-target">
+          <strong>{deleteConfirmTarget.name}</strong>
+          <span>{t(deleteConfirmTarget.sectionTitleEn||'',deleteConfirmTarget.sectionTitleZh||'')}{deleteConfirmTarget.subtitle&&` · ${deleteConfirmTarget.subtitle}`}</span>
+        </p>
+        {notification?.type==='error'&&<AdminFormFeedback lang={lang} state="error">{notification.message}</AdminFormFeedback>}
+      </AdminConfirmation>}
     </div>
   );
 }

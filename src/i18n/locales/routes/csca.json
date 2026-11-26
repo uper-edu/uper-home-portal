@@ -1,0 +1,509 @@
+{
+  "id": {
+    "header": {
+      "tag": "Waktu Persiapan Emas Musim Gugur 2026",
+      "title1": "Kunci Penerimaan",
+      "title2": "Universitas Top",
+      "desc": "Ketersediaan tempat sangat terbatas. Menjembatani kesenjangan sistem pendidikan Indonesia dan standar universitas elit Tiongkok. Amankan \"Asuransi Akademik\" Anda sekarang.",
+      "cta": "Amankan Masa Depan Akademik Anda"
+    },
+    "intro": {
+      "tag": "Apa itu CSCA?",
+      "title": "Chinese Scholastic Assessment (CSCA)",
+      "desc": "CSCA (Chinese Scholastic Assessment) adalah sistem penilaian kemampuan akademik dan bahasa Mandarin bagi siswa internasional yang mendaftar ke universitas terkemuka di Tiongkok. Ujian ini menguji pemikiran logika matematika, sintesis ilmiah, serta kefasihan bahasa Mandarin akademik, menjadi tolok ukur utama untuk masuk ke universitas kelompok C9 League, proyek 985/211, dan mendapatkan beasiswa sarjana penuh."
+    },
+    "crisis": {
+      "title1": "Krisis",
+      "title2": "yang Diabaikan",
+      "desc": "Banyak siswa masuk universitas Tiongkok dengan nilai memuaskan di Indonesia, namun menghadapi kesulitan akademik yang luar biasa. Mengapa? Karena standar penilaian sangat berbeda.",
+      "currentState": "Kondisi Saat Ini:",
+      "theCrisis": "Krisis Yang Terjadi:",
+      "items": [
+        {
+          "title": "Kesenjangan Logika",
+          "subtitle": "Matematika & Sains",
+          "current": "Sistem pendidikan Indonesia (Nasional/IB/A-Level) sangat menekankan hafalan rumus dan perhitungan kalkulasi.",
+          "crisis": "Universitas elit Tiongkok secara ketat mengevaluasi argumen logika tingkat lanjut dan pembuktian kompleks.",
+          "quote": "\"Siswa tidak kekurangan kemampuan; mereka hanya memiliki cara berpikir yang berbeda...\""
+        },
+        {
+          "title": "Hambatan Bahasa Akademik",
+          "subtitle": "Mitos HSK",
+          "current": "Percaya bahwa sertifikat HSK 5 cukup untuk sukses kuliah di luar negeri.",
+          "crisis": "HSK menjamin percakapan sehari-hari; CSCA menguji studi universitas. Tidak ada basa-basi di laboratorium universitas.",
+          "quote": "\"Jika Anda tidak dapat membaca istilah teknis atau menulis persamaan dalam bahasa Mandarin, Anda akan menjadi 'Siswa Pendiam'.\""
+        }
+      ]
+    },
+    "preparation": {
+      "title": "Tingginya Biaya Kurang Persiapan",
+      "desc": "Melewatkan persiapan CSCA bukanlah penghematan; namun merupakan risiko kegagalan berantai dengan nilai buruk.",
+      "items": [
+        {
+          "title": "Biaya Kuliah Membengkak",
+          "desc": "Mengulang tahun pertama membawa risiko biaya sekolah dan hidup berkelanjutan yang sangat masif..."
+        },
+        {
+          "title": "Kehilangan Rasa Percaya Diri",
+          "desc": "Kekurangan penguasaan bahasa Mandarin saintifik berujung pada isolasi, merasa tertinggal dan ditinggalkan siswa lain..."
+        },
+        {
+          "title": "Pilihan Karir Terbatas",
+          "desc": "Gagal menguasai istilah teknis pada bahasa spesifik menghilangkan potensi dan peluang karir di perusahaan Tiongkok..."
+        }
+      ]
+    },
+    "why": {
+      "tag": "Posisi UPER",
+      "title1": "Bukan bimbingan biasa.",
+      "title2": "Pendidikan Pra-Üniversitas Elit.",
+      "desc": "UPER bukan sekadar bimbingan belajar biasa. Kami adalah platform pendidikan lengkap dan fokus pada prestasi.",
+      "badge1": "ROI Terjamin",
+      "badge2": "Asuransi Akademik",
+      "items": [
+        {
+          "title": "Pendidikan Terbaik. Bebas Jarak.",
+          "desc": "Akses standar pendidikan elit Tiongkok langsung dari Indonesia. Kualitas tanpa kompromi..."
+        },
+        {
+          "title": "Guru Profesional",
+          "desc": "Diajarkan langsung oleh profesor universitas terkemuka Tiongkok dengan keahlian luar biasa..."
+        },
+        {
+          "title": "Investasi Terbaik",
+          "desc": "Asuransi untuk gelar sarjana terbaik bagi diri Anda dan jalan mulus meraih beasiswa penuh..."
+        }
+      ]
+    },
+    "analytics": {
+      "tag": "Analisis Penerimaan Terukur",
+      "title": "Panduan Pendaftaran & Laporan Kemampuan Akademik Siswa Indonesia",
+      "desc": "Analisis multidimensi mendalam tentang ambang batas masuk dan data performa akademis matematika serta bahasa Mandarin siswa Indonesia, memberikan kepastian tinggi untuk perolehan beasiswa utama.",
+      "benchmarkTitle": "Standar Nilai Masuk Universitas Elit Tiongkok",
+      "mathTab": "CSCA Matematika",
+      "chineseTab": "CSCA Bahasa Mandarin Komprehensif",
+      "scoringRule": "* Berdasarkan data statistik riil pelamar beasiswa asal Indonesia tahun 2024-2025. Skala 100 poin.",
+      "math": {
+        "c9": {
+          "title": "Universitas Unggulan C9 League (Peking/Tsinghua/Fudan/ZJU/SJTU, dll.)",
+          "desc": "Peluang diterima sangat tinggi: skor 88–100 (Mutlak diperlukan untuk beasiswa penuh bebas biaya kuliah & tempat tinggal beserta uang saku bulanan)"
+        },
+        "g985": {
+          "title": "Universitas Kelas Satu Proyek 985 (Tongji/ECNU/SDU/XMU, dll.)",
+          "desc": "Peluang diterima sangat tinggi: skor 83–88 (Rentang target ideal untuk beasiswa penuh nasional atau pemerintah provinsi)"
+        },
+        "g211": {
+          "title": "Universitas Kunci Terkenal Proyek 211 (HQU/DHU/UIBE, dll.)",
+          "desc": "Peluang diterima sangat tinggi: skor 70–78 (Target aman untuk beasiswa pemerintah kota atau dana bantuan universitas)"
+        }
+      },
+      "chinese": {
+        "c9": {
+          "title": "Universitas Unggulan C9 League (Peking/Tsinghua/Fudan/ZJU, dll.)",
+          "desc": "Tolok Ukur Penerimaan: Skor bahasa Mandarin komprehensif mencapai 90–100, atau memiliki sertifikat HSK 6 dengan nilai tinggi"
+        },
+        "g985": {
+          "title": "Universitas Kelas Satu Proyek 985 (Tongji/ECNU/DLUT, dll.)",
+          "desc": "Tolok Ukur Penerimaan: Skor bahasa Mandarin komprehensif mencapai 90–100, atau sertifikat HSK 5 dengan skor tinggi (>240)"
+        },
+        "g211": {
+          "title": "Universitas Kunci Terkenal Proyek 211",
+          "desc": "Tolok Ukur Penerimaan: Skor bahasa Mandarin komprehensif mencapai 85–89, atau sertifikat HSK 5 lulus kualifikasi (>180)"
+        }
+      },
+      "academicAdvice": {
+        "label": "Saran Akademik UPER:",
+        "text": "Standar kelulusan CSCA meningkat setiap tahunnya. Kelemahan dalam logika berpikir matematis analitis merupakan kendala umum siswa Indonesia yang mengajukan beasiswa penuh. Memulai latihan persiapan intensif sejak dini merupakan kunci kepastian lolos universitas papan atas."
+      },
+      "dangerZone": {
+        "title": "Rasio Kelemahan Akademik Siswa Indonesia",
+        "desc": "Berdasarkan performa akumulatif dan distribusi kesalahan menjawab dari 300 lebih kandidat Indonesia (dari kurikulum AP, IB, maupun Nasional) dalam bagian matematika sains pada sesi CSCA terbaru.",
+        "subjects": {
+          "geometry": {
+            "name": "Geometri Analisis & Vektor",
+            "val": "33% (Wilayah Paling Lemah)"
+          },
+          "trig": {
+            "name": "Trigonometri & Rumus Sektoral",
+            "val": "21%"
+          },
+          "algebra": {
+            "name": "Operasi Aljabar & Pertidaksamaan",
+            "val": "17%"
+          },
+          "functions": {
+            "name": "Hubungan Fungsi & Grafik",
+            "val": "15%"
+          },
+          "sequences": {
+            "name": "Barisan & Deret / Konsep Limit",
+            "val": "12%"
+          },
+          "prob": {
+            "name": "Probabilitas & Kombinatorika",
+            "val": "2%"
+          }
+        }
+      },
+      "gaps": {
+        "title": "Tiga Kesenjangan Akademik Utama & Saran untuk Siswa Indonesia",
+        "item1": {
+          "title": "1. Kelemahan pemahaman spasial geometri vektor dimensi tiga:",
+          "desc": "Kurikulum sekolah di Indonesia cenderung berfokus pada aljabar bidang secara modular. Sementara CSCA menuntut kemampuan spasial vektor multi-dimensi. Kami menyarankan latihan soal terstruktur standar ujian Tiongkok untuk memperkuat perpindahan logika geometri-fisika."
+        },
+        "item2": {
+          "title": "2. Kuat dalam teori dasar, lemah dalam implementasi soal:",
+          "desc": "Meskipun siswa sangat cepat dalam menghafal rumus rincian, mereka kerap kehilangan skor berharga saat menghadapi penggabungan pertidaksamaan silang yang kompleks. Latihan intensif menyelesaikan alur logika di bawah tekanan waktu ujian sangat dibutuhkan."
+        },
+        "item3": {
+          "title": "3. Kendala istilah bahasa Mandarin sains teknis:",
+          "desc": "Kurangnya kemampuan membaca serta mencerna instruksi soal matematika yang padat akan glosarium bahasa Mandarin. UPER membekali siswa dengan buku panduan istilah hibrida dwi-bahasa Mandarin-Indonesia khusus matematika dan fisika untuk melewati rintangan tersebut."
+        }
+      }
+    },
+    "cta": {
+      "title1": "Raih Keuntungan Penerimaan,",
+      "title2": "Kouta Sangat Terbatas",
+      "desc": "Jangan biarkan kurangnya persiapan mencuri rasa percaya diri Anda. Daftar segera untuk memaksimalkan persiapan penerimaan Musim Gugur 2026.",
+      "btn": "Amankan Tempat Anda & Hubungi Penasihat"
+    }
+  },
+  "en": {
+    "header": {
+      "tag": "Prime Preparation for Fall 2026",
+      "title1": "Keys to Top",
+      "title2": "University Admission",
+      "desc": "Limited spots available. Closing the gap between Indonesian high school systems and China's elite university standards. Secure your extremely scarce \"Academic Insurance\".",
+      "cta": "Secure Your Academic Future"
+    },
+    "intro": {
+      "tag": "What is CSCA?",
+      "title": "CSCA Chinese Scholastic Assessment",
+      "desc": "CSCA (Chinese Scholastic Assessment) is an academic credentials standard specifically tailored for international high school students applying to elite Chinese Universities. It evaluates comprehensive scholastic competency, logic synthesis, and Chinese application skills, serving as an academic prerequisite and major differentiator for C9 League, 985/211 project schools, and undergraduate full scholarships."
+    },
+    "crisis": {
+      "title1": "The Ignored",
+      "title2": "\"Crisis\"",
+      "desc": "Many students enter Chinese universities with excellent Indonesian grades, only to face massive academic struggles. Why? Because the grading standards are entirely different.",
+      "currentState": "Current State:",
+      "theCrisis": "The Crisis:",
+      "items": [
+        {
+          "title": "The Logic Gap",
+          "subtitle": "Mathematics & Sciences Gap",
+          "current": "Indonesian systems (National/IB/A-Level) heavily emphasize formula memorization and calculation.",
+          "crisis": "Chinese elite universities strictly evaluate advanced logic and complex proofs.",
+          "quote": "\"Students aren't lacking ability; they just have a different way of thinking...\""
+        },
+        {
+          "title": "Academic Language Barrier",
+          "subtitle": "The HSK Myth",
+          "current": "Believing an HSK 5 certificate is enough for university success abroad.",
+          "crisis": "HSK secures daily conversations; CSCA tests university studies.",
+          "quote": "\"If you can't read technical terms, understand lesson logic, or write equations in Chinese, you become a 'Silent Student'.\""
+        }
+      ]
+    },
+    "preparation": {
+      "title": "The High Cost of Being Unprepared",
+      "desc": "Skipping CSCA preparatory coaching isn't saving money; it's a growing risk that causes a chain reaction of bad grades.",
+      "items": [
+        {
+          "title": "Higher Tuition Costs",
+          "desc": "Failing courses in your freshman year carries a massive risk of repeating a year..."
+        },
+        {
+          "title": "Loss of Confidence",
+          "desc": "Lacking scientific Chinese leads to isolation in classrooms..."
+        },
+        {
+          "title": "Limited Career Options",
+          "desc": "Failing to master professional terms means missing out completely..."
+        }
+      ]
+    },
+    "why": {
+      "tag": "The UPER Positioning",
+      "title1": "Not a setup class.",
+      "title2": "An Elite Pre-University.",
+      "desc": "UPER is not an after-school tutoring center. We are a complete, exam-focused learning platform.",
+      "badge1": "ROI Guaranteed",
+      "badge2": "Academic Insurance",
+      "items": [
+        {
+          "title": "Zero Distance. Top Resources.",
+          "desc": "Access elite Chinese pre-university standards straight from Indonesia..."
+        },
+        {
+          "title": "Top-Tier Teachers",
+          "desc": "Taught strictly by current Chinese university professors and SNBT-level Gaokao grading experts..."
+        },
+        {
+          "title": "The Best Educational Investment",
+          "desc": "It's a ticket to massive scholarships. It's an insurance policy for a happy, successful 4-year degree..."
+        }
+      ]
+    },
+    "analytics": {
+      "tag": "Quantified Admission Analytics",
+      "title": "Admission Guide & Indonesian Student Academic Performance Report",
+      "desc": "Deep multi-dimensional analysis of admission thresholds and academic data in Chinese and Mathematics for Indonesian students, providing highly secure guidance for major scholarships.",
+      "benchmarkTitle": "Chinese Elite University Admission Benchmarks",
+      "mathTab": "CSCA Math",
+      "chineseTab": "CSCA Comprehensive Chinese",
+      "scoringRule": "* Based on actual admission statistics of Indonesian scholarship applicants in 2024-2025. 100-point scale.",
+      "math": {
+        "c9": {
+          "title": "C9 League Elite Universities (Peking/Tsinghua/Fudan/ZJU/SJTU, etc.)",
+          "desc": "Highly competitive threshold: 88–100 points (Required benchmarks for full tuition & stipend package)"
+        },
+        "g985": {
+          "title": "985 Project First-Class Universities (Tongji/ECNU/SDU/XMU, etc.)",
+          "desc": "High probability threshold: 83–88 points (Target range for prestigious national or provincial scholarships)"
+        },
+        "g211": {
+          "title": "211 Project Key Prestigious Universities (HQU/DHU/UIBE, etc.)",
+          "desc": "High probability threshold: 70–78 points (Target range for key municipal or university corporate-sponsored grants)"
+        }
+      },
+      "chinese": {
+        "c9": {
+          "title": "C9 League Elite Universities (Peking/Tsinghua/Fudan/ZJU, etc.)",
+          "desc": "Admission Benchmark: Chinese score of 90–100 points, or high score in HSK 6"
+        },
+        "g985": {
+          "title": "985 Project First-Class Universities (Tongji/ECNU/DLUT, etc.)",
+          "desc": "Admission Benchmark: Chinese score of 90–100 points, or high score in HSK 5 (>240)"
+        },
+        "g211": {
+          "title": "211 Project Key Prestigious Universities",
+          "desc": "Admission Benchmark: Chinese score of 85–89 points, or passing HSK 5 (>180)"
+        }
+      },
+      "academicAdvice": {
+        "label": "UPER Academic Advice:",
+        "text": "CSCA admission thresholds are rising annually. Logic and mathematical application represent the general bottleneck for Indonesian students applying for full scholarships; starting early structured preparation is the essential path to top-tier institutional success."
+      },
+      "dangerZone": {
+        "title": "Indonesian Students' Academic Weaknesses Ratio",
+        "desc": "Based on aggregate performance and score-loss distribution of over 300 Indonesian candidates (from AP, IB, and National curriculums) on mathematical sections of recent CSCA assessments.",
+        "subjects": {
+          "geometry": {
+            "name": "Geometry & Vectors",
+            "val": "33% (Most Critical)"
+          },
+          "trig": {
+            "name": "Trigonometry & Formulas",
+            "val": "21%"
+          },
+          "algebra": {
+            "name": "Algebra & Set Inequalities",
+            "val": "17%"
+          },
+          "functions": {
+            "name": "Functions & Graphs",
+            "val": "15%"
+          },
+          "sequences": {
+            "name": "Sequences & Limits",
+            "val": "12%"
+          },
+          "prob": {
+            "name": "Probability & Combinatorics",
+            "val": "2%"
+          }
+        }
+      },
+      "gaps": {
+        "title": "Three Key Academic Gaps & Advice for Indonesian Students",
+        "item1": {
+          "title": "1. Logic and space transformation gap in vector geometry:",
+          "desc": "Indonesian curricula focus on step-by-step plane algebraic solutions. CSCA demands multidimensional synthesis. We recommend targeted Chinese-structure mock sets to develop cross-disciplinary geometry skills."
+        },
+        "item2": {
+          "title": "2. Theorem-heavy with low transfer application:",
+          "desc": "While formula memorization is swift, students drop points during intersecting operations and system transformations. High-frequency deep logical path practice under test constraints is strongly recommended."
+        },
+        "item3": {
+          "title": "3. Terminology and scientific Chinese barrier:",
+          "desc": "Difficulty reading and parsing mathematically dense Chinese phrases. UPER provides custom bilingual Mandarin-Indonesian science lexicon sets to remove the translation hurdle."
+        }
+      }
+    },
+    "cta": {
+      "title1": "Seize the Admission Advantage,",
+      "title2": "Seats are extremely limited",
+      "desc": "Don't let inadequate preparation stealthily drain your confidence. Enroll now to secure your prime preparation window for Fall 2026 admission.",
+      "btn": "Secure Your Spot & Talk to an Advisor"
+    }
+  },
+  "zh": {
+    "header": {
+      "tag": "2026年秋季入学极佳准备期",
+      "title1": "名校录取的",
+      "title2": "致胜关键",
+      "desc": "首期限额招募中。填补印尼高中体系与中国顶尖大学标准之间的鸿沟，抢占极具稀缺性的“学术保险”。",
+      "cta": "立即锁定您的学术席位"
+    },
+    "intro": {
+      "tag": "什么是 CSCA？",
+      "title": "CSCA 中国学术水平评估 (Chinese Scholastic Assessment)",
+      "desc": "CSCA（Chinese Scholastic Assessment）是面向国际学生的重要中文能力与学术能力评估体系，重点考察学生的中文应用能力、逻辑思维能力以及学术潜力。这一考试是申请中国C9联盟、985或211高层学术专业以及全额本科奖学金过程中至关重要的学术论据与敲门砖。"
+    },
+    "crisis": {
+      "title1": "被忽视的",
+      "title2": "“危机”",
+      "desc": "许多印尼学生带着优异的成绩进入中国大学，却面临巨大的学术挣扎。为什么？因为评分标准完全不同。",
+      "currentState": "现状：",
+      "theCrisis": "面临的危机：",
+      "items": [
+        {
+          "title": "逻辑断层",
+          "subtitle": "数理化差距",
+          "current": "印尼的教育体系（国家课程/IB/A-Level）过于强调公式记忆和计算。",
+          "crisis": "中国名校严格考查高级逻辑推演和复杂的证明过程。",
+          "quote": "“学生并不缺乏能力；他们只是思维方式不同……”"
+        },
+        {
+          "title": "学术语言障碍",
+          "subtitle": "HSK 的迷思",
+          "current": "认为拥有 HSK 5 证书就足以在国外大学取得成功。",
+          "crisis": "HSK只能保障日常生活交流；CSCA则是对大学学术研究的全面考察；大学实验室中可没有生活中的寒暄社交。",
+          "quote": "“如果您读不懂专业词汇，理解不了课堂上的严密推导，也没法用中文书写方程式，您在课堂上就会变成一个‘隐形人’。”"
+        }
+      ]
+    },
+    "preparation": {
+      "title": "缺乏行前学术预备的沉重代价",
+      "desc": "跳过 CSCA 考核与行前学术培优并非真的在“省钱”，反而是极易触发低绩点挂科学术危机的源头隐患。",
+      "items": [
+        {
+          "title": "更高昂的时间与重修学费成本",
+          "desc": "大一通识必修（高数、基础物理等）一旦因为听不懂挂科重修，会直接带来极其高昂的跨年重读与延期额外生活开支……"
+        },
+        {
+          "title": "信心崩溃带来的学业孤立",
+          "desc": "无法顺畅理解专业中式学术术语不仅削弱课堂积极性，更容易让学生陷入不愿社交、学业崩溃以及无法开口发言的“隐形人”泥潭……"
+        },
+        {
+          "title": "名企名岗的选择面严重受限",
+          "desc": "如果不深入攻克本行业、本专业的高阶行业术语和商务推导，回国后将极难跨过顶级外企或中资驻印集团的核心岗位硬核复试关……"
+        }
+      ]
+    },
+    "why": {
+      "tag": "UPER 独家定位",
+      "title1": "不是兴趣辅导班，",
+      "title2": "而是精英级大学预科机构。",
+      "desc": "UPER 不是一个课后托辅中心。我们是一个标准化的考试及升学全体系学术辅导服务平台，为您制定系统的名校冲刺计划。",
+      "badge1": "ROI 投资回报保障",
+      "badge2": "高额奖学金“学术保险”",
+      "items": [
+        {
+          "title": "零距离，顶尖资源。",
+          "desc": "在印尼即可直接获取中国精英大学的预备标准与教育资源，为您省去海外预科的高昂生活费……"
+        },
+        {
+          "title": "一流的师资团队",
+          "desc": "严格由中国大学教授与具有高考阅卷经验的专家授课。他们不仅传授知识，更教您如何取得高分……"
+        },
+        {
+          "title": "最佳教育投资",
+          "desc": "这是获取高额奖学金的入场券。更是确保顺利完成四年学业、避免挂科风险的终极保障……"
+        }
+      ]
+    },
+    "analytics": {
+      "tag": "权威报考量化分析 | Quantified Admission Analytics",
+      "title": "报考指南 & 印尼学生学术能力报告",
+      "desc": "多维度深度透视报考指南与印尼中文、数学学术能力数据表现，为您提供极高确定性的奖学金录取支持。",
+      "benchmarkTitle": "中国名校录取参考分数线",
+      "mathTab": "CSCA 数学",
+      "chineseTab": "CSCA 综合中文",
+      "scoringRule": "* 2024-2025年印尼申请者实际全奖/半奖录取数据，总分100分制。",
+      "math": {
+        "c9": {
+          "title": "C9联盟顶尖名校 (清北/复交/浙大/哈工大/中科大/南大等)",
+          "desc": "录取几率极高：88～100分（顶尖免学费+生活费全额奖学金必备数理指标）"
+        },
+        "g985": {
+          "title": "985工程一流名校 (同济/华师/山大/厦大等)",
+          "desc": "录取几率极高：83～88分（全额或省市政府高额助学体系）"
+        },
+        "g211": {
+          "title": "211工程知名重点院校 (华大/东华/外经贸等)",
+          "desc": "录取几率极高：70～78分（省市政府、校级高比例助学政策）"
+        }
+      },
+      "chinese": {
+        "c9": {
+          "title": "C9联盟顶尖名校 (清北/复交/浙大等)",
+          "desc": "录取参考标准：综合中文达到90～100分，或持有HSK 6级高分证书"
+        },
+        "g985": {
+          "title": "985工程一流名校 (同济/华师/大连理工等)",
+          "desc": "录取参考标准：综合中文达到90～100分，或持有HSK 5级高分（＞240）"
+        },
+        "g211": {
+          "title": "211工程重点商化与理工大学",
+          "desc": "录取参考标准：综合中文达到85～89分，或持有HSK 5级合格（＞180）"
+        }
+      },
+      "academicAdvice": {
+        "label": "UPER 学术建议:",
+        "text": "CSCA 录取分数线逐年提高，数理思维逻辑的劣势是印尼学生申请全额奖学金的普遍瓶颈，建立早期的强化复习是成功获批顶尖奖学金的硬保障。"
+      },
+      "dangerZone": {
+        "title": "印尼学生学术薄弱部分比例",
+        "desc": "结合2024届、2025届共计300余名印尼国际高中生（包含AP/IB/国定教学大纲学生）在CSCA测试与数理笔试中反映出的考点失分分布数据分析。",
+        "subjects": {
+          "geometry": {
+            "name": "解析几何与向量 / Geometry & Vectors",
+            "val": "33% (最薄弱点)"
+          },
+          "trig": {
+            "name": "三角函数与公式应用 / Trigonometry",
+            "val": "21%"
+          },
+          "algebra": {
+            "name": "代数运算与集合不等式 / Algebra & Sets",
+            "val": "17%"
+          },
+          "functions": {
+            "name": "函数关系与图像解析 / Functions",
+            "val": "15%"
+          },
+          "sequences": {
+            "name": "数列与极限概念 / Sequences",
+            "val": "12%"
+          },
+          "prob": {
+            "name": "概率统计与排列组合 / Probability",
+            "val": "2%"
+          }
+        }
+      },
+      "gaps": {
+        "title": "印尼学生三大核心学术盲区与改进建议",
+        "item1": {
+          "title": "1. 向量结合图形的立体转换意识缺失：",
+          "desc": "印尼学生习惯分步做平面代数，而CSCA要求高强度的向量立体统筹空间感，建议多刷中式考题加强物理/数理转换思维。"
+        },
+        "item2": {
+          "title": "2. 重定理轻应用：",
+          "desc": "能极快背诵三角函数及运算公式，但极易在综合不等式交叉变形中失分。需要极重逻辑链的深度针对性考前模战训练。"
+        },
+        "item3": {
+          "title": "3. 专业术语中文障碍：",
+          "desc": "读不懂复杂的中文题意。UPER特别提供双语中印数理专业特刊词汇大纲，穿透汉化门槛。"
+        }
+      }
+    },
+    "cta": {
+      "title1": "把握录取先机，",
+      "title2": "席位极其有限",
+      "desc": "不要让信息差或准备不足偷走你的自信。立即报名抢占2026年秋季入学的黄金冲刺期，获取属于你的名校入场券与学术优势。",
+      "btn": "立即锁定名额与学术导师交流"
+    }
+  }
+}

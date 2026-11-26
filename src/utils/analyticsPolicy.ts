@@ -26,6 +26,7 @@ const knownPaths = new Set([
   "/about",
   "/faq",
   "/hsk",
+  "/enrollment",
   "/csca",
   "/careers",
   "/contact",
@@ -40,6 +41,7 @@ const knownPaths = new Set([
   "/studio",
   "/style-guide",
 ]);
+const enrollmentServicePaths = new Set(["mine", "payment", "assist", "interest", "help"]);
 const code = (value: string | null) =>
   value && /^[a-zA-Z][a-zA-Z0-9_.-]{0,79}$/.test(value) ? value : undefined;
 export function analyticsContext(input: AnalyticsInput): AnalyticsParams {
@@ -66,11 +68,15 @@ export function analyticsContext(input: AnalyticsInput): AnalyticsParams {
   const language = normalizeSiteLanguage(
     url.searchParams.get("lang") || (workspace === "public" ? input.promotion?.language : undefined) || input.language,
   );
+  const enrollmentPath = url.pathname.replace(/\/$/, "");
+  const classRoute = /^\/enrollment\/([a-zA-Z0-9-]{1,64})$/.exec(enrollmentPath)?.[1];
+  const classDetail = classRoute && !enrollmentServicePaths.has(classRoute.toLowerCase()) && !url.searchParams.has("order");
+  const enrollmentLanding = enrollmentPath === "/enrollment" ? "/enrollment" : classDetail ? "/enrollment/:class" : undefined;
   let path = knownPaths.has(url.pathname)
     ? url.pathname
-    : /^\/(news|campaign)\/[^/]+$/.test(url.pathname)
+    : enrollmentLanding ?? (/^\/(news|campaign)\/[^/]+$/.test(url.pathname)
       ? "/" + root + "/:item"
-      : "/other";
+      : "/other");
   const tab =
     root === "crm" && crmTabs.has(url.searchParams.get("tab") || "")
       ? url.searchParams.get("tab")!
@@ -101,7 +107,7 @@ export function analyticsContext(input: AnalyticsInput): AnalyticsParams {
     page_location: url.origin + path,
     page_referrer: referrer,
     page_title: resolveMetadata(
-      knownPaths.has(url.pathname) ? url.pathname : "/",
+      enrollmentLanding ? "/enrollment" : knownPaths.has(url.pathname) ? url.pathname : "/",
       language,
       { module: tab },
     ).title,
@@ -234,6 +240,7 @@ const choices: Record<string, string[]> = {
     "threads",
     "hub",
     "consultation",
+    "enrollment",
     "handbook",
     "community",
     "whatsapp",
@@ -344,10 +351,10 @@ export function createAnalyticsClient(options: {
     promotion_kind: context.promotion_kind || null,
     entry_point: context.entry_point || null,
   });
-  const track = (event: string, params: Record<string, unknown> = {}) => {
+  const track = (event: string, params: Record<string, unknown> = {}, captured?:AnalyticsParams) => {
     try {
       if (!options.id || !ANALYTICS_EVENTS.has(event)) return false;
-      const context = options.context();
+      const context = captured ?? options.context();
       options.send("event", event, {
         ...context,
         ...attribution(context),

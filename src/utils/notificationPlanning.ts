@@ -1,5 +1,7 @@
 type Language = 'en' | 'id' | 'zh';
 const reasons: Record<string,[string,string,string]> = {
+  assignment_superseded:['The assignment has changed','Penugasan sudah berubah','该客户已再次分配'],
+  assignment_no_recipient:['The new owner is unavailable on this channel','Penanggung jawab baru tidak tersedia di saluran ini','此渠道无法通知新负责人'],
   task_missing:['Related task not found','Tugas terkait tidak ditemukan','关联任务不存在'],
   task_completed:['Related task completed','Tugas terkait selesai','关联任务已完成'],
   task_cancelled:['Related task cancelled','Tugas terkait dibatalkan','关联任务已取消'],

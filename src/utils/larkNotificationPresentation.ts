@@ -1,14 +1,16 @@
+import {LEAD_ASSIGNED_EVENT} from './leadAssignmentNotification.ts';
 import type {NotificationTargetKind} from './crmNotificationTarget.ts';
 import {crmValue} from './crmLanguage.ts';
 import {assessmentNotificationDetails,notificationValue,safeNotificationExcerpt,notificationDeadlineStatus} from './larkNotificationContent.ts';
 type Language='zh'|'en'|'id';
-export const standardLarkKinds=['commitment.due','lead.created','handoff.requested','assessment.completed','booking.requested','enrollment.requested','conversation.reactivated','task.overdue','ai.failed','notification.failed'] as const;
+export const standardLarkKinds=['commitment.due','lead.created',LEAD_ASSIGNED_EVENT,'handoff.requested','assessment.completed','booking.requested','enrollment.requested','conversation.reactivated','task.overdue','ai.failed','notification.failed'] as const;
 export type LarkKind=typeof standardLarkKinds[number];
 export type LarkCardInput={target?:{kind:NotificationTargetKind;id:string};jobId?:string;kind:LarkKind;language:Language;name:string;agreementAction?:string;time?:string;owner?:string;source?:string;score?:number;maxScore?:number;goals?:string[];recordedAt?:string;internalReview?:boolean;excerpt?:string;excerptRestricted?:boolean;assessmentResult?:any;city?:string;mode?:string;reportedLevel?:string;due?:string;dueAt?:string;asOf?:string;attempts?:number;failedEvent?:LarkKind;failedChannel?:string;failure?:'ai_unavailable'|'delivery_failed'|'delivery_unknown';};
 export function larkKindTitle(kind:LarkKind,language:Language){
  const labels:Record<LarkKind,[string,string,string]>={
  'commitment.due':['客户约定到期','Customer agreement due','Kesepakatan pelanggan jatuh tempo'],
  'lead.created':['新客户','New lead','Pelanggan baru'],
+ [LEAD_ASSIGNED_EVENT]:['客户已分配','Customer assigned','Pelanggan ditugaskan'],
  'handoff.requested':['顾问联系请求','Advisor contact requested','Permintaan konsultan'],
  'assessment.completed':['测评完成','Assessment completed','Asesmen selesai'],
  'booking.requested':['预约申请待确认','Booking request to confirm','Permintaan janji perlu dikonfirmasi'],
@@ -52,10 +54,10 @@ export function larkNotificationPreview(input:LarkCardInput){
   put(t('处理提示','Handling','Penanganan'),input.failure==='delivery_unknown'?t('发送结果未确认；先核对发送记录和群内消息，避免重复发送','Delivery is unconfirmed; check logs and the group before retrying to avoid duplicates','Pengiriman belum terkonfirmasi; periksa log dan grup sebelum mencoba lagi agar tidak duplikat'):t('发送未成功；请核对渠道配置和发送记录，不自动重放','Delivery failed; check channel settings and logs; no automatic replay','Pengiriman gagal; periksa pengaturan saluran dan log; tidak dikirim ulang otomatis'));
  }
  if(input.internalReview)put(t('处理提示','Handling','Penanganan'),t('先内部核实，暂不直接联系','Review internally before contacting the customer','Tinjau secara internal sebelum menghubungi pelanggan'));
- put(t('负责人','Owner','Penanggung jawab'),input.owner);
+ put(input.kind===LEAD_ASSIGNED_EVENT?t('新负责人','New owner','Penanggung jawab baru'):t('负责人','Owner','Penanggung jawab'),input.owner);
  const source=({questionnaire:t('客户问卷','Questionnaire','Kuesioner'),customer_message:t('客户对话','Customer conversation','Percakapan pelanggan'),sales_record:t('销售记录','Sales record','Catatan penjualan'),assessment:t('测评记录','Assessment record','Catatan asesmen'),contact_form:t('官网咨询表单','Website inquiry','Formulir situs'),standalone_chat:t('在线咨询','Online consultation','Konsultasi daring'),homepage_widget:t('首页咨询','Homepage consultation','Konsultasi beranda')} as Record<string,string>)[input.source||''];
  put(t('来源','Source','Sumber'),source);
- put(t('发生时间','Occurred','Waktu kejadian'),input.time);
- put(t('记录时间','Recorded','Waktu pencatatan'),input.recordedAt);
+ put(input.kind===LEAD_ASSIGNED_EVENT?t('分配时间','Assigned at','Waktu penugasan'):t('发生时间','Occurred','Waktu kejadian'),input.time);
+ if(input.kind!==LEAD_ASSIGNED_EVENT)put(t('记录时间','Recorded','Waktu pencatatan'),input.recordedAt);
  return {title,rows,note:input.excerptRestricted?t('原文仅在CRM内查看','Original text is available in CRM','Teks asli tersedia di CRM'):undefined};
 }

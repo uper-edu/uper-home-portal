@@ -10,15 +10,16 @@ Connect opens Lark's documented browser authorization. The server stores a five-
 
 The confirmation is a green app-bot card, with localized title/body and a same-origin Manage notification settings button. It does not contain phone/email, customer information or technical IDs. Provider acceptance is displayed separately from binding success; response loss remains unknown and is never blindly resent. Pending confirmations can be processed by the existing notification worker; sending/unknown/failed/accepted records are not automatically resent. The existing process-only worker pause is retained locally.
 
-## Required approval before activation
+## Self-service configuration
 
-The implementation reads existing LARK_APP_ID and LARK_APP_SECRET plus:
+Self-service uses LARK_APP_ID and LARK_APP_SECRET plus:
 
 - LARK_OAUTH_REDIRECT_URI: exact callback URL. Local candidate: http://localhost:3000/api/crm/lark/callback. The same URL must be registered in the Lark app's redirect/security configuration. HTTP is accepted only for local loopback; deployed environments require HTTPS.
 - LARK_TENANT_KEY: independently verified identifier of PT UPER EDUCATION TECHNOLOGY. Do not use its tenant domain or guess this value. Reading it via the official tenant information API requires tenant:tenant:readonly; current app does not have that scope. Adding permissions/publishing requires user approval. An administrator may instead supply the verified key from another trusted source.
-- LARK_BINDING_CONFIRMATIONS_ENABLED=true: explicit permission to send one formal confirmation to each new/changed employee-authorized connection. This does not enable the ordinary personal notification queue or replay old messages. Ordinary personal delivery remains controlled separately by LARK_PERSONAL_DELIVERY_ENABLED.
 
-Before approval, no real environment file was modified. After explicit approval, only .env.dev received the three activation values above; its original contents are backed up privately. Missing configuration leaves Connect disabled with an explanation. Existing users can still manage/disconnect their own binding, with confirmation. No developer should click those actions for a real user during verification.
+Self-service is available once the Lark app credentials, tenant key and a valid callback URL are configured. New or changed employee-authorized connections get one confirmation through the Lark personal channel. Simulation records the confirmation without contacting Lark. A live confirmation can be sent directly after binding even when the background worker is paused.
+
+Missing configuration leaves Connect disabled with an explanation. Existing users can still manage/disconnect their own binding, with confirmation. No developer should click those actions for a real user during verification.
 
 ## Validation
 

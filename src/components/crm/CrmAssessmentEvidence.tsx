@@ -1,7 +1,7 @@
 import { viewerTimeZone } from "../../utils/crmOperatingTime";
 import { CrmAssessmentQuestionTypes } from "./CrmAssessmentQuestionTypes";
 import { assessmentQuestionTypes } from "../../utils/crmAssessmentQuestionTypes";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import type { ReactNode } from "react";
 import type { CrmLeadRecord } from "../../types/crmLead";
 import { crmAssessmentSummary } from "../../utils/crmAssessment";
@@ -296,7 +296,7 @@ export function CrmAssessmentEvidence({
         </section>
       )}
       {!summaryOnly && !historyDetail && (
-        <CrmDisclosure
+        <AdminDisclosure
           heading={
             <>
               {t(
@@ -362,7 +362,7 @@ export function CrmAssessmentEvidence({
               </section>
             )}
           </div>
-        </CrmDisclosure>
+        </AdminDisclosure>
       )}
     </div>
   );

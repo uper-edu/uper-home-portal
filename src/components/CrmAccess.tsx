@@ -1,23 +1,20 @@
+import './admin-workspace-base.css';
+import {AdminAccountMenu} from './admin/AdminAccountMenu';
+import {AdminLoginView} from './admin/AdminLoginView';
 import {validStaffPassword} from '../utils/staffPassword';
-import {PersonalLarkControls} from './PersonalLarkControls';
 import {AdminField,AdminRequiredNote,AdminForm} from './AdminForm';
-import {RuntimeVersionStatus} from './RuntimeVersionStatus';
 import {PageMetadata} from './PageMetadata';
 import {managementRequest,clearAccessPasswords} from "../utils/accessOperationClient";
 import {AccessOperationStatus} from "./AccessOperationStatus";
-import { adminRoleLabel } from "../utils/adminWorkspace";
-import { cmsText } from '../utils/cmsLanguage';
 import {clearStaffDrafts} from "../utils/crmDrafts";
-import { ArrowRight, LockKeyhole, Users, ListChecks, Bell } from "lucide-react";
 import "./crm/crm-sign-in.css";
-import { CrmLanguageSelect } from "./crm/CrmLanguageSelect";
 import { crmId } from "../utils/crmIndonesian";
 import {
   useCrmLanguage,
   crmError,
   type CrmLanguage,
 } from "../utils/crmLanguage";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 export interface CrmEmployee {
   passwordChangeRequired?: boolean;
   id: string;
@@ -49,73 +46,22 @@ export function CrmAccountControls({
 }) {
   const account = useContext(AccountContext);
   if (!account) return null;
-  const { employee } = account;
-  const t = (en: string, zh: string) =>
-    lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
-  const roleLabel = (role: string) => employee.roleLabels?.[role]?.[lang === "zh"?2:lang === "id"?1:0] || adminRoleLabel(role, lang);
-  const preferredRole = workspace === 'system' ? 'access_admin' : workspace === 'cms' ? 'cms_admin' : employee.roles.includes('crm_leader') ? 'crm_leader' : 'sales';
-  const currentRole = employee.roles.includes(preferredRole) && (!employee.rolePermissions || employee.rolePermissions[preferredRole]?.includes(workspace==='system'?'access.read':workspace==='cms'?'cms.manage':'crm.read')) ? preferredRole : employee.roles.find(role=>employee.rolePermissions?.[role]?.includes(workspace==='system'?'access.read':workspace==='cms'?'cms.manage':'crm.read')) || employee.roles[0] || '';
-  return (
-    <details
-      className="relative shrink-0 ml-auto"
-      aria-label={t("Account menu", "账号菜单")}
-    >
-      <summary
-        className={workspace ? "admin-account-summary" : `list-none cursor-pointer flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-slate-800 border-slate-700 text-slate-100"}`}
-      >
-        <span className={workspace ? "admin-account-identity" : "flex flex-col gap-0.5"}>
-          <span className="admin-account-name font-semibold">
-            {employee.displayName || employee.id}
-          </span>
-          <span className={workspace ? "admin-account-role" : isLight ? "text-slate-500" : "text-slate-400"}>
-            {workspace ? roleLabel(currentRole) : employee.roles.map(roleLabel).join(" + ")}
-          </span>
-        </span>
-        <span aria-hidden="true">▾</span>
-      </summary>
-      <div
-        className={workspace ? "admin-account-popover" : `absolute right-0 top-full mt-2 z-40 min-w-44 rounded-xl border shadow-lg p-1 text-xs ${isLight ? "bg-white border-slate-200 text-slate-800" : "bg-slate-900 border-slate-700 text-slate-100"}`}
-      >
-        {workspace && <div className="admin-account-context"><strong>{employee.displayName || employee.id}</strong>{employee.roles.map(roleLabel).join(" · ")}</div>}
-        <PersonalLarkControls key={employee.id} employeeId={employee.id} lang={lang} isLight={isLight}/>
-        <button
-          type="button"
-          className="block w-full text-left rounded-lg px-3 py-2 hover:bg-primary-500/10"
-          onClick={(e) => {
-            e.currentTarget.closest("details")?.removeAttribute("open");
-            account.password();
-          }}
-        >
-          {t("Change password", "修改密码")}
-        </button>
-        <button
-          type="button"
-          disabled={account.busy}
-          className="block w-full text-left rounded-lg px-3 py-2 hover:bg-primary-500/10"
-          onClick={() => account.logout()}
-        >
-          {t("Sign out", "退出登录")}
-        </button>
-        <RuntimeVersionStatus lang={lang} isLight={isLight}/>
-        {account.error && (
-          <p role="alert" className="text-rose-600 p-2">
-            {account.error}
-          </p>
-        )}
-      </div>
-    </details>
-  );
+  return <AdminAccountMenu employee={account.employee} lang={lang} isLight={isLight} workspace={workspace}
+    busy={account.busy} error={account.error} onChangePassword={account.password} onLogout={account.logout}/>;
 }
-async function auth(path: string, body?: any) {
+async function auth(path: string, body?: any, signal?: AbortSignal) {
   const r = await fetch("/api/crm/auth/" + path, {
     method: body ? "POST" : "GET",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
+    signal,
   });
-  const d = await r.json();
-  if (!r.ok) throw Object.assign(Error(d.error || "Authentication failed"),{status:r.status});
-  return d;
+  if (!r.ok) {
+    const failure=await r.json().catch(()=>null);
+    throw Object.assign(Error(failure?.error || "Authentication failed"),{status:r.status});
+  }
+  return r.json();
 }
 export default function CrmAccess({
   children,
@@ -129,7 +75,6 @@ export default function CrmAccess({
   ) => React.ReactNode;
 }) {
   const [connectionProblem,setConnectionProblem]=useState(false);
-  const isCms = workspace === "cms", isSystem=workspace==='system';
   const st=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
   const [lang, setLang] = useCrmLanguage();
   const t = (en: string, zh: string) =>
@@ -145,25 +90,63 @@ export default function CrmAccess({
     [next, setNext] = useState(""),
     [confirm, setConfirm] = useState(""),
     [notice, setNotice] = useState("");
+  const sessionRead=useRef<AbortController | undefined>(undefined);
+  async function checkSession(replace=false) {
+    if(sessionRead.current&&!replace)return;
+    sessionRead.current?.abort();
+    const check=new AbortController();
+    sessionRead.current=check;
+    try {
+      const d=await auth('me',undefined,AbortSignal.any([check.signal,AbortSignal.timeout(12000)]));
+      if(check.signal.aborted)return;
+      if(typeof d?.employee?.id!=='string'||!d.employee.id)throw Error('Invalid staff session response');
+      setEmployee(d.employee);
+      setConnectionProblem(false);
+    } catch(error) {
+      if(check.signal.aborted)return;
+      if([401,403].includes((error as {status:number}).status)){
+        setEmployee(null);setChange(false);setConnectionProblem(false);
+      }else setConnectionProblem(true);
+    } finally {
+      if(sessionRead.current===check){sessionRead.current=undefined;setLoading(false);}
+    }
+  }
   useEffect(() => {
-    auth("me")
-      .then((d) => setEmployee(d.employee))
-      .catch(() => setEmployee(null))
-      .finally(() => setLoading(false));
-  }, []);
-  useEffect(() => {
-    if (!employee) return;
-    const timer = setInterval(() => {
-      auth("me")
-        .then((d) => {setEmployee(d.employee);setConnectionProblem(false);})
-        .catch((error:any) => {
-          if([401,403].includes(error.status)){setEmployee(null);setChange(false);}
-          else setConnectionProblem(true);
-        });
-    }, 60000);
-    return () => clearInterval(timer);
+    let active=true,scheduled=false;
+    const refresh=()=>{
+      if(scheduled)return;
+      scheduled=true;
+      queueMicrotask(()=>{scheduled=false;if(active)void checkSession(true);});
+    };
+    void checkSession();
+    window.addEventListener('uper-access-changed',refresh);
+    return ()=>{
+      active=false;
+      sessionRead.current?.abort();sessionRead.current=undefined;
+      window.removeEventListener('uper-access-changed',refresh);
+    };
+  },[]);
+  useEffect(()=>{
+    if(!employee)return;
+    const timer=setInterval(()=>void checkSession(),60000);
+    return ()=>clearInterval(timer);
   }, [employee?.id]);
-  useEffect(()=>{const refresh=()=>auth('me').then(d=>setEmployee(d.employee)).catch(e=>{if([401,403].includes(e.status))setEmployee(null);});window.addEventListener('uper-access-changed',refresh);return()=>window.removeEventListener('uper-access-changed',refresh);},[]);
+
+  async function login() {
+    setBusy(true);
+    setError("");
+    try {
+      const d = await auth("login", { loginId, password });
+      sessionRead.current?.abort();
+      setEmployee(d.employee);
+      setConnectionProblem(false);
+      setPassword("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const field =
     "w-full p-3 rounded-lg border border-slate-300 bg-white text-slate-900";
@@ -174,90 +157,9 @@ export default function CrmAccess({
       </div>
     );
   if (!employee)
-    return (
-      <main className="crm-sign-in"><PageMetadata lang={lang} options={{state:"login"}}/>
-        <header className="crm-sign-in-header">
-          <a href="/" className="crm-sign-in-brand" aria-label="UPER">
-            <img src="/uper-logo-mark.svg" alt="" />
-            <span>UPER</span>
-          </a>
-          <div className="crm-sign-in-language"><CrmLanguageSelect lang={lang} onChange={setLang} /></div>
-        </header>
-        <div className="crm-sign-in-layout">
-          <section className="crm-sign-in-intro" aria-labelledby="crm-sign-in-intro-title">
-            <span className="crm-sign-in-eyebrow">{isSystem ? st("System workspace","Ruang sistem","系统工作区") : isCms ? cmsText("Content workspace", "内容工作区", lang) : t("Sales workspace", "销售工作区")}</span>
-            <h2 id="crm-sign-in-intro-title">{isSystem ? st("Clear responsibilities. Controlled access.","Tanggung jawab jelas. Akses terkendali.","职责清晰，授权有据。") : isCms ? cmsText("Keep website content clear and current.", "让网站内容清晰、及时。", lang) : t("Every customer. A clear next step.", "每一位客户，都有清晰的下一步。")}</h2>
-            <p>{isSystem ? st("Manage users, roles and access audit in one workspace.","Kelola pengguna, peran, dan audit akses dalam satu ruang.","在同一个工作区管理用户、角色与权限审计。") : isCms ? cmsText("Manage website content and images in one workspace.", "在同一个工作区管理网站内容与图片。", lang) : t("Keep customer conversations, ownership and follow-up in one place.", "在同一个工作区管理客户对话、负责人和跟进安排。")}</p>
-            <ul className="crm-sign-in-features">
-              <li><Users size={20} aria-hidden="true" /><span>{isSystem ? st("Staff accounts","Akun staf","员工账号") : isCms ? cmsText("Content collections", "内容集合", lang) : t("Customer records & conversations", "客户资料与对话")}</span></li>
-              <li><ListChecks size={20} aria-hidden="true" /><span>{isSystem ? st("Roles and data scopes","Peran dan cakupan data","角色及数据范围") : isCms ? cmsText("Images and media", "图片与素材", lang) : t("Ownership & follow-up", "客户归属与跟进")}</span></li>
-              <li><Bell size={20} aria-hidden="true" /><span>{isSystem ? st("Access change audit","Audit perubahan akses","权限变更审计") : isCms ? cmsText("Website content updates", "网站内容更新", lang) : t("Reminders & sales operations", "提醒与销售运营")}</span></li>
-            </ul>
-          </section>
-        <AdminForm lang={lang}
-          className="crm-sign-in-card"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setBusy(true);
-            setError("");
-            try {
-              const d = await auth("login", { loginId, password });
-              setEmployee(d.employee);
-              setPassword("");
-            } catch (e) {
-              setError((e as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <div className="crm-sign-in-lock"><LockKeyhole size={22} aria-hidden="true" /></div>
-          <h1><span>{isSystem ? st("System sign in","Login sistem","系统登录") : isCms ? cmsText("CMS sign in", "CMS 登录", lang) : t("CRM sign in", "CRM 登录")}</span><AdminRequiredNote lang={lang} inline/></h1>
-          <p className="crm-sign-in-subtitle">{t("Use your staff account", "请使用员工账号登录")}</p>
-          <AdminField className="crm-sign-in-label">
-            {st("Login ID or email", "ID login atau email", "登录ID或邮箱")}
-            <input
-              className="crm-sign-in-input"
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              maxLength={254}
-              value={loginId}
-              onChange={(e) => setLoginId(e.target.value)}
-              required
-            />
-          </AdminField>
-          <AdminField className="crm-sign-in-label">
-            {t("Password", "密码")}
-            <input
-              className="crm-sign-in-input"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </AdminField>
-          {error && (
-            <p role="alert" className="crm-sign-in-error">
-              {error==='password_policy_required'?st('Check the password rules and make sure both new passwords match.','Periksa aturan kata sandi dan pastikan keduanya sama.','请按规则设置密码，并确保两次输入一致。'):crmError(error, lang)}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={busy}
-            className="crm-sign-in-submit"
-            aria-busy={busy}
-          >
-            {busy ? t("Signing in…", "正在登录…") : t("Sign in", "登录")}
-            <ArrowRight size={18} aria-hidden="true" />
-          </button>
-          <p className="crm-sign-in-footnote">{t("Staff access only. Your role determines what you can view and manage.", "仅供员工访问。可查看的数据与操作权限由账号角色决定。")}</p>
-        </AdminForm>
-        </div>
-        <footer className="crm-sign-in-footer">UPER · {isSystem ? st("System management","Manajemen sistem","系统管理") : isCms ? cmsText("Content management", "内容管理", lang) : t("Customer relationship management", "客户关系管理")}</footer>
-      </main>
-    );
+    return <AdminLoginView workspace={workspace} lang={lang} setLang={setLang} loginId={loginId} password={password}
+      error={error} busy={busy} connectionProblem={connectionProblem}
+      onLoginIdChange={setLoginId} onPasswordChange={setPassword} onLogin={login} onRetry={()=>void checkSession()}/>;
   return (
     <AccountContext.Provider
       value={{
@@ -273,6 +175,7 @@ export default function CrmAccess({
           setBusy(true);
           try {
             await auth("logout", {});
+            sessionRead.current?.abort();
             clearStaffDrafts(employee.id);clearAccessPasswords(employee.id);
             setEmployee(null);
             setChange(false);
@@ -288,7 +191,10 @@ export default function CrmAccess({
         },
       }}
     >
-      {connectionProblem&&<p role="status" className="p-3 border border-amber-500">{lang==='zh'?'连接暂不可用，工作区和草稿仍保留；请恢复连接后重试。':lang==='id'?'Koneksi sementara tidak tersedia. Ruang kerja dan draf tetap disimpan; coba lagi setelah tersambung.':'Connection temporarily unavailable. Your workspace and draft remain; retry after reconnecting.'}</p>}
+      {connectionProblem&&<p role="status" className="p-3 border border-amber-500">
+        {st('Connection temporarily unavailable. Your workspace and draft remain.','Koneksi sementara tidak tersedia. Ruang kerja dan draf tetap disimpan.','连接暂不可用，工作区和草稿仍保留。')}{' '}
+        <button type="button" disabled={busy} className="underline" onClick={()=>void checkSession()}>{st('Retry check','Periksa lagi','重新检查')}</button>
+      </p>}
       {!employee.passwordChangeRequired&&children(employee, lang, setLang)}
       {(change||employee.passwordChangeRequired) && (
         <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-6">
@@ -307,7 +213,7 @@ export default function CrmAccess({
                 setCurrent("");
                 setNext("");
                 setConfirm("");
-                const refreshed=await auth('me');setEmployee(refreshed.employee);
+                await checkSession(true);
                 setChange(false);setNotice("password_updated");
               } catch (e) {
                 setError((e as Error).message);
@@ -373,7 +279,7 @@ export default function CrmAccess({
                 disabled={busy}
                 className="order-first"
                 onClick={async () => {
-                  if(employee.passwordChangeRequired){await auth('logout',{});setEmployee(null);}
+                  if(employee.passwordChangeRequired){await auth('logout',{});sessionRead.current?.abort();setEmployee(null);}
                   setChange(false);
                   setCurrent("");
                   setNext("");

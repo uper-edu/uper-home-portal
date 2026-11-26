@@ -1,0 +1,40 @@
+.admin-record-entry,.admin-row-action,.admin-record-back{
+  display:inline-flex;align-items:center;min-height:28px;max-width:100%;
+  color:var(--admin-action);text-align:start;overflow-wrap:anywhere;
+  cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 45%,transparent);
+  text-underline-offset:3px;
+}
+.admin-record-entry{font-weight:650}
+.admin-row-action,.admin-record-back{font-weight:550}
+:is(.admin-record-entry,.admin-row-action,.admin-record-back):is(:hover,:focus-visible){text-decoration-color:currentColor}
+:is(.admin-record-entry,.admin-row-action,.admin-record-back):focus-visible{outline:2px solid var(--admin-focus);outline-offset:2px}
+:is(.admin-record-entry,.admin-row-action):disabled{color:var(--admin-muted);text-decoration:none;cursor:not-allowed}
+.crm-detail-header.admin-record-header,[data-record-detail] .crm-detail-header.admin-record-header{align-items:flex-start;flex-wrap:wrap;gap:8px 16px}
+.admin-record-header .admin-record-back{flex:0 0 auto;align-self:flex-start;gap:6px;min-height:30px;font-size:13px}
+.admin-record-header .admin-record-back svg{flex:none}
+.admin-record-header :is(.crm-record-identity,.crm-detail-identity){flex-basis:140px}
+@media(max-width:649px){
+  .crm-detail-header.admin-record-header,[data-record-detail] .crm-detail-header.admin-record-header{flex-direction:row}
+  .admin-record-header .admin-record-back{min-height:44px}
+  :is(.admin-record-entry,.admin-row-action){min-height:44px}
+}
+.admin-record-back{gap:6px}
+.admin-record-back:disabled{color:var(--admin-muted);text-decoration:none;cursor:not-allowed}
+.admin-record-browse{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}
+.admin-record-browse .crm-detail-nav-button{min-height:40px;min-width:34px}
+.admin-record-back svg{flex:none}
+
+.admin-row-action.admin-row-action-with-meta{text-decoration:none;gap:4px}
+.admin-row-action-with-meta .admin-action-label,.admin-record-card-entry strong{
+  color:var(--admin-action);text-decoration:underline;text-underline-offset:3px;
+  text-decoration-color:color-mix(in srgb,currentColor 45%,transparent);
+}
+:is(.admin-row-action-with-meta,.admin-record-card-entry):is(:hover,:focus-visible) :is(.admin-action-label,strong){text-decoration-color:currentColor}
+.admin-record-card-entry[aria-current=page]{background:var(--admin-selected);box-shadow:inset 3px 0 var(--admin-action)}
+.admin-record-card-entry:focus-visible{outline:2px solid var(--admin-focus);outline-offset:-2px}
+.admin-row-action svg{flex:none;margin-inline-end:4px}
+.admin-row-actions{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px}
+.admin-row-actions>.admin-row-action{white-space:nowrap}
+
+.admin-record-header>.crm-record-actions{flex:0 1 auto;max-width:100%}
+.crm-customer-panel .admin-record-header>.crm-record-actions{flex:1 1 50%;min-width:min(100%,360px)}

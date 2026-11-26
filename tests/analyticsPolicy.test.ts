@@ -151,6 +151,83 @@ test("SPA pageviews are explicit, deduplicated by safe location, and preserve pr
   f.navigate("http://localhost:3000/chat?c=instagram-bio&lead=OTHER");
   assert(!f.client.page());
 });
+test("enrollment click and landing-page visit stay distinct and exclude order identifiers", () => {
+  const f=fixture();
+  assert(f.client.track("link_click",{target:"enrollment",entry_point:"linkhub",order:"PRIVATE-ORDER"}));
+  f.navigate("http://localhost:3000/enrollment?lang=id&entry_point=linkhub&order=PRIVATE-ORDER");
+  assert(f.client.page());
+  const events=f.events.filter(([kind])=>kind==="event");
+  assert.deepEqual(events.map(event=>event[1]),["link_click","page_view"]);
+  assert.equal(events[0][2].target,"enrollment");
+  assert.equal(events[1][2].page_path,"/enrollment");
+  assert.ok(!JSON.stringify(f.events).includes("PRIVATE-ORDER"));
+});
+test("class acquisition routes emit a shared path without class or order identifiers", () => {
+  const f=fixture();
+  f.navigate("http://localhost:3000/enrollment/PRIVATE-CLASS/?apply=1&email=private@example.test");
+  assert(f.client.page());
+  const events=f.events.filter(([kind])=>kind==="event");
+  assert.equal(events[0][1],"page_view");
+  assert.equal(events[0][2].page_location,"http://localhost:3000/enrollment/:class");
+  assert.equal(events[0][2].page_path,"/enrollment/:class");
+  assert.doesNotMatch(JSON.stringify(events),/PRIVATE-CLASS|private@|apply=1/);
+  assert.equal(make("https://uperedu.com/enrollment/").page_path,"/enrollment");
+  for(const path of [
+    "payment?order=PRIVATE-ORDER", "mine", "mine/demands/PRIVATE-RECORD", "assist",
+    "interest", "help/payment", "PRIVATE-CLASS?order=PRIVATE-ORDER",
+  ]){
+    const context=make("https://uperedu.com/enrollment/"+path);
+    assert.equal(context.page_path,"/other");
+    assert.doesNotMatch(JSON.stringify(context),/PRIVATE/);
+  }
+});
+test("a click can finish promotion lookup after routing and keeps the original page",async t=>{
+  const sent:any[][]=[];
+  const origin='http://localhost:3000';
+  const browser={
+    location:new URL(origin+'/link?p=slow-click-fixture&email=private@example.invalid'),
+    gtag:(...args:any[])=>sent.push(args),
+  };
+  const page={referrer:'https://example.invalid/promo',documentElement:{lang:'id'},getElementById:()=>({})};
+  const globals={
+    window:browser,document:page,
+    __UPER_BUILD__:{environment:'dev',buildId:'fixture'},
+    __UPER_ANALYTICS__:{target:'dev',measurementId:'G-FIXTURE',allowedHosts:['localhost'],allowLocalSubdomains:false,requireHttps:false},
+  };
+  for(const [key,value] of Object.entries(globals)){
+    const previous=Object.getOwnPropertyDescriptor(globalThis,key);
+    Object.defineProperty(globalThis,key,{configurable:true,value});
+    t.after(()=>{if(previous)Object.defineProperty(globalThis,key,previous);else Reflect.deleteProperty(globalThis,key);});
+  }
+  let finish!:(response:Response)=>void;
+  const request=t.mock.method(globalThis,'fetch',(path:string)=>{
+    assert.equal(path,'/api/promotion-links/slow-click-fixture');
+    return new Promise<Response>(resolve=>{finish=resolve;});
+  });
+  const {trackEvent,trackPageView}=await import('../src/utils/analytics');
+  assert.equal(trackPageView(),true);
+  assert.equal(trackEvent('link_click',{target:'enrollment',entry_point:'linkhub'}),true);
+  assert.equal(request.mock.callCount(),1);
+  assert.deepEqual(sent,[]);
+  browser.location=new URL(origin+'/enrollment?lang=en');
+  page.documentElement.lang='en';
+  assert.equal(trackPageView(),true);
+  finish(Response.json({promotion:{
+    id:'slow-click-fixture',campaignId:'campaign-1',campaignCode:'fixture-campaign',
+    source:'instagram',medium:'social',promotionKind:'unpaid',language:'id',landingPath:'/link',
+  }}));
+  await new Promise(resolve=>setImmediate(resolve));
+  const events=sent.filter(([kind])=>kind==='event');
+  assert.deepEqual(events.map(([,event])=>event),['page_view','link_click']);
+  assert.equal(events[0][2].page_path,'/enrollment');
+  assert.equal(events[1][2].page_path,'/link');
+  assert.equal(events[1][2].language,'id');
+  assert.equal(events[1][2].campaign_name,'fixture-campaign');
+  assert.equal(events[1][2].promotion_link_id,'slow-click-fixture');
+  assert.equal(events[1][2].entry_point,'linkhub');
+  assert.equal(events[1][2].target,'enrollment');
+  assert.ok(!JSON.stringify(sent).includes('private@example.invalid'));
+});
 test("confirmed conversions deduplicate queries/retries across a page reload and never transmit receipt keys", () => {
   const f = fixture();
   assert(!f.client.confirmed("questionnaire_complete", "PRIVATE-OP", false));

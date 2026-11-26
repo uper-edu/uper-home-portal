@@ -45,6 +45,8 @@ test("WhatsApp draft safely encodes a localized whitelist and recomputed assessm
     assert.ok(draft.includesResult);
     assert.match(draft.message, /15\/15/);
     assert.match(draft.message, /HSK 3/);
+    assert.match(draft.message, /HSK 1 5\/5 · HSK 2 5\/5 · HSK 3 5\/5/);
+    assert.doesNotMatch(draft.message, /★/);
     assert.doesNotMatch(
       draft.message,
       /999|HSK 9|excluded@example|0000000000|EXCLUDED PRIVATE TRANSCRIPT/,
@@ -103,7 +105,7 @@ test("learner report and WhatsApp merge deliberately skipped and timed out blank
     );
     assert.doesNotMatch(html, /Skipped|Dilewati|跳过/);
     assert.match(html, /13/);
-    assert.match(html, /未作答: 2|Unanswered: 2|Belum dijawab: 2/);
+    assert.match(html, /(?:未作答|Unanswered|Belum dijawab) <strong>2<\/strong>/);
   }
   assert.match(hskWhatsAppDraft(profile, r, "en").message, /Unanswered：2/);
   assert.doesNotMatch(hskWhatsAppDraft(profile, r, "en").message, /skipped/i);

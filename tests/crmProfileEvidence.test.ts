@@ -7,6 +7,7 @@ import {
   fieldEvidenceDetails,
   visibleProfileNeedsGroups,
   profileChangeReason,
+  reportedLevelQuestionnaires,
 } from "../src/utils/crmProfileEvidence";
 import {
   CrmProfileSourceContent,
@@ -20,6 +21,17 @@ const event = (eventId: string, payload: any, extra = {}) => ({
   actor: "Robert",
   recordedAt: "2026-10-26T12:00:00Z",
   ...extra,
+});
+test('self-reported level evidence uses matching original questionnaire answers for this customer only',()=>{
+  const original=event('original',{answers:{reportedLevel:'Beginner'}},{eventType:'questionnaire.submitted'});
+  const rows=[original,event('other-customer',{answers:{reportedLevel:'Beginner'}},{eventType:'questionnaire.submitted',leadId:'other'}),event('different-answer',{answers:{reportedLevel:'HSK 2'}},{eventType:'questionnaire.submitted'}),event('ai',{answers:{reportedLevel:'Beginner'}},{eventType:'information.extracted'})];
+  const before=JSON.stringify(rows);
+  assert.deepEqual(reportedLevelQuestionnaires(rows,'arif','Beginner'),[original]);
+  assert.deepEqual(reportedLevelQuestionnaires(rows,'arif',''),[]);
+  assert.deepEqual(reportedLevelQuestionnaires(rows,'arif','HSK 3'),[]);
+  const repeat=event('repeat',{answers:{reportedLevel:'Beginner'}},{eventType:'questionnaire.submitted'});
+  assert.deepEqual(reportedLevelQuestionnaires([...rows,repeat],'arif','Beginner'),[original,repeat]);
+  assert.equal(JSON.stringify(rows),before);
 });
 test("empty needs groups are omitted, while zero, explicit clearing and conflict-only records remain available", () => {
   assert.deepEqual(
@@ -179,5 +191,5 @@ test('old values, non-adoption causes and different independent records survive 
 test('single course budget uses the common evidence control and retains conflicts',()=>{
  const lead={id:'arif',budgetAmount:1500000,profileFieldMeta:{budgetAmount:{sourceType:'ai_customer_text',effectiveAt:'2026-10-26T12:00:00Z',sourceFactIds:['budget-source'],pendingDifferences:[{value:1800000,sourceType:'sales_contact',effective:true}]}}},before=JSON.stringify(lead);
  const html=render(React.createElement(CrmCurrentField,{lead,field:'budgetAmount'}));
- assert.match(html,/课程总预算/);assert.match(html,/Rp1,500,000/);assert.match(html,/查看课程总预算的原始依据/);assert.match(html,/有不同记录/);assert.match(html,/Rp1,800,000/);assert.doesNotMatch(html,/预算来源与调整|币种|周期/);assert.equal(JSON.stringify(lead),before);
+ assert.match(html,/课程总预算/);assert.match(html,/Rp 1,500,000/);assert.match(html,/查看课程总预算的原始依据/);assert.match(html,/有不同记录/);assert.match(html,/Rp 1,800,000/);assert.doesNotMatch(html,/预算来源与调整|币种|周期/);assert.equal(JSON.stringify(lead),before);
 });

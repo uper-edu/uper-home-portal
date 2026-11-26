@@ -4,32 +4,18 @@ import { Link } from 'react-router-dom';
 import { Globe2, Target, Users, Sparkles, ChevronDown, ArrowRight, HelpCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SEO } from '../components/SEO';
+import {localizedFaqItems} from '../i18n/faqItems';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useDesignStyle } from '../utils/theme';
 
 export default function About() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isApple } = useDesignStyle();
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   
-  const featuredFaqs = [
-    {
-      id: 'q1',
-      question: t('faq.items.0.question'),
-      answer: t('faq.items.0.answer')
-    },
-    {
-      id: 'q3',
-      question: t('faq.items.2.question'),
-      answer: t('faq.items.2.answer')
-    },
-    {
-      id: 'q6',
-      question: t('faq.items.5.question'),
-      answer: t('faq.items.5.answer')
-    }
-  ];
+  const items = localizedFaqItems(i18n.resolvedLanguage || i18n.language);
+  const featuredFaqs = [0,2,5].map(index=>({...items[index],id:'q'+(index+1)}));
 
   return (
     <div className="pt-32 pb-20">

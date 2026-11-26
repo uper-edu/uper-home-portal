@@ -43,24 +43,28 @@ export async function verifyPublicCmsMedia({url,digest,bytes},fetcher=fetch){
  throw Error('CMS public verification failed');
 }
 
-export function createCmsMediaStorage({env=process.env,client,verify=verifyPublicCmsMedia}={}){
- let sdk=client;
+async function cosClient(credentials, options){
+ const {default:COS}=await import('cos-nodejs-sdk-v5');
+ return new COS({SecretId:credentials.secretId,SecretKey:credentials.secretKey,
+  ...(credentials.token?{SecurityToken:credentials.token}:{}),Protocol:'https:',...options});
+}
+
+export function createCmsMediaStorage({env=process.env,client,verify=verifyPublicCmsMedia,credentialClient,createClient=cosClient}={}){
  const getClient=async()=>{
-  if(sdk)return sdk;
-  if(!env.PORTAL_COS_SECRET_ID||!env.PORTAL_COS_SECRET_KEY)throw Error('CMS object storage credentials are missing');
-  const {default:COS}=await import('cos-nodejs-sdk-v5');
-  sdk=new COS({SecretId:env.PORTAL_COS_SECRET_ID,SecretKey:env.PORTAL_COS_SECRET_KEY,
-   ...(env.PORTAL_COS_SECURITY_TOKEN?{SecurityToken:env.PORTAL_COS_SECURITY_TOKEN}:{}),
-   Protocol:'https:',Timeout:30000,MaxRetryTimes:2});
-  return sdk;
- };
- const invoke=async(method,parameters)=>{
-  const sdkClient=await getClient();
-  return new Promise((resolve,reject)=>sdkClient[method](parameters,(error,result)=>error?reject(error):resolve(result)));
+  if(client)return client;
+  const {cosCredentialTarget,legacyCosCredential}=await import('../../server/portal/integrationCredentialTargets.ts');
+  const {integrationCredential}=await import('../../server/portal/integrationCredentials.ts');
+  const credentials=env===process.env
+   ? await integrationCredential('cos','default',cosCredentialTarget(env),legacyCosCredential,credentialClient)
+   : legacyCosCredential(env);
+  if(!credentials)throw Error('CMS object storage credentials are missing');
+  return createClient(credentials,{Timeout:30000,MaxRetryTimes:2});
  };
  return {
   async upload(content){
    if(!Buffer.isBuffer(content)||!content.length)throw Error('CMS media bytes required');
+   const sdk=await getClient();
+   const invoke=(method,parameters)=>new Promise((resolve,reject)=>sdk[method](parameters,(error,result)=>error?reject(error):resolve(result)));
    const digest=mediaDigest(content),{bucket,region,prefix}=cmsMediaConfiguration(env);
    const objectKey=prefix+digest+'.webp',url=cmsMediaUrl(digest,env),parameters={Bucket:bucket,Region:region,Key:objectKey};
    const checkExisting=async()=>{
@@ -81,4 +85,12 @@ export function createCmsMediaStorage({env=process.env,client,verify=verifyPubli
    return {url,digest,mime:'image/webp',size:content.length,objectKey};
   }
  };
+}
+
+/** Verify storage access without writing or deleting objects. */
+export async function verifyCmsStorageCredential(values, env=process.env, createClient=cosClient){
+ const {bucket,region,prefix}=cmsMediaConfiguration(env);
+ const client=await createClient(values,{Timeout:8000,MaxRetryTimes:0});
+ return new Promise(resolve=>client.getBucket({Bucket:bucket,Region:region,Prefix:prefix,MaxKeys:1},
+   error=>resolve(!error)));
 }

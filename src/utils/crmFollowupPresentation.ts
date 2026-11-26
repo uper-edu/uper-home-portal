@@ -48,7 +48,7 @@ export function hintOccurrenceTimes(lead:any,hint:any,rows:any[]=[],events:any[]
  };
  if(hint.id==='budget-unit')return [{label:'当前资料状态，无单独发生时刻',at:null}];
  if(hint.id?.startsWith('change:')){const event=(hint.evidenceIds||[]).map((id:string)=>locateLedgerEvent(events,id)).find(independentProfileEdit);const meta=lead.profileFieldMeta?.[hint.id.slice(7)];if(event||meta?.sourceType==='sales_edit')return [{label:'资料更新',at:instant(event?.recordedAt)||instant(meta?.recordedAt)}];const m=lead.profileFieldMeta?.[hint.id.slice(7)];return [{label:'实际发生',at:instant(m?.effectiveAt)||(hint.evidenceIds||[]).map(source).find(Boolean)||null}];}
- if(hint.id?.startsWith('difference:')){const m=lead.profileFieldMeta?.[hint.id.slice(11)];if(m){const differences=(m.pendingDifferences||[]).filter((d:any)=>d.effective!==false&&!d.supersededBy&&!compatibleProfileValue(hint.id.slice(11),lead[hint.id.slice(11)],d.value));return [{label:'当前资料依据发生',at:instant(m.effectiveAt)},...differences.map((d:any,i:number)=>({label:'不同记录'+(i+1)+'发生',at:instant(d.effectiveAt)||source(d.sourceFactId)}))];}}
+ if(hint.id?.startsWith('difference:')){const m=lead.profileFieldMeta?.[hint.id.slice(11)];if(m){const differences=(m.pendingDifferences||[]).filter((d:any)=>d.effective!==false&&!d.supersededBy&&(hint.evidenceIds?.includes(d.sourceFactId)??!compatibleProfileValue(hint.id.slice(11),lead[hint.id.slice(11)],d.value)));return [{label:'当前资料依据发生',at:instant(m.effectiveAt)},...differences.map((d:any,i:number)=>({label:'不同记录'+(i+1)+'发生',at:instant(d.effectiveAt)||source(d.sourceFactId)}))];}}
  const ids=[...new Set<string>((hint.evidenceIds||[]).filter(Boolean))];return ids.length?ids.map((id,i)=>({label:ids.length>1?'依据'+(i+1)+'发生':'实际发生',at:source(id)})):[{label:'实际发生',at:null}];
 }
 
@@ -60,6 +60,17 @@ export function sortFollowupOccurrences<T extends {times:{at:string|null}[]}>(en
 export function hasFollowupOccurrence(entry:{times:{at:string|null}[]}){return entry.times.some(t=>t.at&&crmInstant(t.at));}
 
 export const FOLLOWUP_RECENT_MS=7*24*60*60*1000;
+export function hasRecentFollowupGoal(lead:{
+ goal?:unknown;
+ submittedAt?:string;
+ profileFieldMeta?:{goal?:{effectiveAt?:string;sourceType?:string}};
+},now=Date.now()){
+ if(typeof lead.goal!=='string'||!lead.goal.trim())return false;
+ const meta=lead.profileFieldMeta?.goal;
+ const timestamp=meta?.effectiveAt||(!meta?.sourceType||meta.sourceType==='questionnaire'?lead.submittedAt:undefined);
+ const at=crmInstant(timestamp)?.getTime();
+ return at!==undefined&&at>=now-FOLLOWUP_RECENT_MS&&at<=now;
+}
 /** Display buckets only. No record is deleted and no signal, task or Tier state changes. */
 export function followupWindowGroups(entries:any[],now=Date.now()){
  const result:{recent:any[];important:any[];unknown:any[]}={recent:[],important:[],unknown:[]};

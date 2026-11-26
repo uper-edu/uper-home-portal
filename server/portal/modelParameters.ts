@@ -1,5 +1,7 @@
-/** GPT-6.1 Sol counts reasoning in its completion budget and uses default sampling. */
-export function modelParameters(model: string, tokens: number, temperature?: number) {
-  if (['gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna'].includes(model)) return {max_completion_tokens: tokens * 4, reasoning_effort: 'low'};
-  return {max_tokens: tokens, ...(temperature === undefined ? {} : {temperature})};
+import {defaultReasoningEffort,supportsReasoningEffort,type ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
+
+/** GPT-6 reasoning models include reasoning in the completion budget; deepseek-flash disables default thinking for predictable latency and budget. */
+export function modelParameters(model: string, tokens: number, temperature?: number, effort:ReasoningEffort=defaultReasoningEffort) {
+  if (supportsReasoningEffort(model)) return {max_completion_tokens: tokens * 4, reasoning_effort: effort};
+  return {max_tokens: tokens, ...(model==='deepseek-v4-pro'||model==='deepseek-flash'?{thinking:{type:'disabled'}}:{}), ...(temperature === undefined ? {} : {temperature})};
 }

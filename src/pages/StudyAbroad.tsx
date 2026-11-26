@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
+import {localizedFaqItems} from '../i18n/faqItems';
 import { 
   GraduationCap, 
   FileText, 
@@ -29,6 +30,10 @@ import { useDesignStyle } from '../utils/theme';
 import ProgramFAQPortal from '../components/ProgramFAQPortal';
 import { client } from '../cmsClient';
 import imageUrlBuilder from '../cmsClient';
+import {addRouteTranslations} from '../i18n';
+import translations from '../i18n/locales/routes/abroad.json';
+
+addRouteTranslations('abroad', translations);
 
 const builder = imageUrlBuilder(client);
 function urlFor(source: any) {
@@ -937,13 +942,11 @@ export default function StudyAbroad() {
 }
 
 const StudyAbroadFAQsAccordion = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isApple } = useDesignStyle();
   const [openId, setOpenId] = React.useState<string | null>('q1'); // Open first item by default
 
-  // Retrieve translated FAQ items under faq.items index
-  const items = t('faq.items', { returnObjects: true });
-  const allFaqs = Array.isArray(items) ? items : [];
+  const allFaqs = localizedFaqItems(i18n.resolvedLanguage || i18n.language);
   
   // Custom filter to pick 5 prominent Study Abroad questions
   const selectedIds = ['q1', 'q2', 'q9', 'q10', 'q11'];

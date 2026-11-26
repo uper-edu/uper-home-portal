@@ -1,13 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
-@import "./components/crm/crm-detail-workspace.css";
 @import "tailwindcss";
 @import "./components/admin-colors.css";
-@import "./components/hsk-picture-layout.css";
+@import "./components/public-link-actions.css";
+@import "./components/public-header-menu.css";
+
 @import "./components/crm/crm-language-switch.css";
-@import "./components/crm/campaign-workspace.css";
 @import "./components/crm/crm-page-actions.css";
-@import "./components/crm/crm-page-heading.css";
-@import "./components/crm/crm-lead-filters.css";
+@import "./components/admin-page-heading.css";
+@import "./components/admin/admin-search-field.css";
+@import "./components/admin/admin-record-controls.css";
 @variant dark (.never-match-this-class-to-disable-dark-mode &);
 @plugin "@tailwindcss/typography";
 
@@ -224,7 +224,7 @@ input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="tel"]:focus,
 input[type="search"]:focus,
-textarea:focus,
+textarea:where(:not(.admin-text-input)):focus,
 select:focus {
   border-color: var(--primary-500) !important;
   box-shadow: 0 0 0 1px var(--primary-500), 0 0 0 4px var(--primary-100) !important;
@@ -464,7 +464,7 @@ body, .glass-card, button, a, div, section, input, select, textarea {
 :root[data-design-style="apple"] input[type="email"]:not([class*="bg-"]),
 :root[data-design-style="apple"] input[type="tel"]:not([class*="bg-"]),
 :root[data-design-style="apple"] input[type="search"]:not([class*="bg-"]),
-:root[data-design-style="apple"] textarea:not([class*="bg-"]),
+:root[data-design-style="apple"] textarea:where(:not(.admin-text-input)):not([class*="bg-"]),
 :root[data-design-style="apple"] select:not([class*="bg-"]) {
   background-color: rgba(0, 0, 0, 0.03) !important;
 }
@@ -473,7 +473,7 @@ body, .glass-card, button, a, div, section, input, select, textarea {
 :root[data-design-style="apple"] input[type="email"],
 :root[data-design-style="apple"] input[type="tel"],
 :root[data-design-style="apple"] input[type="search"],
-:root[data-design-style="apple"] textarea,
+:root[data-design-style="apple"] textarea:where(:not(.admin-text-input)),
 :root[data-design-style="apple"] select {
   border: 1px solid transparent !important;
   border-radius: var(--input-radius) !important;
@@ -485,7 +485,7 @@ body, .glass-card, button, a, div, section, input, select, textarea {
 :root[data-design-style="apple"] input[type="email"]:not([class*="text-"]),
 :root[data-design-style="apple"] input[type="tel"]:not([class*="text-"]),
 :root[data-design-style="apple"] input[type="search"]:not([class*="text-"]),
-:root[data-design-style="apple"] textarea:not([class*="text-"]),
+:root[data-design-style="apple"] textarea:where(:not(.admin-text-input)):not([class*="text-"]),
 :root[data-design-style="apple"] select:not([class*="text-"]) {
   font-size: var(--input-font-size) !important;
 }
@@ -494,7 +494,7 @@ body, .glass-card, button, a, div, section, input, select, textarea {
 :root[data-design-style="apple"] input[type="email"]:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
 :root[data-design-style="apple"] input[type="tel"]:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
 :root[data-design-style="apple"] input[type="search"]:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
-:root[data-design-style="apple"] textarea:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
+:root[data-design-style="apple"] textarea:where(:not(.admin-text-input)):not([class*="h-"]):not([class*="py-"]):not([class*="p-"]),
 :root[data-design-style="apple"] select:not([class*="h-"]):not([class*="py-"]):not([class*="p-"]) {
   padding-top: 10px !important;
   padding-bottom: 10px !important;
@@ -504,7 +504,7 @@ body, .glass-card, button, a, div, section, input, select, textarea {
 :root[data-design-style="apple"] input[type="email"]:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
 :root[data-design-style="apple"] input[type="tel"]:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
 :root[data-design-style="apple"] input[type="search"]:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
-:root[data-design-style="apple"] textarea:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] textarea:where(:not(.admin-text-input)):not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]),
 :root[data-design-style="apple"] select:not([class*="pl-"]):not([class*="px-"]):not([class*="p-"]) {
   padding-left: 16px !important;
 }
@@ -526,7 +526,7 @@ body, .glass-card, button, a, div, section, input, select, textarea {
 :root[data-design-style="apple"] input[type="email"]:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
 :root[data-design-style="apple"] input[type="tel"]:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
 :root[data-design-style="apple"] input[type="search"]:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
-:root[data-design-style="apple"] textarea:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
+:root[data-design-style="apple"] textarea:where(:not(.admin-text-input)):not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]),
 :root[data-design-style="apple"] select:not([class*="pr-"]):not([class*="px-"]):not([class*="p-"]) {
   padding-right: 16px !important;
 }
@@ -535,7 +535,7 @@ body, .glass-card, button, a, div, section, input, select, textarea {
 :root[data-design-style="apple"] input[type="email"]:focus,
 :root[data-design-style="apple"] input[type="tel"]:focus,
 :root[data-design-style="apple"] input[type="search"]:focus,
-:root[data-design-style="apple"] textarea:focus,
+:root[data-design-style="apple"] textarea:where(:not(.admin-text-input)):focus,
 :root[data-design-style="apple"] select:not([class*="border"]):not([class*="bg-"]):focus {
   background-color: #ffffff !important;
   border-color: #0071e3 !important;

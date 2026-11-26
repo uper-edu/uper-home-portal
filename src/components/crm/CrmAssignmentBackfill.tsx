@@ -1,7 +1,8 @@
+import {AdminListState} from '../admin/AdminList';
 import {backfillPreviewSummary} from '../../utils/assignmentBackfillPresentation';
 import {useEffect,useState} from 'react';
 import {CrmOperationLayer} from './CrmOperationLayer';
-import {CrmDiscardDialog} from './CrmDetailWorkspace';
+import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
 import type {AutoAssignmentPolicy} from '../../types/crmPolicyConfig';
 import type {CrmLanguage} from '../../utils/crmLanguage';
@@ -13,16 +14,36 @@ export function CrmAssignmentBackfill({configuration,lang,isLight,onClose}:{conf
  const t=(zh:string,en:string,id:string)=>({zh,en,id})[lang];
  const [preview,setPreview]=useState<any>(),[result,setResult]=useState<any>(),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[unknown,setUnknown]=useState(false),[message,setMessage]=useState(''),[confirmClose,setConfirmClose]=useState(false);
  const error=(code:string)=>code==='backfill_settings_changed'||code==='backfill_rotation_changed'?t('设置或轮询顺序已变化，请重新预览后确认。','Settings or rotation changed. Refresh the preview before confirming.','Pengaturan atau giliran berubah. Perbarui pratinjau sebelum konfirmasi.'):code==='backfill_participants_required'?t('请先选择参与销售，再预览分配结果。','Select participating salespeople before previewing.','Pilih sales peserta sebelum melihat pratinjau.'):(code==='backfill_preview_expired'||code==='backfill_preview_invalid')?t('预览已过期，请重新预览。','Preview expired. Refresh the preview.','Pratinjau kedaluwarsa. Perbarui pratinjau.'):t('暂时无法完成，请重新核对权限和设置。','Unable to complete. Review your access and settings.','Belum dapat diselesaikan. Periksa izin dan pengaturan.');
- useEffect(()=>{const abort=new AbortController();setLoading(true);fetch('/api/crm/assignment-backfill/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({configuration}),signal:abort.signal}).then(async r=>{const body=await r.json();if(!r.ok)throw Object.assign(Error(body.error),{status:r.status});return body}).then(setPreview).catch(e=>{if(!abort.signal.aborted)setMessage(error(e.message))}).finally(()=>{if(!abort.signal.aborted)setLoading(false)});return()=>abort.abort()},[]);
+ const [previewAttempt,setPreviewAttempt]=useState(0);
+ const [previewFailure,setPreviewFailure]=useState<'denied'|'error'>();
+ useEffect(()=>{
+   const abort=new AbortController();
+   setLoading(true);setPreview(undefined);setPreviewFailure(undefined);setMessage('');
+   void fetch('/api/crm/assignment-backfill/preview',{method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({configuration}),signal:abort.signal}).then(async r=>{
+     if(abort.signal.aborted)return;
+     if(r.status===401||r.status===403){setPreviewFailure('denied');return;}
+     if(r.status>=500)throw Error();
+     const body=await r.json();
+     if(abort.signal.aborted)return;
+     if(!r.ok){setMessage(error(body.error));setPreviewFailure('error');return;}
+     setPreview(body);
+   }).catch(()=>{if(!abort.signal.aborted)setPreviewFailure('error');})
+     .finally(()=>{if(!abort.signal.aborted)setLoading(false);});
+   return()=>abort.abort();
+ },[previewAttempt]);
  const query=async()=>{setBusy(true);try{const r=await fetch('/api/crm/assignment-backfill/results/'+preview.id,{cache:'no-store'});if(r.status===401||r.status===403){setPreview(undefined);setUnknown(false);throw Error('permission')}if(!r.ok)throw Error();setResult(await r.json());setUnknown(false);setMessage('')}catch{setMessage(t('尚未确认分配结果，请稍后再次核对，不要重复提交。','The assignment result is unconfirmed. Check again later; do not submit again.','Hasil penugasan belum dikonfirmasi. Periksa lagi nanti; jangan kirim ulang.'))}finally{setBusy(false)}};
  const apply=async()=>{setBusy(true);setMessage('');try{const r=await fetch('/api/crm/assignment-backfill/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:preview.token}),signal:AbortSignal.timeout(20000)});const data=await r.json();if(!r.ok){if(r.status>=400&&r.status<500){if(r.status===401||r.status===403)setPreview(undefined);else setPreview({...preview,confirmable:false});setMessage(error(data.error));return}throw Error()}setResult(data)}catch{setUnknown(true);setMessage(t('暂时无法确认是否已分配。请先查询结果，避免重复分配。','We could not confirm assignment. Check the result before trying again.','Belum dapat memastikan penugasan. Periksa hasil sebelum mencoba lagi.'))}finally{setBusy(false)}};
  const close=()=>{if(busy)return;if(unknown)setConfirmClose(true);else onClose()};
  return <><CrmOperationLayer compose customerContext={false} title={t('分配现有未分配客户','Assign existing unassigned customers','Tugaskan pelanggan yang belum ditugaskan')} lang={lang} isLight={isLight} onClose={close} busy={busy} className="crm-backfill-drawer"><div className="crm-editor-compose"><div className="crm-editor-scroll crm-backfill-preview">
  <p>{t('确认后分配；已被认领或不再符合条件的客户自动跳过，原期限不变。','Assign after confirmation; claimed or ineligible customers are skipped. Existing deadlines are retained.','Ditugaskan setelah konfirmasi; pelanggan yang telah diambil atau tidak memenuhi syarat dilewati. Tenggat lama tetap.')}</p>
  {loading&&<p role="status">{t('正在生成分配预览…','Preparing assignment preview…','Menyiapkan pratinjau penugasan…')}</p>}
- {message&&<AdminFormFeedback lang={lang} state={unknown?'unknown':'error'}>{message}</AdminFormFeedback>}
+ {previewFailure&&<AdminListState lang={lang} state={previewFailure} compact
+   message={previewFailure==='error'?message||t('暂时无法生成分配预览。','Assignment preview could not be loaded.','Pratinjau penugasan belum dapat dimuat.'):undefined}
+   onRetry={()=>setPreviewAttempt(value=>value+1)}/>}
+ {message&&!previewFailure&&<AdminFormFeedback lang={lang} state={unknown?'unknown':'error'}>{message}</AdminFormFeedback>}
  {preview&&<><p className="crm-backfill-summary" role="status">{backfillPreviewSummary(preview,lang)}</p>{!preview.confirmable&&!result&&<p className="crm-work-muted">{t('预览基于未保存的设置。请关闭预览并先保存设置，再核对确认。','This preview uses unsaved settings. Close it and save settings before confirming.','Pratinjau memakai pengaturan yang belum disimpan. Tutup dan simpan pengaturan sebelum konfirmasi.')}</p>}
  {result&&<AdminFormFeedback state="saved" lang={lang}>{t(`已分配 ${result.assigned} 位，跳过 ${result.skipped} 位。`,`Assigned ${result.assigned}; skipped ${result.skipped}.`,`Ditugaskan ${result.assigned}; dilewati ${result.skipped}.`)}</AdminFormFeedback>}
  {preview.rows.length?<CrmBackfillTable rows={preview.rows} result={result} lang={lang}/>:<p>{t('暂无符合条件的未分配客户。','No eligible unassigned customers.','Tidak ada pelanggan belum ditugaskan yang memenuhi syarat.')}</p>}</>}
- </div><AdminFormActions className="crm-editor-actions"><div className="crm-backfill-button-group"><button type="button" className="crm-work-button" disabled={busy} onClick={close}>{result?t('关闭','Close','Tutup'):t('取消','Cancel','Batal')}</button>{!result&&(unknown?<button type="button" className="crm-work-button" data-primary disabled={busy} onClick={query}>{t('查询分配结果','Check assignment result','Periksa hasil penugasan')}</button>:<button type="button" className="crm-work-button" data-primary disabled={loading||busy||!preview?.confirmable||!preview?.rows?.length} onClick={apply}>{busy?t('正在分配…','Assigning…','Menugaskan…'):(preview?.rows?.length?t(`确认分配（${preview.rows.length}位）`,`Confirm assignment (${preview.rows.length})`,`Konfirmasi penugasan (${preview.rows.length})`):t('确认分配','Confirm assignment','Konfirmasi penugasan'))}</button>)}</div></AdminFormActions></div></CrmOperationLayer>{confirmClose&&<CrmDiscardDialog lang={lang} isLight={isLight} title={t('关闭前请核对分配结果','Check the result before closing','Periksa hasil sebelum menutup')} description={t('分配结果尚未确认。关闭后请在执行与变更历史中核对，不要重复分配。','Assignment is unconfirmed. After closing, check execution history before assigning again.','Penugasan belum dikonfirmasi. Setelah ditutup, periksa riwayat sebelum menugaskan kembali.')} discardLabel={t('关闭','Close','Tutup')} onKeep={()=>setConfirmClose(false)} onDiscard={onClose} keepLabel={t('继续核对','Keep checking','Lanjut periksa')}/>}</>;
+ </div><AdminFormActions className="crm-editor-actions"><div className="crm-backfill-button-group"><button type="button" className="crm-work-button" disabled={busy} onClick={close}>{result?t('关闭','Close','Tutup'):t('取消','Cancel','Batal')}</button>{!result&&(unknown?<button type="button" className="crm-work-button" data-primary disabled={busy} onClick={query}>{t('查询分配结果','Check assignment result','Periksa hasil penugasan')}</button>:<button type="button" className="crm-work-button" data-primary disabled={loading||busy||!preview?.confirmable||!preview?.rows?.length} onClick={apply}>{busy?t('正在分配…','Assigning…','Menugaskan…'):(preview?.rows?.length?t(`确认分配（${preview.rows.length}位）`,`Confirm assignment (${preview.rows.length})`,`Konfirmasi penugasan (${preview.rows.length})`):t('确认分配','Confirm assignment','Konfirmasi penugasan'))}</button>)}</div></AdminFormActions></div></CrmOperationLayer>{confirmClose&&<AdminDiscardDialog lang={lang} isLight={isLight} title={t('关闭前请核对分配结果','Check the result before closing','Periksa hasil sebelum menutup')} description={t('分配结果尚未确认。关闭后请在执行与变更历史中核对，不要重复分配。','Assignment is unconfirmed. After closing, check execution history before assigning again.','Penugasan belum dikonfirmasi. Setelah ditutup, periksa riwayat sebelum menugaskan kembali.')} discardLabel={t('关闭','Close','Tutup')} onKeep={()=>setConfirmClose(false)} onDiscard={onClose} keepLabel={t('继续核对','Keep checking','Lanjut periksa')}/>}</>;
 }

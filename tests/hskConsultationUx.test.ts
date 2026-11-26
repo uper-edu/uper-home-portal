@@ -7,10 +7,20 @@ import { newHskAttempt, gradeHskAttempt } from '../src/data/hskAssessment';
 import { getVersionQuestions } from '../src/data/hskAssessmentVersions';
 import { learnerScreeningGuidance, learnerAssessmentGuidance } from '../src/data/hskLearnerGuidance';
 import { hskWhatsAppDraft } from '../src/services/hskWhatsApp';
-import { consultationFocus, consultationProfile } from '../server/portal/consultationGuidance';
+import { assessedBeginnerNextStep, assessmentIntroOpening, assessmentScopeNote, consultationFocus, consultationProfile, profileIntroQuote, resolveRecommendationTiming } from '../server/portal/consultationGuidance';
 import HskAssessmentReport from '../src/components/HskAssessmentReport';
 import HSKPlacementAssessment from '../src/components/HSKPlacementAssessment';
 import { getChatAssessmentStatus } from '../src/services/studentProfileStorage';
+
+test('the consultation states the actual assessment scope and validates next-step availability',()=>{
+  assert.match(assessmentScopeNote('zh'),/听力、阅读和汉字辨认，未测口语或手写/);
+  assert.match(assessmentScopeNote('en'),/does not assess speaking or handwriting/);
+  assert.match(assessmentScopeNote('id'),/berbicara dan menulis tangan tidak dinilai/);
+  const availability={evidence:'一周两天都能上课',maximumWeeklySessions:2};
+  assert.deepEqual(assessedBeginnerNextStep(availability,'我一周两天都能上课，下一步怎么选？'),availability);
+  assert.equal(assessedBeginnerNextStep(availability,'我的口语怎么样？'),undefined);
+  assert.equal(assessedBeginnerNextStep({...availability,maximumWeeklySessions:8},availability.evidence),undefined);
+});
 
 function sample(counts:number[]=[5,5,5],mode:'express'|'full'='express'){
   const attempt=newHskAttempt(mode,randomUUID());attempt.completedAt=new Date().toISOString();
@@ -26,7 +36,7 @@ test('14/15 stable start hides irrelevant unanswered warning without modifying g
   assert.equal(guidance.needsReview,false);assert.equal(guidance.review,'');assert.match(guidance.start,/HSK 3 consolidation and practical use/);
   const html=renderToStaticMarkup(React.createElement(HskAssessmentReport,{result,lang:'en'}));
   assert.doesNotMatch(html,/Tentative|verify the starting point|Saved|An initial starting-point/);
-  assert.match(html,/14\/15/);assert.match(html,/Unanswered: 1/);
+  assert.match(html,/<strong>14<\/strong><span> \/ 15<\/span>/);assert.match(html,/Unanswered <strong>1<\/strong>/);
   assert.doesNotMatch(hskWhatsAppDraft({goal:'Work in China'},result,'en').message,/Tentative|Some items were unanswered/);
   assert.equal(JSON.stringify(result),original);
 });
@@ -45,7 +55,7 @@ test('material missing answers, conflicting difficulty and audio failures retain
 test('successful reports hide routine status; failed synchronization keeps retry and Full denominators',()=>{
   const r={...gradeHskAttempt(sample([15,17,18],'full')),saveStatus:'saved' as const};
   const saved=renderToStaticMarkup(React.createElement(HskAssessmentReport,{result:r,lang:'en'}));
-  assert.match(saved,/50\/50/);assert.doesNotMatch(saved,/Saved|Retry saving/);
+  assert.match(saved,/<strong>50<\/strong><span> \/ 50<\/span>/);assert.doesNotMatch(saved,/Saved|Retry saving/);
   assert.match(learnerAssessmentGuidance(r,'en')!.start,/HSK 3 consolidation/);
   const local=renderToStaticMarkup(React.createElement(HskAssessmentReport,{result:{...r,saveStatus:'local'},lang:'en',onRetry:()=>{}}));
   assert.match(local,/Results have not synced/);assert.match(local,/Retry saving/);
@@ -69,4 +79,112 @@ test('consultation question follows explicit request and supplied profile withou
   assert.equal(consultationProfile({...p,goal:'Prepare for HSK certification'})?.hskExamPlan,'Within 6 months');
   assert.equal(consultationProfile({...p,reportedLevel:'Beginner'},true)?.reportedLevel,undefined);
   assert.equal(consultationProfile({...p,reportedLevel:'Beginner'},true)?.selfReportedBeforeAssessment,'Beginner');
+});
+
+test('the selected fee topic uses a known online level without guessing offline or unknown quotes',()=>{
+  const profile={mode:'Online',reportedLevel:'Complete beginner',buyingSignals:['Asked schedule','Asked price']};
+  assert.deepEqual(profileIntroQuote(consultationProfile(profile)),{kind:'quote',level:'HSK 1',fields:['price']});
+  assert.equal(profileIntroQuote(consultationProfile({...profile,mode:'Offline'})),undefined);
+  assert.equal(profileIntroQuote(consultationProfile({...profile,reportedLevel:'Not sure'})),undefined);
+});
+test('assessment introductions distinguish prior study from placement and surface playback uncertainty',()=>{
+  const guidance={level:'HSK 1',start:'HSK 1 内容',review:'部分听力未正常播放，建议进一步确认。',needsReview:false};
+  assert.match(assessmentIntroOpening(guidance,'HSK 3','zh'),/建议先从 HSK 1.*填写的 HSK 3.*学习起点建议/);
+  assert.doesNotMatch(assessmentIntroOpening(guidance,'HSK 1','zh'),/你填写的/);
+  assert.equal(assessmentIntroOpening({...guidance,needsReview:true},'HSK 3','zh'),guidance.review);
+});
+
+test('class recommendations wait for an owned later assessment or an explicit change of mind',()=>{
+  const defer={change:'defer',evidence:'测评后再推荐'};
+  const initial=resolveRecommendationTiming(defer,undefined,'我周末有空，请测评后再推荐。',200,undefined,1);
+  assert.deepEqual(initial,{waiting:{requestedAt:200,limit:1},acknowledge:true,completed:false});
+  const pending=initial.waiting!;
+  assert.deepEqual(resolveRecommendationTiming(undefined,pending,'我先做测评',300,undefined,undefined).waiting,pending);
+  assert.deepEqual(resolveRecommendationTiming(undefined,pending,'',undefined,199,undefined).waiting,pending);
+  assert.equal(resolveRecommendationTiming(undefined,pending,'',undefined,301,undefined).completed,true);
+  const resume={change:'resume',evidence:'现在就推荐'};
+  assert.equal(resolveRecommendationTiming(resume,pending,'我改主意了，现在就推荐',300,undefined,undefined).waiting,undefined);
+  assert.deepEqual(resolveRecommendationTiming(resume,pending,'我还在做测评',300,undefined,undefined).waiting,pending);
+  assert.equal(resolveRecommendationTiming(defer,undefined,'我想看班次',200,undefined,1).acknowledge,false);
+});
+
+test('assessment retry reads the owned receipt before deciding whether to save', async t => {
+  const {retryHskAttempt}=await import('../src/services/portalChat');
+  const {selectVisitorScope}=await import('../src/services/visitorScope');
+  const scope='a'.repeat(64);
+  selectVisitorScope(scope);
+  t.after(()=>selectVisitorScope(''));
+  const attempt=sample();
+  const result={...gradeHskAttempt(attempt,'en'),saveStatus:'saved'};
+  const requests:string[]=[];
+  let receipt:Response;
+  let switchDuringRead=false;
+  t.mock.method(globalThis,'fetch',async (url:string,init?:RequestInit)=>{
+    if(url==='/api/portal/session')return Response.json({registered:false,cacheScope:scope});
+    assert.equal(new Headers(init?.headers).get('X-Visitor-Scope'),scope);
+    const method=init?.method??'GET';
+    requests.push(method);
+    if(method==='POST'){
+      assert.deepEqual(JSON.parse(String(init?.body)),{attempt,lang:'en'});
+      return Response.json({result});
+    }
+    if(switchDuringRead)selectVisitorScope('b'.repeat(64));
+    return receipt;
+  });
+  receipt=Response.json({result});
+  assert.deepEqual(await retryHskAttempt(attempt,'en',scope),result);
+  assert.deepEqual(requests.splice(0),['GET']);
+  receipt=Response.json({error:'Attempt not found'},{status:404});
+  assert.deepEqual(await retryHskAttempt(attempt,'en',scope),result);
+  assert.deepEqual(requests.splice(0),['GET','POST']);
+  receipt=Response.json({error:'unavailable'},{status:503});
+  await assert.rejects(retryHskAttempt(attempt,'en',scope),/unavailable/);
+  assert.deepEqual(requests.splice(0),['GET']);
+  receipt=Response.json({result:{...result,attempt:{...attempt,answers:{...attempt.answers,[Object.keys(attempt.answers)[0]]:null}}}});
+  await assert.rejects(retryHskAttempt(attempt,'en',scope),/different answers/);
+  assert.deepEqual(requests.splice(0),['GET']);
+  receipt=Response.json({result});
+  switchDuringRead=true;
+  await assert.rejects(retryHskAttempt(attempt,'en',scope),/Visitor changed/);
+  assert.deepEqual(requests,['GET']);
+});
+
+test('an uncertain assessment save reads the exact attempt once and never resubmits it',async t=>{
+  const {saveHskAttempt}=await import('../src/services/portalChat');
+  const {selectVisitorScope}=await import('../src/services/visitorScope');
+  const scope='a'.repeat(64);
+  selectVisitorScope(scope);
+  t.after(()=>selectVisitorScope(''));
+  const attempt=sample();
+  const result={...gradeHskAttempt(attempt,'en'),saveStatus:'saved'};
+  const requests:string[]=[];
+  let post=():Response=>{throw new TypeError('Connection dropped');};
+  let receipt=()=>Response.json({result});
+  t.mock.method(globalThis,'fetch',async(url:string,init?:RequestInit)=>{
+    if(url==='/api/portal/session')return Response.json({registered:false,cacheScope:scope});
+    assert.equal(new Headers(init?.headers).get('X-Visitor-Scope'),scope);
+    if(init?.method==='POST'){requests.push('POST');return post();}
+    assert.equal(url,'/api/portal/assessments/'+attempt.attemptId);
+    requests.push('GET');
+    return receipt();
+  });
+  const save=()=>saveHskAttempt(attempt,'en',scope);
+  assert.deepEqual(await save(),result);
+  assert.deepEqual(requests.splice(0),['POST','GET']);
+  post=()=>Response.json({});
+  assert.deepEqual(await save(),result);
+  assert.deepEqual(requests.splice(0),['POST','GET']);
+  post=()=>Response.json({error:'Unavailable'},{status:503});
+  receipt=()=>Response.json({error:'Attempt not found'},{status:404});
+  await assert.rejects(save(),/Unavailable/);
+  assert.deepEqual(requests.splice(0),['POST','GET']);
+  receipt=()=>Response.json({result:{...result,attempt:{...attempt,answers:{...attempt.answers,[Object.keys(attempt.answers)[0]]:null}}}});
+  await assert.rejects(save(),/different answers/);
+  assert.deepEqual(requests.splice(0),['POST','GET']);
+  post=()=>Response.json({error:'Request rejected'},{status:409});
+  await assert.rejects(save(),/Request rejected/);
+  assert.deepEqual(requests.splice(0),['POST']);
+  post=()=>Response.json({result});
+  assert.deepEqual(await save(),result);
+  assert.deepEqual(requests.splice(0),['POST']);
 });

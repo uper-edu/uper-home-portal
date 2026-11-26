@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {readEnvironment} from '../server/environment.mjs';
 import {openTrialDatabase} from '../cloud/mysql/database.mjs';
 import {approvedRemoteDevelopment} from '../cloud/mysql/transport.mjs';
+import {verifyPaymentAnalyticsSchema} from '../cloud/mysql/payment-analytics-schema.mjs';
 import {verifyCmsMediaSchema} from '../cloud/mysql/cms-media-schema.mjs';
 import {mediaDigest} from '../cloud/mysql/cms-media-storage.mjs';
 import {bootstrapSchemaVersion,inspectInitializationSql,verifyBootstrapRows} from './lib/cms-bootstrap-contract.mjs';
@@ -21,7 +22,8 @@ export async function verifyInitializationSql(sqlPath,{schemaVersion=bootstrapSc
   const counts={},rows={};
   for(const table of tables){const [items]=await c.query('SELECT * FROM `'+table+'`');rows[table]=items;counts[table]=items.length;}
   verifyBootstrapRows(rows,schemaVersion);
-  if(schemaVersion===18){
+  if(schemaVersion>=19)await verifyPaymentAnalyticsSchema(c,schemaVersion);
+  if(schemaVersion>=18){
    for(const [table,required] of [['campaign_promotion_index',['p','campaign_id']],['campaign_promotion_short_links',['p','short_code']]]){
     const [columns]=await c.query('SHOW FULL COLUMNS FROM `'+table+'`');
     if(required.some(name=>!columns.some(column=>column.Field===name)))throw Error('Missing promotion schema column');
@@ -34,6 +36,7 @@ export async function verifyInitializationSql(sqlPath,{schemaVersion=bootstrapSc
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const [sqlPath,option]=process.argv.slice(2);
- if(!sqlPath||option&&option!=='--legacy-v16'||process.argv.length>4)throw Error('Usage: cms-bootstrap-verify.mjs PRIVATE_INITIALIZATION_SQL [--legacy-v16]');
- verifyInitializationSql(sqlPath,{schemaVersion:option?16:bootstrapSchemaVersion}).catch(e=>{console.error(JSON.stringify({error:e.code||'SQL_VERIFICATION_FAILED',message:e.code?undefined:e.message}));process.exitCode=1;});
+ const legacyVersions={'--legacy-v16':16,'--legacy-v18':18,'--legacy-v19':19};
+ if(!sqlPath||option&&!Object.hasOwn(legacyVersions,option)||process.argv.length>4)throw Error('Usage: cms-bootstrap-verify.mjs PRIVATE_INITIALIZATION_SQL [--legacy-v16|--legacy-v18|--legacy-v19]');
+ verifyInitializationSql(sqlPath,{schemaVersion:legacyVersions[option]??bootstrapSchemaVersion}).catch(e=>{console.error(JSON.stringify({error:e.code||'SQL_VERIFICATION_FAILED',message:e.code?undefined:e.message}));process.exitCode=1;});
 }

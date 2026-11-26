@@ -10,7 +10,9 @@ DataPower账户 `399457165`。域名和业务接口保持不变。GA属性按正
 | 测试站 | UPER Test · 561827503 | UPER Staging · 16252453328 | G-YTELN0GKTF | home.prototype.uperedu.com，HTTPS |
 | 正式站 | UPER Production · 543450253 | UPER Web · 15159406809 | G-SZCY9WLK8X | uperedu.com、www.uperedu.com，HTTPS |
 
-公开ID和目标主机统一维护在 `src/data/analyticsEnvironments.json`；私有 `.env.dev`、`.env.test`、`.env.prod` 只填写各自的 `VITE_UPER_MEASUREMENT_ID`。不得依赖通用 `.env` 的旧正式ID替代缺失配置。构建发现缺失或错配即失败；运行发现主机错配即不启动统计，业务操作仍可用。
+公开 ID 和目标主机统一维护在 `src/data/analyticsEnvironments.json`。前端按构建目标读取这份映射。未知目标或无效衡量 ID 会中止构建。运行时继续校验构建环境、目标主机及 HTTPS。
+
+CRM 收退款统计在「系统管理 → 集成配置 → Google Analytics」维护加密的 API Secret 和服务端外发开关。已配置有效凭证、开启外发且后台运行时，首次启用自动记录起算时间，重启沿用。系统只处理起算后发生且已核实的款项。购买和退款共用程序生成的交易标识，报表可按交易核对金额和次数。
 
 ## 如何看报表
 

@@ -3,8 +3,17 @@ export const operationGroups = [
  ['Sales follow-up rules','Aturan tindak lanjut penjualan','销售跟进规则'],
  ['Notifications and audit','Notifikasi dan audit','通知与审计'],
 ] as const;
+export const operationGroupOrder = [0, 1, 2] as const;
+export const enrollmentSettingSections = [
+ {id:'courses',title:['Courses','Kursus','课程']},
+ {id:'enrollment-templates',title:['Class templates','Templat kelas','班型模板']},
+ {id:'enrollment-classes',title:['Enrollment classes','Kelas pendaftaran','报名班次']},
+ {id:'enrollment-rules',title:['Enrollment rules','Aturan pendaftaran','报名规则']},
+ {id:'enrollment-mail',title:['Admissions email','Email penerimaan','招生邮件']},
+] as const;
+export type EnrollmentSettingTopic = typeof enrollmentSettingSections[number]['id'];
+
 export const operationSections = [
- {id:'courses',group:0,title:['Courses & pricing','Kursus & harga','课程与报价'],purpose:['Manage published prices and enrollment statistics.','Kelola harga dan statistik pendaftaran.','维护课程报价与报名付款统计。'],steps:[['Course','Price','Enrollment'],['Kursus','Harga','Pendaftaran'],['课程','报价','报名']]},
  {id:'assignment',group:1,title:['Automatic assignment','Penugasan otomatis','自动分案'],purpose:['Assign new verified, unassigned customers to selected salespeople.','Tugaskan pelanggan baru terverifikasi tanpa penanggung jawab ke sales terpilih.','将身份已核实且未分配的新客户分配给选定销售。'],steps:[['New verified customer','Round robin','Assignment history'],['Pelanggan baru terverifikasi','Giliran','Riwayat penugasan'],['新客户身份已核实','轮询分配','保留归属历史']]},
  {id:'permissions',group:0,title:['Review and ownership','Verifikasi dan kepemilikan','核实与归属权限'],purpose:['Control who may verify and assign; existing record access still applies.','Atur siapa yang boleh memverifikasi dan menugaskan; izin catatan tetap berlaku.','控制谁可以核实和分配；仍受现有记录访问权限约束。'],steps:[['Existing access','Permitted action','Audit'],['Izin yang ada','Tindakan diizinkan','Audit'],['现有访问权限','允许的操作','保留审计']]},
  {id:'schedule',group:0,title:['Time zone and work calendar','Zona waktu dan kalender kerja','时区与工作日历'],purpose:['Define working periods used by response-deadline calculations.','Tentukan jam kerja untuk perhitungan tenggat respons.','定义响应期限计算采用的运营时区和工作时段。'],steps:[['Inquiry arrives','Work calendar','Response deadline'],['Pertanyaan masuk','Kalender kerja','Tenggat respons'],['咨询进入','核对工作日历','计算响应截止']]},
@@ -13,13 +22,43 @@ export const operationSections = [
  {id:'watchdog',group:1,title:['Inactivity reminders','Pengingat tidak aktif','长期未联系提醒'],purpose:['Configure follow-up checks; a reminder is not proof that contact occurred.','Atur pemeriksaan tindak lanjut; pengingat bukan bukti kontak terjadi.','配置未联系检查时长；提醒不等于已经发生联系。'],steps:[['Prior contact','Check next arrangement','Review reminder'],['Kontak sebelumnya','Periksa rencana berikutnya','Tinjau pengingat'],['已有联系','核对后续安排','检查提醒']]},
  {id:'milestone',group:1,title:['Trial and assessment','Uji coba dan asesmen','试听与测评'],purpose:['Configure time offsets around recorded events; do not infer attendance or enrollment.','Atur selisih waktu dari peristiwa tercatat; jangan menyimpulkan kehadiran atau pendaftaran.','围绕已记录事件配置时间偏移，不据此推断出席或报名。'],steps:[['Recorded event','Configured offset','Adviser follow-up'],['Peristiwa tercatat','Selisih waktu','Tindak lanjut penasihat'],['已记录事件','应用时间偏移','顾问跟进']]},
  {id:'reactivation',group:1,title:['Renewed inquiries','Pertanyaan kembali','重新咨询'],purpose:['Review previous context when a dormant customer asks again.','Tinjau konteks sebelumnya saat pelanggan lama bertanya kembali.','沉睡客户再次咨询时，先查看历史，再按配置的时限处理。'],steps:[['New inquiry','Review history','Respond within window'],['Pertanyaan baru','Tinjau riwayat','Respons sesuai tenggat'],['再次咨询','查看历史','按时限响应']]},
- {"id": "notification-rules", "group": 2, "title": ["Notification policies", "Kebijakan notifikasi", "通知策略"], "purpose": ["Configure event rules; save each policy separately.", "Atur pemicu peristiwa; simpan setiap kebijakan secara terpisah.", "配置事件规则；每条通知策略独立保存。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
  {"id": "notification-channels", "group": 2, "title": ["Channels", "Kanal", "通知渠道"], "purpose": ["Configure delivery channels; save each channel separately.", "Atur kanal pengiriman; simpan setiap kanal secara terpisah.", "配置发送渠道；每个渠道独立保存。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
+ {"id": "notification-rules", "group": 2, "title": ["Notification policies", "Kebijakan notifikasi", "通知策略"], "purpose": ["Configure event rules; save each policy separately.", "Atur pemicu peristiwa; simpan setiap kebijakan secara terpisah.", "配置事件规则；每条通知策略独立保存。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
  {"id": "notification-jobs", "group": 2, "title": ["Delivery records", "Catatan pengiriman", "发送记录"], "purpose": ["Review outcomes; API acceptance is not confirmed receipt.", "Tinjau hasil; penerimaan API bukan konfirmasi penerimaan pesan.", "查看发送结果；接口接受不代表实际收到。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
  {"id": "notification-audit", "group": 2, "title": ["Execution & change history", "Riwayat eksekusi dan perubahan", "执行与变更历史"], "purpose": ["Review execution and configuration changes without replaying events.", "Tinjau eksekusi dan perubahan tanpa mengirim ulang peristiwa.", "核对执行及配置变更，不重放历史事件。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
  {"id": "integration-readiness", "group": 2, "title": ["Integration checks", "Pemeriksaan integrasi", "接入检查"], "purpose": ["Check connectivity and configuration; tests use existing safeguards.", "Periksa koneksi dan konfigurasi; pengujian mengikuti pengamanan yang ada.", "检查连接和配置，测试仍遵循现有保护机制。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
 ] as const;
 export type OperationSection = typeof operationSections[number]['id'];
+export function resolveEnrollmentSettingsTopic(params:URLSearchParams):EnrollmentSettingTopic {
+ const topic=params.get('policyTopic');
+ if((!topic||topic==='courses')&&params.has('enrollmentClass')) return 'enrollment-classes';
+ return enrollmentSettingSections.find(section=>section.id===topic)?.id??'courses';
+}
+
+export function isLegacyEnrollmentSettings(params:URLSearchParams) {
+ const topic=params.get('policyTopic');
+ return params.get('tab')==='policy' && (enrollmentSettingSections.some(section=>section.id===topic)
+   || (!topic && params.has('enrollmentClass')));
+}
+
+export function enrollmentSettingsPath(topic:EnrollmentSettingTopic='courses',options?:{classId?:string;returnTo?:string;templateId?:string;createFrom?:string;createFromCourse?:string}){
+ const query=new URLSearchParams({tab:'enrollment-settings',policyTopic:topic});
+ if(topic==='enrollment-classes'&&options?.classId)query.set('enrollmentClass',options.classId);
+ if(options?.templateId)query.set('enrollmentTemplate',options.templateId);
+ if(options?.createFrom)query.set('createFromTemplate',options.createFrom);
+ if(options?.createFromCourse)query.set('createFromCourse',options.createFromCourse);
+ if(options?.returnTo)query.set('enrollmentReturn',options.returnTo);
+ return '/crm?'+query;
+}
+
+export function resolveOperationTopic(params:URLSearchParams, canManageOperations:boolean, canReadNotifications:boolean):OperationSection {
+ const topic=params.get('policyTopic');
+ if(canReadNotifications&&topic&&isNotificationTopic(topic)) return topic as NotificationTopic;
+ if(!canManageOperations) return 'notification-rules';
+ return operationSections.find(section=>section.id===topic&&section.group!==2&&
+   !['retry','milestone','reactivation'].includes(section.id))?.id??'permissions';
+}
+
 export function operationSectionForField(field:string):OperationSection {
  const prefix=field.split('.')[0];return ({autoAssignment:'assignment',businessHours:'schedule',firstResponseSla:'first_response',noResponseCadence:'retry',inactivityWatchdog:'watchdog',milestones:'milestone',reactivation:'reactivation'} as Record<string,OperationSection>)[prefix]||'permissions';
 }

@@ -10,6 +10,7 @@ const sources = fs
   .concat([
     "server/mysqlApplication.ts",
     "server/siteMetadata.ts",
+    "cloud/mysql/campaign-context.mjs",
     "cloud/mysql/site.mjs",
     "cloud/mysql/cms-media-upload.mjs",
     "cloud/mysql/cms-seed.mjs",

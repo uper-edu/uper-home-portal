@@ -265,8 +265,8 @@ test('profile attributes retain evidence with read-only grouped insights and con
  const dynamicProfile=React.createElement(CrmProfileEditor,{lead:value,timezone:'Asia/Jakarta',isLight:true,onSaved(){}});
  const html=renderToStaticMarkup(React.createElement(CrmCustomerProfile,{lead:value,lang:'zh',timezone:'Asia/Jakarta',dynamicProfile}));
  assert.match(html,/<h4>学习需求与偏好<\/h4>/);
- for(const text of ['基本资料','客户洞察','客户来源与分组','客户自报水平','HSK 2','周六晚上','时间安排','周末中文体验课','当前分组','首选沟通语言','更多操作','人工纠正学习需求']){
+ for(const text of ['基本资料','客户洞察','客户来源与分组','客户自报水平','HSK 2','周六晚上','时间安排','周末中文体验课','当前分组','首选沟通语言','人工纠正学习需求']){
    assert.ok(html.includes(text),text);
  }
- assert.doesNotMatch(html,/调整可上课时段/);assert.equal(JSON.stringify(value),before);
+ assert.doesNotMatch(html,/调整可上课时段|更多操作|crm-insights-more/);assert.match(html,/查看客户自报水平的原始依据/);assert.equal(JSON.stringify(value),before);
 });

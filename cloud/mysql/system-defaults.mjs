@@ -1,10 +1,14 @@
 import {systemCampaignDefaults} from './system-campaign-defaults.mjs';
 import {syncPromotionIndex} from './promotion-index.mjs';
-import defaults from './system-defaults.json' with {type:'json'};
-import courseBook from '../../src/data/crmCoursePrices.json' with {type:'json'};
+import defaults from '../../src/data/system-defaults/index.ts';
+import {enrollmentCoursePresets} from '../../src/data/system-defaults/courses.ts';
 import {LARK_DEFAULT_MAX_PER_HOUR} from '../../src/utils/larkNotificationDefaults.ts';
-import {validWebhook} from '../../server/portal/notificationDelivery.ts';
 import {CRM_BOT_CHANNEL} from '../../server/portal/policy.ts';
+import {findSystemLarkGroup, SYSTEM_LARK_GROUP_NAME} from '../../server/portal/larkSystemChannels.ts';
+import {GROUP_WEBHOOK_ENV_KEY, groupWebhookUsesEnvironment} from '../../server/portal/larkGroupWebhook.ts';
+import {notificationGroupIds} from '../../src/utils/notificationGroupTargets.ts';
+
+const parseConfig = value => typeof value === 'string' ? JSON.parse(value) : value;
 
 /** Runs inside the caller's schema lock. Insert missing presets, never reset counters or custom roles. */
 export async function initializeSystemDefaults(c){
@@ -33,25 +37,37 @@ export async function initializeSystemDefaults(c){
    }
   }
   await c.execute('INSERT INTO access_roles(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',['finance',JSON.stringify(defaults.finance)]);
-  const larkPreset = defaults.crmLarkBot;
-  if (validWebhook(process.env[larkPreset.secretRef])) {
-   const config = {...larkPreset, maxPerHour: LARK_DEFAULT_MAX_PER_HOUR};
+  const environmentWebhook = groupWebhookUsesEnvironment();
+  const larkConfig = {...defaults.crmLarkBot, maxPerHour: LARK_DEFAULT_MAX_PER_HOUR,
+   ...(environmentWebhook ? {secretRef: GROUP_WEBHOOK_ENV_KEY} : {})};
+  const [existingChannels] = await c.execute('SELECT id,config FROM notification_channels ORDER BY id FOR UPDATE');
+  const [daily] = await c.execute("SELECT config FROM notification_rules WHERE id='daily.digest'");
+  const dailyConfig = parseConfig(daily[0]?.config);
+  const systemGroup = findSystemLarkGroup(
+   existingChannels.map(row => ({...row,config:parseConfig(row.config)})),
+   Array.isArray(dailyConfig?.channels) ? notificationGroupIds(dailyConfig) : [],
+  );
+  if (systemGroup) {
+   const addWebhookReference = environmentWebhook && !systemGroup.config.secretRef && !systemGroup.config.encryptedWebhook;
+   if (!systemGroup.config.systemManaged || systemGroup.config.groupName !== SYSTEM_LARK_GROUP_NAME || addWebhookReference) {
+    const config = {...systemGroup.config,groupName:SYSTEM_LARK_GROUP_NAME,systemManaged:true,
+     ...(addWebhookReference ? {secretRef: GROUP_WEBHOOK_ENV_KEY} : {})};
+    await c.execute('UPDATE notification_channels SET config=? WHERE id=?',[JSON.stringify(config),systemGroup.id]);
+   }
+  } else {
    await c.execute(
     'INSERT INTO notification_channels(id,config) VALUES(?,?) ON DUPLICATE KEY UPDATE id=id',
-    [CRM_BOT_CHANNEL, JSON.stringify(config)],
+    [CRM_BOT_CHANNEL, JSON.stringify(larkConfig)],
    );
   }
-  for(const course of courseBook.courses){
-   const id='hsk-standard-'+course.id.replace(/^HSK /,'').toLowerCase();
-   const [existing]=await c.execute("SELECT id FROM crm_courses WHERE id=? OR JSON_UNQUOTE(JSON_EXTRACT(value,'$.name'))=?",[id,course.id]);
-   if(existing.some(r=>r.id===id))continue;
-   if(existing.length>1)throw Error('Ambiguous existing standard course: '+course.id);
-   if(existing.length)continue; // Older manually seeded IDs retain pricing/history and existing enrollment references.
-   const config={name:course.id,sessions:course.sessions,price:course.total,active:true,maxDiscountBps:0,maxDiscountAmount:null};
+  const [catalogOverride]=await c.execute("SELECT id FROM portal_settings WHERE id='enrollment_catalog_replaced'");
+  const [existingCourses]=await c.execute('SELECT id FROM crm_courses LIMIT 1');
+  const presets=catalogOverride.length||existingCourses.length?[]:enrollmentCoursePresets;
+  for(const {id,config} of presets){
    const value={...config,presetKey:'hsk_standard_v1',updatedAt:at,history:[{id:'system-initialize-'+id,actor:'system',at,before:null,after:config}]};
    await c.execute('INSERT INTO crm_courses(id,revision,value) VALUES(?,1,?)',[id,JSON.stringify(value)]);
   }
   await syncPromotionIndex(c);
-  await c.commit();return {campaigns:records.map(r=>r.id),role:'finance',courses:courseBook.courses.length};
+  await c.commit();return {campaigns:records.map(r=>r.id),role:'finance',courses:presets.length};
  }catch(e){await c.rollback();throw e;}
 }

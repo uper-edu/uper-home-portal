@@ -15,18 +15,26 @@ test('source routes preserve catalogue filters, scope the card shortcut and reta
  const global=new URL(campaignReviewUrl(target.href,{search:'',type:'All',status:'All'}));
  for(const key of ['sourceIssue','sourceCampaign','campaignSearch','campaignType','campaignStatus'])assert.equal(global.searchParams.has(key),false,key);
 });
-test('exception presence includes customers without an assigned campaign and distinguishes load failures',()=>{
- assert.deepEqual(sourceReviewState({available:false,counts:{}},true),{pending:false,loading:true,unavailable:false});
- assert.deepEqual(sourceReviewState({available:false,counts:{}},false),{pending:false,loading:false,unavailable:true});
- assert.deepEqual(sourceReviewState({available:true,counts:{"":1}},false),{pending:true,loading:false,unavailable:false});
- assert.deepEqual(sourceReviewState({available:true,counts:{a:2}},false),{pending:true,loading:false,unavailable:false});
- assert.deepEqual(sourceReviewState({available:true,counts:{}},false),{pending:false,loading:false,unavailable:false});
+test('only the actionable queue count enables the entry and failure stays distinct from zero',()=>{
+ assert.deepEqual(sourceReviewState(undefined,true),{pending:false,unavailable:false});
+ assert.deepEqual(sourceReviewState(undefined,false),{pending:false,unavailable:true});
+ assert.deepEqual(sourceReviewState(0,false),{pending:false,unavailable:false});
+ assert.deepEqual(sourceReviewState(1,false),{pending:true,unavailable:false});
+ assert.deepEqual(sourceReviewState(2,true),{pending:false,unavailable:false});
 });
-test('heading exposes a manager-only secondary action, contextual return, and truthful availability text without module tabs',()=>{
- const props={reviewing:false,canManage:true,isLight:true,state:{pending:true,loading:false,unavailable:false},onOpen:()=>{},onReturn:()=>{}};
- const render=(patch:any={})=>renderToStaticMarkup(React.createElement(CampaignWorkspaceHeading,{...props,...patch}));
- const html=render();assert.match(html,/<h1[^>]*>Marketing Campaigns<\/h1>/);assert.match(html,/Promotion source exceptions/);assert.match(html,/Items need review/);assert.doesNotMatch(html,/<nav|Unverified sources|Review 2/);
- assert.doesNotMatch(render({canManage:false}),/<button|Promotion source exceptions|campaign-review-dot/);
- const review=render({reviewing:true});assert.match(review,/<h1[^>]*>Promotion source exceptions<\/h1>/);assert.match(review,/<span>Campaigns<\/span>/);assert.doesNotMatch(review,/campaign-source-review-trigger/);
- assert.match(render({state:{pending:false,loading:false,unavailable:true}}),/Status unavailable/);
+test('heading uses a shared warning action only for a provided manager entry',()=>{
+ const props={reviewing:false,canManage:true,isLight:true,onOpen:()=>{},onReturn:()=>{}};
+ const render=(patch:Partial<typeof props>&{returnToDetail?:boolean}={})=>renderToStaticMarkup(React.createElement(CampaignWorkspaceHeading,{...props,...patch}));
+ const html=render();
+ assert.match(html,/<h1[^>]*>Marketing Campaigns<\/h1>/);
+ assert.match(html,/crm-page-action--warning/);
+ assert.match(html,/Promotion source exceptions/);
+ assert.match(html,/Items need review/);
+ assert.doesNotMatch(render({onOpen:undefined}),/campaign-source-review-trigger|Promotion source exceptions/);
+ assert.doesNotMatch(render({canManage:false}),/campaign-source-review-trigger/);
+ const review=render({reviewing:true});
+ assert.match(review,/<h1[^>]*>Promotion source exceptions<\/h1>/);
+ assert.match(review,/class="admin-record-back"[^>]*>.*Back to campaign list<\/button>/);
+ assert.match(render({reviewing:true,returnToDetail:true}),/Back to campaign details/);
+ assert.doesNotMatch(review,/campaign-source-review-trigger/);
 });

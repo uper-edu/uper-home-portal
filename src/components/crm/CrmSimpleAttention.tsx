@@ -12,7 +12,7 @@ import {CrmProfileValueChange} from './CrmProfileValueChange';
 import {CrmEvidenceAction} from './CrmEvidenceAction';
 import {crmSourcePresentation} from '../../utils/crmSourcePresentation';
 import {profileFields} from '../../utils/crmDynamicProfile';
-import {requestSourceLabel,salesRecentHints,hintOccurrenceTimes,sortFollowupOccurrences,followupWindowGroups,groupSameSourceChanges,profileChangeLabel,profileChangeValues} from '../../utils/crmFollowupPresentation';
+import {requestSourceLabel,salesRecentHints,hintOccurrenceTimes,sortFollowupOccurrences,followupWindowGroups,groupSameSourceChanges,profileChangeLabel,profileChangeValues,hasRecentFollowupGoal} from '../../utils/crmFollowupPresentation';
 import {CrmSalesBrief,profileDisplay} from './CrmSalesBrief';
 import {projectInteractionTimeline} from '../../utils/crmInteractionTimeline';
 import {useCrmExtractions} from './useCrmExtractions';
@@ -23,10 +23,11 @@ import {CrmInteractionTimelines} from './CrmInteractionTimelines';
 import {useEffect,useRef,useState,useContext} from 'react';
 import {formatCrmOperatingTime,viewerTimeZone} from '../../utils/crmOperatingTime';
 import {dynamicProfileHints} from '../../utils/crmDynamicProfile';
+import {useCrmGoalReview} from './useCrmGoalReview';
 import {followupOverview} from '../../utils/crmFollowupOverview';
 import {crmMessageTimestamp} from '../../utils/crmMessageTime';
 import {agreementTime} from '../../utils/crmProgressDetails';
-export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children,feedback,onSource,onRefresh,onDirty,onBusy,modalSuspended,canEditProfile,recentSourceId,sourceFocus,onViewAssessment,onViewProfile,onViewStage,stageFeedback,focusTask,focusAgreement,now:clockNow}:any){
+export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children,feedback,onSource,onRefresh,onDirty,onBusy,modalSuspended,canEditProfile,recentSourceId,sourceFocus,onViewAssessment,onViewProfile,focusTask,focusAgreement,now:clockNow}:any){
  const ui=useCrmUiText(lang),openHistory=useContext(CrmHistoryAccess);
 
  const [clock,setClock]=useState(Date.now());const now=clockNow??clock;
@@ -38,8 +39,9 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  const extraction=useCrmExtractions(lead.id,lead.simpleRevision,recentSourceId,onRefresh);
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const evidence=(id:string,mode='view',withdrawCommitmentId?:string)=>{if(mode==='view'&&openHistory){openHistory({id});return;}if(mode==='amend'&&editing)return;setLedgerOpen(true);setFocusRequest({id,mode,withdrawCommitmentId,token:++token.current});};
- const freshHints=dynamicProfileHints(lead,now);
- const hints=[...(lead.informationHints||freshHints).filter((h:any)=>h.kind!=='change'),...freshHints.filter((h:any)=>h.kind==='change')],requests=[...(data?.requests||[])].sort((a:any,b:any)=>Date.parse(b.created_at)-Date.parse(a.created_at));
+ const goalReview=useCrmGoalReview(lead);
+ const freshHints=dynamicProfileHints(lead,now,goalReview);
+ const hints=[...(lead.informationHints||freshHints).filter((h:any)=>h.kind!=='change'&&h.id!=='difference:goal'),...freshHints.filter((h:any)=>h.kind==='change'||h.id==='difference:goal')],requests=[...(data?.requests||[])].sort((a:any,b:any)=>Date.parse(b.created_at)-Date.parse(a.created_at));
  const communication=projectInteractionTimeline(lead).communication;
  const visibleHints=salesRecentHints(lead,hints,v=>profileDisplay(v,lang)).map((h:any)=>{if(h.kind==='evidence'&&h.id?.startsWith('text-signal:')){const row=extraction.rows.find((r:any)=>h.evidenceIds?.includes(r.source_id));return {...h,presentationTitle:h.text.split(' · ')[0],presentationSource:row?.source_type==='customer_message'?'客户对话':row?.source_type==='sales_record'?'销售记录':row?.source_type==='sales_amendment'?'补充／修正':undefined,presentationAiDerived:Boolean(row)};}if(h.kind==='difference'&&h.id?.startsWith('difference:')){const field=h.id.slice(11),meta=lead.profileFieldMeta?.[field];if(meta){const differences=(meta.pendingDifferences||[]).filter((d:any)=>d.effective!==false&&!d.supersededBy&&h.evidenceIds?.includes(d.sourceFactId));return {...h,presentationField:profileFields[field]||field,presentationSource:'多份来源',presentationSources:[{label:'当前资料依据',value:profileDisplay(lead[field],lang),source:crmSourcePresentation(meta.sourceType),evidenceId:meta.sourceFactIds?.[0]},...differences.map((d:any,i:number)=>({label:'不同记录'+(i+1),value:profileDisplay(d.value,lang),source:crmSourcePresentation(d.sourceType),evidenceId:d.sourceFactId}))]};}}if(h.kind!=='change'||!h.id?.startsWith('change:'))return h;const field=h.id.slice(7),sourceType=lead.profileFieldMeta?.[field]?.sourceType,label=profileChangeLabel(lead,h,factProjection.events),values=profileChangeValues(lead,h,factProjection.events);return {...h,presentationLabel:label,presentationField:profileFields[field]||field,presentationChange:label==='资料变更'&&values?{before:profileDisplay(values.before,lang),after:values.after==null||typeof values.after==='string'&&!values.after.trim()||Array.isArray(values.after)&&!values.after.length?'已清空':profileDisplay(values.after,lang)}:undefined,presentationAiDerived:sourceType?crmSourcePresentation(sourceType).aiDerived:false,presentationSource:sourceType?crmSourcePresentation(sourceType).label:undefined,presentationText:sourceType?(profileFields[field]||field)+'：'+profileDisplay(lead[field],lang):h.text};});
  const openRecord=(id:string)=>evidence(id);
@@ -60,10 +62,8 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  const buckets=followupWindowGroups(points,now);
  const sections=[{id:'recent',title:'近7天动态',items:groupFollowupInteractions(groupSameSourceChanges(buckets.recent,lead,factProjection.events),lead,factProjection.events,extraction.rows)},{id:'important',title:'持续重要信息',items:groupFollowupInteractions(groupSameSourceChanges(buckets.important,lead,factProjection.events),lead,factProjection.events,extraction.rows)},{id:'unknown',title:'发生时间未注明',items:groupFollowupInteractions(groupSameSourceChanges(buckets.unknown,lead,factProjection.events),lead,factProjection.events,extraction.rows)}];
  return <div className="crm-followup-focus"><div className="crm-followup-save-feedback">{feedback}{recentSourceId&&<button type="button" className="crm-work-link" onClick={()=>openRecord(recentSourceId)}>{ui("查看本次记录")}</button>}</div>
- {feedback&&recentSourceId&&onViewStage&&canEditProfile&&<button type="button" className="crm-work-link" onClick={()=>onViewStage(recentSourceId)}>{ui("基于本次记录更新阶段")}</button>}
- {stageFeedback&&<p role="status" className="crm-stage-saved-notice">{stageFeedback}</p>}
  {focusTask?.id&&data&&<section id={'crm-notification-task-'+focusTask.id} tabIndex={-1} data-notification-focused className="crm-notification-task-target">{taskView?<><h4>{taskView.action}</h4><p>{taskView.status}</p>{taskView.times.map((v:any,i:number)=><p key={i}>{v.label} · {taskView.formatTime(v.value)}</p>)}</>:<p role="alert">{targetUnavailable(lang)}</p>}</section>}
- <CrmSalesBrief showStage={!openHistory} evidenceEvents={factProjection.events} lead={lead} lang={lang} isLight={isLight} onEvidence={evidence} onProfile={onViewProfile} onStage={onViewStage} canEdit={canEditProfile} milestones={<CrmFactMilestones key={lead.id} lead={lead} lang={lang} isLight={isLight}/>}/>
+ <CrmSalesBrief showStage={false} showGoal={hasRecentFollowupGoal(lead,now)} evidenceEvents={factProjection.events} lead={lead} lang={lang} onEvidence={evidence} onProfile={onViewProfile}/>
  <section className="crm-followup-now" aria-label={ui("沟通动态与重要信息")}><div className="crm-followup-section-heading"><h3>{t('Communication and important information','Komunikasi dan informasi penting','沟通动态与重要信息')}</h3></div>
  <CrmListAgreements focusedId={focusAgreement} lead={lead} lang={lang} timezone={timezone} detail now={now} onCorrect={!disabled&&!editing&&!modalSuspended?(v:any)=>{const log=(lead.followUpLogs||[]).find((l:any)=>[l.id,l.requestId].includes(v.sourceId));if(log)evidence(log.id,'amend',v.id);}:undefined}/>
  <CrmInteractionTimelines lead={lead} lang={lang} timezone={timezone} isLight={isLight} summaryMode hideHeading/>
@@ -80,6 +80,7 @@ export function CrmSimpleAttention({lead,lang,timezone,isLight,disabled,children
  {past.length>0&&<details className="crm-followup-secondary"><summary>{ui("客户约定历史 ·")}{past.length}</summary>{past.map((a:any)=><div key={a.id}><p>{a.action}</p><small>{agreementTime(a,timezone,lang)} · {ui(({active:'待处理',fulfilled:'已履行',cancelled:'已取消',rescheduled:'已改约',withdrawn:'误记已撤回'} as any)[a.status])}</small>{a.reason&&<p>{a.reason}</p>}{!disabled&&fulfilledAgreementRecord(lead,a.id)&&<button type="button" className="crm-work-link" disabled={modalSuspended} onClick={()=>setRestoreTarget(fulfilledAgreementRecord(lead,a.id))}>{ui('撤销误记履行')}</button>}{(a.fulfilmentCorrections||[]).map((c:any)=><p key={c.id}>{ui('撤销误记履行')} · {c.actor} · {c.reason}</p>)}</div>)}</details>}
  {lead.nextAction&&<details className="crm-followup-secondary"><summary>{ui("客户人工备注")}</summary><p className="crm-progress-original">{lead.nextAction}</p></details>}
  </section>
+ <CrmFactMilestones key={lead.id} lead={lead} lang={lang} isLight={isLight}/>
 
  {(!openHistory||focusRequest?.mode==='amend')&&<details className="crm-followup-source-section" open={ledgerOpen} ref={ledger} onToggle={e=>setLedgerOpen(e.currentTarget.open)}><summary><span>{ui("历史记录与依据")}</span><span>{ui("按原始互动追溯")}</span></summary><div className="crm-followup-source-body"><CrmFactLedger lang={lang} key={lead.id} onProjection={setFactProjection} hideHeading focusRequest={focusRequest} onEditing={setEditing} leadId={lead.id} lead={lead} onDirty={onDirty} onBusy={onBusy} suspended={modalSuspended} canEditProfile={canEditProfile} isLight={isLight} revision={lead.simpleRevision} timezone={timezone} disabled={disabled} onChanged={onRefresh} extractions={extraction.rows} extractionLoading={extraction.loading} extractionError={extraction.error} onReloadExtraction={extraction.reload} onViewAssessment={onViewAssessment} onSource={onSource} requests={data?.requests||[]}/></div></details>}
  {restoreTarget&&<CrmAgreementRestore lead={lead} target={restoreTarget} {...{lang,isLight,timezone,onDirty,onBusy}} onCancel={()=>setRestoreTarget(null)} onSaved={()=>{setRestoreTarget(null);onRefresh?.();}}/>}{children}

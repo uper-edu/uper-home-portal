@@ -1,6 +1,4 @@
-import archiveV2 from "./hskVersions/pdf-e80a3cbaabc5-audio-1d13ab13-choice-v2.json";
-import archiveV3 from "./hskVersions/pdf-e80a3cbaabc5-audio-1d13ab13-sequential-v3.json";
-import archiveV4 from "./hskVersions/pdf-e80a3cbaabc5-audio-1d13ab13-screening15-v4.json";
+import { readHskVersionArchive } from "./hskVersionArchives";
 import type { RealHskQuestion } from "./hskQuizQuestions";
 
 export const HSK_EXAM_VERSION = "pdf-e80a3cbaabc5-audio-1d13ab13-screening15-v4";
@@ -29,13 +27,18 @@ function freeze<T>(value: T): T {
   }
   return value;
 }
-// Keep every supported version here. Never edit an existing archive to update an exam.
-const versions: readonly HskVersion[] = freeze([archiveV2 as HskVersion, archiveV3 as HskVersion, archiveV4 as HskVersion]);
+const loadedVersions = new Map<string, HskVersion>();
 export class HskVersionUnavailableError extends Error {}
 export function findHskVersion(examVersion: unknown, scoringVersion: unknown) {
-  return versions.find(
-    (v) => v.examVersion === examVersion && v.scoringVersion === scoringVersion,
-  );
+  if (typeof examVersion !== "string") return;
+  let version = loadedVersions.get(examVersion);
+  if (!version) {
+    const archive = readHskVersionArchive(examVersion) as HskVersion | undefined;
+    if (!archive || archive.scoringVersion !== scoringVersion) return;
+    version = freeze(archive);
+    loadedVersions.set(examVersion, version);
+  }
+  if (version.scoringVersion === scoringVersion) return version;
 }
 export function requireHskVersion(
   examVersion: unknown,

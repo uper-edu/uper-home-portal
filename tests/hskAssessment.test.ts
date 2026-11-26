@@ -309,11 +309,13 @@ test("untrusted attempt fields cannot change grades, unknown options and mismatc
   for (const patch of [
     { examVersion: "old" },
     { answers: { 1: "Z" } },
+    { answers: { "01": "A" } },
     { answers: { 43: "A" } },
     { plays: { 26: 1 } },
     { activeSeconds: { 1: -1 } },
     { activeSeconds: { 1: 1.2 } },
     { audioFailures: [26] },
+    { audioFailures: ["1"] },
     { audioFailures: [1, 1] },
     { completedAt: "invalid" },
     { answers: [] },

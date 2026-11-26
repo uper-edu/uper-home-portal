@@ -1,4 +1,4 @@
-> Historical design dated 2026-10-14. Current deployment and environment policy: [2026-10-15 acceptance](company-host-deployment-20261015.md) and [environment configuration](environment-configuration.md). The approved test-only internal MySQL direct mode supersedes the TLS-only requirement below; shared certificates were not changed. Server environment is now `.env.test`.
+> Historical design dated 2026-10-14. See the [current notification release checklist](#测试站通知进程发布检查) for every company test release. See [2026-10-15 acceptance](company-host-deployment-20261015.md) and [environment configuration](environment-configuration.md) for current deployment policy. The approved test-only internal MySQL direct mode supersedes the TLS-only requirement below; shared certificates were not changed. Server environment is now `.env.test`.
 
 # Company trial deployment — local adaptation and release checklist
 
@@ -16,7 +16,7 @@ Target: `https://home.prototype.uperedu.com`, including `/chat`, `/crm`, `/cms`,
 
 1. Prepare a NEW `uper_trial_home` schema (standard MySQL 8, utf8mb4_0900_bin) and an application-specific account. The company tool normally creates `home`; it must be configured/extended for this dedicated schema. Never point the trial at `uper_local_crm` or import local customer data. The runtime currently runs idempotent schema migrations on startup, so the account needs schema-scoped DDL in addition to application DML; no global admin grants.
 2. Connect to `mysql:3306` over the backend network, using a CA whose server certificate has a SAN matching `mysql`. `MYSQL_CA_PEM` contains the certificate, not a file path. Never disable verification. Numeric IP TLS hosts are rejected because the current driver skips its hostname verification path for them. Wrong CA and DNS-name mismatch must fail.
-3. The private server `.env` belongs at `/opt/project/home/api/.env` with mode 0600, managed through the company tool. Inject DB password (URL-encoded), authorized OpenAI/DeepSeek keys and a new stable random `ACCESS_OPERATION_KEY`; never use a frontend VITE variable. Preserve approved AI model/base URL overrides; this task adds no AI quota.
+3. The private server `.env` belongs at `/opt/project/home/api/.env` with mode 0600, managed through the company tool. Inject DB password (URL-encoded), authorized OpenAI/DeepSeek keys; never use a frontend VITE variable. Preserve approved AI model/base URL overrides; this task adds no AI quota.
 4. For a NEW empty synthetic environment, provide `/data/private/initial-passwords.json` (name to strong unique password) readable only by the container user, mode 0600. It seeds the existing nine account identities with synthetic credentials; no production password hashes are copied. Coordinate testing accounts before opening access. After successful initialization remove the bootstrap file and env reference. Repeated startup must not reset existing passwords or roles. Ethan's system-administrator assignment, if required for this new environment, is a separate explicit audited permission change; it is not silently seeded.
 5. Backups are private. For maintenance use a compatible MySQL 8 client container and `MYSQL_BIN_DIRECTORY` for that container (usually `/usr/bin`), on the backend network. The Node backup helper now supports verified TLS CLI connections using a temporary 0600 CA file, removes that file afterwards, and passes no password in command arguments. The application image intentionally contains no backup client. Restore only to an explicitly selected EMPTY target, compare checksums and retain the security review gate; do not restore an old DB as an ordinary program rollback.
 
@@ -30,10 +30,17 @@ Target: `https://home.prototype.uperedu.com`, including `/chat`, `/crm`, `/cms`,
 
 ## Notifications and no replay
 
-- Start with `PORTAL_WORKER_ENABLED=false`, `PORTAL_NOTIFICATION_MODE=simulation` and all test channels in simulation mode. A running company simulation worker refuses live channels rather than pretending they were simulated. Missing channels fail explicitly.
-- After a separately approved TEST receipt check: `PORTAL_WORKER_ENABLED=true`, `PORTAL_NOTIFICATION_MODE=configured`, `LARK_TEST_GROUP=CRM_Leads_Update`. Map policies to this existing logical channel, display CRM Bot, use `secretRef=LARK_GROUP_CRM`, signing off. Only this channel may send live in company trial. Cards always say `UPER · TEST` and link to the same-domain CRM.
+- For isolated acceptance, configure the dedicated enrollment simulation database and both Lark channels in simulation mode. Set the group address in the private server environment using `LARK_GROUP_CRM`. Missing channels fail explicitly.
+- For a separately approved TEST receipt check, select live mode on the group channel and verify its Webhook and signing settings. Group policies use the selected CRM channel and deliver to the group configured by `LARK_GROUP_CRM`. Personal delivery requires its own live mode, an active employee with the relevant customer permission, and a binding to the configured Lark app. Cards say `UPER · TEST` and link to the same-domain CRM.
 - Owner → CRM Manager routing, policy snapshots, unknown-result handling, task cancellation and migration holds remain intact. Starting a worker is not permission to replay old failed/unknown/held jobs. Use the empty synthetic DB or individually reviewed NEW events only. API accepted is not actual group receipt.
 - Local acceptance uses only a stubbed Lark transport and synthetic credentials. It does not send a real group notification or call AI.
+
+### 测试站通知进程发布检查
+
+- [ ] **发布前**，确认常规测试站随 API 启动后台任务。需要隔离外发时，连接独立模拟库并核对库名与模拟邮箱配置。
+- [ ] **发布后**，检查健康状态和 worker 启动日志。独立模拟库应保持外发隔离，无需发送测试通知。
+
+验收记录仅保存模式与核对结果。检查时只提取指定变量，避免输出完整环境、密钥或通知内容。无需发送测试通知。
 
 ## Release order and outstanding host checks
 
@@ -47,7 +54,7 @@ Target: `https://home.prototype.uperedu.com`, including `/chat`, `/crm`, `/cms`,
 
 ## Administrator recovery and release
 
-Company production maintenance is now explicitly supported with a separate `maintenance.env.example`, `ACCESS_RECOVERY_MAINTENANCE=true`, paused workers and signed authorization. The application refuses to start with the maintenance flag. During review, `/api/health` returns 200 with `businessReady=false` and `reviewRequired=true`; this means the restricted management service is alive, not that business access has been released. A database runtime lease coordinates the application and offline credential changes across containers; localhost alone is not a stop proof. Company notifications run only inside that leased application.
+Company restore maintenance uses the separate `maintenance.env.example` and paused workers. Offline administrator authorization is retired. Pass `--administrator EXISTING_ID --password-file /private/path/temporary-password` along with the existing restore arguments. The password file must be owned by the operator and private. Select an active account that already has full system administrator permissions in the backup. The selected administrator signs in with the temporary password, changes it, then completes the existing security review before reopening business access. The application refuses to start with the maintenance flag. During review, `/api/health` returns 200 with `businessReady=false` and `reviewRequired=true`; this means the restricted management service is alive, not that business access has been released. A database runtime lease coordinates the application and offline maintenance across containers; localhost alone is not a stop proof. Company notifications run only inside that leased application.
 
 Both ordinary offline administrator recovery and backup restore install the business review gate, revoke sessions and retain historical notification holds. Review every active account with fresh credentials and current authorization snapshots, retain Robert/Ethan as two explicitly authorized complete administrators, then release and sign in again. Release never replays historical notifications. Compiled recovery and maintenance CLI artifacts are included in the locally built package; compatible MySQL client tools still belong in an approved maintenance container. See [company recovery procedure](./company-trial-recovery-20261014.md) for authorization, commands, result query, rollback and actual-host limits.
 

@@ -1,6 +1,20 @@
+import '../components/crm/crm-detail-workspace.css';
+import '../components/crm/campaign-workspace.css';
+import {AdminSavedReadError} from '../components/AdminFormLayout';
+import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
+import {AdminRecordHeader,type AdminBackTarget} from '../components/admin/AdminRecordHeader';
+import {formatCurrency} from '../utils/currency';
+import {paymentWorkspaceLabel} from '../utils/crmPaymentPresentation';
 import '../components/crm/crm-payments.css';
 import '../components/crm/crm-finance-workspace.css';
+import {CrmQueueCount, useCrmQueueSummary} from '../components/crm/CrmQueueCount';
 import {CrmFinanceWorkspace} from '../components/crm/CrmFinanceWorkspace';
+import {CrmEnrollmentManagement} from '../components/crm/CrmEnrollmentManagement';
+import {CrmEnrollmentSettings} from '../components/crm/CrmEnrollmentSettings';
+import {canViewEnrollmentManagement} from '../utils/crmEnrollmentManagement';
+import {enrollmentNeedsNoSalesClaim} from '../utils/crmEnrollment';
+import {CrmEnrollmentFinance} from '../components/crm/CrmEnrollmentFinance';
+import {dashboardScopes} from '../utils/crmOperationsDashboard';
 import {canVerifyPayments} from '../utils/crmPaymentWorklist';
 import {defaultCrmModule} from '../utils/crmLanding';
 import '../components/crm/crm-courses.css';
@@ -11,16 +25,24 @@ import {identityReviewedDetail} from '../utils/crmIdentityDetail';
 import {CrmEnrollmentCorrectionAccess,CrmEnrollmentCorrectionForm} from '../components/crm/CrmEnrollmentCorrection';
 import {CrmRecordAmendmentForm} from '../components/crm/CrmRecordAmendmentForm';
 import {canAmendSalesRecord,amendmentSaveNotice} from '../utils/crmRecordAmendments';
-import {CrmCurrentSalesState} from '../components/crm/CrmCurrentSalesState';
+import {CrmCustomerContactRestrictions} from '../components/crm/CrmCurrentSalesState';
 import {CrmCustomer360Button} from '../components/crm/CrmCustomer360Button';
 import {crmUiText} from '../utils/crmUiText';
 import {CrmHistoryAccess} from '../components/crm/CrmHistoryAccess';
+import {CrmEnrollmentNoticeTarget} from '../components/crm/CrmEnrollmentNoticeTarget';
+import {CrmCustomerOpportunities,CrmEnrollmentOpportunities} from '../components/crm/CrmEnrollmentOpportunities';
+import {CrmOpenEnrollmentOpportunity,type PurchaseIntentResult} from '../components/crm/CrmOpenEnrollmentOpportunity';
+import {CrmPurchaseIntentReview,CrmPurchaseIntentReviewAction} from '../components/crm/CrmPurchaseIntentReview';
+import type {PurchaseIntentSuggestion} from '../utils/crmPurchaseIntentSuggestion';
+import '../components/crm/crm-opportunities.css';
+import '../components/crm/crm-list.css';
+import '../components/crm/crm-lead-filters.css';
+import '../components/crm/crm-record-workspace.css';
 import {CrmCustomerHistoryWindow} from '../components/crm/CrmCustomerHistoryWindow';
 import {progressSaveSummary} from '../utils/crmProgressRecord';
 import {CrmIdentityAction} from '../components/crm/CrmIdentityAction';
 import {CrmOwnerEditor} from '../components/crm/CrmOwnerEditor';
 import {CrmUiProvider} from '../components/crm/CrmUiLanguage';
-import {salesProgressStages} from '../utils/crmSalesProgress';
 import '../components/crm/crm-operation-layer.css';
 import {profileSaveSummary} from '../utils/crmProfileSaveResult';
 import {CrmProfileEditor} from '../components/crm/CrmProfileFields';
@@ -34,17 +56,22 @@ import "../components/crm/crm-operations-workspace.css";
 import {CrmIdentityComparison} from '../components/crm/CrmIdentityComparison';
 import {CrmOperationLayer} from '../components/crm/CrmOperationLayer';
 import {identityRoute,identityUrl} from '../utils/crmIdentityNavigation';
-import {outreachText,canClaimForContact,isCrmManager} from '../utils/crmOutreach';
+import {outreachText,canClaimForContact,canReviewIdentityRole,isCrmManager} from '../utils/crmOutreach';
 import {CrmPolling,crmJson,CrmRefreshError,stableCrmOrder} from "../utils/crmPolling";
-import { CrmPageIdentity } from "../components/crm/CrmPageIdentity";
-import { CrmPageAction } from "../components/crm/CrmPageAction";
+import { AdminPageHeader } from '../components/admin/AdminPageHeader';
+import { AdminPageAction } from "../components/admin/AdminPageAction";
 import {leadDetailTab,leadDetailUrl} from "../utils/crmDetailNavigation";
-import {CrmDetailHeader,CrmDetailTabs,CrmSaveFeedback,CrmDiscardDialog} from "../components/crm/CrmDetailWorkspace";
+import {CrmDetailActions,CrmRecordTitle} from "../components/crm/CrmRecordWorkspace";
+import { CrmSaveFeedback } from "../components/crm/CrmDetailWorkspace";
+import { AdminContentNav } from "../components/admin/AdminContentNav";
+import { AdminDetailTabs } from "../components/admin/AdminDetailTabs";
+import { AdminDiscardDialog } from "../components/admin/AdminDiscardDialog";
 import {CrmFollowupContext} from "../components/crm/CrmFollowupContext";
-import { CrmDisclosure } from "../components/crm/CrmDisclosure";
-import {CrmTrustPanel,CrmStageEditor} from "../components/crm/CrmTrustPanel";
+import { AdminDisclosure } from "../components/admin/AdminDisclosure";
+import {CrmTrustPanel} from "../components/crm/CrmTrustPanel";
 import {PageMetadata} from '../components/PageMetadata';
 import {AccessHandoverPanel} from "../components/AccessSafetyPanel";
+import {isLegacyEnrollmentSettings,resolveOperationTopic,type OperationSection} from "../components/crm/operationsSections";
 import {eligibleOwner,permittedRecord} from '../utils/accessControl';
 import '../components/crm/crm-documentation.css';
 import { adminRoleLabel } from "../utils/adminWorkspace";
@@ -58,7 +85,6 @@ import {CrmOperationalIssues} from "../components/crm/CrmOperationalIssues";
 import {CrmContactPreview} from "../components/crm/CrmContactPreview";
 import {contactStatistics} from "../utils/crmContact";
 import {CrmWorkflowForm} from "../components/crm/CrmWorkflowForm";
-import { CrmSingleSelect } from "../components/crm/CrmSingleSelect";
 import { crmId } from "../utils/crmIndonesian";
 import { PolicySaveError } from "../utils/crmPolicyValidation";
 import { restorePolicyDefaults } from "../utils/crmPolicyReset";
@@ -91,7 +117,7 @@ import { LeadActivity } from "../components/LeadAttention";
 import { projectPendingTasks } from "../utils/crmTaskPresentation";
 import { CrmNextTaskSummary } from "../components/crm/CrmNextTaskSummary";
 import NotificationCenter from "../components/NotificationCenter";
-import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
+import React, { lazy,Suspense,useState, useEffect, useMemo, useRef, useLayoutEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { safeStorage } from "../utils/safeStorage";
 import {
@@ -107,12 +133,10 @@ import {
   Download,
   Filter,
   Search,
-  RefreshCw,
-  Calendar,
+Calendar,
   Award,
   ExternalLink,
   ArrowRight, ArrowLeft,
-  ArrowRightLeft,
   BookOpen,
   Building,
   Check,
@@ -173,12 +197,13 @@ import {
 } from "../components/crm/CrmPolicySettings";
 import { CrmUserGuide } from "../components/crm/CrmUserGuide";
 import { CrmCampaignHub } from "../components/crm/CrmCampaignHub";
+const CrmOperationsDashboard=lazy(()=>import('../components/crm/CrmOperationsDashboard').then(m=>({default:m.CrmOperationsDashboard})));
 // Unified Global Stage Master Dictionary
-export const STAGE_OPTIONS=salesProgressStages.map(([value,labelZh,labelEn])=>({value,labelZh,labelEn}));
 export default function CrmWorkbench() {
+  const enrollmentNotice=new URLSearchParams(window.location.search).get('tab')==='enrollment';
   return (
     <CrmAccess>
-      {(employee, lang, setLang) => employee.permissions.includes("crm.read") ? (
+      {(employee, lang, setLang) => enrollmentNotice ? <CrmEnrollmentNoticeTarget lang={lang}/> : employee.permissions.includes("crm.read") ? (
         <CrmUiProvider lang={lang}><CrmWorkspace
           key={employee.id}
           employee={employee}
@@ -189,6 +214,11 @@ export default function CrmWorkbench() {
     </CrmAccess>
   );
 }
+function isEnrollmentPaymentView(params:URLSearchParams){
+  return params.get('paymentView')==='enrollment'||params.has('enrollmentOrder');
+}
+const customerPaymentFilterKeys=['paymentState','paymentKind','paymentSearch','paymentPage'];
+
 function CrmWorkspace({
   employee,
   lang,
@@ -201,18 +231,37 @@ function CrmWorkspace({
   const canManage = employee.permissions.includes("notifications.manage") || employee.permissions.includes("crm.operations.manage") || employee.permissions.includes("notifications.read");
   const canAssign = employee.permissions.includes("crm.assign");
   const canFinance = canVerifyPayments(employee);
+  const canDashboard = dashboardScopes(employee).view;
+  const canEnrollmentManagement=canViewEnrollmentManagement(employee);
+  const canEnrollmentSupport=employee.permissions.includes("crm.read")&&employee.permissions.includes("crm.followup");
+  const [rulesDirty,setRulesDirty]=useState(false);
+  const [enrollmentSettingsEditorDirty,setEnrollmentSettingsEditorDirtyState]=useState(false);
+  const enrollmentSettingsEditorDirtyRef=useRef(false);
+  const setEnrollmentSettingsEditorDirty=useCallback((dirty:boolean)=>{
+    enrollmentSettingsEditorDirtyRef.current=dirty;
+    setEnrollmentSettingsEditorDirtyState(dirty);
+  },[]);
+  const canManageCampaigns = employee.active !== false && employee.permissions.includes("campaigns.manage");
+  const paymentQueue = useCrmQueueSummary("payments", canFinance ? employee.id : undefined);
+  const [enrollmentPaymentView,setEnrollmentPaymentView]=useState(()=>isEnrollmentPaymentView(new URLSearchParams(window.location.search)));
+  const [financeRefresh,setFinanceRefresh]=useState(0);
+  const [financeLoading,setFinanceLoading]=useState(false);
+  const financeTitle=adminText(lang,'Payment verification','Verifikasi pembayaran','收款核验');
+  const promotionQueue = useCrmQueueSummary("promotion", canManageCampaigns ? employee.id : undefined);
   const [financeDirty,setFinanceDirty]=useState(false);
   const [crmModule, setCrmModule] = useState<
-    "leads" | "campaigns" | "policy" | "docs" | "payments"
+    "leads" | "opportunities" | "campaigns" | "policy" | "docs" | "payments" | "enrollment-management" | "enrollment-aftercare" | "enrollment-settings" | "dashboard"
   >(() => {
     try {
       if (/^#(?:crm-guide-|chapter-)/.test(window.location.hash)) return "docs";
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
+      if(tab==="enrollment-settings"||isLegacyEnrollmentSettings(params))return "enrollment-settings";
       if(!tab&&(params.has('lead')||params.has('digestJob')))return 'leads';
       if (
-        tab === "docs" || tab === "payments" ||
+        tab === "docs" || tab === "payments" || tab === "opportunities" || tab==="dashboard" ||
         (tab === "policy" && canManage) ||
+        tab === "enrollment-management" || (tab === "enrollment-aftercare" && canEnrollmentSupport) ||
         tab === "leads" ||
         tab === "campaigns"
       ) {
@@ -222,8 +271,17 @@ function CrmWorkspace({
     return defaultCrmModule(employee);
   });
 
+  const canManageOperations = employee.permissions.includes("crm.operations.manage");
+  const canReadNotifications = employee.permissions.includes("notifications.read");
+  const [configurationLocation,setConfigurationLocation] = useState(()=>window.location.search);
+  const policyTopic = resolveOperationTopic(new URLSearchParams(configurationLocation),canManageOperations,canReadNotifications);
+
+  const [policyRead,setPolicyRead]=useState<'loading'|'error'|'ready'>('loading');
   const [policyConfig, setPolicyConfig] = useState<CrmPolicyConfig>(
     DEFAULT_CRM_POLICY_CONFIG,
+  );
+  const { data: identityQueue, refresh: refreshIdentityQueue } = useCrmQueueSummary(
+    "identity", canReviewIdentityRole(employee, policyConfig) ? employee.id : undefined,
   );
   const [notificationNavigationRequest, setNotificationNavigationRequest] =
     useState(0);
@@ -339,8 +397,8 @@ function CrmWorkspace({
   const employeeLabel = (e: (typeof employees)[number]) =>
     `${e.displayName || e.id} · ${e.roles?.map((role) => (e.roleLabels?.[role]?.[lang === "zh"?2:lang === "id"?1:0]||adminRoleLabel(role, lang))).join(" + ") || ""}`;
   useEffect(() => {
-    if (!canManage && crmModule === "policy") setCrmModule("leads");
-  }, [canManage, crmModule]);
+    if ((!canManage && crmModule === "policy")||(!canEnrollmentSupport&&crmModule==="enrollment-aftercare")) setCrmModule(defaultCrmModule(employee));
+  }, [canManage, canEnrollmentSupport, crmModule, employee]);
   const [taskFocus,setTaskFocus]=useState<{id:string;token:number}>();
   const [conversationReturn,setConversationReturn]=useState<any>();
   const [taskOpening,setTaskOpening]=useState(false);
@@ -349,12 +407,23 @@ function CrmWorkspace({
   const [workflowDirty,setWorkflowDirty]=useState(false);
   const [trustDirty,setTrustDirty]=useState(false);
   const [paymentOpen,setPaymentOpen]=useState(false),[paymentDirty,setPaymentDirty]=useState(false);
+  const [intentReview,setIntentReview]=useState<{customerId:string;suggestion:PurchaseIntentSuggestion}>();
+  const [intentRegistration,setIntentRegistration]=useState<PurchaseIntentSuggestion>();
+  const [intentDismissed,setIntentDismissed]=useState<string>();
+  const [opportunityOpen,setOpportunityOpen]=useState(false),[opportunityDirty,setOpportunityDirty]=useState(false);
+  const [purchaseIntentNotice,setPurchaseIntentNotice]=useState<(PurchaseIntentResult&{customerId:string})>();
+  useEffect(()=>{
+    if(!purchaseIntentNotice)return;
+    const timer=window.setTimeout(()=>setPurchaseIntentNotice(undefined),6000);
+    return ()=>window.clearTimeout(timer);
+  },[purchaseIntentNotice]);
+  const ownerReadback=useRef('');
+  const [ownerReadFailed,setOwnerReadFailed]=useState('');
   const [ownerOpen,setOwnerOpen]=useState(false),[ownerDirty,setOwnerDirty]=useState(false);
-  const [stageOpen,setStageOpen]=useState(false),[stageDirty,setStageDirty]=useState(false),[stageBasis,setStageBasis]=useState<string|undefined>(),[stageNotice,setStageNotice]=useState<any>(null);
   useEffect(()=>{if(contactPreview)trackEvent('crm_action_open',{action:'prepare_contact'});},[contactPreview]);
   useEffect(()=>{trackPageView();},[crmModule,lang,leadAnalysis]);
   useEffect(()=>{setAnalyticsRole(employee.permissions.includes('access.manage')?'admin':employee.permissions.includes('crm.assign')?'manager':employee.permissions.includes('crm.followup')?'sales':'staff');return()=>setAnalyticsRole();},[employee.id,employee.permissions.join(',')]);
-  useEffect(()=>{if(stageOpen)trackEvent('crm_action_open',{action:'stage'});if(ownerOpen)trackEvent('crm_action_open',{action:'owner'});},[stageOpen,ownerOpen]);
+  useEffect(()=>{if(ownerOpen)trackEvent('crm_action_open',{action:'owner'});},[ownerOpen]);
 
   const [profileContactTarget,setProfileContactTarget]=useState<HTMLDivElement|null>(null);
   const [profileActionTarget,setProfileActionTarget]=useState<HTMLDivElement|null>(null);
@@ -365,10 +434,10 @@ function CrmWorkspace({
   const [followupCommand,setFollowupCommand]=useState<any>();
   const [attendanceDirty,setAttendanceDirty]=useState(false);
   const [attendanceReset,setAttendanceReset]=useState(0);
-  const [profileSave,setProfileSave]=useState("");
   const [insightSourceFocus,setInsightSourceFocus]=useState<any>();
   const [historyRequest,setHistoryRequest]=useState<any>(null);
   const [enrollmentTarget,setEnrollmentTarget]=useState<string|null>(null),[enrollmentDirty,setEnrollmentDirty]=useState(false);
+  const [savedAmendment,setSavedAmendment]=useState<{leadId:string;id:string}>();
   const [historyAmendTarget,setHistoryAmendTarget]=useState<any>(null),[historyAmendDirty,setHistoryAmendDirty]=useState(false),[historyAmendNotice,setHistoryAmendNotice]=useState<string>('');
   const [historyConversationBack,setHistoryConversationBack]=useState<any>(null);
   const openCustomerHistory=(request:any={})=>{if(selectedLead)setHistoryRequest((current:any)=>({...request,previous:request.returnId&&current?{...current,id:request.returnId,search:request.returnSearch,filter:request.returnFilter,fields:undefined,quote:undefined}:current?.leadId===selectedLead.id&&current.id!==request.id?current:current?.previous,leadId:selectedLead.id,token:Date.now()}));};
@@ -411,7 +480,7 @@ function CrmWorkspace({
       if (content) content.scrollTop = 0;
       const panel = document.getElementById("crm-customer-panel");
       panel?.scrollIntoView({ block: "start", behavior: "instant" });
-      panel?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+      panel?.querySelector<HTMLElement>(".crm-record-title")?.focus({ preventScroll: true });
       return;
     }
     const pending = tabViewport.current;
@@ -438,21 +507,22 @@ function CrmWorkspace({
     });return()=>cancelAnimationFrame(frame);
   },[profileNeedsFocus,activeDrawerTab,selectedLead?.id]);
 
-  const hasDraft = financeDirty||paymentDirty||enrollmentDirty||historyAmendDirty||ownerDirty||stageDirty||identityDirty||contactPreviewDirty||trustDirty||profileFieldsDirty||(isAddLogOpen && workflowDirty)||Boolean(selectedLead&&attendanceDirty);
+  const hasDraft = rulesDirty||enrollmentSettingsEditorDirty||financeDirty||paymentDirty||opportunityDirty||enrollmentDirty||historyAmendDirty||ownerDirty||identityDirty||contactPreviewDirty||trustDirty||profileFieldsDirty||(isAddLogOpen && workflowDirty)||Boolean(selectedLead&&attendanceDirty);
   const [pendingNavigation, setPendingNavigation] = useState<
     (() => void) | null
   >(null);
   const clearDraft = () => {
-    setPaymentOpen(false);setPaymentDirty(false);
+    setPaymentOpen(false);setPaymentDirty(false);setFinanceDirty(false);
+    setOpportunityOpen(false);setOpportunityDirty(false);setIntentRegistration(undefined);setIntentReview(undefined);
     setEnrollmentTarget(null);setEnrollmentDirty(false);setHistoryAmendTarget(null);setHistoryAmendDirty(false);
     if(selectedLead){delete draftCache.current[selectedLead.id];delete attendanceCache.current[selectedLead.id];}
     setIdentityDirty(false);setAttendanceDirty(false);setAttendanceReset(n=>n+1);
     setWorkflowDirty(false);setProfileFieldsDirty(false);setTrustDirty(false);setTrustReset(v=>v+1);
-    setOwnerOpen(false);setOwnerDirty(false);setIsAddLogOpen(false);setFollowupCommand(undefined);setContactPreview(false);setContactPreviewDirty(false);setStageOpen(false);setStageDirty(false);
+    setOwnerOpen(false);setOwnerDirty(false);setIsAddLogOpen(false);setFollowupCommand(undefined);setContactPreview(false);setContactPreviewDirty(false);
   };
-  const resumeDraft=()=>{setPendingNavigation(null);requestAnimationFrame(()=>document.querySelector<HTMLTextAreaElement>(ownerOpen?'.crm-owner-editor textarea':stageOpen?'#crm-sales-stage-editor textarea':identityDirty?'.crm-identity-decision textarea':contactPreviewDirty?'.crm-contact-preview textarea':attendanceDirty?'.crm-attendance-editor textarea':'.crm-followup-processing textarea, .crm-workflow-form textarea, .crm-simple-form textarea, textarea[aria-label="补充／修正内容"]')?.focus());};
+  const resumeDraft=()=>{setPendingNavigation(null);requestAnimationFrame(()=>document.querySelector<HTMLTextAreaElement>(opportunityOpen?'.crm-enrollment-opportunity-editor textarea':ownerOpen?'.crm-owner-editor textarea':identityDirty?'.crm-identity-decision textarea':contactPreviewDirty?'.crm-contact-preview textarea':attendanceDirty?'.crm-attendance-editor textarea':'.crm-followup-processing textarea, .crm-workflow-form textarea, .crm-simple-form textarea, textarea[aria-label="补充／修正内容"]')?.focus());};
   const discardDraft = (proceed: () => void = () => {}) => {
-    if (isSubmittingLog || profileSave==="saving") return false;
+    if (isSubmittingLog) return false;
     if (hasDraft) {
       setPendingNavigation(() => proceed);
       return false;
@@ -486,13 +556,53 @@ function CrmWorkspace({
     if (discardDraft(finish)) finish();
   };
   const changeModule = (module: typeof crmModule) => {
-    const finish = () => {leadRouteVersion.current++;const url=new URL(window.location.href);url.searchParams.set("tab",module);if(module!=="payments")for(const key of ["paymentLead","paymentEntry","paymentProject","paymentAction"])url.searchParams.delete(key);url.searchParams.delete("leadArea");setLeadAnalysis(false);if(module!=="leads"){url.searchParams.delete("lead");url.searchParams.delete("leadView");}if(module!=="campaigns"){url.searchParams.delete("campaign");url.searchParams.delete("campaignView");}url.hash="";window.history.pushState({},"",url);lastWorkspaceUrl.current=url.href;setCrmModule(module);};
+    const finish = () => {leadRouteVersion.current++;const url=new URL(window.location.href);url.searchParams.set("tab",module);
+      if(crmModule==="enrollment-settings")for(const key of ["policyTopic","enrollmentClass","enrollmentReturn"])url.searchParams.delete(key);
+      if(module!=="dashboard")for(const key of [...url.searchParams.keys()])if(key.startsWith('dashboard'))url.searchParams.delete(key);
+      if(module!=="opportunities")url.searchParams.delete("opportunity");if(module!=="enrollment-management"||crmModule!==module){url.searchParams.delete("classId");url.searchParams.delete("classStatus");}if(module!==crmModule&&(crmModule==="policy"||module==="policy")){url.searchParams.delete("policyTopic");url.searchParams.delete("enrollmentClass");url.searchParams.delete("job");url.searchParams.delete("deliveryState");url.searchParams.delete("deliveryPage");}if(module!=="payments")for(const key of ["paymentLead","paymentEntry","paymentProject","paymentAction","paymentView","enrollmentOrder","opportunityReturn"])url.searchParams.delete(key);else if(crmModule!==module)url.searchParams.set("paymentView","enrollment");url.searchParams.delete("leadArea");setLeadAnalysis(false);if(module!=="leads"){url.searchParams.delete("lead");url.searchParams.delete("leadView");}if(module!=="campaigns"){url.searchParams.delete("campaign");url.searchParams.delete("campaignView");}url.hash="";window.history.pushState({},"",url);lastWorkspaceUrl.current=url.href;if(module==="payments")setEnrollmentPaymentView(isEnrollmentPaymentView(url.searchParams));if(module==="policy")setConfigurationLocation(url.search);setCrmModule(module);};
     const proceed=()=>{if(discardDraft(finish))finish();};
     if(crmModule==="campaigns"&&module!==crmModule&&!window.dispatchEvent(new CustomEvent("crm-campaign-before-leave",{cancelable:true,detail:{proceed}})))return;
     proceed();
   };
-  useEffect(()=>{
-    const pop=()=>{
+  const changeContentPage=(href:string)=>{
+    const url=new URL(href,window.location.origin);
+    const module=url.searchParams.get('tab');
+    if(module!=='payments'&&module!=='enrollment-management'&&module!=='enrollment-aftercare'&&module!=='enrollment-settings'&&module!=='dashboard')return;
+    if(module==='dashboard'&&!canDashboard)return;
+    if(module==='payments'){
+      if(!canFinance)return;
+      const current=new URLSearchParams(window.location.search);
+      for(const key of customerPaymentFilterKeys){
+        const value=current.get(key);
+        if(value!==null)url.searchParams.set(key,value);
+      }
+    }else if(module==='enrollment-aftercare'&&!canEnrollmentSupport)return;
+    const apply=()=>{
+      window.history.pushState(window.history.state,'',url);
+      lastWorkspaceUrl.current=url.href;
+      if(module==='payments')setEnrollmentPaymentView(isEnrollmentPaymentView(url.searchParams));
+      if(module==='enrollment-settings'){
+        setConfigurationLocation(url.search);
+        if(crmModule!==module)window.scrollTo({top:0,behavior:'instant'});
+      }
+      setCrmModule(module);
+    };
+    if((crmModule==='enrollment-settings'&&module===crmModule&&!enrollmentSettingsEditorDirtyRef.current)||discardDraft(apply))apply();
+  };
+  const changePolicyTopic=useCallback((topic:OperationSection)=>{
+    if(topic===policyTopic)return;
+    const url=new URL(window.location.href);
+    url.searchParams.set('policyTopic',topic);
+    url.searchParams.delete('enrollmentClass');
+    if(topic!=='notification-jobs')for(const key of ['job','deliveryState','deliveryPage'])url.searchParams.delete(key);
+    window.history.pushState(window.history.state,'',url);
+    lastWorkspaceUrl.current=url.href;
+    setConfigurationLocation(url.search);
+  },[policyTopic]);
+
+  // Keep the browser listener attached when the router renders during popstate.
+  const restoreWorkspaceRoute=useRef<()=>void>(()=>{});
+  restoreWorkspaceRoute.current=()=>{
       const target=window.location.href,params=new URL(target).searchParams;
       const nextIdentity=identityRoute(target);
       if(identitySelection||nextIdentity){
@@ -500,17 +610,32 @@ function CrmWorkspace({
         if(hasDraft||isSubmittingLog){window.history.pushState({},"",lastWorkspaceUrl.current);if(discardDraft(apply))apply();}else apply();
         return;
       }
-      const module=params.get("tab");
-      if(module==="payments"&&crmModule==="payments")return; // Finance owns its intra-record history.
+      const module=isLegacyEnrollmentSettings(params)?'enrollment-settings':params.get("tab");
+      if(module==='enrollment-settings'&&crmModule===module&&!enrollmentSettingsEditorDirty){
+        lastWorkspaceUrl.current=target;
+        setConfigurationLocation(params.toString());
+        return;
+      }
+      if(module==="policy"&&crmModule==="policy"&&canManage){
+        lastWorkspaceUrl.current=target;
+        setConfigurationLocation(params.toString());
+        return;
+      }
+      if(module==="payments"&&crmModule==="payments"&&isEnrollmentPaymentView(params)===enrollmentPaymentView)return; // Each view owns its record history.
       if(module==="campaigns"&&crmModule==="campaigns")return; // Campaign owns its intra-object history.
       const apply=async()=>{
         window.history.replaceState({},"",target);lastWorkspaceUrl.current=target;
         const version=++leadRouteVersion.current;
         if(!module&&/^#(?:crm-guide-|chapter-)/.test(new URL(target).hash)){setCrmModule('docs');return;}
         if(!module&&!params.has('lead')&&!params.has('digestJob')&&defaultCrmModule(employee)==='payments'){setCrmModule('payments');return;}
-        if(module==="payments"){setCrmModule("payments");return;}
+        if(module==="payments"){setEnrollmentPaymentView(isEnrollmentPaymentView(params));setCrmModule("payments");return;}
         if(module==="campaigns"){setCrmModule("campaigns");return;}
-        if(module==="docs"||(module==="policy"&&canManage)){setCrmModule(module);return;}
+        if(module==="opportunities"){setCrmModule("opportunities");return;}
+        if(module==="dashboard"){setCrmModule("dashboard");return;}
+        if(module==="enrollment-management"){setCrmModule(module);return;}
+        if(module==="enrollment-settings"){setConfigurationLocation(params.toString());setCrmModule(module);return;}
+        if(module==="enrollment-aftercare"){setCrmModule(canEnrollmentSupport?module:defaultCrmModule(employee));return;}
+        if(module==="docs"||(module==="policy"&&canManage)){if(module==="policy")setConfigurationLocation(params.toString());setCrmModule(module);return;}
         setCrmModule("leads");
         setLeadAnalysis(params.get("leadArea") === "analysis");
         setDigestJob(params.get("digestJob"));
@@ -529,12 +654,14 @@ function CrmWorkspace({
         const event=new CustomEvent("crm-campaign-before-leave",{cancelable:true,detail:{proceed:apply,history:true}});
         if(!window.dispatchEvent(event))return;
       }
-      if(hasDraft||isSubmittingLog||profileSave==="saving"){
+      if(hasDraft||isSubmittingLog){
         window.history.pushState({},"",lastWorkspaceUrl.current);if(discardDraft(()=>void apply()))void apply();
       }else void apply();
-    };
+  };
+  useEffect(()=>{
+    const pop=()=>restoreWorkspaceRoute.current();
     window.addEventListener("popstate",pop);return()=>window.removeEventListener("popstate",pop);
-  });
+  },[]);
   useEffect(() => {
     if (!hasDraft && !policyControls?.isDirty) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -560,6 +687,7 @@ function CrmWorkspace({
         const data=await crmJson(`/api/crm/leads?${queryKey}`,signal);
         if(signal.aborted||disposed)return;
         setNotificationScope(data.notificationScope||null);
+        if (reason === "manual" || (cursorRef.current && cursorRef.current !== data.changeCursor)) refreshIdentityQueue();
         cursorRef.current=data.changeCursor||"";
         setRefreshProblem("");setLastListRefresh(new Date().toISOString());
         setAccessibleLeadCount(Number.isInteger(data.accessibleCount)?data.accessibleCount:null);setOwnerOptions(data.ownerOptions||[]);
@@ -605,7 +733,7 @@ function CrmWorkspace({
     window.addEventListener('uper-access-changed',accessChanged);
     visibility();
     return()=>{disposed=true;current.setVisible(false);if(poller.current===current)poller.current=null;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('uper-access-changed',accessChanged);};
-  },[queryKey,employee.id,crmModule]);
+  },[queryKey,employee.id,crmModule,refreshIdentityQueue]);
   useEffect(() => {
     if (!isDrawerOpen || !selectedLead?.id) return;
     const id = selectedLead.id;
@@ -631,6 +759,7 @@ function CrmWorkspace({
           throw Error(data.error || "Lead not found");
         }
         failures=0;
+        if(ownerReadback.current===id){ownerReadback.current='';setOwnerReadFailed('');}
         if(refreshContext.current.hasDraft||refreshContext.current.isSubmittingLog)return;
         setSelectedLead((current) =>
           current?.id === id
@@ -647,7 +776,11 @@ function CrmWorkspace({
             : current,
         );
       } catch (e) {
-        if (active&&!signal.aborted) {failures++;setLeadActionError((e as Error).message);}
+        if(active){
+          failures++;
+          if(ownerReadback.current===id)setOwnerReadFailed(id);
+          else if(!signal.aborted)setLeadActionError((e as Error).message);
+        }
       } finally {clearTimeout(timeout);if(active&&document.visibilityState==="visible")timer=setTimeout(refresh,Math.min(120000,30000*2**failures));}
     };
     const visibility=()=>{clearTimeout(timer);controller?.abort();if(document.visibilityState==="visible")void refresh();};
@@ -660,14 +793,14 @@ function CrmWorkspace({
   }, [isDrawerOpen, selectedLead?.id, detailRefreshVersion]);
   // Load SLA & Cadence Policy Configuration
   const fetchPolicyConfig = async () => {
+    setPolicyRead('loading');
     try {
-      const res = await fetch("/api/crm/policy-config");
-      if (res.ok) {
-        const data = await res.json();
-        setPolicyConfig(data);
-      }
-    } catch (e) {
-      console.error("Failed to load policy config:", e);
+      const res=await fetch('/api/crm/policy-config',{cache:'no-store'});
+      if(!res.ok)throw Error('policy_config_read_failed');
+      setPolicyConfig(await res.json());
+      setPolicyRead('ready');
+    } catch {
+      setPolicyRead('error');
     }
   };
   useEffect(() => {
@@ -687,7 +820,7 @@ function CrmWorkspace({
   const analyticsFilters=useRef(filters);
   useEffect(()=>{const previous=analyticsFilters.current;analyticsFilters.current=filters;
     const keys=Object.keys(filters).filter(key=>JSON.stringify((filters as any)[key])!==JSON.stringify((previous as any)[key]));if(!keys.length)return;
-    const timer=setTimeout(()=>trackEvent('crm_filter_change',{filter_type:keys.length>1?'multiple':['search','owner','stage'].includes(keys[0])?keys[0]:'other',has_search:!!filters.search.trim(),active_filter_count:Object.values(filters).filter(value=>Array.isArray(value)?value.length:!!value).length}),400);
+    const timer=setTimeout(()=>trackEvent('crm_filter_change',{filter_type:keys.length>1?'multiple':['search','owner','communication'].includes(keys[0])?keys[0]:'other',has_search:!!filters.search.trim(),active_filter_count:Object.values(filters).filter(value=>Array.isArray(value)?value.length:!!value).length}),400);
     return()=>clearTimeout(timer);
   },[filters]);
   const handleOpenLeadDrawer = (
@@ -712,13 +845,23 @@ function CrmWorkspace({
     }
     if(retainedDraft?.id===lead.id)setRetainedDraft(null);
     if (!isDrawerOpen) listScroll.current = window.scrollY;
-    setTaskFocus(undefined);setConversationReturn(undefined);setSignalFocus(undefined);setQueueComplete(false);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setWorkflowNotice("");setProfileSave("");setLeadActionError("");setTaskOpening(false);
+    setTaskFocus(undefined);setConversationReturn(undefined);setSignalFocus(undefined);setQueueComplete(false);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setWorkflowNotice("");setLeadActionError("");setTaskOpening(false);
     setIsAddLogOpen(false);
     customerViewport.current = true;
     setSelectedLead(lead);
     setActiveDrawerTab(nextTab);
     setIsDrawerOpen(true);
 
+  };
+  const reviewPurchaseIntent=(lead:CrmLeadRecord)=>{
+    const suggestion=lead.purchaseIntentSuggestion;
+    if(!suggestion||progressActionState(employee,lead)!=='enabled')return;
+    const open=()=>{
+      handleOpenLeadDrawer(lead,'activities',true);
+      setIntentDismissed(undefined);
+      setIntentReview({customerId:lead.id,suggestion});
+    };
+    if(discardDraft(open))open();
   };
   const processFromList=(lead:CrmLeadRecord,discarded=false)=>{
     if(!canEditLead(lead,'crm.followup'))return;
@@ -926,7 +1069,7 @@ function CrmWorkspace({
           ? `${t("Recorded class:", "登记班级：")} ${selectedLead.enrolledClass}`
           : t("Class not recorded; enrollment status only.", "未登记班级；仅有报名状态。"),
         subtitle: selectedLead.revenue
-          ? `${t("Recorded amount:", "登记金额:")} Rp ${selectedLead.revenue.toLocaleString(crmLocale(lang))} · ${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)}`
+          ? `${t("Recorded amount:", "登记金额:")} ${formatCurrency(selectedLead.revenue,lang)} · ${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)}`
           : `${t("Mode:", "模式:")} ${crmValue(selectedLead.mode, lang)} · ${t("City:", "城市:")} ${selectedLead.city}`,
         content: t(
           "Enrollment record; payment and attendance are recorded separately.",
@@ -975,37 +1118,13 @@ function CrmWorkspace({
         );
       await fetchLeads(true);
     } catch (e) {
-      setLeadActionError((e as Error).message);
+      const message=(e as Error).message;
+      setLeadActionError(message==='ENROLLMENT_SALES_CLAIM_NOT_NEEDED'
+        ? adminText(lang,'The learner is enrolled and has no pending sales work.','Siswa sudah terdaftar dan tidak memiliki tindak lanjut penjualan.','学员已报名，当前无销售待办。')
+        : message);
       await fetchLeads(true);
     } finally {
       setClaiming(null);
-    }
-  };
-  // Quick update owner or confirmed tier
-  const handleUpdateLeadField = async (
-    leadId: string,
-    updates: Partial<CrmLeadRecord>,
-  ) => {
-    if (!discardDraft()) return;
-    setProfileSave("saving");
-    try {
-      const res = await fetch(`/api/crm/leads/${leadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      const data = await res.json();
-      if (!res.ok) throw Error(data.error || String(res.status));
-      if (data.lead) {
-        setLeadActionError("");setProfileSave("saved");
-        if (selectedLead && selectedLead.id === leadId)
-          setSelectedLead((current) =>
-            current?.id===leadId ? { ...current, ...data.lead } : current,
-          );
-        fetchLeads();
-      }
-    } catch (err) {
-      setProfileSave("");setLeadActionError((err as Error).message);
     }
   };
   // Tier Badge Color
@@ -1043,14 +1162,12 @@ function CrmWorkspace({
   };
   const formatCrmDateTime = (isoString?: string) =>
     formatCrmEventTime(isoString);
-  const openStageEditor=(basisId?:string)=>{if(!selectedLead||!canEditLead(selectedLead))return;const finish=()=>{setStageBasis(typeof basisId==='string'?basisId:undefined);setStageOpen(true);setStageNotice('');};if(discardDraft(finish))finish();};
 
   const openLearningNeeds=()=>{
     if(!selectedLead)return;
     const finish=()=>{profileNeedsPageY.current=window.scrollY;tabViewport.current={pageY:window.scrollY,keyboard:false,tab:'profile'};setActiveDrawerTab('profile');writeLeadRoute(selectedLead.id,'profile');setProfileNeedsFocus(selectedLead.id);};
     if(discardDraft(finish))finish();
   };
-  const closeStageEditor=()=>{const finish=()=>{setStageOpen(false);requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('[data-crm-stage-trigger]')?.focus({preventScroll:true}));};if(discardDraft(finish))finish();};
   const openTaskList=(taskId?:string,message?:any)=>{
     const finish=()=>{if(message)setConversationReturn({conversationId:message.conversation_id,messageId:message.id,requestId:message.request_id,taskId,source:message.role==="user"?message:undefined});setTaskFocus({id:taskId||"",token:Date.now()});setActiveDrawerTab("activities");requestAnimationFrame(()=>{if(!taskId){const node=document.getElementById("crm-followup-tasks");node?.scrollIntoView({block:"start"});node?.focus({preventScroll:true});}});};
     if(discardDraft(finish))finish();
@@ -1063,7 +1180,8 @@ function CrmWorkspace({
     if(!selectedLead)return;
     const finish=()=>{
       const details=source.details||{},message=selectedLead.chatTranscript?.find((m:any)=>m.conversation_id===details.sourceConversationId&&(m.id===details.sourceMessageId||m.request_id===details.sourceMessageId));
-      setHistoryConversationBack({leadId:selectedLead.id,tab:activeDrawerTab,request:{...historyRequest,id:source.returnId,search:source.returnSearch,filter:source.returnFilter}});
+      setHistoryConversationBack({leadId:selectedLead.id,tab:activeDrawerTab,request:{...historyRequest,id:source.returnId,search:source.returnSearch,filter:source.returnFilter,
+        fields:undefined,quote:undefined,returnPosition:source.returnPosition}});
       setHistoryRequest(null);
       setConversationReturn({conversationId:details.sourceConversationId,messageId:message?.id||details.sourceMessageId,requestId:(message as any)?.request_id||details.sourceMessageId});
       setActiveDrawerTab("chat");writeLeadRoute(selectedLead.id,"chat");
@@ -1100,52 +1218,67 @@ function CrmWorkspace({
     finish();
   };
   const canAssignSelectedOwner=Boolean(selectedLead&&!selectedLead.identityReview?.pending&&canAssign&&permittedRecord(employee,selectedLead,"crm.assign")&&(!selectedLead.identityReview?.ownerAssignmentManagerOnly||isCrmManager(employee)));
+  // The legacy ledger summary lists one source per project, even before any payment.
+  const canViewHistoricalPayments=Boolean(selectedLead?.verifiedPayments?.sources?.length&&permittedRecord(employee,selectedLead));
   const openOwnerEditor=()=>{const open=()=>setOwnerOpen(true);if(discardDraft(open))open();};
+  const selectedProgress=selectedLead?progressActionState(employee,selectedLead):'hidden';
+  const showClaim=selectedLead&&canClaimForContact(employee,selectedLead);
+  const claimPrimary=Boolean(showClaim&&selectedLead&&!selectedLead.identityReview?.pending&&!canEditLead(selectedLead,'crm.followup'));
+  const customerClaim=showClaim&&selectedLead&&<button type="button" className="crm-work-button" data-primary={claimPrimary}
+    disabled={claiming===selectedLead.id} onClick={()=>claimLead(selectedLead.id)}>
+    <UserCheck size={15} aria-hidden="true"/>{claiming===selectedLead.id?t("Claiming…","认领中…"):
+      lang==='en'?"Assign to me":t("Claim for myself","自己认领")}
+  </button>;
+  const customerProgress=<CrmProgressAction state={selectedProgress} busy={isSubmittingLog} lang={lang}
+    primary={!selectedLead?.identityReview?.pending&&!claimPrimary} icon={<PlusCircle size={15} aria-hidden="true"/>} onClick={startContactRecord}/>;
+  const selectedPosition=filteredLeads.findIndex(lead=>lead.id===selectedLead?.id);
+  const panoramaReturn=activeDrawerTab==='chat'&&historyConversationBack?.leadId===selectedLead?.id?historyConversationBack:null;
+  const customerListBack={label:t("Back to customer list","返回客户列表"),onClick:closeCustomer,disabled:isSubmittingLog};
   const leadPanel =
-    isDrawerOpen && selectedLead ? (
+    isDrawerOpen && selectedLead ? (sidebarToggle:React.ReactNode,headerBack:AdminBackTarget|undefined)=>(
       <section
         id="crm-customer-panel"
         className="crm-customer-panel crm-detail-panel"
         aria-label={t("Customer workspace", "客户处理面板")}
       >
-        <CrmDetailHeader identityNavigation={{
-          label:t("Customer navigation","客户浏览"),
-          back:<button type="button" className="crm-detail-nav-button" title={t("Back to customer list","返回客户列表")} aria-label={t("Back to customer list","返回客户列表")} onClick={closeCustomer} disabled={isSubmittingLog||profileSave==="saving"}><ArrowLeft size={18} aria-hidden="true"/></button>,
-          adjacent:<>{[-1,1].map(offset=>{const position=filteredLeads.findIndex((l:any)=>l.id===selectedLead.id),target=filteredLeads[position+offset],label=offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户");return <button type="button" key={offset} className="crm-detail-nav-button" title={label} aria-label={label} disabled={position<0||!target} onClick={()=>target&&handleOpenLeadDrawer(target)}>{offset<0?<ChevronLeft size={18} aria-hidden="true"/>:<ChevronRight size={18} aria-hidden="true"/>}</button>;})}</>
-        }} title={selectedLead.fullName} status={<CrmCurrentSalesState lead={selectedLead} lang={lang} explainIdentity/>} meta={<span>
+        <AdminRecordHeader back={headerBack}
+          title={
+          <CrmRecordTitle title={selectedLead.fullName} status={<CrmCustomerContactRestrictions lead={selectedLead} lang={lang} explainIdentity/>} meta={<span>
+              {selectedLead.enrollmentOpportunitySummary?.hasEnrollment&&<>{adminText(lang,'Enrolled','Sudah terdaftar','已报名')}{' · '}</>}
               {employees.find(e=>e.id===selectedLead.owner)?.displayName||selectedLead.owner||t("Unassigned","未分配")}{' · '}{leadDisplayNumber(selectedLead)}
-            </span>} actions={<>
-
-            <div className="crm-detail-contact-actions" role="group" aria-label={t("Customer actions","客户操作")}>
-            <CrmCustomer360Button lang={lang} onClick={()=>openCustomerHistory({})}/>
-            {canAssignSelectedOwner&&<button type="button" className="crm-work-button crm-owner-trigger" aria-label={selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')} disabled={isSubmittingLog||profileSave==='saving'} onClick={openOwnerEditor}><UserCheck size={15} aria-hidden="true"/>{selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')}</button>}
-            {canClaimForContact(employee,selectedLead) && (
-                <button
-                  type="button"
-                  className="crm-work-button"
-                  data-primary={!canEditLead(selectedLead,"crm.followup")&&!selectedLead.identityReview?.pending}
-                  disabled={claiming === selectedLead.id}
-                  onClick={() => claimLead(selectedLead.id)}
-                >
-                  <UserCheck size={15} aria-hidden="true" />{claiming === selectedLead.id
-                    ? t("Claiming…", "认领中…")
-                    : (lang==='en'?"Assign to me":t("Claim for myself", "自己认领"))}
-                </button>
-              )}
+            </span>}/>} actions={<CrmDetailActions label={t("Customer actions","客户操作")}
+          secondary={<>
+            <div className="admin-record-browse" role="group" aria-label={t("Customer navigation","客户浏览")}>
+              {[-1,1].map(offset=>{
+                const target=filteredLeads[selectedPosition+offset],label=offset<0?t("Previous customer","上一位客户"):t("Next customer","下一位客户");
+                const Icon=offset<0?ChevronLeft:ChevronRight;
+                return <button type="button" key={offset} className="crm-detail-nav-button" title={label} aria-label={label}
+                  disabled={selectedPosition<0||!target} onClick={()=>target&&handleOpenLeadDrawer(target)}><Icon size={18} aria-hidden="true"/></button>;
+              })}
+              {sidebarToggle}
+            </div>
+            {panoramaReturn?<button type="button" className="crm-work-button" onClick={()=>{
+              setActiveDrawerTab(panoramaReturn.tab);
+              writeLeadRoute(selectedLead.id,panoramaReturn.tab);
+              setHistoryRequest({...panoramaReturn.request,leadId:selectedLead.id,token:Date.now()});
+              setHistoryConversationBack(null);
+            }}><ArrowLeft size={15} aria-hidden="true"/>{crmUiText('返回客户全景',lang)}</button>
+              :<CrmCustomer360Button lang={lang} onClick={()=>openCustomerHistory({})}/>}
+            {canAssignSelectedOwner&&<button type="button" className="crm-work-button crm-owner-trigger" aria-label={selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')} disabled={isSubmittingLog} onClick={openOwnerEditor}><UserCheck size={15} aria-hidden="true"/>{selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')}</button>}
             {!selectedLead.identityReview?.pending&&<button type="button" disabled={!selectedLead.whatsapp?.trim() || selectedLead.contactArrangement?.state==='stopped'} title={!selectedLead.whatsapp?.trim()?t("No contact number recorded","尚未记录联系号码"):selectedLead.contactArrangement?.state==='stopped'?outreachText('CONTACT_STOPPED',lang):undefined} onClick={openContactPreview} className="crm-work-button">
               <MessageCircle size={15} aria-hidden="true" /> {t("Prepare contact","准备联系")}
             </button>}
-            <button type="button" className="crm-work-button" disabled={isSubmittingLog} onClick={()=>{const open=()=>setPaymentOpen(true);if(discardDraft(open))open();}}>{lang==='zh'?'报名与收款':lang==='id'?'Pendaftaran & pembayaran':'Enrollment & payments'}</button>
-            <CrmProgressAction state={progressActionState(employee,selectedLead)} busy={isSubmittingLog} lang={lang} primary={!selectedLead.identityReview?.pending} icon={<PlusCircle size={15} aria-hidden="true"/>} onClick={startContactRecord}/>
-            {canEditLead(selectedLead)&&<button type="button" className="crm-work-button" data-crm-stage-trigger disabled={isSubmittingLog||profileSave==='saving'} onClick={()=>openStageEditor()}><ArrowRightLeft size={15} aria-hidden="true" />{lang==='zh'?'更新阶段':lang==='id'?'Perbarui tahap':'Update stage'}</button>}
-            </div>
-            {selectedLead.identityReview?.pending&&selectedLead.identityReview?.canReview&&<CrmIdentityAction lang={lang} onClick={()=>openIdentityReview(selectedLead.id)}/>}
+            {canViewHistoricalPayments&&<button type="button" className="crm-work-button" disabled={isSubmittingLog} onClick={()=>{const open=()=>setPaymentOpen(true);if(discardDraft(open))open();}}>{paymentWorkspaceLabel('historical',lang)}</button>}
+            {!claimPrimary&&customerClaim}
+            {(claimPrimary||selectedLead.identityReview?.pending)&&customerProgress}
+          </>}
+          primary={selectedLead.identityReview?.pending
+            ? selectedLead.identityReview.canReview&&<CrmIdentityAction lang={lang} onClick={()=>openIdentityReview(selectedLead.id)}/>
+            : claimPrimary?customerClaim:customerProgress}/>}/>
 
-
-          </>}/>
         {!ownerOpen&&!paymentOpen&&(hasDraft||isSubmittingLog)&&<CrmSaveFeedback lang={lang} state={isSubmittingLog?"saving":"dirty"}/>}
         <div className="crm-panel-next"><CrmNextTaskSummary hideFirstContact hideContactNotice lead={selectedLead} lang={lang} timezone={filterTimezone} onOpen={()=>openTaskList()}/></div>
-        <CrmDetailTabs id="crm-customer" contentId="crm-customer-content" label={t("Customer details","客户详情")} value={activeDrawerTab==="playbook"?"activities":activeDrawerTab} onChange={(tab,keyboard)=>changeCustomerTab(tab as CustomerTab,keyboard)} tabs={[
+        <AdminDetailTabs id="crm-customer" contentId="crm-customer-content" label={t("Customer details","客户详情")} value={activeDrawerTab==="playbook"?"activities":activeDrawerTab} onChange={(tab,keyboard)=>changeCustomerTab(tab as CustomerTab,keyboard)} tabs={[
           {id:"activities",label:t("Follow-up","跟进"),icon:ListChecks},
           {id:"profile",label:t("Profile","客户资料"),icon:UserRound},
           {id:"assessment",label:t("Assessment","测评"),icon:ClipboardCheck},
@@ -1160,13 +1293,12 @@ function CrmWorkspace({
           role="tabpanel"
           aria-labelledby={`crm-customer-tab-${activeDrawerTab === "playbook" ? "activities" : activeDrawerTab}`}
         >
+          {ownerReadFailed===selectedLead.id&&<AdminSavedReadError lang={lang} onRetry={()=>setDetailRefreshVersion(v=>v+1)}/>}
           {leadActionError && (
             <p role="alert" className="text-rose-500">
               {crmError(leadActionError, lang)}
             </p>
           )}
-          {stageNotice?.leadId===selectedLead.id&&<CrmSaveFeedback lang={lang} state="saved">{stageNotice.text}</CrmSaveFeedback>}
-          {profileSave&&activeDrawerTab==="profile"&&<CrmSaveFeedback lang={lang} state={profileSave==="saving"?"saving":"saved"}>{profileSave==="saving"?t("Saving customer details…","正在保存客户资料…"):t("Customer details saved.","客户资料已保存。")}</CrmSaveFeedback>}
           {activeDrawerTab === "profile" && (
             <>
 
@@ -1181,8 +1313,15 @@ function CrmWorkspace({
               timezone={filterTimezone}
               basicActions={setProfileActionTarget}
               contactFields={setProfileContactTarget}
-              dynamicProfile={<CrmProfileEditor basicTarget={profileActionTarget} contactTarget={profileContactTarget} key={selectedLead.id+trustReset} lead={selectedLead} disabled={!canEditLead(selectedLead)} timezone={filterTimezone} isLight={isLight} onDirty={setProfileFieldsDirty} onBusy={setIsSubmittingLog} onSaved={(lead:any)=>{if(lead)setSelectedLead(current=>current?.id===lead.id?{...current,...lead}:current);fetchLeads(true);}}/>}
-              communication={<CrmSingleSelect label={lang==='zh'?'首选沟通语言':lang==='id'?'Bahasa komunikasi pilihan':'Preferred communication language'} value={selectedLead.communicationLanguage||'unknown'} options={[{value:'unknown',label:lang==='zh'?'未确认':lang==='id'?'Belum dikonfirmasi':'Unconfirmed'},{value:'en',label:'English'},{value:'id',label:'Bahasa Indonesia'},{value:'zh',label:'中文'}]} lang={lang} isLight={isLight} disabled={!canEditLead(selectedLead)} onChange={v=>handleUpdateLeadField(selectedLead.id,{communicationLanguage:v as any})}/>}
+              dynamicProfile={<CrmProfileEditor basicTarget={profileActionTarget} contactTarget={profileContactTarget} key={selectedLead.id+trustReset} lead={selectedLead} disabled={!canEditLead(selectedLead)} timezone={filterTimezone} isLight={isLight} onDirty={setProfileFieldsDirty} onBusy={setIsSubmittingLog} onSaved={(lead:any)=>{if(lead)setSelectedLead(current=>current?.id===lead.id?{...current,...lead}:current);fetchLeads(true);}}
+                onReloadSavedProfile={async()=>{
+                  const id=selectedLead.id;
+                  const response=await fetch(`/api/crm/leads/${encodeURIComponent(id)}`,{cache:'no-store'});
+                  if(!response.ok)throw Error('Could not read saved customer profile');
+                  const {lead}=await response.json();
+                  if(lead?.id!==id)throw Error('Could not read saved customer profile');
+                  setSelectedLead(current=>current?.id===id?{...current,...lead}:current);
+                }}/> }
               participation={canEditLead(selectedLead,"crm.attendance")&&<CrmAttendanceEditor key={`${selectedLead.id}:${attendanceReset}`} lead={selectedLead} staffId={employee.id} onDirty={setAttendanceDirty} onBusy={setIsSubmittingLog} lang={lang} isLight={isLight} timezone={filterTimezone} onUpdated={lead=>{setSelectedLead(current=>current?.id===lead.id?{...current,...lead}:current);fetchLeads(true);}}/>}
             />
 
@@ -1197,21 +1336,38 @@ function CrmWorkspace({
             />
           )}
           {activeDrawerTab === "chat" && (
-            <>{historyConversationBack?.leadId===selectedLead.id&&<button type="button" className="crm-work-link" onClick={()=>{const back=historyConversationBack;setActiveDrawerTab(back.tab);writeLeadRoute(selectedLead.id,back.tab);setHistoryRequest({...back.request,leadId:selectedLead.id,token:Date.now()});setHistoryConversationBack(null);}}>{crmUiText("返回客户全景",lang)}</button>}<CrmCustomerConversations
+            <CrmCustomerConversations
               isLight={isLight}
               onOpenTask={(taskId:string,message:any)=>openTaskList(taskId,message)}
               conversationContext={conversationReturn}
               lead={selectedLead}
               lang={lang}
               timezone={filterTimezone}
-            /></>
+            />
           )}
           {activeDrawerTab === "activities" && <div className="crm-followup-sections">
-            {!selectedLead.identityReview?.pending&&!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
+            <CrmCustomerOpportunities customerId={selectedLead.id} actorId={employee.id} lang={lang}
+              refreshVersion={detailRefreshVersion} registerBusy={isSubmittingLog}
+              purchaseIntentNotice={purchaseIntentNotice?.customerId===selectedLead.id?purchaseIntentNotice:undefined}
+              onNavigate={event=>{
+                if(event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
+                const url=event.currentTarget.href;
+                if(!discardDraft(()=>window.location.assign(url)))event.preventDefault();
+              }}
+              onRegister={progressActionState(employee,selectedLead)==='enabled'?()=>{
+                const open=()=>{setPurchaseIntentNotice(undefined);setOpportunityOpen(true);};
+                if(discardDraft(open))open();
+              }:undefined}/>
+            {selectedLead.purchaseIntentSuggestion&&progressActionState(employee,selectedLead)==='enabled'&&
+              <div><CrmPurchaseIntentReviewAction lang={lang} onClick={()=>reviewPurchaseIntent(selectedLead)}/></div>}
+            {intentDismissed===selectedLead.id&&<CrmSaveFeedback lang={lang} state="saved">
+              {lang==='zh'?'已忽略这条购课意向建议。':lang==='id'?'Saran minat membeli ini diabaikan.':'Purchase intent suggestion dismissed.'}
+            </CrmSaveFeedback>}
+            {!selectedLead.identityReview?.pending&&!enrollmentNeedsNoSalesClaim(selectedLead)&&!canEditLead(selectedLead,"crm.followup")&&<p className="crm-work-muted">{t("Claim this unassigned lead before updating it or recording follow-up.","请先认领此未分配客户，再修改资料或记录跟进。")}</p>}
             {conversationReturn&&<button type="button" className="crm-work-link" onClick={()=>changeCustomerTab("chat")}>{t("Return to conversation","返回对话")}</button>}
             {taskOpening&&<p role="status">{t("Loading task context…","正在加载任务依据…")}</p>}
             <CrmTrustPanel focusAgreement={notificationFocus?.leadId===selectedLead.id?notificationFocus.agreementId:undefined} feedback={<>{workflowNotice?.taskChange&&<CrmSaveFeedback lang={lang} state="saved">{({create:lang==='zh'?'已新增独立任务':lang==='id'?'Tugas terpisah dibuat':'Separate task created',supplement:lang==='zh'?'已补充原任务，期限不变':lang==='id'?'Informasi tugas ditambahkan; tenggat tetap':'Task information added; deadline unchanged',reschedule:lang==='zh'?'已更新执行时间，原期限及历史保留':lang==='id'?'Waktu pelaksanaan diperbarui; tenggat dan riwayat awal tetap':'Execution time updated; original deadline and history retained',replace:lang==='zh'?'已取消选定原任务并建立替代任务，其他任务保留':lang==='id'?'Tugas lama terpilih dibatalkan dan diganti; tugas lain tetap':'Selected task cancelled and replaced; other tasks retained'}as any)[workflowNotice.taskChange]}</CrmSaveFeedback>}
-              {workflowNotice?.leadId===selectedLead.id&&<CrmSaveFeedback lang={lang} state="saved">{typeof workflowNotice.contactRecorded==='boolean' ? progressSaveSummary(workflowNotice,lang) : workflowNotice.cancelled ? (lang==='zh'?'任务已终止':lang==='id'?'Tugas dihentikan':'Task terminated') : workflowNotice.completed ? (lang==='zh'?'首次跟进要求已处理':lang==='id'?'Tindak lanjut pertama diproses':'First follow-up processed') : workflowNotice.contactPlanChange ? ({review_cancelled:lang==='zh'?'复查安排已更新':lang==='id'?'Pengaturan tinjauan diperbarui':'Review arrangement updated',review_scheduled:lang==='zh'?'已安排复查任务':lang==='id'?'Tugas tinjauan dijadwalkan':'Review task scheduled',stopped:lang==='zh'?'已停止主动联系':lang==='id'?'Kontak proaktif dihentikan':'Proactive contact stopped',restored:lang==='zh'?'联系限制已更新':lang==='id'?'Pembatasan kontak diperbarui':'Contact restriction updated'} as any)[workflowNotice.contactPlanChange] : (lang==='zh'?'进展已保存':lang==='id'?'Progres disimpan':'Progress saved')}</CrmSaveFeedback>}{lang==='zh'&&workflowNotice?.profileFieldResults?.length>0&&<p role="status">{profileSaveSummary(workflowNotice.profileFieldResults)}完整结果见最新跟进记录。</p>}</>} onViewStage={openStageEditor}  onViewProfile={openLearningNeeds} onViewAssessment={()=>{setActiveDrawerTab("assessment");writeLeadRoute(selectedLead.id,"assessment");}} sourceFocus={insightSourceFocus?.leadId===selectedLead.id?insightSourceFocus:undefined} recentSourceId={workflowNotice?.leadId===selectedLead.id?workflowNotice.logId:undefined} key={selectedLead.id+trustReset} canEditProfile={canEditLead(selectedLead)} onDirty={setTrustDirty} onBusy={setIsSubmittingLog} lead={selectedLead} lang={lang} isLight={isLight} timezone={filterTimezone} disabled={!canEditLead(selectedLead,"crm.followup")||taskOpening} onRefresh={()=>{setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}} focusTask={taskFocus} onProcess={(task:any,operation:any)=>openTaskWorkflow(task,selectedLead,false,operation)} onSource={(task:any)=>viewTaskSource(task)}
+              {workflowNotice?.leadId===selectedLead.id&&<CrmSaveFeedback lang={lang} state="saved">{typeof workflowNotice.contactRecorded==='boolean' ? progressSaveSummary(workflowNotice,lang) : workflowNotice.cancelled ? (lang==='zh'?'任务已终止':lang==='id'?'Tugas dihentikan':'Task terminated') : workflowNotice.completed ? (lang==='zh'?'首次跟进要求已处理':lang==='id'?'Tindak lanjut pertama diproses':'First follow-up processed') : workflowNotice.contactPlanChange ? ({review_cancelled:lang==='zh'?'复查安排已更新':lang==='id'?'Pengaturan tinjauan diperbarui':'Review arrangement updated',review_scheduled:lang==='zh'?'已安排复查任务':lang==='id'?'Tugas tinjauan dijadwalkan':'Review task scheduled',stopped:lang==='zh'?'已停止主动联系':lang==='id'?'Kontak proaktif dihentikan':'Proactive contact stopped',restored:lang==='zh'?'联系限制已更新':lang==='id'?'Pembatasan kontak diperbarui':'Contact restriction updated'} as any)[workflowNotice.contactPlanChange] : (lang==='zh'?'进展已保存':lang==='id'?'Progres disimpan':'Progress saved')}</CrmSaveFeedback>}{lang==='zh'&&workflowNotice?.profileFieldResults?.length>0&&<p role="status">{profileSaveSummary(workflowNotice.profileFieldResults)}完整结果见最新跟进记录。</p>}</>}  onViewProfile={openLearningNeeds} onViewAssessment={()=>{setActiveDrawerTab("assessment");writeLeadRoute(selectedLead.id,"assessment");}} sourceFocus={insightSourceFocus?.leadId===selectedLead.id?insightSourceFocus:undefined} recentSourceId={workflowNotice?.leadId===selectedLead.id?workflowNotice.logId:undefined} key={selectedLead.id+trustReset} canEditProfile={canEditLead(selectedLead)} onDirty={setTrustDirty} onBusy={setIsSubmittingLog} lead={selectedLead} lang={lang} isLight={isLight} timezone={filterTimezone} disabled={!canEditLead(selectedLead,"crm.followup")||taskOpening} onRefresh={()=>{setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}} focusTask={taskFocus} onProcess={(task:any,operation:any)=>openTaskWorkflow(task,selectedLead,false,operation)} onSource={(task:any)=>viewTaskSource(task)}
               command={followupCommand} onRequestEdit={requestFollowupEdit} workflowOpen={false} modalSuspended={Boolean(pendingNavigation)} workflowTask={workflowTask} onIdentity={()=>openIdentityReview(selectedLead.id)} journey={journeyTimelineEvents}
               context={({data,error}:any)=><CrmFollowupContext lead={selectedLead} lang={lang} timezone={filterTimezone} onSource={viewTaskSource} tasks={data?.tasks} facts={data?.facts} requests={data?.requests} taskError={error} onTask={openTaskList}/>}
             >
@@ -1221,11 +1377,37 @@ function CrmWorkspace({
           </div>}
 
         </div>
-        {paymentOpen&&<CrmPayments key={"payments:"+selectedLead.id} actorId={employee.id} lead={selectedLead} lang={lang} isLight={isLight} onDirty={setPaymentDirty} onBusy={setIsSubmittingLog} onClose={()=>{const close=()=>{setPaymentOpen(false);setPaymentDirty(false);};if(discardDraft(close))close();}}/>}
-        {isAddLogOpen && <CrmOperationLayer progress context={`${selectedLead.fullName} · ${leadDisplayNumber(selectedLead)}`} title={lang==='zh'?'记录进展':lang==='id'?'Catat perkembangan':'Record progress'} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={()=>discardDraft()}><CrmWorkflowForm key={selectedLead.id+String(workflowTask)+String(administrative)+taskOperation} canUpdateStage={canEditLead(selectedLead)} operation={taskOperation} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} timezone={filterTimezone} initialDraft={draftCache.current[selectedLead.id]} onDraft={(draft:any)=>{draftCache.current[selectedLead.id]=draft;}} administrative={administrative} workCalendar={policyConfig.businessHours} selectedTask={workflowTask} sourceMessage={workflowSource} onDirty={setWorkflowDirty} onBusy={setIsSubmittingLog} onCancel={()=>discardDraft()} onSaved={async(data:any,next:boolean)=>{setStageNotice(null);delete draftCache.current[selectedLead.id];if(retainedDraft?.id===selectedLead.id)setRetainedDraft(null);const candidates=filteredLeads.slice(filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+1);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setSelectedLead((current:any)=>current?.id===selectedLead.id?({...current,...data.lead,attention:{...current.attention,tasks:(current.attention?.tasks||[]).filter((task:any)=>!data.completedTaskIds.includes(task.id)&&!(data.cancelledTaskIds||[]).includes(task.id))}}):current);setDetailRefreshVersion(v=>v+1);setIsAddLogOpen(false);setActiveDrawerTab("activities");writeLeadRoute(selectedLead.id,"activities",true);setWorkflowNotice({leadId:selectedLead.id,logId:data.logId,profileFieldResults:data.profileFieldResults,cancelled:data.cancelledTaskIds?.length||0,completed:data.completedTaskIds.length,completedNames:data.completedTaskIds.map((id:string)=>{const task=(selectedLead.attention?.tasks||[]).find((task:any)=>task.id===id);return task?describeFollowUpTask(task,lang,filterTimezone).action:id;}).join("；"),contactPlanChange:data.contactPlanChange,contactRecorded:data.contactRecorded,agreementChange:data.agreementChange,stageUpdated:data.stageUpdated,stageUpdatePending:data.stageUpdatePending,kept:data.lead?.followUpDisposition?.kind==="keep",created:Boolean(data.createdTaskId),recordOnly:data.recordOnly,requestCount:data.handledRequestIds?.length||0,taskChange:data.taskChange?.command});fetchLeads(true);if(next){for(const candidate of candidates){const access=await fetch(`/api/crm/leads/${candidate.id}/tasks`);if([403,404].includes(access.status))continue;if(!access.ok){setLeadActionError(lang==='zh'?'记录已保存，下一位暂不可加载':lang==='id'?'Catatan disimpan; pelanggan berikutnya belum tersedia':'Record saved; next customer unavailable');return;}handleOpenLeadDrawer(candidate,'activities',true);return;}setIsDrawerOpen(false);setSelectedLead(null);writeLeadRoute();setQueueComplete(true);}}}/></CrmOperationLayer>}
+        {intentReview?.customerId===selectedLead.id&&activeDrawerTab==='activities'&&progressActionState(employee,selectedLead)==='enabled'&&
+          <CrmPurchaseIntentReview key={intentReview.suggestion.id} customer={selectedLead} lang={lang} isLight={isLight}
+            suggestion={intentReview.suggestion} onClose={()=>{
+              setIntentReview(undefined);setDetailRefreshVersion(v=>v+1);
+            }}
+            onRegister={()=>{
+              setIntentRegistration(intentReview.suggestion);setIntentReview(undefined);
+              setPurchaseIntentNotice(undefined);setOpportunityOpen(true);
+            }}
+            onDismissed={()=>{
+              setIntentReview(undefined);setIntentDismissed(selectedLead.id);
+              setDetailRefreshVersion(v=>v+1);void fetchLeads(true);
+            }}
+            onOpenConversation={messageId=>{
+              setIntentReview(undefined);
+              setConversationReturn({conversationId:intentReview.suggestion.conversationId,messageId});
+              setActiveDrawerTab('chat');writeLeadRoute(selectedLead.id,'chat');
+            }}/>}
+        {opportunityOpen&&<CrmOpenEnrollmentOpportunity key={'opportunity:'+selectedLead.id} customer={selectedLead} lang={lang} isLight={isLight} suggestion={intentRegistration}
+          onBusy={setIsSubmittingLog} onDirty={setOpportunityDirty} onClose={()=>discardDraft()}
+          onNavigate={href=>{const navigate=()=>window.location.assign(href);if(discardDraft(navigate))navigate();}}
+          onSaved={result=>{
+            setOpportunityOpen(false);setIntentRegistration(undefined);
+            setPurchaseIntentNotice({...result,customerId:selectedLead.id});
+            void fetchLeads(true);
+            setDetailRefreshVersion(v=>v+1);
+          }}/>}
+        {paymentOpen&&<CrmPayments key={"payments:"+selectedLead.id} actorId={employee.id} lead={selectedLead} lang={lang} isLight={isLight} onDirty={setPaymentDirty} onSaved={paymentQueue.refresh} onBusy={setIsSubmittingLog} onClose={()=>{const close=()=>{setPaymentOpen(false);setPaymentDirty(false);};if(discardDraft(close))close();}}/>}
+        {isAddLogOpen && <CrmOperationLayer progress context={`${selectedLead.fullName} · ${leadDisplayNumber(selectedLead)}`} title={lang==='zh'?'记录进展':lang==='id'?'Catat perkembangan':'Record progress'} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={()=>discardDraft()}><CrmWorkflowForm key={selectedLead.id+String(workflowTask)+String(administrative)+taskOperation} operation={taskOperation} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} timezone={filterTimezone} initialDraft={draftCache.current[selectedLead.id]} onDraft={(draft:any)=>{draftCache.current[selectedLead.id]=draft;}} administrative={administrative} workCalendar={policyConfig.businessHours} selectedTask={workflowTask} sourceMessage={workflowSource} onDirty={setWorkflowDirty} onBusy={setIsSubmittingLog} onCancel={()=>discardDraft()} onSaved={async(data:any,next:boolean)=>{delete draftCache.current[selectedLead.id];if(retainedDraft?.id===selectedLead.id)setRetainedDraft(null);const candidates=filteredLeads.slice(filteredLeads.findIndex((l:any)=>l.id===selectedLead.id)+1);setWorkflowDirty(false);setWorkflowTask(undefined);setWorkflowSource(undefined);setSelectedLead((current:any)=>current?.id===selectedLead.id?({...current,...data.lead,attention:{...current.attention,tasks:(current.attention?.tasks||[]).filter((task:any)=>!data.completedTaskIds.includes(task.id)&&!(data.cancelledTaskIds||[]).includes(task.id))}}):current);setDetailRefreshVersion(v=>v+1);setIsAddLogOpen(false);setActiveDrawerTab("activities");writeLeadRoute(selectedLead.id,"activities",true);setWorkflowNotice({leadId:selectedLead.id,logId:data.logId,profileFieldResults:data.profileFieldResults,cancelled:data.cancelledTaskIds?.length||0,completed:data.completedTaskIds.length,completedNames:data.completedTaskIds.map((id:string)=>{const task=(selectedLead.attention?.tasks||[]).find((task:any)=>task.id===id);return task?describeFollowUpTask(task,lang,filterTimezone).action:id;}).join("；"),contactPlanChange:data.contactPlanChange,contactRecorded:data.contactRecorded,agreementChange:data.agreementChange,stageUpdated:data.stageUpdated,stageUpdatePending:data.stageUpdatePending,kept:data.lead?.followUpDisposition?.kind==="keep",created:Boolean(data.createdTaskId),recordOnly:data.recordOnly,requestCount:data.handledRequestIds?.length||0,taskChange:data.taskChange?.command});fetchLeads(true);if(next){for(const candidate of candidates){const access=await fetch(`/api/crm/leads/${candidate.id}/tasks`);if([403,404].includes(access.status))continue;if(!access.ok){setLeadActionError(lang==='zh'?'记录已保存，下一位暂不可加载':lang==='id'?'Catatan disimpan; pelanggan berikutnya belum tersedia':'Record saved; next customer unavailable');return;}handleOpenLeadDrawer(candidate,'activities',true);return;}setIsDrawerOpen(false);setSelectedLead(null);writeLeadRoute();setQueueComplete(true);}}}/></CrmOperationLayer>}
         {notificationFocus?.leadId===selectedLead.id&&notificationFocus.submission&&<CrmOperationLayer history title={lang==='zh'?'官网咨询原文':lang==='id'?'Pesan asli formulir situs':'Original website inquiry'} context={selectedLead.fullName} lang={lang} isLight={isLight} onClose={()=>setNotificationFocus(null)}><p className="crm-progress-original">{notificationFocus.submission.original||targetUnavailable(lang)}</p><p className="crm-work-muted">{formatCrmEventTime(notificationFocus.submission.recordedAt)}</p></CrmOperationLayer>}
-        {ownerOpen&&<CrmOperationLayer compose title={selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')} context={selectedLead.fullName} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={()=>{const close=()=>{setOwnerOpen(false);setOwnerDirty(false);};if(discardDraft(close))close();}}><CrmOwnerEditor lead={selectedLead} directory={salesEmployees} lang={lang} isLight={isLight} onDirty={setOwnerDirty} onBusy={setIsSubmittingLog} onSaved={(lead:any)=>{setOwnerDirty(false);setOwnerOpen(false);setSelectedLead((v:any)=>v?.id===lead.id?{...v,...lead}:v);setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}}/></CrmOperationLayer>}
-        {stageOpen&&<CrmOperationLayer compose context={`${selectedLead.fullName} · ${leadDisplayNumber(selectedLead)}`} title={lang==='zh'?'更新销售阶段':lang==='id'?'Perbarui tahap penjualan':'Update sales stage'} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={closeStageEditor}><CrmStageEditor inDrawer initialBasisId={stageBasis} key={selectedLead.id+trustReset} onClose={closeStageEditor} onDirty={setStageDirty} onBusy={setIsSubmittingLog} lead={selectedLead} lang={lang} isLight={isLight} disabled={!canEditLead(selectedLead)} onSaved={(updated:any)=>{setStageDirty(false);setStageOpen(false);setStageNotice({leadId:updated.id,text:t('Sales stage updated to ','销售阶段已更新为')+crmValue(updated.currentStage,lang)});setDetailRefreshVersion(v=>v+1);requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('[data-crm-stage-trigger]')?.focus({preventScroll:true}));setSelectedLead((v:any)=>v?.id===updated.id?{...v,...updated}:v);void fetchLeads(true);}}/></CrmOperationLayer>}
+        {ownerOpen&&<CrmOperationLayer compose title={selectedLead.owner?(lang==='zh'?'更换负责人':lang==='id'?'Ganti penanggung jawab':'Change owner'):(lang==='zh'?'分配负责人':lang==='id'?'Tetapkan penanggung jawab':'Assign owner')} context={selectedLead.fullName} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={()=>{const close=()=>{setOwnerOpen(false);setOwnerDirty(false);};if(discardDraft(close))close();}}><CrmOwnerEditor lead={selectedLead} directory={salesEmployees} lang={lang} isLight={isLight} onDirty={setOwnerDirty} onBusy={setIsSubmittingLog} onSaved={(lead:any)=>{ownerReadback.current=lead.id;setOwnerDirty(false);setOwnerOpen(false);setSelectedLead((v:any)=>v?.id===lead.id?{...v,...lead}:v);setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}}/></CrmOperationLayer>}
         {contactPreview&&<CrmOperationLayer compose context={`${selectedLead.fullName} · ${leadDisplayNumber(selectedLead)}`} title={lang==='zh'?'准备联系':lang==='id'?'Siapkan kontak':'Prepare contact'} lang={lang} isLight={isLight} busy={isSubmittingLog} onClose={()=>discardDraft()}><CrmContactPreview inLayer onRequestClose={()=>discardDraft()} onBusy={setIsSubmittingLog} key={"contact-preview-"+selectedLead.id} lead={selectedLead} employee={employee} lang={lang} isLight={isLight} onDirty={setContactPreviewDirty} onClose={()=>{setContactPreview(false);setContactPreviewDirty(false);}} onUpdated={(lead:any)=>{setSelectedLead(lead);void fetchLeads(true);}}/></CrmOperationLayer>}
       </section>
     ) : null;
@@ -1264,56 +1446,77 @@ function CrmWorkspace({
       className={`min-h-screen flex flex-col font-sans transition-colors duration-200 select-text ${isLight ? "bg-[#f5f5f7] text-[#1d1d1f]" : "bg-slate-950 text-slate-100"}`}
     >
       <PageMetadata lang={lang} options={{module:crmModule === "leads" && leadAnalysis ? "analysis" : crmModule}}/>
-      {identitySelection&&<CrmIdentityComparison key={identitySelection.leadId} {...identitySelection} employee={employee} employees={employees} lang={lang} isLight={isLight} timezone={filterTimezone} onClose={closeIdentityReview} onDirty={setIdentityDirty} onBusy={setIsSubmittingLog} onCandidate={(candidateId:string)=>{const selection={...identitySelection,candidateId};setIdentitySelection(selection);const url=identityUrl(window.location.href,selection);window.history.replaceState({},"",url);lastWorkspaceUrl.current=url;}} onChanged={async()=>{setDetailRefreshVersion(v=>v+1);void fetchLeads(true);if(selectedLead){const r=await fetch(`/api/crm/leads/${encodeURIComponent(selectedLead.id)}`);if(r.ok){const d=await r.json();setSelectedLead((v:any)=>identityReviewedDetail(v,selectedLead.id,d,employee.id));}}}}/>}
-      {pendingNavigation&&<CrmDiscardDialog isLight={isLight} title={t("Unsaved changes","修改尚未保存")} description={t("Keep editing, or discard your unsaved changes and continue. Saved records stay unchanged.","可以继续编辑，或放弃未保存的修改后继续；已保存记录保持不变。")} keepLabel={t("Keep editing","继续编辑")} discardLabel={t("Discard and continue","放弃并继续")} onKeep={resumeDraft} onDiscard={()=>{const action=pendingNavigation;setPendingNavigation(null);clearDraft();action();}}/>}
+      {identitySelection&&<CrmIdentityComparison key={identitySelection.leadId} {...identitySelection} employee={employee} employees={employees} lang={lang} isLight={isLight} timezone={filterTimezone} onClose={closeIdentityReview} onDirty={setIdentityDirty} onBusy={setIsSubmittingLog} onCandidate={(candidateId:string)=>{const selection={...identitySelection,candidateId};setIdentitySelection(selection);const url=identityUrl(window.location.href,selection);window.history.replaceState({},"",url);lastWorkspaceUrl.current=url;}} onChanged={async()=>{refreshIdentityQueue();setDetailRefreshVersion(v=>v+1);void fetchLeads(true);if(selectedLead){const r=await fetch(`/api/crm/leads/${encodeURIComponent(selectedLead.id)}`);if(r.ok){const d=await r.json();setSelectedLead((v:any)=>identityReviewedDetail(v,selectedLead.id,d,employee.id));}}}}/>}
+      {pendingNavigation&&<AdminDiscardDialog isLight={isLight} title={t("Unsaved changes","修改尚未保存")} description={t("Keep editing, or discard your unsaved changes and continue. Saved records stay unchanged.","可以继续编辑，或放弃未保存的修改后继续；已保存记录保持不变。")} keepLabel={t("Keep editing","继续编辑")} discardLabel={t("Discard and continue","放弃并继续")} onKeep={resumeDraft} onDiscard={()=>{const action=pendingNavigation;setPendingNavigation(null);clearDraft();action();}}/>}
       {/* Top Apple-Style / Dark Navigation Bar - Stable 2-Row Architecture */}
       <a className="admin-skip-link" href="#crm-main">{lang==='zh'?'跳到工作区':lang==='id'?'Lewati ke ruang kerja':'Skip to workspace'}</a>
       <AdminHeader workspace="crm" employee={employee} lang={lang} setLang={setLang} isLight={isLight} toggleTheme={toggleTheme}
         navigation={<>
-          <button type="button" aria-current={crmModule === "campaigns" ? "page" : undefined} onClick={() => changeModule("campaigns")}><Target size={16}/>{t("Marketing Campaigns", "营销活动中心")}</button>
-          <button type="button" aria-current={crmModule === "leads" ? "page" : undefined} onClick={() => changeModule("leads")}><Users size={16}/>{t("Leads CRM", "销售线索")}</button>
-          {canFinance&&<button type="button" aria-current={crmModule === "payments"?"page":undefined} onClick={()=>changeModule("payments")}><ClipboardCheck size={16}/>{adminText(lang,"Payment verification","Verifikasi pembayaran","收款核验")}</button>}
+          {canDashboard&&<button type="button" aria-current={crmModule==="dashboard"?"page":undefined} onClick={()=>changeModule("dashboard")}><BarChart3 size={16}/>{adminText(lang,"Operations dashboard","Dasbor operasional","经营看板")}</button>}
+          <button type="button" aria-current={crmModule === "campaigns" ? "page" : undefined} onClick={() => changeModule("campaigns")}><Target size={16}/>{t("Marketing Campaigns", "营销活动中心")}<CrmQueueCount queue="promotion" count={promotionQueue.data?.pendingCount} lang={lang}/></button>
+          <button type="button" aria-current={crmModule === "leads" ? "page" : undefined} onClick={() => changeModule("leads")}><Users size={16}/>{adminText(lang,"Customers","Pelanggan","客户")}<CrmQueueCount queue="identity" count={identityQueue?.pendingCount} lang={lang}/></button>
+          <button type="button" aria-current={crmModule === "opportunities" ? "page" : undefined} onClick={()=>changeModule("opportunities")}><Target size={16}/>{adminText(lang,"Opportunities","Peluang","商机")}</button>
+          {canEnrollmentManagement&&<button type="button" aria-current={crmModule==="enrollment-management"||crmModule==="enrollment-aftercare"||crmModule==="enrollment-settings"?"page":undefined} onClick={()=>changeModule("enrollment-management")}><ListChecks size={16}/>{adminText(lang,"Enrollment management","Pengelolaan pendaftaran","报名管理")}</button>}
+          {canFinance&&<button type="button" aria-current={crmModule === "payments"?"page":undefined} onClick={()=>changeModule("payments")}><ClipboardCheck size={16}/>{adminText(lang,"Payment verification","Verifikasi pembayaran","收款核验")}<CrmQueueCount queue="payments" count={paymentQueue.data?.pendingCount} lang={lang}/></button>}
           {canManage && <button type="button" aria-current={crmModule === "policy" ? "page" : undefined} onClick={() => changeModule("policy")}><Settings size={16}/>{t("Sales Operations", "销售运营")}</button>}
           <button type="button" aria-current={crmModule === "docs" ? "page" : undefined} onClick={() => changeModule("docs")}><BookOpen size={16}/>{lang==='zh'?'系统文档':lang==='id'?'Dokumentasi':'Documentation'}</button>
         </>}/>
 
       {/* Main Workspace Body */}
-      <main id="crm-main" tabIndex={-1} className={`flex-1 p-3 sm:p-5 lg:p-6 max-w-[1560px] w-full mx-auto space-y-5${crmModule === "docs" ? " crm-document-main" : ""}`}>
+      <main id="crm-main" tabIndex={-1} className="admin-workspace-main flex-1 space-y-5">
         {employee.permissions.includes("crm.assign")&&<AccessHandoverPanel actor={employee} lang={lang} isLight={isLight}/>}
-        {crmModule !== "campaigns" && crmModule !== "docs" && crmModule !== "payments" && !leadPanel && <div className={`admin-page-toolbar${crmModule === "leads" ? " crm-home-page-heading" : ""}`} data-theme={isLight ? "light" : "dark"}>
-          {crmModule === "leads" ? (
-            <CrmPageIdentity
+        {crmModule === 'policy'&&!leadPanel&&<AdminPageHeader title={t('Sales Operations Settings','销售运营设置')}
+          subtitle={adminText(lang,'Set working hours, assignment rules, follow-up policies and notifications.',
+            'Atur jam kerja, aturan penugasan, kebijakan tindak lanjut, dan notifikasi.','设置工作日历、分配规则、跟进策略和通知。')}/>}
+        {crmModule === 'leads'&&!leadPanel&&<AdminPageHeader
               title={leadAnalysis ? adminText(lang,"Customer statistics and analysis","Statistik dan analisis pelanggan","客户统计与分析") : adminText(lang, "Customer follow-up", "Tindak lanjut pelanggan", "客户跟进")}
               subtitle={leadAnalysis ? adminText(lang,"Analyse the current filtered customer cohort.","Analisis pelanggan sesuai filter saat ini.","查看当前筛选范围内的客户与联系情况，点击数据返回客户列表。") : t("Prioritize customers, record outcomes and plan the next step.", "明确优先客户，记录沟通结果，安排下一步。")}
-            />
-          ) : <div><h1>{crmModule === "policy" ? t("Sales Operations Settings", "销售运营设置") : adminText(lang, "CRM documentation", "Dokumentasi CRM", "CRM 系统文档")}</h1></div>}
-          <div className={`admin-page-actions${crmModule === "leads" ? " crm-home-page-actions" : ""}`}>            {/* Contextual Actions in Leads: Refresh & Export */}
-            {crmModule === "leads" && (
-              <>
-                <CrmPageAction label={leadAnalysis ? adminText(lang,"Back to customer list","Kembali ke daftar pelanggan","返回客户列表") : adminText(lang,"Statistics and analysis","Statistik dan analisis","统计与分析")} icon={leadAnalysis ? ArrowLeft : BarChart3} onClick={()=>navigateLeadAnalysis(!leadAnalysis)}/>
+              actions={<>
+                <AdminPageAction label={leadAnalysis ? adminText(lang,"Back to customer list","Kembali ke daftar pelanggan","返回客户列表") : adminText(lang,"Statistics and analysis","Statistik dan analisis","统计与分析")} icon={leadAnalysis ? ArrowLeft : BarChart3} onClick={()=>navigateLeadAnalysis(!leadAnalysis)}/>
                 {employee.permissions.includes("crm.export") && (
-                  <CrmPageAction
+                  <AdminPageAction
                     href={"/api/crm/export?" + queryKey}
                     icon={Download}
                     label={t("Export current results (.JSON)", "导出当前结果 (.JSON)")}
                   />
                 )}
-                <CrmPageAction
+                <AdminRefreshAction
                   label={t("Refresh", "刷新数据")}
                   description={lastListRefresh?`${t("Last refreshed","上次刷新")} ${formatCrmEventTime(lastListRefresh)}`:t("No successful refresh yet","尚无成功刷新记录")}
-                  icon={RefreshCw}
-                  iconOnly
                   loading={isLoading}
                   onClick={() => void fetchLeads()}
                 />
-              </>
-            )}
-
-          </div>
-        </div>}
-        {crmModule === "payments" ? (<CrmFinanceWorkspace employee={employee} lang={lang} isLight={isLight} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/>) : crmModule === "campaigns" ? (
+              </>}/>}
+        {crmModule === "dashboard" ? <Suspense fallback={<p role="status">{adminText(lang,'Loading dashboard','Memuat dasbor','正在读取经营看板')}</p>}>
+          <CrmOperationsDashboard key={employee.id} lang={lang} isLight={isLight} actor={employee}
+            onNavigate={changeContentPage} onLocation={url=>{lastWorkspaceUrl.current=url;}}/>
+          </Suspense> :
+          crmModule === "opportunities" ? <CrmEnrollmentOpportunities lang={lang} isLight={isLight} actorId={employee.id} employees={employees} canReviewIdentity={canReviewIdentityRole(employee,policyConfig)} canFinance={canFinance}/> : (crmModule === "enrollment-management" || crmModule === "enrollment-aftercare") ? <CrmEnrollmentManagement lang={lang} isLight={isLight} employee={employee} employees={employees} canSupport={canEnrollmentSupport} aftercare={crmModule==="enrollment-aftercare"} onNavigate={changeContentPage}/> : crmModule === "enrollment-settings" ? (
+          <CrmEnrollmentSettings lang={lang} isLight={isLight} allowed={canManageOperations}
+            params={new URLSearchParams(configurationLocation)} rulesDirty={rulesDirty}
+            onRulesDraftChange={setRulesDirty} onEditorDraftChange={setEnrollmentSettingsEditorDirty} onNavigate={changeContentPage}/>
+        ) : crmModule === "payments" ? (
+          <section className="crm-finance-workspace" aria-label={financeTitle}>
+            <AdminPageHeader title={financeTitle} subtitle={enrollmentPaymentView
+              ?adminText(lang,'Review transfer proofs and verify payments for enrollment orders.','Periksa bukti transfer dan verifikasi pembayaran pesanan pendaftaran.','查看报名订单的转账凭证，核实实际到账。')
+              :adminText(lang,'Review receipts and refunds for historical customer payments.','Periksa penerimaan dan pengembalian dana pembayaran pelanggan terdahulu.','查询历史客户款项，核对收款和退款记录。')}
+              actions={canFinance&&<AdminRefreshAction label={t('Refresh','刷新')} loading={financeLoading} onClick={()=>{setFinanceRefresh(v=>v+1);paymentQueue.refresh();}}/>}/>
+            {canFinance&&<AdminContentNav label={adminText(lang,'Finance workspace','Ruang kerja keuangan','财务工作区')} onNavigate={changeContentPage} items={[
+              {href:'/crm?tab=payments&paymentView=enrollment',label:paymentWorkspaceLabel('enrollment',lang),current:enrollmentPaymentView},
+              {href:'/crm?tab=payments',label:paymentWorkspaceLabel('historical',lang),current:!enrollmentPaymentView},
+            ]}/>}
+            {canFinance&&enrollmentPaymentView?
+          <CrmEnrollmentFinance key={employee.id} actorId={employee.id} refreshVersion={financeRefresh} onRefreshingChange={setFinanceLoading} lang={lang} isLight={isLight}
+            onQueueChanged={paymentQueue.refresh} onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={url=>{lastWorkspaceUrl.current=url;}}/> :
+          <CrmFinanceWorkspace key={employee.id} refreshVersion={financeRefresh} onRefreshingChange={setFinanceLoading} onQueueChanged={paymentQueue.refresh} employee={employee} lang={lang} isLight={isLight}
+            onDirty={setFinanceDirty} onBusy={setIsSubmittingLog} onLocation={(url:string)=>{lastWorkspaceUrl.current=url;}}/>}
+          </section>) : crmModule === "campaigns" ? (
           <CrmCampaignHub
-            canManageCampaigns={employee.permissions.includes("campaigns.manage")}
+            canManageCampaigns={canManageCampaigns}
+            reviewCounts={{available: Boolean(promotionQueue.data?.counts), counts: promotionQueue.data?.counts ?? {}}}
+            reviewPendingCount={promotionQueue.data?.pendingCount}
+            reviewCountsLoading={promotionQueue.loading}
+            onRefreshReviewCounts={promotionQueue.refresh}
             isLight={isLight}
             lang={lang}
             leads={leads}
@@ -1329,9 +1532,13 @@ function CrmWorkspace({
         ) : crmModule === "policy" && canManage ? (
           <>
             {employee.permissions.includes("crm.operations.manage") && <CrmPolicySettings
+              initialTopic={policyTopic}
+              onTopicChange={changePolicyTopic}
               isLight={isLight}
               lang={lang}
               policyConfig={policyConfig}
+              policyRead={policyRead}
+              onRetryPolicy={()=>void fetchPolicyConfig()}
               onSavePolicy={handleSavePolicy}
               onResetPolicy={handleResetPolicy}
               onNavigateTab={(tab) => changeModule(tab)}
@@ -1341,7 +1548,7 @@ function CrmWorkspace({
               notificationContent={employee.permissions.includes("notifications.read") ? (topic:string,active:boolean)=><NotificationTopicPanels enabled={active} topic={topic as NotificationTab} isLight={isLight} lang={lang} canEdit={employee.permissions.includes("notifications.manage")}/> : null}
               onActionControlsChange={setPolicyControls}
             />}
-            {!employee.permissions.includes("crm.operations.manage") && employee.permissions.includes("notifications.read") && <NotificationWorkspace isLight={isLight} lang={lang} canEdit={employee.permissions.includes("notifications.manage")}/>}
+            {!employee.permissions.includes("crm.operations.manage") && employee.permissions.includes("notifications.read") && <NotificationWorkspace topic={policyTopic as NotificationTab} onTopicChange={changePolicyTopic} isLight={isLight} lang={lang} canEdit={employee.permissions.includes("notifications.manage")}/>}
           </>
         ) : crmModule === "docs" ? (
           <CrmUserGuide
@@ -1352,7 +1559,7 @@ function CrmWorkspace({
         ) : (
           <>
             {leadAnalysis && !leadPanel && leadFilterControls}
-            {!leadPanel && <CrmProcessOverview mode={leadAnalysis ? "analysis" : "summary"} metrics={processOverview} error={Boolean(refreshProblem&&!processOverview)} lang={lang} isLight={isLight} timezone={filterTimezone} leader={canAssign} employees={employees} selectedMetrics={filters.overview||[]} selectedStages={filters.stage} onMetric={key=>{setFilters(f=>({...f,overview:key?(f.overview?.includes(key)?f.overview.filter(v=>v!==key):[...(f.overview||[]),key]):undefined}));if(leadAnalysis)navigateLeadAnalysis(false);}} onStage={key=>{setFilters(f=>({...f,stage:key?(f.stage.includes(key)?f.stage.filter(v=>v!==key):[key]):[]}));if(leadAnalysis)navigateLeadAnalysis(false);}}/>}
+            {!leadPanel && <CrmProcessOverview mode={leadAnalysis ? "analysis" : "summary"} metrics={processOverview} error={Boolean(refreshProblem&&!processOverview)} lang={lang} isLight={isLight} timezone={filterTimezone} leader={canAssign} employees={employees} selectedMetrics={filters.overview||[]} selectedCommunication={filters.communication} onMetric={key=>{setFilters(f=>({...f,overview:key?(f.overview?.includes(key)?f.overview.filter(v=>v!==key):[...(f.overview||[]),key]):undefined}));if(leadAnalysis)navigateLeadAnalysis(false);}} onCommunication={key=>{setFilters(f=>({...f,communication:key?(f.communication.includes(key)?[]:[key]):[]}));if(leadAnalysis)navigateLeadAnalysis(false);}}/>}
             {retainedDraft&&<section className="crm-workflow-form" role="region" aria-label={lang==='zh'?'保留的未保存草稿':lang==='id'?'Draf belum tersimpan':'Retained unsaved draft'}><p role="alert">{lang==='zh'?'客户访问权限已变化，未保存草稿已保留；重新获得权限后打开客户可继续。':lang==='id'?'Akses pelanggan berubah. Draf disimpan di halaman ini; buka pelanggan setelah akses dipulihkan.':'Customer access changed. Your draft is retained on this page; reopen after access is restored.'}</p><textarea readOnly aria-label={lang==='zh'?'草稿内容':lang==='id'?'Isi draf':'Draft content'} value={[retainedDraft.summary,retainedDraft.action,retainedDraft.purpose,retainedDraft.date,retainedDraft.arrangementReason,retainedDraft.reviewDate].filter(Boolean).join('\n')}/><button type="button" className="crm-work-button" onClick={()=>{delete draftCache.current[retainedDraft.id];delete attendanceCache.current[retainedDraft.id];setRetainedDraft(null);}}>{lang==='zh'?'丢弃草稿':lang==='id'?'Buang draf':'Discard draft'}</button></section>}
             {queueComplete&&<p role="status">{lang==='zh'?'已到当前列表末尾，请核对剩余待办':lang==='id'?'Akhir daftar tercapai; periksa tugas yang masih terbuka':'End of current list; review remaining tasks'}</p>}
             {(pendingListOrder||refreshProblem)&&<div className="crm-refresh-status" role="status" aria-live="polite">
@@ -1381,12 +1588,15 @@ function CrmWorkspace({
               employees={employees}
               onClaim={employee.permissions.includes("crm.claim")?(lead)=>claimLead(lead.id):undefined}
               canClaim={lead=>canClaimForContact(employee,lead)}
+              onPurchaseIntent={reviewPurchaseIntent}
               onSignal={(lead,id)=>{const finish=()=>{handleOpenLeadDrawer(lead,"profile",true);setSignalFocus({id,token:Date.now()});};if(discardDraft(finish))finish();}}
               onIdentity={lead=>openIdentityReview(lead.id)}
               onOpen={handleOpenLeadDrawer}
               onProcess={processFromList}
               progressAction={lead=>progressActionState(employee,lead)}
               sidebarFilters={leadPanel?leadFilterControls:undefined}
+              backToList={customerListBack}
+
               search={filters.search} onSearch={value=>setFilters(current=>({...current,search:value}))}
               onReset={() => setFilters(defaultLeadFilters(employee.scope))}
             >
@@ -1395,6 +1605,6 @@ function CrmWorkspace({
           </>
         )}
       </main>
-    </div>{historyRequest&&selectedLead&&historyRequest.leadId===selectedLead.id&&<CrmCustomerHistoryWindow lead={selectedLead} ownerName={selectedLead.owner?(employees.find(e=>e.id===selectedLead.owner)?.displayName||crmUiText('负责人姓名未记录',lang)):crmUiText('未分配',lang)} request={historyRequest} {...{lang,isLight}} timezone={filterTimezone} onClose={()=>setHistoryRequest(null)} onBack={historyRequest.previous?()=>setHistoryRequest({...historyRequest.previous,token:Date.now()}):undefined} onOpen={openCustomerHistory} onConversation={viewHistoryConversation} amendmentNotice={historyAmendNotice} suspended={Boolean(historyAmendTarget||enrollmentTarget)} onAmendSalesRecord={canEditLead(selectedLead,"crm.followup")?(record:any)=>{if(canAmendSalesRecord(record,canEditLead(selectedLead,"crm.followup"))){setHistoryAmendNotice('');setHistoryAmendTarget(record);}}:undefined}/>} {historyAmendTarget&&selectedLead&&<CrmRecordAmendmentForm key={selectedLead.id+historyAmendTarget.eventId} target={historyAmendTarget} lead={selectedLead} timezone={filterTimezone} isLight={isLight} suspended={!canEditLead(selectedLead,"crm.followup")} onDirty={setHistoryAmendDirty} onBusy={setIsSubmittingLog} onCancel={()=>{setHistoryAmendTarget(null);setHistoryAmendDirty(false);}} onSaved={(result:any)=>{setHistoryAmendTarget(null);setHistoryAmendDirty(false);setHistoryAmendNotice(amendmentSaveNotice(result,lang));setSelectedLead(current=>current?.id===result.lead.id?{...current,...result.lead}:current);setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}}/>}{enrollmentTarget&&selectedLead&&<CrmEnrollmentCorrectionForm key={selectedLead.id+enrollmentTarget} lead={selectedLead} factId={enrollmentTarget} {...{lang,isLight}} suspended={!canEditLead(selectedLead)} onDirty={setEnrollmentDirty} onBusy={setIsSubmittingLog} onCancel={()=>{setEnrollmentTarget(null);setEnrollmentDirty(false)}} onSaved={(result:any)=>{setEnrollmentTarget(null);setEnrollmentDirty(false);setStageNotice({leadId:result.lead.id,text:crmUiText(result.stageChanged?'报名误记已作废，销售阶段已同步更新。':'报名误记已作废，当前阶段保持不变。',lang)});setHistoryAmendNotice(crmUiText(result.stageChanged?'报名误记已作废，销售阶段已同步更新。':'报名误记已作废，当前阶段保持不变。',lang));setSelectedLead(current=>current?.id===result.lead.id?{...current,...result.lead}:current);setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}}/>}</CrmHistoryAccess.Provider></CrmEnrollmentCorrectionAccess.Provider>
+    </div>{historyRequest&&selectedLead&&historyRequest.leadId===selectedLead.id&&<CrmCustomerHistoryWindow lead={selectedLead} ownerName={selectedLead.owner?(employees.find(e=>e.id===selectedLead.owner)?.displayName||crmUiText('负责人姓名未记录',lang)):crmUiText('未分配',lang)} request={historyRequest} {...{lang,isLight}} timezone={filterTimezone} onClose={()=>setHistoryRequest(null)} onBack={historyRequest.previous?()=>setHistoryRequest({...historyRequest.previous,token:Date.now()}):undefined} onOpen={openCustomerHistory} onConversation={viewHistoryConversation} amendmentNotice={historyAmendNotice} savedAmendmentId={savedAmendment?.leadId===selectedLead.id?savedAmendment.id:undefined} suspended={Boolean(historyAmendTarget||enrollmentTarget)} onAmendSalesRecord={canEditLead(selectedLead,"crm.followup")?(record:any)=>{if(canAmendSalesRecord(record,canEditLead(selectedLead,"crm.followup"))){setHistoryAmendNotice('');setHistoryAmendTarget(record);}}:undefined}/>} {historyAmendTarget&&selectedLead&&<CrmRecordAmendmentForm key={selectedLead.id+historyAmendTarget.eventId} target={historyAmendTarget} lead={selectedLead} timezone={filterTimezone} isLight={isLight} suspended={!canEditLead(selectedLead,"crm.followup")} onDirty={setHistoryAmendDirty} onBusy={setIsSubmittingLog} onCancel={()=>{setHistoryAmendTarget(null);setHistoryAmendDirty(false);}} onSaved={(result:any)=>{setHistoryAmendTarget(null);setHistoryAmendDirty(false);setHistoryAmendNotice(amendmentSaveNotice(result,lang));setSavedAmendment({leadId:result.lead.id,id:result.amendment.id});setSelectedLead(current=>current?.id===result.lead.id?{...current,...result.lead}:current);setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}}/>}{enrollmentTarget&&selectedLead&&<CrmEnrollmentCorrectionForm key={selectedLead.id+enrollmentTarget} lead={selectedLead} factId={enrollmentTarget} {...{lang,isLight}} suspended={!canEditLead(selectedLead)} onDirty={setEnrollmentDirty} onBusy={setIsSubmittingLog} onCancel={()=>{setEnrollmentTarget(null);setEnrollmentDirty(false)}} onSaved={(result:any)=>{paymentQueue.refresh();setEnrollmentTarget(null);setEnrollmentDirty(false);setHistoryAmendNotice(crmUiText(result.stageChanged?'报名误记已作废，销售阶段已同步更新。':'报名误记已作废，当前阶段保持不变。',lang));setSelectedLead(current=>current?.id===result.lead.id?{...current,...result.lead}:current);setDetailRefreshVersion(v=>v+1);void fetchLeads(true);}}/>}</CrmHistoryAccess.Provider></CrmEnrollmentCorrectionAccess.Provider>
   );
 }

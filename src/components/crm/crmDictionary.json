@@ -562,6 +562,70 @@
   {
     "layer": "contract",
     "object": "CrmLeadRecord",
+    "key": "purchaseIntentSuggestion",
+    "type": "PurchaseIntentSuggestion | null",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentOpportunitySummary",
+    "type": "{ count: number; hasEnrollment?: true; only?: { id: string; level: string; stage: string; }; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentOpportunitySummary.count",
+    "type": "number",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentOpportunitySummary.hasEnrollment",
+    "type": "true",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentOpportunitySummary.only",
+    "type": "{ id: string; level: string; stage: string; }",
+    "optional": true,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentOpportunitySummary.only.id",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentOpportunitySummary.only.level",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
+    "key": "enrollmentOpportunitySummary.only.stage",
+    "type": "string",
+    "optional": false,
+    "source": "src/types/crmLead.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "CrmLeadRecord",
     "key": "factMilestoneSummary",
     "type": "{ enrollmentScope?: string; key: string; title: string; count: number; unknownCount: number; latest: { id: string; occurredAt: string | null; timeBasis: string; }; }[]",
     "optional": true,
@@ -3403,7 +3467,7 @@
     "layer": "contract",
     "object": "Rule",
     "key": "channels",
-    "type": "Channel[]",
+    "type": "(Channel | typeof LARK_GROUP | typeof LARK_PERSONAL)[]",
     "optional": false,
     "source": "server/portal/policy.ts"
   },
@@ -3429,6 +3493,14 @@
     "key": "group",
     "type": "string",
     "optional": false,
+    "source": "server/portal/policy.ts"
+  },
+  {
+    "layer": "contract",
+    "object": "Rule",
+    "key": "groupIds",
+    "type": "string[]",
+    "optional": true,
     "source": "server/portal/policy.ts"
   },
   {

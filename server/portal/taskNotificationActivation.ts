@@ -3,7 +3,7 @@ import {auditLog} from './audit.ts';
 
 /** Run inside a transaction. Explicit activation only, never an automatic startup migration. */
 export async function activateTaskNotifications(c: any, actor: string, apply = false) {
-  const channel=(await c.query('SELECT id FROM notification_channels WHERE id=:p1',[CRM_BOT_CHANNEL])).rows[0];
+  const channel=(await c.query("SELECT id FROM notification_channels WHERE id=:p1 AND COALESCE(config->>'$.deleted','false')<>'true' FOR SHARE",[CRM_BOT_CHANNEL])).rows[0];
   if(!channel)throw Error('CRM Bot channel required');
   const rows=(await c.query('SELECT * FROM notification_rules WHERE id IN (:p1) ORDER BY id FOR UPDATE',[[...TASK_NOTICE_EVENTS]])).rows;
   if(rows.length!==TASK_NOTICE_EVENTS.length)throw Error('All three task notification rules required');

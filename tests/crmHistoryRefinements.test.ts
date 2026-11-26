@@ -24,8 +24,8 @@ test('known empty before omits only the empty arrow; zero, real changes, clear a
  const g=source();
  const show=(extra:any)=>render(React.createElement(CrmHistoryInformation,{group:g,items:[item('a',extra)]}));
  assert.doesNotMatch(show({before:null}),/crm-history-information-before/);
- assert.match(show({field:'budgetAmount',value:1900000,before:1800000}),/Rp1,800,000/);
- assert.match(show({field:'budgetAmount',value:100,before:0}),/crm-history-information-before[^>]*>Rp0/);
+ assert.match(show({field:'budgetAmount',value:1900000,before:1800000}),/Rp 1,800,000/);
+ assert.match(show({field:'budgetAmount',value:100,before:0}),/crm-history-information-before[^>]*>Rp 0/);
  assert.match(show({value:null,before:'Bandung'}),/明确清空/);
  assert.doesNotMatch(show({beforeKnown:false,before:undefined}),/新增|未记录 →/);
  assert.match(show({status:'unknown',beforeKnown:false}),/采用结果未注明/);

@@ -1,12 +1,28 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Globe2, MessageCircle, Sparkles, MapPin, GraduationCap, Plane, Bot, Handshake, Calendar, Quote, ChevronLeft, ChevronRight, Building2, Briefcase, Target, Clock, Users, Tag, Landmark, School, Network, Trophy, CheckCircle2, FileText, Headset, Star, CheckCircle } from 'lucide-react';
-import { Link, useNavigationType } from 'react-router-dom';
+import { Link, useNavigationType, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { SEO } from '../components/SEO';
 import { client } from '../cmsClient';
 import imageUrlBuilder from '../cmsClient';
+import { promotionJourneyUrl } from '../utils/promotionNavigation';
 import { useDesignStyle } from '../utils/theme';
+import { addRouteTranslations } from '../i18n';
+import translations from '../i18n/locales/routes/home.json';
+
+addRouteTranslations('home', translations);
+
+const programLinkTypography = 'font-bold text-lg';
+
+function EnrollmentProgramLink() {
+  const {t,i18n}=useTranslation();
+  const [params]=useSearchParams();
+  return <Link className={`relative mt-5 w-fit inline-flex items-center gap-2 ${programLinkTypography} text-primary-700 hover:underline`}
+    to={promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2),params,'website')}>
+    {t('nav.enrollmentDetails')}<ArrowRight size={18} aria-hidden="true"/>
+  </Link>;
+}
 
 const builder = imageUrlBuilder(client);
 function urlFor(source: any) {
@@ -607,10 +623,10 @@ const Hero = () => {
 
             <div className="mt-6 flex items-center gap-5 text-xs sm:text-sm font-medium text-slate-500">
               <div className="flex -space-x-3 shrink-0">
-                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[4] shadow-sm"><img src="/blcu-logo.png" alt="BLCU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
-                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[3] shadow-sm"><img src="/ccnu-logo.png" alt="CCNU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
+                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[4] shadow-sm"><img src="/blcu-logo-thumbnail.webp" alt="BLCU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
+                <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center overflow-hidden z-[3] shadow-sm"><img src="/ccnu-logo-thumbnail.webp" alt="CCNU" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
                 {/* 暂时隐藏昆山杜克大学 logo，待确认后恢复显示。 */}
-                <div className="w-10 h-10 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden z-[1] shadow-sm"><img src="/muh-logo.png" alt="MUH" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
+                <div className="w-10 h-10 rounded-full border-2 border-white bg-white flex items-center justify-center overflow-hidden z-[1] shadow-sm"><img src="/muh-logo-thumbnail.webp" alt="MUH" width="38" height="38" loading="lazy" decoding="async" className="w-full h-full object-contain p-[1px] mix-blend-multiply" /></div>
               </div>
               <p className="leading-snug max-w-[380px]">
                 {t('home.hero.partnership.prefix')} <span className="text-slate-900 font-bold">{t('home.hero.partnership.highlight')}</span>{t('home.hero.partnership.suffix')}
@@ -1556,7 +1572,8 @@ const MainServices = () => {
                       </div>
                     )}
                   </div>
-                  <Link to={srv.link} className="md:w-1/2 p-10 md:p-16 flex flex-col justify-center relative overflow-hidden">
+                  <div className="md:w-1/2 p-10 md:p-16 flex flex-col justify-center relative overflow-hidden">
+                  <Link to={srv.link} className="block">
                     {!isApple && (
                       <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${srv.color} opacity-5 rounded-bl-full -z-0 transition-transform duration-500 group-hover:scale-150`}></div>
                     )}
@@ -1566,11 +1583,13 @@ const MainServices = () => {
                       </div>
                       <h3 className={`text-3xl md:text-4xl font-bold mb-4 text-slate-900 transition-colors ${titleHoverClass}`}>{srv.title}</h3>
                       <p className="text-lg text-slate-600 leading-relaxed mb-8">{srv.desc}</p>
-                      <div className={`inline-flex items-center gap-2 font-bold text-lg transition-colors ${linkTextClass}`}>
+                      <div className={`inline-flex items-center gap-2 ${programLinkTypography} transition-colors ${linkTextClass}`}>
                         {t(`home.servicesData.${srv.id}.cta`)} <ArrowRight className="w-5 h-5 transform group-hover:translate-x-2 transition-transform duration-300" />
                       </div>
                     </div>
                   </Link>
+                  {srv.id==='hsk'&&<EnrollmentProgramLink/>}
+                  </div>
                 </div>
               </motion.div>
             );

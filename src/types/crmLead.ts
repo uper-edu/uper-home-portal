@@ -1,3 +1,4 @@
+import type {PurchaseIntentSuggestion} from '../utils/crmPurchaseIntentSuggestion';
 import type { 
   CurrentStatusType, 
   GoalType, 
@@ -82,6 +83,8 @@ export interface LeadAttention {
 }
 export interface RecordAmendment {id:string;requestId:string;targetFactId:string;targetLogId:string|null;kind:'supplement'|'correction';text:string;reason:string|null;contactResult:string|null;actor:string;staffName?:string;recordedAt:string;}
 export interface CrmLeadRecord {
+  purchaseIntentSuggestion?: PurchaseIntentSuggestion|null;
+  enrollmentOpportunitySummary?: {count:number;hasEnrollment?:true;only?:{id:string;level:string;stage:string}};
   factMilestoneSummary?: {enrollmentScope?:string;key:string;title:string;count:number;unknownCount:number;latest:{id:string;occurredAt:string|null;timeBasis:string}}[];
   enrollmentEvidence?: {confirmations: Array<{id:string;effectiveAt:string|null;recordedAt:string|null}>};
   recordAmendments?:RecordAmendment[];

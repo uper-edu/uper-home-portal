@@ -1,6 +1,7 @@
 import {aiProfileFieldLabels,assertAiProfileUpdates,AI_PROFILE_POLICY} from './crmAiProfilePolicy';
 import {systemDimension,validateDimensionValue} from './crmDimensionCatalog';
 import { sameProfileValue, compatibleProfileValue } from "./crmFieldValues";
+import {compatibleGoalRecord,goalRelation,type GoalReview} from './crmGoalReview';
 import { effectiveContactRecords } from "./crmRecordAmendments";
 import { interactionInstant } from "./crmInteractionTimeline";
 export const profileFields=aiProfileFieldLabels;
@@ -176,8 +177,9 @@ export function applyProfileFields(
   return { profile: p, changes };
 }
 /** Facts only: no personal state, completion state, deadline or hint assignment. */
-export function dynamicProfileHints(p: any, now = Date.now()) {
+export function dynamicProfileHints(p: any, now = Date.now(), goalReview?:GoalReview|null) {
   const hints: any[] = [];
+  const different=(k:string,d:any)=>d.effective!==false&&!d.supersededBy&&!(k==='goal'?compatibleGoalRecord(p,d,goalReview):compatibleProfileValue(k,p[k],d.value));
   for (const [k, m] of Object.entries(p.profileFieldMeta || {}) as any) {
     if (!profileFields[k]) continue;
     if (m.valueState === "correction_pending")
@@ -200,23 +202,20 @@ export function dynamicProfileHints(p: any, now = Date.now()) {
     if (
       m.pendingDifferences?.some(
         (d: any) =>
-          d.effective !== false &&
-          !d.supersededBy &&
-          !compatibleProfileValue(k, p[k], d.value),
+          different(k,d),
       )
     )
       hints.push({
         id: "difference:" + k,
         kind: "difference",
+        ...(k==='goal'?{goalReviewState:m.pendingDifferences.filter((d:any)=>different(k,d)).every((d:any)=>goalRelation(p,d,goalReview)==='conflict')?'conflict':'uncertain'}:{}),
         text:
           profileFields[k] +
-          "存在不同记录：" +
+          (k==='goal'?"另有表述，保留当前值：":"存在不同记录：") +
           m.pendingDifferences
             .filter(
               (d: any) =>
-                d.effective !== false &&
-                !d.supersededBy &&
-                !compatibleProfileValue(k, p[k], d.value),
+                different(k,d),
             )
             .map((d: any) =>
               Array.isArray(d.value)
@@ -228,9 +227,7 @@ export function dynamicProfileHints(p: any, now = Date.now()) {
         evidenceIds: m.pendingDifferences
           .filter(
             (d: any) =>
-              d.effective !== false &&
-              !d.supersededBy &&
-              !compatibleProfileValue(k, p[k], d.value),
+              different(k,d),
           )
           .map((d: any) => d.sourceFactId),
       });
@@ -255,9 +252,7 @@ export function dynamicProfileHints(p: any, now = Date.now()) {
     if (
       !m.pendingDifferences?.some(
         (d: any) =>
-          d.effective !== false &&
-          !d.supersededBy &&
-          !compatibleProfileValue(k, p[k], d.value),
+          different(k,d),
       )
     )
       hints.push({

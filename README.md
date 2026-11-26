@@ -18,6 +18,8 @@ The locked `msedge-tts` package includes a pnpm-only installation guard, so the 
 
 Development normally listens on localhost:3000. Do not start another process or overwrite the database connection when an existing local3000 service is running. Routes include `/`, `/chat`, `/crm`, `/cms` and `/system`; staff permissions and customer ownership apply to the management APIs. Mock employee fixtures are for isolated localhost tests only.
 
+The local CRM database serves existing Enrollment orders on normal startup. Learners need a valid verified session to view orders or submit transfer proofs. Finance continues to require its existing verification permission. New applications stay closed by default on a normal local boot. For simulated verification emails, set an absolute `PORTAL_ENROLLMENT_SIMULATION_MAILBOX` path in the private local environment and leave mail transport unset or use `simulation`. The CRM notification worker can continue running. Enrollment's automatic vacancy and transfer scans still run in simulation or in an explicitly provisioned test or production service. With local mail transport disabled, new email challenges return an unavailable response while existing sessions remain valid.
+
 ## Environment configuration and builds
 
 Only placeholder templates belong in Git: `.env.dev.example`, `.env.test.example` and `.env.prod.example`. Actual `.env.dev`, `.env.test` and `.env.prod` files stay private and are not included in release packages. The old `.env` is not automatically merged by the new environment loader.
@@ -31,11 +33,11 @@ npm run start:dev
 
 `npm run build` is the development build. Outputs are `build/<environment>/web` and `build/<environment>/runtime`. Frontend builds consume only public `VITE_` variables; server credentials are injected at runtime. Production configuration is reserved and startup remains blocked until explicitly provisioned. See [environment configuration](docs/environment-configuration.md) for file creation, secret custody and environment isolation.
 
-Production uses `https://uperedu.com` as its canonical origin and accepts `https://www.uperedu.com` and `https://home.uperedu.com` as aliases. Set `APP_URL` and `ACCESS_PUBLIC_ORIGIN` to the canonical origin and `ACCESS_ALLOWED_ORIGINS` to these three HTTPS origins. Only these three production hosts are supported; both Ingress routing and generated links must use them.
+Production uses `https://uperedu.com` as its canonical origin and accepts `https://www.uperedu.com` and `https://home.uperedu.com` as aliases. Set `APP_URL` and `UPER_PORTAL_PUBLIC_ORIGIN` to the canonical origin and `ACCESS_ALLOWED_ORIGINS` to these three HTTPS origins. Only these three production hosts are supported; both Ingress routing and generated links must use them.
 
 ## AI and notification configuration
 
-Configure `OPENAI_API_KEY` and `OPENAI_MODEL` (default `gpt-4o`) privately. A valid `DEEPSEEK_API_KEY` enables fallback to `deepseek-chat`. Provider attempts and the final consultation response are persisted; a configuration endpoint does not prove live provider health. Unrelated contact/careers forms retain their SMTP handlers.
+Configure `OPENAI_API_KEY` and `OPENAI_MODEL` (default `gpt-4o`) privately. A valid `DEEPSEEK_API_KEY` enables fallback to `deepseek-flash`. Provider attempts and the final consultation response are persisted; a configuration endpoint does not prove live provider health. Unrelated contact/careers forms retain their SMTP handlers.
 
 Sales Operations manages notification rules, channels and delivery audit. Opening a customer or reading messages does not complete follow-up tasks. Lark starts in simulation for a new environment and requires explicit approval and a configured server-side Webhook before live sending. Email/SMS delivery is not connected. Environment templates deliberately do not embed the current server's secrets or activate live delivery.
 
@@ -51,7 +53,7 @@ Database integration tests use disposable synthetic databases. The native test h
 
 ## Company test deployment
 
-The approved unified origin is `https://home.prototype.uperedu.com`, with frontend and API served together. The company test environment has its own synthetic MySQL schema and private `.env.test`; it does not use local3000 customer data or credentials. Staff APIs retain login, role and customer-scope checks. Server builds are prepared locally and released through the project adapter for the `uper-server-deploy` skill. A GitHub sync does not authorize deployment.
+The approved unified origin is `https://home.prototype.uperedu.com`, with frontend and API served together. The company test environment has its own synthetic MySQL schema and private `.env.test`; it does not use local3000 customer data or credentials. Staff APIs retain login, role and customer-scope checks. Server builds are prepared locally and released through the project adapter for the `commando-uper-server-deploy` skill. A GitHub sync does not authorize deployment.
 
 - [Company deployment acceptance](docs/company-host-deployment-20261015.md)
 - [Browser acceptance and remaining limitations](docs/company-browser-acceptance-20261015.md)

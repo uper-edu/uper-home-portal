@@ -2,7 +2,7 @@ import {Ban,Clock3,ShieldQuestion} from 'lucide-react';
 import {contactRestriction} from '../../utils/crmContact';
 import {formatCrmOperatingTime,viewerTimeZone} from '../../utils/crmOperatingTime';
 import {useCrmUiText} from './CrmUiLanguage';
-import {CrmSalesStage,CrmStopContact} from './CrmSalesStage';
+import {CrmStopContact} from './CrmSalesStage';
 
 /** Current authorized lead values only. Historical events and contact evidence never set a stage. */
 export function CrmIdentityStatus({lead,lang='zh',explain=false}:{lead:any;lang?:string;explain?:boolean}){
@@ -10,10 +10,10 @@ export function CrmIdentityStatus({lead,lang='zh',explain=false}:{lead:any;lang?
  if(!lead.identityReview?.pending)return null;
  return <><span className="crm-current-restriction" data-restriction="identity"><ShieldQuestion size={14} aria-hidden="true"/>{ui('身份待核实')}</span>{explain&&!lead.identityReview.canReview&&<span className="crm-current-state-label">{ui('核实后可认领和联系')}</span>}</>;
 }
-export function CrmCurrentSalesState({lead,lang='zh',compact=false,ownerName,explainIdentity=false,now=Date.now()}:{lead:any;lang?:string;compact?:boolean;ownerName?:string;explainIdentity?:boolean;now?:number}){
+export function CrmCustomerContactRestrictions({lead,lang='zh',compact=false,ownerName,explainIdentity=false,now=Date.now()}:{lead:any;lang?:string;compact?:boolean;ownerName?:string;explainIdentity?:boolean;now?:number}){
  const ui=useCrmUiText(lang),restriction=contactRestriction(lead,now),at=lead.contactReview?.reviewAt;
- return <section className={'crm-current-sales-state'+(compact?' is-compact':'')} aria-label={ui('当前销售阶段与联系限制')}>
-  {(lead.currentStage?.trim()||!lead.identityReview?.pending)&&<div className="crm-current-stage"><span className="crm-current-state-label">{ui('当前阶段')}</span><CrmSalesStage stage={lead.currentStage} lang={lang}/></div>}
+ if(ownerName===undefined&&!restriction&&!lead.identityReview?.pending)return null;
+ return <section className={'crm-current-sales-state'+(compact?' is-compact':'')} aria-label={lang==='zh'?'客户联系安排':lang==='id'?'Pengaturan kontak pelanggan':'Customer contact arrangements'}>
   {ownerName!==undefined&&<span className="crm-current-owner"><span className="crm-current-state-label">{ui('负责人')}</span>{ownerName}</span>}
   <CrmIdentityStatus lead={lead} lang={lang} explain={explainIdentity}/>
   {restriction==='stopped'&&<span className="crm-current-restriction" data-restriction="stopped"><CrmStopContact lead={lead} lang={lang}/></span>}

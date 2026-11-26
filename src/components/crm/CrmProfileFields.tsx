@@ -1,12 +1,13 @@
 import {trackEvent,trackConfirmedReceipt} from '../../utils/analytics';
+import {crmSaveFailureKind} from '../../utils/crmOperationResult';
 import {profileAnalyticsReceipt} from '../../utils/analyticsReceipts';
 import {CrmHistoryAccess} from './CrmHistoryAccess';
 import {CrmQuestionnaireEvidence} from './CrmQuestionnaireEvidence';
 import {CrmFormSection} from './CrmFormLayout';
-import {AdminFormActions} from '../AdminFormLayout';
+import {AdminFormActions,AdminFormFeedback,AdminFormGrid,AdminSavedReadError} from '../AdminFormLayout';
 import { useCrmUiText, useCrmUiLanguage } from "./CrmUiLanguage";
 import { CrmOperationLayer } from "./CrmOperationLayer";
-import { CrmDiscardDialog } from "./CrmDetailWorkspace";
+import { AdminDiscardDialog } from "../admin/AdminDiscardDialog";
 import { AdminField, AdminRequiredNote } from "../AdminForm";
 import { CrmProfileSaveResult } from "./CrmProfileSaveResult";
 import {
@@ -30,9 +31,12 @@ import {
   profileChangeReason,
   visibleProfileNeedsGroups,
   learningGoalEntries,
+  reportedLevelQuestionnaires,
 } from "../../utils/crmProfileEvidence";
 import { CrmAiIndicator } from "./CrmAiIndicator";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import {useCrmGoalReview} from './useCrmGoalReview';
+import {goalRelation} from '../../utils/crmGoalReview';
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { crmValue } from "../../utils/crmLanguage";
 import {
   formatCrmOperatingTime,
@@ -84,6 +88,11 @@ export function CrmProfileFields({
     delete rev[key];
     onChange(next, rev);
   };
+  const fieldEdits = Object.entries(updates || {});
+  const contactPreferences = ["communicationLanguage", "preferredChannel"];
+  const pairedPreferences = scope === "basic" && fieldEdits.some(([key], index) =>
+    contactPreferences.includes(key) && contactPreferences.includes(fieldEdits[index + 1]?.[0])
+  );
   return (
     <div data-admin-form="" className="crm-profile-batch">
       <div className="crm-profile-picker-heading">
@@ -154,11 +163,12 @@ export function CrmProfileFields({
           </div>
         </div>
       )}
-      <div className="crm-profile-batch-fields">
-        {Object.entries(updates || {}).map(([key, value]: any) => {
+      {fieldEdits.length > 0 && <AdminFormGrid className="crm-profile-batch-fields">
+        {fieldEdits.map(([key, value]: any) => {
           const meta = lead.profileFieldMeta?.[key];
           return (
-            <section key={key} className="crm-profile-field-editor">
+            <section key={key} className="crm-profile-field-editor"
+              data-admin-full-width={pairedPreferences && contactPreferences.includes(key) ? undefined : ""}>
               <div className="crm-profile-field-title">
                 <strong>
                   {ui(manualProfileFields[key])}
@@ -180,7 +190,7 @@ export function CrmProfileFields({
                 </button>
               </div>
               {["mode", "communicationLanguage"].includes(key) ? (
-                <CrmSingleSelect
+                <AdminSingleSelect
                   label={ui(manualProfileFields[key])}
                   required={value !== null}
                   lang={lang}
@@ -283,7 +293,7 @@ export function CrmProfileFields({
             </section>
           );
         })}
-      </div>
+      </AdminFormGrid>}
     </div>
   );
 }
@@ -307,6 +317,7 @@ export function CrmCurrentField({
   const lang = useCrmUiLanguage(),
     ui = useCrmUiText(),
     m = lead.profileFieldMeta?.[field];
+  const goalReview=useCrmGoalReview(lead,field==='goal');
   const value = (v: any) =>
     v === null
       ? ui("已明确清空")
@@ -331,8 +342,11 @@ export function CrmCurrentField({
     (d: any) =>
       d.effective !== false &&
       !d.supersededBy &&
-      !compatibleProfileValue(field, lead[field], d.value),
+      !(field==='goal'?sameProfileValue(field,lead[field],d.value):compatibleProfileValue(field, lead[field], d.value)),
   );
+  const differenceGroups=field==='goal'?
+    ['equivalent','compatible','conflict','uncertain'].map(relation=>({label:({equivalent:'含义相符的目标表述',compatible:'补充的目标表述',conflict:'有不同记录',uncertain:'待核对的目标表述'} as any)[relation],rows:differences.filter((d:any)=>goalRelation(lead,d,goalReview)===relation)})).filter(group=>group.rows.length):
+    [{label:'有不同记录',rows:differences}].filter(group=>group.rows.length);
   if (
     (lead[field] === undefined ||
       lead[field] === null ||
@@ -382,12 +396,13 @@ export function CrmCurrentField({
           )}
         </div>
         </>}
-        {differences.length > 0 && (
-          <details className="crm-profile-difference">
+        {differenceGroups.map(group=>(
+          <details key={group.label} className="crm-profile-difference">
             <summary>
-              {ui("有不同记录")} · {differences.length}
+              {ui(group.label)} · {group.rows.length}
+              {field==='goal'&&goalReview&&group.label!=='待核对的目标表述'&&<CrmAiIndicator/>}
             </summary>
-            {differences.map((d: any, i: number) => (
+            {group.rows.map((d: any, i: number) => (
               <div key={i}>
                 <p>
                   {value(d.value)} ·{" "}
@@ -408,7 +423,7 @@ export function CrmCurrentField({
               </div>
             ))}
           </details>
-        )}
+        ))}
         {m?.valueState === "correction_pending" && (
           <p className="crm-profile-difference">
             {ui("原依据已有修正，请对照原文")}
@@ -447,9 +462,18 @@ export function CrmProfileEvidence({ lead, timezone }: any) {
     </dl>
   );
 }
+export function CrmReportedLevel({lead,lang:provided}:any){
+  const lang=useCrmUiLanguage(provided),ui=useCrmUiText(provided);
+  if(!lead.reportedLevel)return null;
+  return <div className="crm-current-field"><dt>{ui('客户自报水平')}</dt><dd>
+    <div className="crm-current-field-value">{crmValue(lead.reportedLevel,lang)}</div>
+    <div className="crm-current-field-source"><ProfileSource key={lead.id+':reportedLevel:'+lead.reportedLevel} leadId={lead.id} field="reportedLevel" label="客户自报水平" questionnaireValue={lead.reportedLevel}/></div>
+  </dd></div>;
+}
 export function CrmProfileEditor({
   lead,
   onSaved,
+  onReloadSavedProfile,
   onDirty,
   disabled,
   timezone,
@@ -466,8 +490,6 @@ export function CrmProfileEditor({
   const [scope, setScope] = useState("needs"),
     [basisIds, setBasisIds] = useState<string[]>([]),
     [availableFacts, setAvailableFacts] = useState<any[]>([]);
-  const moreActions=useRef<HTMLDetailsElement>(null);
-  useEffect(()=>{const outside=(e:PointerEvent)=>{if(moreActions.current&&!moreActions.current.contains(e.target as Node))moreActions.current.open=false;};document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[]);
   const openEditor = (nextScope: string, key?: string) => {
     setScope(nextScope);
     if (key) {
@@ -480,8 +502,7 @@ export function CrmProfileEditor({
   const formRef = useRef<HTMLDivElement>(null);
   const [conflict, setConflict] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const [success, setSuccess] = useState(""),
-    [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<any[]>([]);
   const [open, setOpen] = useState(false),
     [updates, setUpdates] = useState<any>({}),
     [versions, setVersions] = useState<any>({}),
@@ -490,6 +511,20 @@ export function CrmProfileEditor({
     [busy, setBusy] = useState(false),
     [request, setRequest] = useState<any>(null),
     [unknown, setUnknown] = useState(false);
+  const [savedReadFailed,setSavedReadFailed]=useState(false);
+  const [readingSavedProfile,setReadingSavedProfile]=useState(false);
+  const readSavedProfile=async()=>{
+    if(!onReloadSavedProfile||readingSavedProfile)return;
+    setReadingSavedProfile(true);
+    try{
+      await onReloadSavedProfile();
+      setSavedReadFailed(false);
+    }catch{
+      setSavedReadFailed(true);
+    }finally{
+      setReadingSavedProfile(false);
+    }
+  };
   async function save(query = false) {
     if (busy) return;
     if (!query) {
@@ -508,7 +543,6 @@ export function CrmProfileEditor({
     onBusy?.(true);
     setError("");
     setConflict(false);
-    setSuccess("");
     setResults([]);
     let body = request;
     let knownFailure = false;
@@ -539,12 +573,14 @@ export function CrmProfileEditor({
       const d = await r.json();
       if (!r.ok) {
         setConflict(r.status === 409);
-        if (r.status === 404 && query) {
-          setRequest(null);
-          setUnknown(false);
-          throw Error("未查到保存结果，可以明确重试");
+        const failure = crmSaveFailureKind(r.status, query);
+        if (failure === "receipt_missing") {
+          setError(lang === "zh" ? "暂未查到保存结果，输入已保留，请稍后再次查询。" :
+            lang === "id" ? "Hasil penyimpanan belum ditemukan. Isian dipertahankan. Periksa lagi nanti." :
+            "No save receipt yet. Your input is retained. Check again later.");
+          return;
         }
-        if (r.status < 500 && !query) {
+        if (failure === "rejected") {
           knownFailure = true;
           setRequest(null);
           setUnknown(false);
@@ -559,18 +595,10 @@ export function CrmProfileEditor({
       setRequest(null);
       onDirty?.(false);
       setOpen(false);
-      setSuccess(
-        scope === "needs"
-          ? "已保存"
-          : "已更新" +
-              (d.profileFieldResults || []).filter(
-                (r: any) => r.status === "applied",
-              ).length +
-              "项客户资料，请查看各字段结果。",
-      );
       setResults(scope === "needs" ? [] : d.profileFieldResults || []);
       trackConfirmedReceipt(profileAnalyticsReceipt(d,lead.id,body?.requestId,scope));
       onSaved(d.lead);
+      void readSavedProfile();
     } catch (e) {
       if (!knownFailure && !(e as Error).message.includes("未查到"))
         setUnknown(true);
@@ -591,7 +619,7 @@ export function CrmProfileEditor({
       <button
         type="button"
         className="crm-work-button crm-profile-edit-action"
-        disabled={busy || open}
+        disabled={busy||open||readingSavedProfile||savedReadFailed}
         onClick={() => openEditor(kind)}
       >
         <Pencil size={16} aria-hidden="true" />
@@ -616,18 +644,13 @@ export function CrmProfileEditor({
         <h3 id="crm-profile-learning-needs" tabIndex={-1}>
           {ui("客户洞察")}
         </h3>
-        {!disabled&&<details className="crm-insights-more" ref={moreActions} onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();e.currentTarget.open=false;e.currentTarget.querySelector('summary')?.focus();}}}><summary className="crm-work-button">{ui('更多操作')}</summary><div><button type="button" className="crm-work-link" disabled={busy||open} onClick={()=>{if(moreActions.current){moreActions.current.open=false;moreActions.current.querySelector('summary')?.focus();}openEditor('needs');}}>{ui('人工纠正学习需求')}</button></div></details>}
+        {editAction('needs','人工纠正学习需求')}
       </header>
-      {success && <p role="status">{success}</p>}
+      {savedReadFailed&&<AdminSavedReadError lang={lang} busy={readingSavedProfile} onRetry={()=>void readSavedProfile()}/>}
       <CrmProfileSaveResult results={results} />
       {(lead.reportedLevel||visibleProfileNeedsGroups(lead).length>0)&&<section className="crm-insights-group" aria-label={ui('学习需求与偏好')}><h4>{ui('学习需求与偏好')}</h4><div className="crm-profile-needs-group">
         <dl>
-          {lead.reportedLevel && (
-            <div>
-              <dt>{ui("客户自报水平")}</dt>
-              <dd>{crmValue(lead.reportedLevel, lang)}</dd>
-            </div>
-          )}
+          <CrmReportedLevel lead={lead}/>
           <CrmLearningGoals lead={lead} timezone={timezone}/>
           {visibleProfileNeedsGroups(lead).map(({ title, fields: keys }) => (
             <Fragment key={title}>
@@ -747,7 +770,7 @@ export function CrmProfileEditor({
                 />
               </AdminField>
               </CrmFormSection>
-              {error && <p role="alert">{error}</p>}
+              {error && <AdminFormFeedback lang={lang} state={unknown?"unknown":"error"}>{error}</AdminFormFeedback>}
             </div>
             <AdminFormActions className="crm-editor-actions">
               <button
@@ -802,7 +825,7 @@ export function CrmProfileEditor({
             </AdminFormActions>
           </div>
           {confirm && (
-            <CrmDiscardDialog
+            <AdminDiscardDialog
               isLight={isLight}
               title={ui("放弃未保存的资料修改？")}
               description={ui("已保存资料保持不变。")}
@@ -1081,8 +1104,11 @@ export function CrmProfileSourceContent({
 
 export function CrmProfileOriginalRecord({event}:any){return event.payload?.answers?<CrmQuestionnaireEvidence source={{answers:event.payload.answers,recordedAt:event.recordedAt,root:{payload:event.payload}}}/>:<blockquote className="crm-progress-original">{event.original}</blockquote>;}
 
-function ProfileSource({ leadId, ids, field, fields, availableEvents, label }: any) {
+function ProfileSource({ leadId, ids = [], field, fields, availableEvents, label, questionnaireValue }: any) {
   const openHistory=useContext(CrmHistoryAccess);
+  const lang=useCrmUiLanguage();
+  const mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   const ui = useCrmUiText(),
     contentId = useId();
   const [data, setData] = useState<any[] | null>(null),
@@ -1100,7 +1126,7 @@ function ProfileSource({ leadId, ids, field, fields, availableEvents, label }: a
         behavior={openHistory?"open":undefined}
         controls={contentId}
         onClick={async () => {
-          if(openHistory){openHistory({id:ids[0],fields:fields||[field]});return;}
+          if(openHistory&&ids.length){openHistory({id:ids[0],fields:fields||[field]});return;}
           if (busy) return;
           if (data) {
             setData(null);
@@ -1118,13 +1144,15 @@ function ProfileSource({ leadId, ids, field, fields, availableEvents, label }: a
               events = (await response.json()).events;
             }
             if (!Array.isArray(events)) throw Error("原始依据暂不可用，请重试");
-            const selected = linkedProfileEvidence(events, ids, leadId);
-            if (!selected.length) throw Error("原始依据暂不可用，请重试");
+            if (!mounted.current) return;
+            const selected = questionnaireValue === undefined ? linkedProfileEvidence(events, ids, leadId) : reportedLevelQuestionnaires(events,leadId,questionnaireValue);
+            if (!selected.length) throw Error(questionnaireValue === undefined ? "原始依据暂不可用，请重试" : lang==='zh'?'未找到与当前自报水平对应的原始问卷。':lang==='id'?'Kuesioner asli yang sesuai dengan tingkat yang dilaporkan belum ditemukan.':'No original questionnaire matching the current self-reported level was found.');
+            if(openHistory&&selected.length===1){openHistory({id:selected[0].eventId,fields:fields||[field]});return;}
             setData(selected);
           } catch (error) {
-            setError((error as Error).message);
+            if(mounted.current)setError((error as Error).message);
           } finally {
-            setBusy(false);
+            if(mounted.current)setBusy(false);
           }
         }}
       />

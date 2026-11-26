@@ -1,7 +1,7 @@
 import { Clock3, MessageSquare, NotebookPen, Activity } from "lucide-react";
 import { followupHistoryDay } from "../../utils/crmFollowupOverview";
 import { Fragment, useState, useEffect } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import {
   followupHistory,
   historyTouchesTask,
@@ -87,7 +87,7 @@ export function CrmFollowupHistory({
         <h3>
           {t("Follow-up timeline", "Linimasa tindak lanjut", "跟进时间轴")}
         </h3>
-        <CrmSingleSelect
+        <AdminSingleSelect
           label={t("Record filter", "Filter catatan", "记录筛选")}
           value={taskId ? "task" : filter}
           onChange={(v) => {

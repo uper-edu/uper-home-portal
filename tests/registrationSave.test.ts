@@ -10,12 +10,17 @@ test('registration request fingerprints exclude generated time, preserve answers
  assert.throws(()=>registrationSubmissionId({submissionId:'bad'}));
  assert.deepEqual(publicRegistrationProfile({id:'A',fullName:'Maya',internalNote:'private',owner:'Sales',tier:'Hot'}),{id:'A',fullName:'Maya'});
 });
-test('ambiguous response remains unknown; visitor-scoped tab draft clears after query-only recovery',async()=>{
+test('ambiguous response queries the original receipt once and clears the visitor draft on confirmation',async()=>{
  const scope=randomUUID(),store=storage();let posts=0,queries=0,id='';
- const fetcher=(async(url:any,init:any={})=>{if(init.method==='POST'){posts++;id=JSON.parse(init.body).submissionId;return response({error:'gateway'},503);}queries++;return response({saved:true,submissionId:id,lead:{id:'A',fullName:'Maya'}});})as typeof fetch;
- await assert.rejects(()=>saveRegistration({scope,payload:{fullName:'Maya'},fetcher,storage:store}),e=>e instanceof RegistrationSaveError&&e.state==='unknown');
- assert([...store.values.keys()].every(k=>k.endsWith(scope)));
- const data=await saveRegistration({scope,payload:{},fetcher,storage:store,queryOnly:true});assert.equal(data.lead.id,'A');assert.equal(posts,1);assert.equal(queries,1);assert.equal(store.values.size,0);
+ const fetcher=(async(url:any,init:any={})=>{
+  if(init.method==='POST'){posts++;id=JSON.parse(init.body).submissionId;return response({error:'gateway'},503);}
+  queries++;
+  assert.equal(url,'/api/portal/registrations/'+id);
+  assert.deepEqual([...store.values.keys()],['uper_registration_pending:'+scope]);
+  return response({saved:true,submissionId:id,lead:{id:'A',fullName:'Maya'}});
+ })as typeof fetch;
+ const data=await saveRegistration({scope,payload:{fullName:'Maya'},fetcher,storage:store});
+ assert.equal(data.lead.id,'A');assert.equal(posts,1);assert.equal(queries,1);assert.equal(store.values.size,0);
 });
 test('404 does not authorize a query-only write; explicit retry reuses original ID and timestamp',async()=>{
  const scope=randomUUID(),store=storage(),bodies:any[]=[];let recover=false;
@@ -46,4 +51,40 @@ test('a fresh page recovers only its verified visitor tab draft and explicitly r
  assert.equal(fresh.pendingRegistrationDraft(randomUUID(),store),null);assert.equal(fresh.pendingRegistrationDraft(scope,store)?.fullName,'Sari');
  let posted:any;const fetcher=(async(_u:any,i:any={})=>{if(i.method!=='POST')return response({},404);posted=JSON.parse(i.body);return response({saved:true,submissionId:posted.submissionId,lead:{id:'S'}});})as typeof fetch;
  await fresh.saveRegistration({scope,payload:{},retryOriginal:true,fetcher,storage:store});assert.equal(posted.fullName,'Sari');assert.equal(store.values.size,0);
+});
+test('an HTTP browser can restore a draft and retry with the original submission ID',async t=>{
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto')!;
+ const getRandomValues=crypto.getRandomValues.bind(crypto);
+ t.after(()=>Object.defineProperty(globalThis,'crypto',descriptor));
+ Object.defineProperty(globalThis,'crypto',{configurable:true,value:{getRandomValues}});
+ const scope=randomUUID(),store=storage(),posts:any[]=[];
+ const fetcher=(async(_url:any,init:any={})=>{
+   if (init.method!=='POST') return response({},404);
+   const body=JSON.parse(init.body); posts.push(body);
+   return posts.length===1?response({},503):response({saved:true,submissionId:body.submissionId,lead:{id:'S'}});
+ }) as typeof fetch;
+ const payload={fullName:'Sari',goals:['Work'],submittedAt:'initial'};
+ await assert.rejects(saveRegistration({scope,payload,fetcher,storage:store}),{state:'unknown'});
+ const fresh=await import('../src/services/registrationSave.ts?http='+randomUUID());
+ assert.equal(fresh.pendingRegistrationDraft(scope,store)?.fullName,'Sari');
+ await assert.rejects(fresh.saveRegistration({scope,payload:{...payload,goals:['Study']},fetcher,storage:store}),{state:'conflict'});
+ assert.equal(posts.length,1);
+ await fresh.saveRegistration({scope,payload:{goals:['Work'],fullName:'Sari',submittedAt:'changed'},fetcher,storage:store});
+ assert.deepEqual(posts[1],posts[0]);
+ assert.equal(store.values.size,0);
+});
+
+test('legacy hash-only drafts keep their original receipt and submission ID',async()=>{
+ const scope=randomUUID(),id=randomUUID(),store=storage();
+ const payload={fullName:'Sari'};
+ const submittedAt=new Date().toISOString();
+ store.setItem('uper_registration_pending:'+scope,JSON.stringify({id,submittedAt,fingerprint:registrationFingerprint(payload)}));
+ const fetcher=(async(_url:any,init:any={})=>{
+   if(init.method!=='POST')return response({},404);
+   const body=JSON.parse(init.body);
+   assert.deepEqual(body,{...payload,submittedAt,submissionId:id});
+   return response({saved:true,submissionId:id,lead:{id:'S'}});
+ }) as typeof fetch;
+ await saveRegistration({scope,payload,fetcher,storage:store});
+ assert.equal(store.values.size,0);
 });

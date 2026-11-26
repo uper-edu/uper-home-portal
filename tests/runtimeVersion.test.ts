@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import express from 'express';import React from 'react';import {renderToStaticMarkup} from 'react-dom/server';
-import {runtimeEnvironment,buildIdentity,createRuntimeVersion,mountRuntimeVersion,publicBuildIdentity} from '../server/runtimeVersion.mjs';
+import {execFileSync} from 'node:child_process';
+import {runtimeEnvironment,buildIdentity,createRuntimeVersion,mountRuntimeVersion,publicBuildIdentity,verifyFrontendBuildIdentity} from '../server/runtimeVersion.mjs';
 import {mountSite} from '../cloud/mysql/site.mjs';
 import {VersionDetails,versionTime} from '../src/components/RuntimeVersionStatus';
 function fixture(t:any){const root=fs.mkdtempSync(path.join(process.cwd(),'.local-backups/version-fixture-'));fs.mkdirSync(path.join(root,'src'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));return root;}
@@ -9,11 +10,58 @@ test('Version identity follows source and public build config, excludes private 
  fs.writeFileSync(path.join(root,'src/main.ts'),'export const value=2');assert.notEqual(buildIdentity('test',root,{VITE_LABEL:'TEST'}).buildId,a.buildId);assert.notEqual(buildIdentity('test',root,{VITE_LABEL:'OTHER'}).buildId,buildIdentity('test',root,{VITE_LABEL:'TEST'}).buildId);assert.notEqual(buildIdentity('dev',root,{VITE_LABEL:'TEST'}).buildId,a.buildId);
  assert.ok(!JSON.stringify(publicBuildIdentity({...a,password:'TEST-PRIVATE',serverPath:'/private/test'})).includes('TEST-PRIVATE'));
 });
+test('Build identity includes bundled assessment archives, including files Git has not tracked yet', t=>{
+ const root=fixture(t);
+ const original=buildIdentity('dev',root);
+ const archiveDirectory=path.join(root,'src','data','hskVersions');
+ fs.mkdirSync(archiveDirectory,{recursive:true});
+ const archive=path.join(archiveDirectory,'example.json');
+ fs.writeFileSync(archive,'{"examVersion":"example","questions":[]}');
+ const added=buildIdentity('dev',root);
+ assert.notEqual(added.buildId,original.buildId);
+ fs.writeFileSync(archive,'{"examVersion":"example","questions":[{"id":"fixture"}]}');
+ assert.notEqual(buildIdentity('dev',root).buildId,added.buildId);
+});
+test('The frontend rejects a release identity for different public configuration or another environment', t=>{
+ const root=fixture(t);
+ const identity=buildIdentity('test',root,{VITE_ALPHA:'example',VITE_ZULU:'fixture'});
+ assert.deepEqual(verifyFrontendBuildIdentity(identity,'test',{VITE_ZULU:'fixture',VITE_ALPHA:'example'}),identity);
+ assert.throws(()=>verifyFrontendBuildIdentity(identity,'test',{VITE_ALPHA:'changed'}),/public configuration changed/);
+ assert.throws(()=>verifyFrontendBuildIdentity(identity,'dev',{VITE_ALPHA:'example',VITE_ZULU:'fixture'}),/environment does not match/);
+});
 test('Packaged front/back/environment mismatches fail startup; source mode is not mislabeled as a packaged release',t=>{
  const root=fixture(t),web=path.join(root,'web');fs.mkdirSync(web);const id=buildIdentity('test',root);fs.writeFileSync(path.join(root,'portal-build.json'),JSON.stringify(id));fs.writeFileSync(path.join(web,'portal-build.json'),JSON.stringify(id));
  const version=createRuntimeVersion({root,frontend:web,env:{PORTAL_ENV:'test'}});assert.equal(version.backend.buildId,version.frontend.buildId);assert.equal(version.consistent,true);assert.equal(version.mode,'package');
  assert.throws(()=>createRuntimeVersion({root,frontend:web,env:{PORTAL_ENV:'dev'}}),/environment mismatch/);fs.writeFileSync(path.join(web,'portal-build.json'),JSON.stringify(buildIdentity('dev',root)));assert.throws(()=>createRuntimeVersion({root,frontend:web,env:{PORTAL_ENV:'test'}}),/build mismatch/);
  fs.unlinkSync(path.join(root,'portal-build.json'));assert.equal(createRuntimeVersion({root,frontend:web,env:{APP_ENV:'local',TRIAL_DATASET:'local-crm'}}).mode,'source');assert.equal(runtimeEnvironment({PORTAL_LOCAL_CUTOVER:'true'}),'dev');assert.equal(runtimeEnvironment({PORTAL_DEPLOYMENT:'company-trial',NODE_ENV:'production'}),'test');assert.equal(runtimeEnvironment({PORTAL_ENV:'prod'}),'prod');assert.equal(runtimeEnvironment({}),'unknown');
+});
+test('A packaged launch cannot fall back to source when the backend identity is missing',t=>{
+ const root=fixture(t);
+ const web=path.join(root,'web');
+ fs.mkdirSync(web);
+ fs.writeFileSync(path.join(web,'portal-build.json'),JSON.stringify(buildIdentity('test',root)));
+ assert.throws(()=>createRuntimeVersion({
+  root,frontend:web,env:{PORTAL_ENV:'test',PORTAL_PACKAGE_ENV:'test'},
+ }),/Missing backend build identity/);
+ assert.equal(createRuntimeVersion({root,frontend:web,env:{PORTAL_ENV:'test'}}).mode,'source');
+});
+test('The server entry rejects an incomplete package before loading the database application',()=>{
+ const script=`
+  import assert from 'node:assert/strict';
+  import {registerHooks} from 'node:module';
+  const fixture=registerHooks({resolve(specifier,context,next){
+   assert.notEqual(specifier,'./server/mysqlApplication.ts','Database application imported before validating release');
+   return next(specifier,context);
+  }});
+  try {
+   await assert.rejects(import('./server.ts'),/Missing backend build identity for packaged runtime/);
+  } finally {
+   fixture.deregister();
+  }
+ `;
+ execFileSync(process.execPath,['--import','tsx','--input-type=module','--eval',script],{
+  env:{PATH:process.env.PATH,PORTAL_ENV:'dev',PORTAL_PACKAGE_ENV:'dev',PORTAL_ENV_SOURCE:'injected'},
+ });
 });
 test('Version endpoint/headers expose the same captured identity, never credentials',async t=>{
  const root=fixture(t);const version=createRuntimeVersion({root,env:{PORTAL_ENV:'test',MYSQL_TRIAL_URL:'mysql://TEST-secret@localhost/private'}});const app=express();mountRuntimeVersion(app,version);const server=app.listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));t.after(()=>new Promise<void>(r=>server.close(()=>r())));const response=await fetch('http://127.0.0.1:'+(server.address() as any).port+'/api/version');assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(response.headers.get('x-uper-environment'),'test');const text=await response.text();assert.ok(!text.includes('TEST-secret'));assert.deepEqual(JSON.parse(text),version);

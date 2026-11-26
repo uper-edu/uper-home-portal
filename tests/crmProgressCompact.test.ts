@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import {renderToStaticMarkup as render} from 'react-dom/server';
 import {CrmProgressSection} from '../src/components/crm/CrmProgressSection';
-import {CrmSingleSelect} from '../src/components/crm/CrmSingleSelect';
+import {AdminSingleSelect} from '../src/components/admin/AdminSingleSelect';
 import {CrmSimpleWorkflow} from '../src/components/crm/CrmSimpleWorkflow';
 import {agreementChoice} from '../src/utils/crmProgressDetails';
 test('original wording and time distinguish similar agreements without inventing unknown or date-only times',()=>{
@@ -17,9 +17,9 @@ test('original wording and time distinguish similar agreements without inventing
 });
 test('selected agreement keeps its full original content and time in one accessible control',()=>{
  const option={value:'a',label:'完整原约定'.repeat(45),description:'2099-11-08 · 仅日期'};
- const h=render(React.createElement(CrmSingleSelect,{label:'已有约定',value:'a',options:[option],lang:'zh',isLight:true,onChange:()=>{}}));
+ const h=render(React.createElement(AdminSingleSelect,{label:'已有约定',value:'a',options:[option],lang:'zh',isLight:true,onChange:()=>{}}));
  assert.ok(h.includes(option.label));assert.ok(h.includes(option.description));assert.match(h,/class="crm-choice-title"/);assert.match(h,/class="crm-choice-description"/);assert.match(h,/aria-description=/);
- const ordinary=render(React.createElement(CrmSingleSelect,{label:'普通选项',value:'a',options:[{value:'a',label:'普通值'}],lang:'zh',isLight:true,onChange:()=>{}}));assert.doesNotMatch(ordinary,/class="crm-choice-detail"|class="crm-choice-description"/);
+ const ordinary=render(React.createElement(AdminSingleSelect,{label:'普通选项',value:'a',options:[{value:'a',label:'普通值'}],lang:'zh',isLight:true,onChange:()=>{}}));assert.doesNotMatch(ordinary,/class="crm-choice-detail"|class="crm-choice-description"/);
 });
 test('clear is a peer header action, never a nested button or a body row, with stable space in all languages',()=>{
  for(const lang of ['zh','en','id']){

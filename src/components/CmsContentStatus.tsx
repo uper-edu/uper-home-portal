@@ -1,10 +1,34 @@
-import {useEffect,useState} from 'react';
+import {useLayoutEffect,useSyncExternalStore} from 'react';
 import {useTranslation} from 'react-i18next';
-const failures=new Set<string>();
-export function contentStatus(query:string,failed:boolean){if(failed)failures.add(query);else failures.delete(query);window.dispatchEvent(new Event('cms-content-status'));}
+import {useLocation} from 'react-router-dom';
+
+type ContentReads={path:string;failed:Set<string>;latest:Map<string,object>};
+let current:ContentReads|undefined;
+const eventName='cms-content-status';
+const subscribe=(listener:()=>void)=>{
+  window.addEventListener(eventName,listener);
+  return ()=>window.removeEventListener(eventName,listener);
+};
+
+export function beginContentRead(key:string) {
+  const path=window.location.pathname;
+  if(current?.path!==path)current={path,failed:new Set(),latest:new Map()};
+  const reads=current;
+  const request={};
+  reads.latest.set(key,request);
+  return (failed:boolean)=>{
+    if(current!==reads||window.location.pathname!==path||reads.latest.get(key)!==request)return;
+    reads.latest.delete(key);
+    const wasUnavailable=reads.failed.size>0;
+    if(failed)reads.failed.add(key);
+    else reads.failed.delete(key);
+    if(wasUnavailable!==(reads.failed.size>0))window.dispatchEvent(new Event(eventName));
+  };
+}
 export default function CmsContentStatus(){
- const [unavailable,setUnavailable]=useState(false);const {i18n}=useTranslation();
- useEffect(()=>{const update=()=>setUnavailable(failures.size>0);update();window.addEventListener('cms-content-status',update);return ()=>window.removeEventListener('cms-content-status',update);},[]);
+ const {pathname}=useLocation();const {i18n}=useTranslation();
+ const unavailable=useSyncExternalStore(subscribe,()=>current?.path===pathname&&current.failed.size>0,()=>false);
+ useLayoutEffect(()=>{if(current?.path!==pathname)current=undefined;},[pathname]);
  if(!unavailable)return null;
  const language=i18n.language.startsWith('zh')?'zh':i18n.language.startsWith('id')?'id':'en';
  const message={en:'Some website content is temporarily unavailable. Please reload to retry.',id:'Sebagian konten situs sementara tidak tersedia. Muat ulang untuk mencoba lagi.',zh:'部分网站内容暂不可用，请重新加载后重试。'}[language];

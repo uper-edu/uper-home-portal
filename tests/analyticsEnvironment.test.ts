@@ -12,27 +12,17 @@ test("three exact build targets use two properties and three distinct public mea
   const ids = new Set<string>(),
     properties = new Set<string>();
   for (const target of ["dev", "test", "prod"] as const) {
-    const config = analyticsBuildConfiguration(target, {
-      VITE_UPER_MEASUREMENT_ID: mapping.environments[target].measurementId,
-      OPENAI_API_KEY: "PRIVATE",
-    });
+    const config = analyticsBuildConfiguration(target);
+    assert.equal(config.measurementId, mapping.environments[target].measurementId);
     ids.add(config.measurementId);
     properties.add(config.propertyId);
     assert.equal(config.target, target);
     assert.doesNotMatch(JSON.stringify(config), /PRIVATE|API_KEY/);
-    assert.throws(() => analyticsBuildConfiguration(target, {}), /Missing/);
-    const wrong = target === "dev" ? "prod" : "dev";
-    assert.throws(
-      () =>
-        analyticsBuildConfiguration(target, {
-          VITE_UPER_MEASUREMENT_ID: mapping.environments[wrong].measurementId,
-        }),
-      /does not match/,
-    );
+
   }
   assert.equal(properties.size, 2);
   assert.equal(ids.size, 3);
-  assert.throws(() => analyticsBuildConfiguration("production", {}), /Unknown/);
+  assert.throws(() => analyticsBuildConfiguration("production"), /Unknown/);
 });
 test("runtime host and build gates prevent development, staging and production packages crossing destinations", () => {
   const configs = Object.fromEntries(

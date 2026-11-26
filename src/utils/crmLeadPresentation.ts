@@ -1,6 +1,7 @@
 import {crmUiText} from './crmUiText';
 import {profileFields} from './crmDynamicProfile';
-import { crmValue, crmLocale } from "./crmLanguage";
+import { crmValue } from "./crmLanguage";
+import {formatCurrency} from './currency';
 /** Presentation only: no inferred old value, new signal, task or priority. */
 export function listLeadHint(lead: any, lang: any = "zh") {
   const hints = lead.informationHints || [];
@@ -29,11 +30,7 @@ export function budgetPresentation(lead: any, lang: any = "zh") {
         : "Total course budget";
   return {
     label,
-    value:
-      "Rp" +
-      new Intl.NumberFormat(crmLocale(lang), {
-        maximumFractionDigits: 20,
-      }).format(amount),
+    value: formatCurrency(amount,lang),
   };
 }
 

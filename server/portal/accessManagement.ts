@@ -1,3 +1,5 @@
+import {larkApplication} from './integrationCredentialTargets.ts';
+import {larkSettings,larkSettingsTarget} from './larkSettings.ts';
 import {larkApp,larkBindings,larkPublicError,larkLookupInput} from './larkApp.ts';
 import { normalizeStaffEmail } from "../../src/utils/staffEmail.ts";
 import crypto from "node:crypto";
@@ -39,12 +41,16 @@ function initialPassword(name: string) {
     if(process.env.TRIAL_DATASET!=='synthetic'||process.env.APP_ENV!=='test')throw Error('Test credentials require isolated synthetic test mode');
     return name;
   }
-  const file=process.env.ACCESS_INITIAL_PASSWORDS_FILE;
-  if(!file||fs.statSync(file).mode&0o077)throw Error('Private 0600 initial-password file required for first initialization');
-  const password=JSON.parse(fs.readFileSync(file,'utf8'))[name];
-  const forcedInitial=process.env.ACCESS_REQUIRE_INITIAL_PASSWORD_CHANGE==='true';
-  if(forcedInitial&&(process.env.PORTAL_DEPLOYMENT!=='company-trial'||process.env.PORTAL_ENV!=='test'))throw Error('Temporary initial credentials are test-site only');
-  if(typeof password!=='string'||password.length<(forcedInitial?8:12)||password.length>200||password.toLowerCase()===name.toLowerCase())throw Error('Strong initial credential required');
+  let password = process.env.ACCESS_INITIAL_PASSWORD;
+  if (!password) {
+    const file = process.env.ACCESS_INITIAL_PASSWORDS_FILE;
+    if (!file || fs.statSync(file).mode & 0o077)
+      throw Error('Private 0600 initial-password file required for first initialization');
+    password = JSON.parse(fs.readFileSync(file, 'utf8'))[name];
+  }
+  if (typeof password !== 'string' || password.length < 8 || password.length > 200 ||
+      password.toLowerCase() === name.toLowerCase())
+    throw Error('Valid initial credential required');
   return password;
 }
 export async function initializeAccessAccounts() {
@@ -79,7 +85,12 @@ export async function initializeAccessAccounts() {
           JSON.stringify([]),
         ],
       );
-      if(!exists&&process.env.ACCESS_REQUIRE_INITIAL_PASSWORD_CHANGE==='true')await c.query("INSERT INTO access_state(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",[passwordChangeKey(name),{required:true}]);
+      if (!exists && process.env.ACCESS_ALLOW_TEST_PASSWORDS !== 'true') {
+        await c.query(
+          "INSERT INTO access_state(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE value=:p2",
+          [passwordChangeKey(name), { required: true }],
+        );
+      }
     }
     const robert = (
       await c.query("SELECT * FROM crm_users WHERE id='Robert' FOR UPDATE")
@@ -184,7 +195,8 @@ export function mountAccessManagement(app: Express) {
   app.get('/api/admin/access/lark-bindings',wrap(async(q:any,r:any)=>{
     await guard(q,'access.users');
     r.setHeader('Cache-Control','no-store');
-    r.json({bindings:await larkBindings(pool),configured:!!process.env.LARK_APP_ID&&!!process.env.LARK_APP_SECRET});
+    const app=await larkApplication();
+    r.json({bindings:await larkBindings(pool),configured:!!(app.appId&&app.key)});
   }));
   app.post('/api/admin/access/lark-lookup',wrap(async(q:any,r:any)=>{
     await guard(q,'access.users',true);
@@ -201,13 +213,13 @@ export function mountAccessManagement(app: Express) {
       const employee=await guard(q, "access.read");
       r.setHeader("Cache-Control", "no-store");
       const roles = await roleRows();
-      const bindings=await larkBindings(pool);
+      const bindings=await larkBindings(pool),appId=(await larkSettings()).appId;
       r.json({
         users: (
           await pool.query("SELECT * FROM crm_users ORDER BY display_name")
         ).rows.map((u: any) => ({
           ...safeUser(u),
-          larkBound:!!bindings[u.id]?.openId && bindings[u.id].appId===process.env.LARK_APP_ID,
+          larkBound:!!bindings[u.id]?.openId && bindings[u.id].appId===appId,
           effective: projectEmployee(u, roles),
         })),
         roles,
@@ -345,13 +357,17 @@ export function mountAccessManagement(app: Express) {
         !list(b.roles)
       )
         error(400, "access_invalid_user");
-      let larkCandidate:any=undefined;
+      let larkCandidate:any=undefined,larkTarget:string|undefined;
       if(b.larkBinding!==undefined){
         if(!b.larkBinding || typeof b.larkBinding!=='object' || !Number.isInteger(b.larkBinding.revision) || b.larkBinding.revision<0)error(400,'lark_binding_invalid');
         if(b.larkBinding.remove===true)larkCandidate=null;
         else {
           if(!b.active)error(409,'lark_employee_disabled');
-          try{const input=larkLookupInput(b.larkBinding);larkCandidate=await larkApp.lookup(input.value,input.method);}catch(e){error(400,larkPublicError(e));}
+          try{
+            const input=larkLookupInput(b.larkBinding);
+            larkTarget=larkSettingsTarget(await larkSettings());
+            larkCandidate=await larkApp.lookup(input.value,input.method);
+          }catch(e){error(400,larkPublicError(e));}
           if(larkCandidate.openId!==b.larkBinding.openId)error(409,'lark_identity_changed');
         }
       }
@@ -418,6 +434,10 @@ export function mountAccessManagement(app: Express) {
           ],
         );
         if(larkCandidate!==undefined){
+          if(larkCandidate){
+            const app=await larkSettings(c);
+            if(larkCandidate.appId!==app.appId||larkTarget!==larkSettingsTarget(app))error(409,'lark_binding_conflict');
+          }
           const bindings=await larkBindings(c),prior=bindings[old.id];
           if(Number(b.larkBinding.revision)!==Number(prior?.revision||0))error(409,'lark_binding_conflict');
           if(larkCandidate&&Object.entries(bindings).some(([id,v]:any)=>id!==old.id&&v.openId===larkCandidate.openId&&v.appId===larkCandidate.appId))error(409,'lark_identity_already_bound');
@@ -427,6 +447,10 @@ export function mountAccessManagement(app: Express) {
           await audit(c,actor.id,'lark.binding',{employeeId:old.id,before:prior||null,after:nextBinding,reason:why});
         }
         await ensureAdministrator(c);
+        const activeSession = (await c.query(
+          "SELECT 1 FROM crm_sessions WHERE user_id=:p1 AND expires_at>UTC_TIMESTAMP(6) LIMIT 1",
+          [old.id],
+        )).rows.length > 0;
         await c.query("DELETE FROM crm_sessions WHERE user_id=:p1", [old.id]);
         const next = {
           ...old,
@@ -445,6 +469,7 @@ export function mountAccessManagement(app: Express) {
         return {
           user: safeUser(next),
           sessionsRevoked: true,
+          signInRequired: b.active && activeSession,
           ownershipUnchanged: true,
         };
       });

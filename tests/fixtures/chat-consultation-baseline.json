@@ -1,0 +1,56 @@
+{
+  "version": "8e637dca4d44-2ea7b3a0e0136203",
+  "recordedAt": "2026-11-19T01:59:24.058Z",
+  "model": "gpt-6.1-sol",
+  "fallback": "deepseek-chat",
+  "publishedClasses": 28,
+  "appointmentOptions": 4,
+  "firstBlindRun": {
+    "modelReplies": 42,
+    "learnerMean": 3.72,
+    "businessMean": 3.63
+  },
+  "expectedQuotes": [
+    {
+      "level": "HSK 1",
+      "format": "standard",
+      "periods": 23,
+      "minutes": 45,
+      "total": 920000,
+      "standard": 1150000,
+      "unit": 40000
+    },
+    {
+      "level": "HSK 1",
+      "format": "small",
+      "periods": 23,
+      "minutes": 45,
+      "total": 2760000,
+      "unit": 120000
+    },
+    {
+      "level": "HSK 1",
+      "format": "one-on-one",
+      "periods": 23,
+      "minutes": 45,
+      "reference": 8050000,
+      "unit": 350000
+    }
+  ],
+  "schedule": {
+    "level": "HSK 3",
+    "days": [
+      5,
+      6
+    ],
+    "starts": [
+      "19:00",
+      "15:00"
+    ],
+    "ends": [
+      "20:30",
+      "16:30"
+    ],
+    "zone": "WIB"
+  }
+}

@@ -24,6 +24,9 @@
 [data-admin-workspace] :focus-visible{outline:2px solid var(--admin-focus);outline-offset:3px}
 .admin-status{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:1.5;color:var(--admin-muted)}
 .admin-status[data-tone=success]{color:var(--admin-success)}
+.admin-status[data-tone=info]{color:var(--admin-info)}
+.admin-status[data-tone=warning]{color:var(--admin-warning)}
+.admin-status[data-tone=danger]{color:var(--admin-danger)}
 .admin-status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
 .admin-policy-accent{color:var(--admin-action);background:var(--admin-selected);border-color:var(--admin-action)}
 .admin-policy-value{color:var(--admin-action)}

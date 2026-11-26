@@ -1,3 +1,4 @@
+import {courseCatalogueInstruction} from '../server/portal/coursePrices';
 import {test} from 'node:test';import assert from 'node:assert/strict';
 import {courseDiscount,enrollmentQuoteError} from '../src/utils/crmCoursePricing';
 import {renderConsultationReply} from '../server/portal/coursePrices';
@@ -11,19 +12,34 @@ const book = {courses:[
 const render = (courses: 'all' | string[], detail = 'price') =>
   renderConsultationReply(JSON.stringify({reply:'Rp 99,999 for 5 classes',catalogue:{courses,detail}}),book,'zh').reply;
 
+test('published quotes localize the same Rupiah amount and session count in all three languages', () => {
+  const output = JSON.stringify({ reply: '', catalogue: { courses: ['HSK 2'], detail: 'price' } });
+  const expected = {
+    zh: '目前已发布的课程\n\n- HSK 2 · 24 节课，课程总价 Rp 1,200,000',
+    en: 'Published courses\n\n- HSK 2 · 24 sessions · course total Rp 1,200,000',
+    id: 'Kursus yang dipublikasikan\n\n- HSK 2 · 24 pertemuan · total kursus Rp 1.200.000',
+  };
+  for (const [lang, reply] of Object.entries(expected)) {
+    assert.deepEqual(renderConsultationReply(output, book, lang), { reply, catalogueUsed: true });
+  }
+});
+
 test('all and selected catalogue replies render only published courses, amounts and hours',()=>{
-  assert.match(render('all'),/HSK 2.*24 节课.*1\.200\.000[\s\S]*HSK 5B.*55 节课.*2\.750\.000/);
-  assert.match(render(['HSK 5A','HSK 5B']),/HSK 5A.*55 节课.*2\.750\.000[\s\S]*HSK 5B.*55 节课.*2\.750\.000/);
+  assert.match(render('all'),/HSK 2.*24 节课.*1,200,000[\s\S]*HSK 5B.*55 节课.*2,750,000/);
+  assert.match(render(['HSK 5A','HSK 5B']),/HSK 5A.*55 节课.*2,750,000[\s\S]*HSK 5B.*55 节课.*2,750,000/);
   assert.doesNotMatch(render(['HSK 5A','HSK 5B']),/HSK 2|99,999/);
-  assert.match(render(['HSK 2','HSK 3']),/HSK 2.*1\.200\.000[\s\S]*HSK 3.*42 节课.*2\.100\.000/);
+  assert.match(render(['HSK 2','HSK 3']),/HSK 2.*1,200,000[\s\S]*HSK 3.*42 节课.*2,100,000/);
   assert.doesNotMatch(render('all','offerings'),/Rp|99,999/);
-  assert.match(render(['HSK 2','not published']),/HSK 2.*1\.200\.000[\s\S]*暂无已发布资料/);
+  assert.match(render(['HSK 2','not published']),/HSK 2.*1,200,000[\s\S]*暂无已发布资料/);
   assert.doesNotMatch(render(['not published']),/Rp|99,999/);
   assert.doesNotMatch(renderConsultationReply('{"reply":"","catalogue":{"courses":"all","detail":"price"}}',{courses:[]},'zh').reply,/Rp/);
 });
 
 test('ordinary replies pass through the structured contract and malformed outputs fail',()=>{
   assert.deepEqual(renderConsultationReply('{"reply":"可以继续问课程安排。","catalogue":null}',book,'zh'),{reply:'可以继续问课程安排。',catalogueUsed:false});
+  assert.deepEqual(renderConsultationReply('{"reply":"用同一个口语任务比较进步。","replyLanguage":"zh"}',book,'zh'),{reply:'用同一个口语任务比较进步。',catalogueUsed:false});
+  assert.throws(()=>renderConsultationReply('{"reply":"课程安排","catalogue":{}}',book,'zh'),/Invalid catalogue selection/);
+  assert.throws(()=>renderConsultationReply('{"reply":"  "}',book,'zh'),/Empty consultation reply/);
   assert.throws(()=>renderConsultationReply('{"reply":"Rp 99,999"}',book,'zh'),/Invalid catalogue selection/);
 });
 const course={id:'c',revision:1,name:'HSK 2',sessions:22,price:2000000,active:true,maxDiscountBps:500,maxDiscountAmount:100000};
@@ -31,3 +47,27 @@ test('percentage and absolute allowance both apply; zero discount is explicit an
 test('reject negative, exponent, over-limit, double-field and free-by-discount inputs; free published course remains explicit',()=>{for(const [mode,v]of [['percent','-1'],['percent','1e2'],['percent','101'],['amount','1.5'],['amount','100001'],['other','0']])assert.throws(()=>courseDiscount(course,mode,v));assert.throws(()=>courseDiscount({...course,maxDiscountBps:10000,maxDiscountAmount:null},'percent','100'));assert.equal(courseDiscount({...course,price:0},'none','').finalAmount,0);});
 test('enrollment requires a versioned course and explicit final total confirmation',()=>{assert.equal(enrollmentQuoteError({}),'course_required');assert.equal(enrollmentQuoteError({courseId:'c',courseRevision:1}),'course_total_confirmation_required');assert.equal(enrollmentQuoteError({courseId:'c',courseRevision:1,confirmed:true}),'');});
 test('unpublished drafts preserve reference consultation; publishing activates managed prices and retirement never revives the old price',async()=>{const {publishedCourseBook}=await import('../src/utils/crmCoursePricing');const row={value:{name:'HSK 2',price:2400000,sessions:22,active:false,history:[] as any[]}};assert.equal(publishedCourseBook([row]),undefined);row.value.active=true;assert.equal(publishedCourseBook([row])!.courses[0].total,2400000);row.value.active=false;row.value.history=[{before:{active:true},after:{active:false}}];assert.deepEqual(publishedCourseBook([row])!.courses,[]);});
+
+test('legacy catalogue selections cannot expose standard course totals as Enrollment tuition',async()=>{
+  const {managedEnrollmentCatalogueSelection,courseCatalogueInstruction}=await import('../server/portal/coursePrices');
+  const managed={courses:[
+    {id:'HSK 1 · 新概念汉语 · 23 × 45 min',sessions:23,total:1150000,enrollmentLevel:'HSK 1'},
+    {id:'Other programme',sessions:20,total:1000000},
+  ]};
+  for(const courses of ['all',['HSK 1'],[managed.courses[0].id]]){
+    assert.deepEqual(managedEnrollmentCatalogueSelection({courses,detail:'price'},managed),{kind:'quote',levels:['HSK 1']});
+  }
+  assert.equal(managedEnrollmentCatalogueSelection({courses:['Other programme'],detail:'price'},managed),undefined);
+  assert.doesNotMatch(courseCatalogueInstruction(managed,true),/新概念汉语/);
+});
+
+test('compact DeepSeek instructions keep a single Enrollment JSON shape and legacy lookup',()=>{
+  const book={courses:[{id:'HSK 1 internal',enrollmentLevel:'HSK 1',sessions:20,total:900000},
+    {id:'Legacy published course',sessions:5,total:250000}]};
+  const prompt=courseCatalogueInstruction(book,true,true);
+  assert.match(prompt,/\"reply\":\"\",\"catalogue\":null,\"enrollment\":null,\"suggestedPrompts\":\[\]/);
+  assert.match(prompt,/explicit request for a reply language takes priority/);
+  assert.match(prompt,/Legacy published course/);
+  assert.doesNotMatch(prompt,/HSK 1 internal/);
+  assert.doesNotMatch(courseCatalogueInstruction(book,true),/exactly one compact JSON object/);
+});

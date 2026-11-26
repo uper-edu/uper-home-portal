@@ -5,6 +5,10 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { SEO } from '../components/SEO';
 import { useDesignStyle } from '../utils/theme';
+import {addRouteTranslations} from '../i18n';
+import translations from '../i18n/locales/routes/tours.json';
+
+addRouteTranslations('tours', translations);
 
 export default function StudyTours() {
   const { t } = useTranslation();

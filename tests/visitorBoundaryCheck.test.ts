@@ -22,3 +22,62 @@ test('person change immediately clears old UI and late failure cannot replace ne
  c.check();requests[0].resolve({cacheScope:'A'});await tick();c.check();scope='B';c.invalidate();assert.equal(state.ready,'');requests[2].resolve({cacheScope:'B'});await tick();requests[1].reject(Error('stale'));await tick();assert.deepEqual(state,{ready:'B',failed:false,checking:false});assert.deepEqual(hydrated,['A','B']);
  c.check();c.dispose();requests[3].resolve({cacheScope:'B'});await tick();assert.equal(hydrated.length,2);
 });
+test('cached pages stay hidden until a new verification, including when the visitor is unchanged',async()=>{
+ let state:BoundaryState={ready:'',failed:false,checking:true};
+ const requests:Array<(session:{cacheScope:string;registered:boolean})=>void>=[];
+ const snapshot={cacheScope:'A',registered:false};
+ const controller=createBoundaryCheck(()=>new Promise(resolve=>requests.push(resolve)),()=>snapshot.cacheScope,
+   next=>{state=next;},()=>{});
+ controller.check();
+ requests[0](snapshot);
+ await tick();
+ controller.check();
+ controller.suspend();
+ requests[1](snapshot);
+ await tick();
+ assert.equal(state.checking,true);
+ controller.invalidate();
+ assert.equal(state.ready,'');
+ requests[2](snapshot);
+ await tick();
+ assert.deepEqual(state,{ready:'A',failed:false,checking:false});
+ controller.dispose();
+});
+
+test('reconnection during a pending visitor check retries only if the old request fails',async()=>{
+ const snapshot={cacheScope:'A',registered:false};
+ let state:BoundaryState={ready:'',failed:false,checking:true};
+ const requests:{resolve:(session:typeof snapshot)=>void; reject:(error:Error)=>void}[]=[];
+ const controller=createBoundaryCheck(()=>new Promise((resolve,reject)=>requests.push({resolve,reject})),
+  ()=>snapshot.cacheScope,next=>{state=next;},()=>{});
+ try{
+  controller.check();
+  controller.reconnect();
+  controller.check();
+  controller.reconnect();
+  assert.equal(requests.length,1);
+  requests[0].reject(Error('old connection'));
+  await tick();
+  assert.equal(requests.length,2);
+  assert.equal(state.failed,false);
+  requests[1].resolve(snapshot);
+  await tick();
+  assert.deepEqual(state,{ready:'A',failed:false,checking:false});
+
+  controller.check();
+  controller.reconnect();
+  requests[2].resolve(snapshot);
+  await tick();
+  assert.equal(requests.length,3);
+
+  controller.check();
+  controller.reconnect();
+  requests[3].reject(Error('old connection'));
+  await tick();
+  assert.deepEqual(state,{ready:'A',failed:false,checking:true});
+  requests[4].reject(Error('still unavailable'));
+  await tick();
+  assert.equal(requests.length,5);
+  assert.equal(state.failed,true);
+ }finally{controller.dispose();}
+});

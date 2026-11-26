@@ -19,4 +19,5 @@ export function revealRecord(pane:HTMLElement,item:HTMLElement){
  if(row.top<top||row.height>pane.clientHeight)pane.scrollTop+=row.top-top;
  else if(row.bottom>bottom)pane.scrollTop+=row.bottom-bottom;
 }
-export function recordScrollMode(width:number,viewport:number,header:number){return width>=1120&&viewport-header-24>=360?'independent':'page';}
+export const recordSplitMinWidth=1120;
+export function recordScrollMode(width:number,viewport:number,header:number){return width>=recordSplitMinWidth&&viewport-header-24>=360?'independent':'page';}

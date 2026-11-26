@@ -208,7 +208,7 @@ export default function CampaignDetail() {
                 : 'bg-primary-50 text-primary-600 border-transparent'
             }`}>
               <Calendar className="w-6 h-6" />
-              <span>{t("details.endsOn")} {new Date(campaign.countdownDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <span>{t("details.endsOn")} {new Date(campaign.countdownDate).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
           )}
 

@@ -45,7 +45,7 @@ test('ambiguous correction values are not guessed, equal values render once, zer
 test('correction heading is scoped to this record, original history remains immutable and three-language labels render',()=>{
  for(const lang of ['zh','en','id']){
   const html=render(React.createElement(CrmUiProvider,{lang},React.createElement(CrmHistoryRecordCorrections,{group,items:[item('a')],onEvidence(){}})));
-  assert.ok(html.includes(crmUiText('本条记录修正后',lang)));assert.ok(html.includes(crmUiText('查看修正依据',lang)));assert.match(html,/Rp1[,.]900[,.]000/);assert.doesNotMatch(html,/Rp1,800,000|当前预算|current budget/);
+  assert.ok(html.includes(crmUiText('本条记录修正后',lang)));assert.ok(html.includes(crmUiText('查看修正依据',lang)));assert.match(html,/Rp 1[,.]900[,.]000/);assert.doesNotMatch(html,/Rp 1,800,000|当前预算|current budget/);
  }
  assert.equal(group.original,'预算180万');assert.equal(group.events[0].original,'预算修正为190万');
 });

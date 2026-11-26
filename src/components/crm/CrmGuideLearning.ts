@@ -983,9 +983,9 @@ Object.assign(guideLessons, {
           "选择事件与条件",
         ),
         w(
-          "Task created, rescheduled and appointment due are separate rules. Enable each explicitly and bind CRM Bot; conditions, calendars and limits still apply. Route to the eligible Owner, otherwise CRM Managers. Activation applies only to new events and does not replay appointments missed beforehand or historical failed notifications.",
-          "Tugas dibuat, jadwal diubah, dan waktu janji tiba memakai aturan terpisah. Aktifkan masing-masing secara eksplisit dan hubungkan CRM Bot; syarat, kalender, dan batas tetap berlaku. Kirim ke penanggung jawab yang memenuhi izin, atau Manajer CRM. Aktivasi hanya berlaku untuk peristiwa baru, tanpa mengirim ulang janji yang sudah terlewat atau notifikasi lama yang gagal.",
-          "任务新增、任务改约、约定时间已到是三条独立规则。须明确启用并绑定CRM Bot，仍遵守原有条件、日历与频控，按有效Owner→CRM Manager路由。启用只作用于新事件，不补发生效前已错过的预约或历史失败通知。",
+          "Task created, rescheduled and appointment due are separate rules. Enable each explicitly and select the Lark group notifications channel; conditions, calendars and limits still apply. Route to the eligible Owner, otherwise CRM Managers. Activation applies only to new events and does not replay appointments missed beforehand or historical failed notifications.",
+          "Tugas dibuat, jadwal diubah, dan waktu janji tiba memakai aturan terpisah. Aktifkan masing-masing secara eksplisit dan pilih kanal Notifikasi grup Lark; syarat, kalender, dan batas tetap berlaku. Kirim ke penanggung jawab yang memenuhi izin, atau Manajer CRM. Aktivasi hanya berlaku untuk peristiwa baru, tanpa mengirim ulang janji yang sudah terlewat atau notifikasi lama yang gagal.",
+          "任务新增、任务改约、约定时间已到是三条独立规则。须明确启用并选择「Lark 群通知」渠道，仍遵守原有条件、日历与频控，按有效Owner→CRM Manager路由。启用只作用于新事件，不补发生效前已错过的预约或历史失败通知。",
         ),
       ),
       n(

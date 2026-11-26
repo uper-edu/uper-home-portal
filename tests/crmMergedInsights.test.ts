@@ -7,10 +7,10 @@ const base={id:'TEST-merged',fullName:'TEST',goal:'为了工作沟通',budgetAmo
 const lead=applyInsightObservation(base,dimension,{field:dimension.key,value:'HR审批后可报销',quote:'HR审批后可报销',basis:'stated',operation:'set',subject:'customer',temporality:'current',change:'state'},{eventId:'ai',sourceId:'original',sourceType:'sales_record',root:{id:'original',type:'sales_record'},recordedAt:'2026-10-29T07:00:00Z',occurredAt:null,baseRevision:0,amendment:false}).profile;
 const render=(p:any=lead,disabled=false,lang='zh')=>renderToStaticMarkup(React.createElement(CrmUiProvider,{lang,children:React.createElement(CrmCustomerProfile,{lead:p,lang,timezone:'Asia/Jakarta',dynamicProfile:React.createElement(CrmProfileEditor,{lead:p,disabled,timezone:'Asia/Jakarta',onSaved(){}})})}));
 test('one customer-insights chapter groups preset and dynamic evidence, leaves identity and business state separate',()=>{
- const before=JSON.stringify(lead),html=render();assert.equal((html.match(/<h3[^>]*>客户洞察<\/h3>/g)||[]).length,1);assert.match(html,/<h4>学习需求与偏好<\/h4>/);assert.match(html,/<h4>学习条件与决策背景<\/h4>/);for(const text of ['为了工作沟通','HR审批后可报销','客户自报水平','Rp0','原文依据'])assert.ok(html.includes(text));assert.doesNotMatch(html,/学习背景与需求|调整主要学习目标|调整课程总预算/);assert.equal(JSON.stringify(lead),before);
+ const before=JSON.stringify(lead),html=render();assert.equal((html.match(/<h3[^>]*>客户洞察<\/h3>/g)||[]).length,1);assert.match(html,/<h4>学习需求与偏好<\/h4>/);assert.match(html,/<h4>学习条件与决策背景<\/h4>/);for(const text of ['为了工作沟通','HR审批后可报销','客户自报水平','Rp 0','原文依据'])assert.ok(html.includes(text));assert.doesNotMatch(html,/学习背景与需求|调整主要学习目标|调整课程总预算/);assert.equal(JSON.stringify(lead),before);
 });
-test('controlled correction is inside collapsed More actions, with unchanged read-only capability behavior',()=>{
- const html=render();assert.match(html,/<details class="crm-insights-more"/);assert.doesNotMatch(html,/<details class="crm-insights-more"[^>]*open/);assert.ok(html.indexOf('更多操作')<html.indexOf('人工纠正学习需求'));assert.doesNotMatch(render(lead,true),/更多操作|人工纠正学习需求/);
+test('the sole correction action is direct and remains hidden without edit capability',()=>{
+ const html=render();assert.doesNotMatch(html,/crm-insights-more|更多操作/);assert.match(html,/<button[^>]*crm-profile-edit-action[^>]*>[\s\S]*?人工纠正学习需求<\/button>/);assert.doesNotMatch(render(lead,true),/人工纠正学习需求/);
 });
 test('empty groups are omitted and fixed labels localize without translating saved original text',()=>{
  assert.doesNotMatch(render({...base,goal:undefined,budgetAmount:undefined,reportedLevel:undefined}),/学习需求与偏好|学习条件与决策背景|暂无当前洞察/);

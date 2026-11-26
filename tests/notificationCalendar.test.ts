@@ -1,3 +1,4 @@
+import { syntheticGroupWebhook } from "./helpers/larkGroupWebhook.ts";
 import { setupNativeTest } from "./helpers/mysql.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -53,18 +54,17 @@ test("calendar inheritance and legacy custom compatibility", () => {
   assert.equal(globalWorkCalendar({ timezone: "invalid" }).source, "fallback");
   assert.throws(() => validate({ ...defaults, calendarMode: "bad" as any }));
 });
-test("connection labels distinguish simulation, credential absence, test restrictions and configured status without secrets", () => {
+test("connection labels distinguish simulation, credential absence and configured status without secrets", () => {
   process.env.PLATFORM_MODE = "mock";
-  delete process.env.CALENDAR_FIXTURE_WEBHOOK;
-  delete process.env.LARK_TEST_GROUP;
-  const config = { mode: "live", secretRef: "CALENDAR_FIXTURE_WEBHOOK" };
+
+  const config: { mode: string; encryptedWebhook?: string } = { mode: "live" };
   assert.equal(
     channelConnection("qa", { ...config, mode: "simulation" }).status,
     "simulation",
   );
   assert.equal(channelConnection("qa", config).status, "missing_webhook");
-  process.env.CALENDAR_FIXTURE_WEBHOOK =
-    "https://open.larksuite.com/open-apis/bot/v2/hook/never-send-calendar-fixture";
+  const address = "https://open.larksuite.com/open-apis/bot/v2/hook/fixture-notificationCalendar-1";
+  config.encryptedWebhook = syntheticGroupWebhook("qa", address);
   try {
     assert.equal(
       channelConnection("qa", {
@@ -73,15 +73,18 @@ test("connection labels distinguish simulation, credential absence, test restric
       }).status,
       "missing_signing_secret",
     );
-    assert.equal(channelConnection("qa", config).status, "test_group_blocked");
-    process.env.LARK_TEST_GROUP = "qa";
+
     const state = channelConnection("qa", config);
+    const other = syntheticGroupWebhook("qa", address + "-different");
+    assert.equal(channelConnection("qa", {...config, encryptedWebhook: other}).status, "configured");
+    assert.equal(channelConnection("other", config).status, "missing_webhook");
+    delete process.env.LARK_WEBHOOK_ENCRYPTION_KEY;
+    assert.equal(channelConnection("qa", config).status, "missing_webhook");
     assert.equal(state.status, "configured");
     assert.equal(state.realReceiptVerified, false);
-    assert.ok(!JSON.stringify(state).includes("never-send-calendar-fixture"));
+    assert.ok(!JSON.stringify(state).includes("fixture-notificationCalendar-1"));
   } finally {
-    delete process.env.CALENDAR_FIXTURE_WEBHOOK;
-    delete process.env.LARK_TEST_GROUP;
+    delete process.env.LARK_WEBHOOK_ENCRYPTION_KEY;
   }
 });
 if (process.env.MYSQL_NATIVE_TEST_ENV) {
@@ -110,7 +113,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       await pool.end();
     });
     await t.test(
-      "global calendar changes preview and new jobs, custom policies and task deadlines remain unchanged",
+      "new Lark previews are immediate while legacy jobs retain the calendar and task deadlines",
       async () => {
         await fixture.reset(
           "notification_channels,rule_versions,notification_rules,notification_jobs,notification_inbox,outbox,portal_leads,followup_tasks",
@@ -156,7 +159,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         });
         assert.equal(
           preview.data.sendAt.find((x: any) => x.channel === "lark").at,
-          "2026-10-13T02:00:00.000Z",
+          "2026-10-12T09:00:00.000Z",
         );
         const custom = await api("notification-simulate", {
           config: { ...config, calendarMode: "custom" },
@@ -166,10 +169,10 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           custom.data.sendAt.find((x: any) => x.channel === "lark").at,
           "2026-10-12T09:00:00.000Z",
         );
-        await api("notification-rules/calendar-inherit", {
+        assert.equal((await api("notification-rules/calendar-inherit", {
           config,
           enabled: true,
-        });
+        })).status, 200);
         await pool.query(
           "UPDATE notification_rules SET effective_at='2026-01-01' WHERE id='calendar-inherit'",
         );
@@ -289,7 +292,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           groupName: "CRM Bot（模拟）",
           teamName: "销售团队",
           team: "sales",
-          secretRef: "CALENDAR_MISSING_WEBHOOK",
           mode: "simulation",
         };
         assert.equal(
@@ -368,7 +370,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             await api("notification-channels/limit-qa", {
               team: "sales",
               groupName: "TEST 限流群",
-              secretRef: "LIMIT_QA_MISSING",
               mode: "simulation",
             })
           ).status,
@@ -425,7 +426,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             await api("notification-channels/limit-qa", {
               team: "sales",
               groupName: "TEST 限流群",
-              secretRef: "LIMIT_QA_MISSING",
               mode: "simulation",
               maxPerHour: 2,
             })
@@ -457,7 +457,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           (
             await api("notification-channels/limit-qa", {
               team: "sales",
-              secretRef: "LIMIT_QA_MISSING",
               mode: "simulation",
               maxPerHour: -1,
             })
@@ -468,7 +467,6 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           (
             await api("notification-channels/limit-qa", {
               team: "sales",
-              secretRef: "LIMIT_QA_MISSING",
               mode: "simulation",
               maxPerHour: 0,
             })
@@ -507,6 +505,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           ).status,
           200,
         );
+        process.env.LARK_WEBHOOK_ENCRYPTION_KEY = "a1".repeat(32);
         let row = (await api("notification-channels")).data.channels.find(
           (r: any) => r.id === "mode-qa",
         );
@@ -521,7 +520,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           (
             await api("notification-channels/mode-qa", {
               mode: "live",
-              secretRef: "MODE_QA_MISSING",
+              webhook: "https://open.larksuite.com/open-apis/bot/v2/hook/fixture-notificationCalendar-2",
               signingEnabled: true,
             })
           ).status,
@@ -531,7 +530,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           (
             await api("notification-channels/mode-qa", {
               mode: "live",
-              secretRef: "MODE_QA_MISSING",
+              webhook: "https://open.larksuite.com/open-apis/bot/v2/hook/fixture-notificationCalendar-2",
               signingEnabled: false,
             })
           ).status,
@@ -541,17 +540,18 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
           (
             await api("notification-channels/mode-qa", {
               mode: "simulation",
-              secretRef: "https://example.invalid/secret",
+              webhook: "https://example.invalid/secret",
             })
           ).status,
           400,
         );
+        const address = "https://open.larksuite.com/open-apis/bot/v2/hook/fixture-notificationCalendar-3";
         const legacy = {
           groupName: "Legacy group",
           team: "sales",
           teamName: "Sales legacy",
           mode: "live",
-          secretRef: "MODE_QA_WEBHOOK",
+          encryptedWebhook: syntheticGroupWebhook("mode-legacy", address),
           signingSecretRef: "MODE_QA_SIGN",
           maxPerHour: 20,
         };
@@ -577,7 +577,8 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         row = (await api("notification-channels")).data.channels.find(
           (r: any) => r.id === "mode-legacy",
         );
-        assert.equal(row.config.secretRef, legacy.secretRef);
+        assert.equal(row.config.encryptedWebhook, undefined);
+        assert.equal(row.connection.webhookConfigured, true);
         assert.equal(row.config.signingSecretRef, legacy.signingSecretRef);
         assert.equal(row.config.team, legacy.team);
         assert.equal(row.config.teamName, legacy.teamName);
@@ -606,9 +607,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
         ).rows[0].config;
         assert.equal(config.signingSecretRef, legacy.signingSecretRef);
         assert.equal(config.signingEnabled, false);
-        process.env.MODE_QA_WEBHOOK =
-          "https://open.larksuite.com/open-apis/bot/v2/hook/mode-qa-never-send";
-        process.env.LARK_TEST_GROUP = "mode-legacy";
+
         try {
           assert.equal(
             channelConnection("mode-legacy", config).status,
@@ -622,8 +621,7 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
             "missing_signing_secret",
           );
         } finally {
-          delete process.env.MODE_QA_WEBHOOK;
-          delete process.env.LARK_TEST_GROUP;
+          delete process.env.LARK_WEBHOOK_ENCRYPTION_KEY;
         }
       },
     );

@@ -14,11 +14,13 @@ import {
 } from "../src/components/crm/CrmCustomerDetails.tsx";
 import {
   validCustomerFields,
+  defaultCustomerFields,
   workspaceAssessment,
   buyingSignals,
 } from "../src/utils/crmWorkspace.ts";
 import { crmAssessmentSummary } from "../src/utils/crmAssessment.ts";
 import type { CrmLeadRecord } from "../src/types/crmLead.ts";
+import { safeStorage } from "../src/utils/safeStorage.ts";
 
 const lead = (extra = {}) =>
   ({
@@ -94,6 +96,7 @@ test("worklist scans four zones, retaining original names, one next task, its ac
 });
 test("field table and worklist preserve the same assessment conclusion and real task deadline without treating a memo as a task", (context) => {
   context.mock.method(Date, "now", () => Date.parse("2026-10-13T01:00:00Z"));
+  context.mock.method(safeStorage, "getItem", () => JSON.stringify(["assessment", "followup"]));
   const l = lead({
     levelSource: "trial",
     levelConfirmed: "HSK 2",
@@ -115,10 +118,28 @@ test("presentation preferences cannot remove customer identity or admit stale/un
     "number",
     "name",
     "owner",
-    "stage",
+    "opportunities",
   ]);
   assert.ok(validCustomerFields(null).includes("name"));
   assert.ok(validCustomerFields([]).includes("number"));
+});
+test("customer worklist links one active opportunity directly and multiple to the customer scope", (context) => {
+  assert.match(render(lead({enrollmentOpportunitySummary:{count:0}})), /No active opportunities/);
+  for(const view of ["worklist","table"] as const)
+    assert.match(render(lead({enrollmentOpportunitySummary:{count:0,hasEnrollment:true}}),{view,lang:"zh"}), /已报名/);
+  const single=render(lead({enrollmentOpportunitySummary:{count:1,only:{id:"test-opportunity",level:"HSK 2",stage:"progress:proposal"}}}));
+  assert.match(single, /customerId=synthetic-workspace[^"]+opportunity=test-opportunity/);
+  assert.match(single, /Confirming proposal/);
+  const multi=render(lead({enrollmentOpportunitySummary:{count:2}}));
+  assert.match(multi, /customerId=synthetic-workspace[^"]+"[^>]*>2 in progress<\/a>/);
+  const defaults=render(lead(),{view:"table"});
+  assert.match(defaults, /First source/);
+  assert.match(defaults, /Last contact/);
+  assert.doesNotMatch(defaults, /Sales stage|Outcome/);
+  context.mock.method(safeStorage, "getItem", () => JSON.stringify(["opportunities"]));
+  const table=render(lead({enrollmentOpportunitySummary:{count:1}}),{view:"table",lang:"id"});
+  assert.match(table, /Peluang aktif/);
+  assert.match(table, /customerId=synthetic-workspace[^"]+"[^>]*>1<\/a>/);
 });
 test("compact assessment comes from the existing evidence presenter, with score omitted only in the scanning view", () => {
   const l = lead({
@@ -235,4 +256,9 @@ test("buying signals remain original evidence, deduplicated only for display", (
     before = JSON.stringify(l);
   assert.deepEqual(buyingSignals(l), ["Asked price", "Asked schedule"]);
   assert.equal(JSON.stringify(l), before);
+});
+
+
+test('new and reset customer field tables use the same canonical column order',()=>{
+  assert.deepEqual(validCustomerFields(undefined),validCustomerFields(defaultCustomerFields));
 });

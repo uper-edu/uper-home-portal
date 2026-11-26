@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { ChevronUp } from 'lucide-react';
 import { useDesignStyle } from '../../utils/theme';
@@ -53,7 +53,7 @@ export const BackToTop: React.FC = () => {
       {/* Back to top button */}
       <AnimatePresence>
         {isVisible && (
-          <motion.button
+          <m.button
             initial={{ opacity: 0, scale: 0.8, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 10 }}
@@ -68,7 +68,7 @@ export const BackToTop: React.FC = () => {
             }`}
           >
             <ChevronUp className="w-5 h-5" />
-          </motion.button>
+          </m.button>
         )}
       </AnimatePresence>
     </>

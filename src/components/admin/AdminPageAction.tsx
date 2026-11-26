@@ -1,0 +1,100 @@
+import React, { type ComponentPropsWithoutRef, type MouseEventHandler, type ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
+
+/** Shared page-level actions; permission checks remain at each call site. */
+export function AdminPageAction({
+  label,
+  icon: Icon,
+  variant = "secondary",
+  iconOnly = false,
+  loading = false,
+  keepFocusWhileLoading = false,
+  disabled = false,
+  href,
+  onClick,
+  id,
+  title,
+  description,
+  className = "",
+  type = "button",
+  "aria-haspopup": hasPopup,
+  children,
+}: {
+  label: string;
+  icon: LucideIcon;
+  variant?: "primary" | "secondary" | "warning";
+  iconOnly?: boolean;
+  loading?: boolean;
+  keepFocusWhileLoading?: boolean;
+  disabled?: boolean;
+  href?: string;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+  id?: string;
+  title?: string;
+  description?: string;
+  className?: string;
+  type?: "button" | "submit";
+  "aria-haspopup"?: ComponentPropsWithoutRef<"button">["aria-haspopup"];
+  children?: ReactNode;
+}) {
+  const tipId = React.useId();
+  const [dismissed, setDismissed] = React.useState(false);
+  const props = {
+    id,
+    className:
+      `crm-page-action crm-page-action--${variant}${iconOnly ? " crm-page-action--icon" : ""} ${className}`.trim(),
+    title: description ? undefined : title || label,
+    "aria-describedby": description ? tipId : undefined,
+    "aria-label": iconOnly ? label : undefined,
+    "aria-haspopup": hasPopup,
+    "aria-busy": loading || undefined,
+  };
+  const content = (
+    <>
+      <Icon
+        size={16}
+        aria-hidden="true"
+        className={loading ? "crm-page-action-spinner" : undefined}
+      />
+      {!iconOnly && <span>{label}</span>}
+      {children}
+    </>
+  );
+  const action =
+    href && !disabled && !loading ? (
+      <a {...props} href={href}>
+        {content}
+      </a>
+    ) : (
+      <button
+        {...props}
+        type={type}
+        onClick={loading ? undefined : onClick}
+        disabled={disabled || (loading && !keepFocusWhileLoading)}
+        aria-disabled={loading && keepFocusWhileLoading ? true : undefined}
+      >
+        {content}
+      </button>
+    );
+  return description ? (
+    <span
+      className="crm-page-action-hint"
+      data-dismissed={dismissed || undefined}
+      onMouseEnter={() => setDismissed(false)}
+      onFocus={() => setDismissed(false)}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setDismissed(true);
+          event.stopPropagation();
+        }
+      }}
+    >
+      {action}
+      <span id={tipId} role="tooltip">
+        {description}
+      </span>
+    </span>
+  ) : (
+    action
+  );
+}

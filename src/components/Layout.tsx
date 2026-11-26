@@ -1,23 +1,26 @@
-import {promotionJourneyUrl, promotionLandingPaths, websitePromotionUrl} from '../utils/promotionNavigation';
+import {promotionEntryPoint, promotionJourneyUrl, promotionLandingPaths, websitePromotionUrl} from '../utils/promotionNavigation';
 import VisitorBoundary from './VisitorBoundary';
-import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Link, Outlet, useLocation, useNavigationType, useNavigate } from 'react-router-dom';
-import { Globe2, ArrowRight, Menu, X, MapPin, User, Phone, MessageCircle, FileText, ChevronDown, GraduationCap, Palette, Settings2, Sliders, Check, RotateCcw, Sparkles } from 'lucide-react';
+import React, { lazy, useState, useEffect, useId, useRef, Suspense } from 'react';
+import { m, AnimatePresence, LazyMotion, domAnimation } from 'motion/react';
+import { Link, Outlet, useLocation, useMatch, useNavigationType, useNavigate } from 'react-router-dom';
+import { ArrowRight, X, MapPin, User, Phone, MessageCircle, CalendarCheck, ChevronDown, GraduationCap, Palette, Settings2, Sliders, Check, RotateCcw, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import AIChatbot from './AIChatbot';
+import {useSiteChatBackground} from './SiteChatRoutes';
+import {readEnrollmentPosition} from '../utils/chatJourneyNavigation';
+import {normalizeSiteLanguage} from '../utils/siteMetadata';
 import { BackToTop } from './ui/BackToTop';
 import { trackLanguageSwitch, trackEvent } from '../utils/analytics';
 import { useDesignStyle, useColorTheme } from '../utils/theme';
 import { useStudentName, STUDENT_PORTAL_URL } from '../utils/studentAuth';
-import { SocialProfileIcon, socialProfiles } from './SocialProfileIcon';
+import { SocialProfileIcon, socialProfileOrder, socialProfiles } from './SocialProfileIcon';
+import { PublicHeaderBrand, PublicHeaderLanguage, PublicHeaderMenuIcon, publicHeaderMenuButtonClass } from './PublicHeaderMenu';
+import { PublicPageLinkActions } from './PublicLinkActions';
 
 const prefTranslations = {
   id: {
     btnTitle: "Preferensi",
     title: "Pengaturan Tampilan",
-    subtitle: "Sesuaikan bahasa, gaya, dan warna situs",
-    language: "Bahasa",
+    subtitle: "Sesuaikan gaya dan warna situs",
     designStyle: "Gaya Desain",
     colorTheme: "Skema Warna",
     styles: {
@@ -36,8 +39,7 @@ const prefTranslations = {
   en: {
     btnTitle: "Preferences",
     title: "Display Preferences",
-    subtitle: "Customize language, design style, and colors",
-    language: "Language",
+    subtitle: "Customize design style and colors",
     designStyle: "Design Style",
     colorTheme: "Color Scheme",
     styles: {
@@ -56,8 +58,7 @@ const prefTranslations = {
   zh: {
     btnTitle: "个性化偏好",
     title: "个性化偏好设置",
-    subtitle: "自定义语言、设计风格与界面色彩",
-    language: "显示语言",
+    subtitle: "自定义设计风格与界面色彩",
     designStyle: "设计风格",
     colorTheme: "界面色彩",
     styles: {
@@ -75,14 +76,25 @@ const prefTranslations = {
   }
 };
 
-const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
+const Navbar = ({ onOpenAppearance, onOpenCourseAdvice, learnerPreview, navbarRef }: {
+  onOpenAppearance: () => void; learnerPreview?:boolean; navbarRef:React.Ref<HTMLElement>;
+  onOpenCourseAdvice: (trigger:HTMLButtonElement)=>void;
+}) => {
   const { t, i18n } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const location = useLocation();
+  const enrollmentSection = useMatch('/enrollment/*');
+  const enrollmentCatalog = useMatch('/enrollment');
+  const home = useMatch('/');
+  const sharedMobileTools = enrollmentSection || home;
+  const publicLinkPath = home ? '/' : enrollmentCatalog ? '/enrollment' : undefined;
+  const mobileMenuId = useId();
+  const mobileMenuTrigger = useRef<HTMLButtonElement>(null);
+  const language = normalizeSiteLanguage(i18n.resolvedLanguage || i18n.language);
   const { isApple } = useDesignStyle();
-  const { name: studentName } = useStudentName(i18n.language);
+  const { name: studentName } = useStudentName(i18n.language, !learnerPreview);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -92,12 +104,22 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        if (mobileMenuOpen) setMobileMenuOpen(false);
+      if (event.key === 'Escape' && mobileMenuOpen && !event.defaultPrevented) {
+        setMobileMenuOpen(false);
+        mobileMenuTrigger.current?.focus({preventScroll:true});
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const desktop = window.matchMedia('(min-width: 80rem)');
+    const closeAtDesktop = () => { if (desktop.matches) setMobileMenuOpen(false); };
+    desktop.addEventListener('change', closeAtDesktop);
+    closeAtDesktop();
+    return () => desktop.removeEventListener('change', closeAtDesktop);
   }, [mobileMenuOpen]);
 
   // Prevent body scroll when mobile menu is open
@@ -126,18 +148,15 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
   const navigateLanguage = useNavigate();
   const switchLanguage = (code: string) => {
     const url = new URL(window.location.href);
-    if (code === "id") url.searchParams.delete("lang"); else url.searchParams.set("lang", code);
+    if (code === "id" && !(enrollmentSection && url.searchParams.has('p'))) url.searchParams.delete("lang");
+    else url.searchParams.set("lang", code);
     url.searchParams.delete("lng");
     navigateLanguage(url.pathname + url.search + url.hash, {replace:true});
     i18n.changeLanguage(code);
     trackLanguageSwitch(code);
   };
 
-  const languages = [
-    { code: 'id', shortLabel: 'ID', name: 'Bahasa Indonesia', flag: '🇮🇩' },
-    { code: 'en', shortLabel: 'EN', name: 'English', flag: '🇬🇧' },
-    { code: 'zh', shortLabel: '中文', name: '简体中文', flag: '🇨🇳' },
-  ];
+  const languageSwitcher = <PublicHeaderLanguage language={language} onChange={switchLanguage}/>;
 
   const promotionQuery = new URLSearchParams(location.search);
   const journeyLink = (path: string) => promotionLandingPaths.some(item => item === path)
@@ -154,24 +173,27 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
         { nameKey: 'nav.studyTours', path: '/tours' },
       ]
     },
+    { nameKey: 'nav.enrollment', path: '/enrollment' },
     { nameKey: 'nav.partners', path: '/partners' },
     { nameKey: 'nav.news', path: '/news' },
-    { nameKey: 'nav.careers', path: '/careers' },
     { 
       nameKey: 'nav.aboutUs', 
       dropdown: [
         { nameKey: 'nav.aboutUsSub', path: '/about' },
         { nameKey: 'nav.contact', path: '/contact' },
         { nameKey: 'nav.faq', path: '/faq' },
+        { nameKey: 'nav.careers', path: '/careers' },
       ]
     },
   ];
 
+  const consultClass = `shrink-0 px-5 py-2.5 rounded-full font-medium transition-all items-center gap-2 ${isApple ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-none' : 'bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg hover:shadow-primary-500/30'}`;
+
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'glass-card py-3 shadow-xs' : 'bg-transparent py-5'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-        <Link to={journeyLink("/")} className="flex items-center gap-1.5 md:gap-2 group">
-          <img 
+    <nav ref={navbarRef} inert={learnerPreview} className={`fixed top-0 w-full z-50 transition-all duration-300 ${enrollmentSection?'public-page-header':isScrolled?'glass-card py-3 shadow-xs':'bg-transparent py-5'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 xl:px-5 flex justify-between items-center gap-3">
+        <Link to={journeyLink("/")} className="flex shrink-0 items-center gap-1.5 md:gap-2 group">
+          {enrollmentSection ? <PublicHeaderBrand eager/> : <><img
             src="/uper-logo-mark.svg" 
             alt="UPER Logo" 
             width="38"
@@ -184,10 +206,10 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
             isApple ? 'text-slate-900' : 'text-slate-800'
           }`}>
             UPER
-          </span>
+          </span></>}
         </Link>
         
-        <div className="hidden md:flex items-center gap-7 font-medium text-slate-600">
+        <div className="hidden xl:flex shrink-0 items-center gap-3 whitespace-nowrap font-medium text-slate-600">
           {navLinks.map(link => (
             link.dropdown ? (
               <div 
@@ -201,7 +223,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
                 </button>
                 <AnimatePresence>
                   {activeDropdown === link.nameKey && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
@@ -217,15 +239,16 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
                           {t(dropLink.nameKey)}
                         </Link>
                       ))}
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
               </div>
             ) : (
               <Link 
                 key={link.nameKey} 
-                to={link.path!} 
-                className={`transition-colors py-2 ${location.pathname === link.path ? (isApple ? 'text-slate-900 font-bold' : 'text-primary-600 font-semibold') : (isApple ? 'hover:text-slate-900 text-slate-600' : 'hover:text-primary-600')}`}
+                to={link.path==='/enrollment' ? promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2), promotionQuery, 'website') : link.path!}
+                aria-current={location.pathname === link.path ? 'page' : undefined}
+                className={`transition-colors py-2 ${(location.pathname === link.path || (link.path === '/enrollment' && location.pathname.startsWith('/enrollment/'))) ? (isApple ? 'text-slate-900 font-bold' : 'text-primary-600 font-semibold') : (isApple ? 'hover:text-slate-900 text-slate-600' : 'hover:text-primary-600')}`}
               >
                 {t(link.nameKey)}
               </Link>
@@ -233,48 +256,22 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
           ))}
         </div>
 
-        <div className="hidden md:flex items-center gap-4">
-          {/* Prominent Desktop Language Switcher */}
-          <div className="flex items-center p-1 bg-slate-100/90 rounded-full border border-slate-200/90 shadow-xs">
-            <span className="pl-2.5 pr-1.5 text-slate-400 text-xs flex items-center">
-              <Globe2 className="w-3.5 h-3.5 text-slate-500" />
-            </span>
-            <div className="flex items-center gap-0.5">
-              {languages.map((lng) => {
-                const isSelected = i18n.language && i18n.language.startsWith(lng.code);
-                return (
-                  <button
-                    key={lng.code}
-                    onClick={() => switchLanguage(lng.code)}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-full transition-all cursor-pointer ${
-                      isSelected
-                        ? isApple
-                          ? 'bg-white text-slate-900 shadow-xs'
-                          : 'bg-primary-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                    }`}
-                    title={lng.name}
-                  >
-                    {lng.shortLabel}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        <div className="hidden xl:flex min-w-0 items-center gap-2 whitespace-nowrap">
+          {languageSwitcher}
 
           {studentName ? (
-            <span className={`border px-4 py-2 rounded-full font-medium flex items-center gap-2 ${
+            <span className={`min-w-0 border px-4 py-2 rounded-full font-medium flex items-center gap-2 ${
               isApple
                 ? 'border-slate-800 text-slate-800'
                 : 'border-primary-600 text-primary-600'
             }`}>
-              <GraduationCap className="w-4 h-4" /> {t('nav.studentGreeting', { name: studentName })}
+              <GraduationCap className="w-4 h-4 shrink-0" /> <span className="truncate">{t('nav.studentGreeting', { name: studentName })}</span>
             </span>
           ) : (
             <a
               href={STUDENT_PORTAL_URL}
               target="_self"
-              className={`border px-4 py-2 rounded-full font-medium transition-all flex items-center gap-2 ${
+              className={`shrink-0 border px-4 py-2 rounded-full font-medium transition-all flex items-center gap-2 ${
                 isApple
                   ? 'border-slate-800 text-slate-800 hover:bg-slate-100'
                   : 'border-primary-600 text-primary-600 hover:bg-primary-50'
@@ -284,41 +281,27 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
             </a>
           )}
 
-          <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className={`px-5 py-2.5 rounded-full font-medium transition-all flex items-center gap-2 ${isApple ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-none' : 'bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg hover:shadow-primary-500/30'}`}>
-            {t('nav.startJourney')} <ArrowRight className="w-4 h-4" />
-          </a>
+          <button type="button" className={consultClass+' flex cursor-pointer'} aria-haspopup="dialog" aria-controls="uper-ai-chat-window"
+            onClick={event=>onOpenCourseAdvice(event.currentTarget)}>
+            {t('nav.startJourney')} <ArrowRight className="w-4 h-4" aria-hidden="true"/>
+          </button>
         </div>
 
-        {/* Mobile Header Bar: Prominent Language Switcher directly visible + Menu Button */}
-        <div className="md:hidden flex items-center gap-2">
-          {/* Mobile Top Header Language Switcher */}
-          <div className="flex items-center p-0.5 bg-slate-100/90 rounded-full border border-slate-200/90 shadow-xs">
-            {languages.map((lng) => {
-              const isSelected = i18n.language && i18n.language.startsWith(lng.code);
-              return (
-                <button
-                  key={lng.code}
-                  onClick={() => switchLanguage(lng.code)}
-                  className={`px-2 py-1 text-[11px] font-bold rounded-full transition-all cursor-pointer ${
-                    isSelected
-                      ? isApple
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'bg-primary-600 text-white shadow-xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  {lng.shortLabel}
-                </button>
-              );
-            })}
-          </div>
-
-          <button 
+        <div className={`xl:hidden flex shrink-0 items-center ${sharedMobileTools?'public-header-tools':'gap-2'}`}>
+          {languageSwitcher}
+          {publicLinkPath && !learnerPreview &&
+            <PublicPageLinkActions path={publicLinkPath} language={language} params={promotionQuery}
+              shareTitle={home?'UPER Education & Technology':t('nav.enrollment')} mobileOnly/>}
+          <button
+            ref={mobileMenuTrigger}
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-full bg-slate-100 text-slate-800 hover:bg-slate-200 active:scale-95 transition-all"
-            aria-label="Toggle Menu"
+            className={publicHeaderMenuButtonClass+(sharedMobileTools?'':' bg-slate-100 hover:bg-slate-200')}
+            aria-label={language==='zh'?'网站菜单':language==='id'?'Menu situs':'Site menu'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls={mobileMenuOpen?mobileMenuId:undefined}
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <PublicHeaderMenuIcon open={mobileMenuOpen}/>
           </button>
         </div>
       </div>
@@ -326,44 +309,13 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
       {/* Mobile Menu Drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div 
+          <m.div
+            id={mobileMenuId}
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className={`md:hidden absolute top-full left-0 w-full p-5 flex flex-col gap-3.5 shadow-2xl border-b max-h-[85vh] overflow-y-auto ${isApple ? 'bg-white/95 backdrop-blur-2xl border-slate-200/80' : 'bg-white border-slate-200'}`}
+            className={`xl:hidden absolute top-full left-0 w-full p-5 flex flex-col gap-3.5 shadow-2xl border-b max-h-[85vh] overflow-y-auto ${isApple ? 'bg-white/95 backdrop-blur-2xl border-slate-200/80' : 'bg-white border-slate-200'}`}
           >
-            {/* 1. High-Visibility Mobile Language Card */}
-            <div className={`p-3.5 rounded-2xl border ${isApple ? 'bg-slate-100/80 border-slate-200/70' : 'bg-primary-50/60 border-primary-100'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-                  <Globe2 className="w-3.5 h-3.5 text-primary-600" />
-                  Language / 语言 / Bahasa
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">1-Tap Switch</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {languages.map((lng) => {
-                  const isSelected = i18n.language && i18n.language.startsWith(lng.code);
-                  return (
-                    <button
-                      key={lng.code}
-                      onClick={() => switchLanguage(lng.code)}
-                      className={`py-2 px-1 text-center font-bold rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                        isSelected
-                          ? isApple
-                            ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-900/10'
-                            : 'bg-primary-600 text-white shadow-sm'
-                          : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/60'
-                      }`}
-                    >
-                      <span className="text-sm">{lng.flag}</span>
-                      <span className="text-[11px] leading-tight">{lng.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Navigation Links */}
             {navLinks.map(link => (
               link.dropdown ? (
@@ -387,7 +339,7 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
               ) : (
                 <Link 
                   key={link.nameKey} 
-                  to={link.path!} 
+                  to={link.path==='/enrollment' ? promotionJourneyUrl('/enrollment?lang='+i18n.language.slice(0,2), promotionQuery, 'website') : link.path!}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`p-3 rounded-lg font-medium ${location.pathname === link.path ? (isApple ? 'bg-slate-100 text-slate-900 font-bold' : 'bg-primary-50 text-primary-600') : (isApple ? 'hover:bg-slate-50 text-slate-750' : 'hover:bg-white/50 text-slate-700')}`}
                 >
@@ -431,11 +383,18 @@ const Navbar = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
                 <span>{t('footer.appearanceSettings', 'Display & Theme Settings')}</span>
               </button>
 
+              <button type="button" className={consultClass+' hidden cursor-pointer justify-center md:flex'}
+                aria-haspopup="dialog" aria-controls="uper-ai-chat-window" onClick={event=>{
+                  setMobileMenuOpen(false);
+                  onOpenCourseAdvice(mobileMenuTrigger.current ?? event.currentTarget);
+                }}>
+                {t('nav.startJourney')} <ArrowRight className="w-4 h-4" aria-hidden="true"/>
+              </button>
               <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className="w-full bg-[#25D366] text-white p-3 rounded-xl font-medium flex items-center justify-center gap-2">
                 <MessageCircle className="w-5 h-5" /> {t('fab.chat')}
               </a>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </nav>
@@ -474,7 +433,7 @@ const AppearanceModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     <AnimatePresence>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         {/* Backdrop */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -483,7 +442,7 @@ const AppearanceModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         />
 
         {/* Modal Dialog */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -611,7 +570,7 @@ const AppearanceModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
               {prefText.confirm}
             </button>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </AnimatePresence>
   );
@@ -659,7 +618,7 @@ const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
                 {t('footer.followUs')}
               </h4>
               <ul className="flex flex-wrap gap-1.5">
-                {(['whatsapp', 'instagram', 'tiktok', 'youtube', 'linkedin', 'threads', 'facebook'] as const).map((platform) => (
+                {socialProfileOrder.map((platform) => (
                   <li key={platform}>
                     <a
                       href={socialProfiles[platform].url}
@@ -847,26 +806,43 @@ const Footer = ({ onOpenAppearance }: { onOpenAppearance: () => void }) => {
 };
 
 const MobileBottomBar = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { search } = useLocation();
+  const query = new URLSearchParams(search);
+  const lang = normalizeSiteLanguage(i18n.language);
+  const entry = promotionEntryPoint(query.get('entry_point')) ?? 'website';
+  const enrollment = promotionJourneyUrl('/enrollment?lang=' + lang, query, entry);
+  const consultation = new URL(websitePromotionUrl('/chat', query, entry, lang), window.location.origin);
+  consultation.searchParams.set('lang', lang);
+  const actionStyle = 'min-h-12 min-w-0 flex-1 rounded-xl border px-2.5 py-2 flex items-center justify-center gap-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b5946]';
   return (
-    <div className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 p-3 flex gap-3 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-      <button className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:bg-slate-200 transition-colors">
-        <FileText className="w-4 h-4" /> {t('mobile.freeGuide')}
-      </button>
-      <a href="https://wa.me/6281116612062" target="_blank" rel="noopener noreferrer" className="flex-1 bg-[#25D366] text-white py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/30 active:scale-95 transition-all">
-        <MessageCircle className="w-4 h-4" /> {t('mobile.chatNow')}
-      </a>
+    <div className="public-mobile-bottom-bar md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-lg border-t border-[#d5e7df] p-3 flex gap-2.5 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+      <Link to={enrollment} onClick={() => trackEvent('link_click', {target:'enrollment', entry_point:entry})}
+        className={`${actionStyle} border-[#0b5946] bg-[#0b5946] text-white shadow-[0_3px_8px_#133b2e2e] active:bg-[#094a3b]`}>
+        <CalendarCheck className="size-[18px] shrink-0" aria-hidden="true" /> {t('mobile.enroll')}
+      </Link>
+      <Link to={consultation.pathname + consultation.search} onClick={() => trackEvent('link_click', {target:'consultation', entry_point:entry})}
+        className={`${actionStyle} border-[#b8d5c9] bg-[#edf7f2] text-[#0b5946] active:bg-[#dcefe6]`}>
+        <MessageCircle className="size-[18px] shrink-0" aria-hidden="true" /> {t('mobile.chatNow')}
+      </Link>
     </div>
   );
 };
 
-export default function Layout() {
+const AIChatbot = lazy(() => import('./AIChatbot'));
+
+export default function Layout({learnerPreview=false}:{learnerPreview?:boolean}) {
+  const chatBackground = useSiteChatBackground();
   const { t, i18n } = useTranslation();
   const { isApple } = useDesignStyle();
   const location = useLocation();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [chatLaunchRequest,setChatLaunchRequest]=useState<HTMLButtonElement|null>(null);
+  const [enrollmentChatEntry,setEnrollmentChatEntry]=useState<string>();
+  const navbarRef = useRef<HTMLElement>(null);
   // Scroll to top on route change, but restore scroll on back navigation
   const { pathname } = location;
+  const enrollmentScreen = (/^\/enrollment\/(?:mine|help)\//).test(pathname) || /^\/enrollment(?:\/[^/]+)?\/?$/.test(pathname);
   const navType = useNavigationType();
   const scrollPath = useRef<string | null>(null);
 
@@ -877,20 +853,23 @@ export default function Layout() {
   }, [i18n.language]);
 
   useEffect(() => {
+    if (learnerPreview) return;
     // Language switching replaces the query string without leaving the page.
     if (scrollPath.current === pathname) return;
     scrollPath.current = pathname;
+    if (enrollmentScreen && readEnrollmentPosition(location.state)) return;
 
     const isCustomScrollRestoredPage = pathname === '/' || pathname === '/news' || pathname === '/faq';
     if (navType === 'POP') {
       if (!isCustomScrollRestoredPage) {
         // Try to restore scroll position with a slight delay to allow rendering
-        const savedScroll = sessionStorage.getItem(`scrollPos-${pathname}`);
-        if (savedScroll) {
-          setTimeout(() => {
-            window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'auto' });
-          }, 50);
-        }
+        let savedScroll: string | null;
+        try { savedScroll = sessionStorage.getItem(`scrollPos-${pathname}`); }
+        catch { return; }
+        const top = savedScroll && parseInt(savedScroll, 10);
+        if (typeof top !== 'number' || !Number.isFinite(top)) return;
+        const timer = setTimeout(() => window.scrollTo({top, behavior:'auto'}), 50);
+        return () => clearTimeout(timer);
       }
     } else {
       // Navigating to a new page, scroll to top
@@ -904,7 +883,8 @@ export default function Layout() {
     if (isCustomScrollRestoredPage) return;
 
     const handleScroll = () => {
-      sessionStorage.setItem(`scrollPos-${pathname}`, window.scrollY.toString());
+      try { sessionStorage.setItem(`scrollPos-${pathname}`, window.scrollY.toString()); }
+      catch { /* Page navigation still works when storage is unavailable. */ }
     };
     
     let debounceTimer: ReturnType<typeof setTimeout>;
@@ -921,30 +901,39 @@ export default function Layout() {
   }, [pathname]);
 
   return (
-    <div className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
+    <LazyMotion features={domAnimation}>
+      <div data-enrollment-screen={enrollmentScreen || undefined} className={`min-h-screen bg-mesh font-sans flex flex-col pb-20 md:pb-0 overflow-x-hidden ${isApple ? 'selection:bg-slate-200 selection:text-slate-900' : 'selection:bg-primary-200 selection:text-primary-900'}`}>
 
-      <Navbar onOpenAppearance={() => setAppearanceOpen(true)} />
-      <main className="flex-grow">
-        <motion.div
-          key={location.pathname}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-        >
-          <Suspense fallback={
-            <div className="min-h-[60vh] flex flex-col items-center justify-center bg-transparent">
-              <div className={`w-10 h-10 border-4 ${isApple ? 'border-slate-800' : 'border-primary-600'} border-t-transparent rounded-full animate-spin`} />
-            </div>
-          }>
-            <Outlet />
-          </Suspense>
-        </motion.div>
-      </main>
-      <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
-      <AppearanceModal isOpen={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
-      <VisitorBoundary><AIChatbot /></VisitorBoundary>
-      <BackToTop />
-      <MobileBottomBar />
-    </div>
+        <Navbar navbarRef={navbarRef} learnerPreview={learnerPreview} onOpenAppearance={() => setAppearanceOpen(true)} onOpenCourseAdvice={trigger=>{
+          if (enrollmentScreen) setEnrollmentChatEntry(location.key);
+          setChatLaunchRequest(trigger);
+        }}/>
+        <main className="flex-grow">
+          <m.div
+            key={location.pathname}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+          >
+            <Suspense fallback={
+              <div className="min-h-[60vh] flex flex-col items-center justify-center bg-transparent">
+                <div className={`w-10 h-10 border-4 ${isApple ? 'border-slate-800' : 'border-primary-600'} border-t-transparent rounded-full animate-spin`} />
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
+          </m.div>
+        </main>
+        {!learnerPreview && (!enrollmentScreen || chatBackground || enrollmentChatEntry===location.key) &&
+          <Suspense fallback={null}><VisitorBoundary><AIChatbot navbarRef={navbarRef} expanded={Boolean(chatBackground)} returnScroll={chatBackground?.scrollY}
+            launchRequest={chatLaunchRequest} onLaunchHandled={setChatLaunchRequest}/></VisitorBoundary></Suspense>}
+        {!enrollmentScreen && <>
+          <Footer onOpenAppearance={() => setAppearanceOpen(true)} />
+          <BackToTop />
+          <MobileBottomBar />
+        </>}
+        <AppearanceModal isOpen={appearanceOpen} onClose={() => setAppearanceOpen(false)} />
+      </div>
+    </LazyMotion>
   );
 }

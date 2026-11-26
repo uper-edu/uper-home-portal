@@ -1,13 +1,14 @@
-export async function mapCrmChannels(db: any, apply = false) {
+export async function mapCrmChannels(db: any, channelId: string, apply = false) {
   const channel = (
     await db.query(
-      "SELECT id FROM notification_channels WHERE id='CRM_Leads_Update'",
+      "SELECT id FROM notification_channels WHERE id=:p1 AND COALESCE(config->>'$.deleted','false')<>'true' FOR SHARE",
+      [channelId],
     )
   ).rows[0];
-  if (!channel) throw Error("CRM Bot channel required");
+  if (!channel) throw Error("An existing group channel is required");
   const rules = (
     await db.query(
-      "SELECT * FROM notification_rules WHERE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) ORDER BY id FOR UPDATE",
+      "SELECT * FROM notification_rules WHERE config->'$.groupIds' IS NULL AND NULLIF(JSON_UNQUOTE(JSON_EXTRACT(config,'$.group')),'null') IN ('sales','ops') AND (JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark')) OR JSON_CONTAINS(JSON_EXTRACT(config,'$.channels'),JSON_QUOTE('lark_group'))) ORDER BY id FOR UPDATE",
     )
   ).rows;
   if (apply)
@@ -37,6 +38,8 @@ export async function mapCrmChannels(db: any, apply = false) {
   }));
 }
 if (process.argv[1]?.endsWith("crm-channel-map.ts")) {
+  const channelId = process.argv.slice(2).find(arg => !arg.startsWith("--"));
+  if (!channelId) throw Error("Usage: scripts/crm-channel-map.ts <channel-id> [--apply]");
   const { connection, pool } = await import("../server/portal/store.ts");
   const lease = await connection(),
     db = lease.client;
@@ -44,7 +47,7 @@ if (process.argv[1]?.endsWith("crm-channel-map.ts")) {
     await db.query("BEGIN");
     console.log(
       JSON.stringify(
-        await mapCrmChannels(db, process.argv.includes("--apply")),
+        await mapCrmChannels(db, channelId, process.argv.includes("--apply")),
       ),
     );
     await db.query(process.argv.includes("--apply") ? "COMMIT" : "ROLLBACK");

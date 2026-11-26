@@ -72,6 +72,7 @@ export type PromotionResultRow = {
   received: number;
   refunded: number;
   net: number;
+  enrollmentJourney?: {submitted:number;seats:number;confirmed:number};
 };
 
 export function promotionResultKey(lead: any, campaign: CrmCampaignRecord): string {

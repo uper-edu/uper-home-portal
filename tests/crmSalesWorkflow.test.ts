@@ -379,7 +379,7 @@ test("priority order is explained by current tasks, not old event labels", async
     },
   });
   const original = [
-    lead("finished", undefined, "follow_up", "Enrolled"),
+    {...lead("finished", undefined, "follow_up", "Enrolled"), followUpDisposition:{kind:"none"}},
     lead("not-scheduled"),
     lead("future", "2026-10-20"),
     lead("request", "2026-10-20", "handoff"),
@@ -396,4 +396,51 @@ test("priority order is explained by current tasks, not old event labels", async
     ["overdue", "today", "request", "future", "not-scheduled", "finished"],
   );
   assert.equal(JSON.stringify(original), copy);
+});
+
+test("priority uses projected open opportunities across levels and current tasks", async () => {
+  await import("./helpers/mockPortalDatabase.mjs");
+  const {attachEnrollmentOpportunitySummaries}=await import("../server/portal/enrollmentCrm.ts");
+  const {defaultLeadFilters,filterAndSummarize}=await import("../src/utils/crmLeadFilters.ts");
+  const {enrollmentNeedsNoSalesClaim}=await import("../src/utils/crmEnrollment.ts");
+  const now=Date.parse("2026-11-20T10:00:00Z");
+  const rows=[
+    {id:"a-enrolled",currentStage:"progress:enrolled"},
+    {id:"b-mixed",currentStage:"progress:enrolled",followUpDisposition:{kind:"none"}},
+    {id:"c-task",attention:{tasks:[{kind:"follow_up",status:"open"}]}},
+    {id:"d-idle",currentStage:"progress:proposal"},
+  ];
+  const opportunities=[
+    {id:"paid-only",customer_id:"a-enrolled",level:"HSK 1"},
+    {id:"mixed-paid",customer_id:"b-mixed",level:"HSK 1"},
+    {id:"mixed-waiting",customer_id:"b-mixed",level:"HSK 2"},
+  ];
+  await attachEnrollmentOpportunitySummaries({query:async(sql,params)=>{
+    if(sql.includes("JSON_CONTAINS")){
+      assert.deepEqual(JSON.parse(String(params?.[0])),rows.map(row=>row.id));
+      return {rows:opportunities};
+    }
+    assert.deepEqual(params,opportunities.map(row=>row.id));
+    return {rows:opportunities.map(row=>({
+      record_id:row.id,opportunity_id:row.id,
+      kind:row.level==="HSK 2"?"waitlist":"order",state:row.level==="HSK 2"?"waiting":"paid",
+    }))};
+  }},rows);
+  assert.deepEqual((rows[1] as any).enrollmentOpportunitySummary,{
+    count:1,hasEnrollment:true,only:{id:"mixed-waiting",level:"HSK 2",stage:"progress:unreached"},
+  });
+  const enrolled={...rows[0],attention:{tasks:[],customerRequests:[]}};
+  const mixed={...rows[1],attention:enrolled.attention};
+  assert.equal(enrollmentNeedsNoSalesClaim(enrolled),true);
+  assert.equal(enrollmentNeedsNoSalesClaim(mixed),false);
+  assert.equal(enrollmentNeedsNoSalesClaim({...enrolled,attention:{tasks:[{status:"open"}]}}),false);
+  assert.equal(enrollmentNeedsNoSalesClaim({...enrolled,attention:{customerRequests:[{state:"pending"}]}}),false);
+  const claimable={...defaultLeadFilters("all"),ownership:"unassigned" as const,sort:"newest" as const};
+  assert.deepEqual(filterAndSummarize([enrolled,mixed],claimable,"Fadhil","Asia/Jakarta",now).leads.map(row=>row.id),["b-mixed"]);
+  const owned={...enrolled,owner:"owner-1"};
+  assert.equal(filterAndSummarize([owned],{...claimable,ownership:"mine"},"owner-1","Asia/Jakarta",now).leads[0].owner,"owner-1");
+  const filters=defaultLeadFilters("all");
+  filters.sort="priority";
+  assert.deepEqual(filterAndSummarize(rows,filters,"Fadhil","Asia/Jakarta",now).leads.map(row=>row.id),
+    ["c-task","b-mixed","a-enrolled","d-idle"]);
 });

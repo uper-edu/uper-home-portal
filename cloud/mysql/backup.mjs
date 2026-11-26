@@ -6,6 +6,10 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import {openTrialDatabase,validateTrialDatabase} from './database.mjs';
 import {withCompanyMaintenance} from './company-maintenance.mjs';
+import {projectEmployee} from '../../src/utils/accessControl.ts';
+import {validStaffPassword} from '../../src/utils/staffPassword.ts';
+import {fullAdministrator} from '../../server/portal/accessAdministrator.ts';
+import {hashPassword,passwordChangeKey} from '../../server/portal/staffCredentials.ts';
 import {mysqlTlsRequired,internalMysqlDirect} from './transport.mjs';
 
 async function cli(env,program,args,stdio){
@@ -37,9 +41,12 @@ export async function backup(env,filename){
   return {sha256:crypto.createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length};
 }
 export async function restore(env,filename,expectedHash,options={}){
-  return withCompanyMaintenance(env,options,()=>restoreData(env,filename,expectedHash));
+  return withCompanyMaintenance(env,options,()=>restoreData(env,filename,expectedHash,options.administrator));
 }
-async function restoreData(env,filename,expectedHash){
+async function restoreData(env,filename,expectedHash,administrator){
+  if(administrator && (typeof administrator.id!=='string'||!administrator.id||
+      !validStaffPassword(administrator.password,administrator.id)))
+    throw Error('Specify an existing administrator and a strong temporary password');
   const data=await fs.readFile(filename);
   if(crypto.createHash('sha256').update(data).digest('hex')!==expectedHash)throw Error('Backup checksum mismatch');
   if(/^(?:CREATE DATABASE|USE |GRANT |CREATE USER|ALTER USER)/mi.test(data.toString()))throw Error('Backup may only restore tables in the selected trial database');
@@ -58,7 +65,24 @@ async function restoreData(env,filename,expectedHash){
         // Legacy backups need the same serialization row, but must never seed
         // default users/roles automatically after review is released.
         await c.execute("INSERT INTO access_state(id,value) VALUES('policy',?) ON DUPLICATE KEY UPDATE value=JSON_SET(access_state.value,'$.initialized',JSON_EXTRACT('true','$'))",[JSON.stringify({initialized:true,restored:true})]);
-        await c.execute("INSERT INTO access_state(id,value) VALUES('restore_review',?) ON DUPLICATE KEY UPDATE value=VALUES(value)",[JSON.stringify({required:true,restoreId:crypto.randomUUID(),reviewed:[],reset:[],recoveryAdmins:[],backupSha256:expectedHash})]);
+        const restoreId=crypto.randomUUID();
+        const state={required:true,restoreId,reviewed:[],reset:[],recoveryAdmins:[],backupSha256:expectedHash};
+        if(administrator){
+          const [[row]]=await c.execute('SELECT * FROM crm_users WHERE id=? FOR UPDATE',[administrator.id]);
+          const [roles]=await c.query('SELECT id,config,enabled FROM access_roles');
+          if(!row||!fullAdministrator(projectEmployee(row,roles))||
+            !validStaffPassword(administrator.password,row.login_id))
+            throw Error('Restore administrator must already be active and have full system access in this backup');
+          await c.execute('UPDATE crm_users SET password_hash=?,access_revision=access_revision+1 WHERE id=?',
+            [await hashPassword(administrator.password),row.id]);
+          await c.execute("INSERT INTO access_state(id,value) VALUES(?,?) ON DUPLICATE KEY UPDATE value=VALUES(value)",
+            [passwordChangeKey(row.id),JSON.stringify({required:true})]);
+          state.reset.push(row.id);
+          state.recoveryAdmins.push(row.id);
+          await c.execute("INSERT INTO portal_audit(actor,action,data) VALUES('offline-restore','access.restore.bootstrap_administrator',?)",
+            [JSON.stringify({restoreId,userId:row.id})]);
+        }
+        await c.execute("INSERT INTO access_state(id,value) VALUES('restore_review',?) ON DUPLICATE KEY UPDATE value=VALUES(value)",[JSON.stringify(state)]);
         await c.query("INSERT INTO notification_migration_holds(kind,id,reason) SELECT 'job',id,'security_restore_review' FROM notification_jobs WHERE state IN ('pending','sending','unknown') ON DUPLICATE KEY UPDATE id=notification_migration_holds.id");
         await c.query("INSERT INTO notification_migration_holds(kind,id,reason) SELECT 'event',id,'security_restore_review' FROM outbox WHERE processed_at IS NULL ON DUPLICATE KEY UPDATE id=notification_migration_holds.id");
         await c.query("INSERT INTO notification_migration_holds(kind,id,reason) SELECT 'task',id,'security_restore_review' FROM followup_tasks WHERE status IN ('open','overdue','migration_hold') ON DUPLICATE KEY UPDATE id=notification_migration_holds.id");

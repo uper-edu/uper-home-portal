@@ -1,10 +1,10 @@
 import type { ProcessMetrics } from "../../utils/crmProcessMetrics";
 import {
   metricSelectionLabel,
+  durationBandLabel,
   type MetricSelection,
 } from "../../utils/crmLeadAnalytics";
-import { progressLabel } from "../../utils/crmSalesProgress";
-import { CrmSalesStage } from "./CrmSalesStage";
+import { humanCommunicationLabel } from "../../utils/crmInteractionLabels";
 import { formatCrmEventTime } from "../../utils/crmOperatingTime";
 import type { CrmLanguage } from "../../utils/crmLanguage";
 export function CrmProcessOverview({
@@ -17,9 +17,9 @@ export function CrmProcessOverview({
   employees,
   error,
   onMetric,
-  onStage,
+  onCommunication,
   selectedMetrics = [],
-  selectedStages = [],
+  selectedCommunication = [],
 }: {
   metrics: ProcessMetrics | null;
   mode?: "full" | "summary" | "analysis";
@@ -30,9 +30,9 @@ export function CrmProcessOverview({
   employees: any[];
   error?: boolean;
   onMetric?: (key: string) => void;
-  onStage?: (key: string) => void;
+  onCommunication?: (key: string) => void;
   selectedMetrics?: string[];
-  selectedStages?: string[];
+  selectedCommunication?: string[];
 }) {
   const t = (en: string, id: string, zh: string) =>
     lang === "zh" ? zh : lang === "id" ? id : en;
@@ -80,16 +80,8 @@ export function CrmProcessOverview({
   );
   const bands = (prefix: "contact" | "response") => (
     <div className="crm-analysis-bands">
-      {(["fast", "day", "later", "unknown"] as const).map((band, i) =>
-        metricLink(
-          (prefix + "_" + band) as MetricSelection,
-          [
-            t("Under 1 hour", "Kurang dari 1 jam", "不足1小时"),
-            t("1–24 hours", "1–24 jam", "1–24小时（不含24）"),
-            t("24+ hours", "24 jam atau lebih", "24小时及以上"),
-            t("Cannot calculate", "Tidak dapat dihitung", "时长不可计算"),
-          ][i],
-        ),
+      {(["fast", "day", "later", "unknown"] as const).map(band =>
+        metricLink((prefix + "_" + band) as MetricSelection,durationBandLabel(band,lang)),
       )}
     </div>
   );
@@ -140,35 +132,28 @@ export function CrmProcessOverview({
     },
     {
       key: "communication",
-      label: t("Conversation coverage", "Cakupan komunikasi", "有效沟通覆盖"),
+      label: t("Human conversation coverage", "Cakupan komunikasi dengan staf", "人工沟通覆盖"),
       value: `${m.engagedCustomers} / ${m.customers}`,
       hint: ratio(m.engagedCustomers, m.customers),
     },
   ];
-  const stageButton = (row: ProcessMetrics["stages"][number]) => (
+  const communicationRows=[
+    {state:'established',count:m.engagedCustomers},
+    {state:'unrecorded',count:m.customers-m.engagedCustomers},
+  ] as const;
+  const communicationButton = ({state,count}:typeof communicationRows[number]) => (
     <button
       type="button"
-      className="crm-stage-distribution-item"
-      key={row.stage}
-      aria-pressed={selectedStages.includes(row.stage)}
-      onClick={() => onStage?.(row.stage)}
-      disabled={!onStage}
-      aria-label={`${row.stage === "__unknown" ? t("Unrecorded", "Belum tercatat", "未填写阶段") : progressLabel(row.stage, lang)} · ${row.customers} ${t("customers", "pelanggan", "位客户")}`}
+      className="crm-communication-distribution-item"
+      key={state}
+      aria-pressed={selectedCommunication.includes(state)}
+      onClick={() => onCommunication?.(state)}
+      disabled={!onCommunication}
+      aria-label={`${humanCommunicationLabel(state,lang)} · ${count} ${t("customers", "pelanggan", "位客户")}`}
     >
-      <span>
-        {row.stage === "__unknown" ? (
-          t("Unrecorded", "Belum tercatat", "未填写阶段")
-        ) : (
-          <CrmSalesStage stage={row.stage} lang={lang} />
-        )}
-        <b>{row.customers}</b>
-      </span>
-      <span className="crm-stage-share" aria-hidden="true">
-        <i
-          style={{
-            width: `${m.customers ? (row.customers / m.customers) * 100 : 0}%`,
-          }}
-        />
+      <span>{humanCommunicationLabel(state,lang)}<b>{count}</b></span>
+      <span className="crm-communication-share" aria-hidden="true">
+        <i style={{width: `${m.customers ? (count / m.customers) * 100 : 0}%`}} />
       </span>
     </button>
   );
@@ -199,12 +184,14 @@ export function CrmProcessOverview({
               title={card.hint}
               className="crm-overview-main"
               aria-pressed={
-                card.key
+                card.key === "communication"
+                  ? selectedCommunication.includes("established")
+                  : card.key
                   ? selectedMetrics.includes(card.key)
                   : selectedMetrics.length === 0
               }
-              onClick={() => onMetric?.(card.key)}
-              disabled={!onMetric}
+              onClick={() => card.key === "communication" ? onCommunication?.("established") : onMetric?.(card.key)}
+              disabled={card.key === "communication" ? !onCommunication : !onMetric}
             >
               <h3>{card.label}</h3>
               <strong>{card.value}</strong>
@@ -225,25 +212,25 @@ export function CrmProcessOverview({
         ))}
       </div>}
       {mode !== "summary" && <>
-      <div className="crm-stage-distribution-heading">
+      <div className="crm-communication-distribution-heading">
         <h3>
           {t(
-            "Current stage distribution",
-            "Distribusi tahap saat ini",
-            "当前阶段分布",
+            "Human conversation status",
+            "Status komunikasi dengan staf",
+            "人工沟通分布",
           )}
         </h3>
-        {selectedStages.length > 0 && (
+        {selectedCommunication.length > 0 && (
           <button
             type="button"
             className="crm-metric-clear"
-            onClick={() => onStage?.("")}
+            onClick={() => onCommunication?.("")}
           >
-            {t("Clear stage filter", "Hapus filter tahap", "清除阶段筛选")}
+            {t("Clear conversation filter", "Hapus filter komunikasi", "清除沟通筛选")}
           </button>
         )}
       </div>
-      <div className="crm-stage-distribution">{m.stages.map(stageButton)}</div>
+      <div className="crm-communication-distribution">{communicationRows.map(communicationButton)}</div>
       <details className="crm-lead-analysis" open={mode === "analysis" ? true : undefined}>
         <summary>
           {t(
@@ -342,14 +329,6 @@ export function CrmProcessOverview({
               {m.firstResponseSamples}
             </p>
             {bands("response")}
-            {metricLink(
-              "no_communication",
-              t(
-                "No conversation recorded",
-                "Belum ada komunikasi",
-                "暂无有效沟通记录",
-              ),
-            )}
             <p>
               {t(
                 "Unknown time / before registration",
@@ -394,66 +373,6 @@ export function CrmProcessOverview({
                 "sales_none",
               ] as MetricSelection[]
             ).map((key) => metricLink(key, metricSelectionLabel(key, lang)))}
-          </section>
-          <section>
-            <h4>
-              {t(
-                "Current stage duration",
-                "Durasi tahap saat ini",
-                "当前阶段停留",
-              )}
-            </h4>
-            <div
-              className="crm-process-table"
-              tabIndex={0}
-              role="region"
-              aria-label={t("Stage durations", "Durasi tahap", "阶段停留明细")}
-            >
-              <table>
-                <thead>
-                  <tr>
-                    {[
-                      t("Stage", "Tahap", "阶段"),
-                      t("Customers", "Pelanggan", "客户"),
-                      t("Median / samples", "Median / sampel", "中位数／样本"),
-                      t("Unknown", "Tidak diketahui", "未知"),
-                    ].map((label) => (
-                      <th key={label}>{label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {m.stages.map((row) => (
-                    <tr key={row.stage}>
-                      <th>
-                        <button
-                          type="button"
-                          onClick={() => onStage?.(row.stage)}
-                        >
-                          {row.stage === "__unknown" ? (
-                            t("Unrecorded", "Belum tercatat", "未填写阶段")
-                          ) : (
-                            <CrmSalesStage stage={row.stage} lang={lang} />
-                          )}
-                        </button>
-                      </th>
-                      <td>{row.customers}</td>
-                      <td>
-                        {duration(row.stageMedianMs)} / {row.stageSamples}
-                      </td>
-                      <td>{row.stageTimeUnknown}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p>
-              {t(
-                "Enrolled and closed stages are excluded from ongoing stage duration. Longer duration does not create a task.",
-                "Tahap terdaftar dan ditutup tidak termasuk durasi proses aktif. Durasi panjang tidak membuat tugas.",
-                "已报名、结束推进不计入进行中停留；时长不自动产生任务。",
-              )}
-            </p>
           </section>
         </div>
         {leader && (
@@ -568,9 +487,9 @@ export function CrmProcessOverview({
           </li>
           <li>
             {t(
-              "First requirement timeliness keeps the existing processing timestamp and deadline rules. Stage changes remain manual.",
-              "Ketepatan persyaratan pertama mempertahankan aturan waktu pemrosesan dan tenggat. Tahap tetap diubah manual.",
-              "首次要求按时处理保留现有处理时间和截止规则；阶段仍由销售人工确认。",
+              "First contact timeliness uses the processing timestamp and deadline of the existing task.",
+              "Ketepatan kontak pertama menggunakan waktu pemrosesan dan tenggat tugas yang ada.",
+              "首次联系是否按时，按现有待办的处理时间和截止时间计算。",
             )}
 
           </li>

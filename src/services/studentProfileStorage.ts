@@ -33,8 +33,8 @@ export interface UnifiedStudentContext {
 
 // Migrate existing profiles without requiring another questionnaire submission.
 export function getChatAssessmentStatus(context: UnifiedStudentContext | null): NonNullable<UnifiedStudentContext['chatAssessmentStatus']> {
+  if (context?.chatAssessmentStatus) return context.chatAssessmentStatus;
   if (!context?.leadProfile) return 'not_required';
-  if (context.chatAssessmentStatus) return context.chatAssessmentStatus;
   if (context.assessment?.completed || typeof context.leadProfile.quizScore === 'number') return 'completed';
   return context.leadProfile.levelState === 'PARTIAL' ? 'pending' : 'not_required';
 }

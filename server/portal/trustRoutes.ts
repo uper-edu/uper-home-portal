@@ -1,4 +1,6 @@
 import {enrollCourse} from './courseCatalog.ts';
+import {enrollmentServicePolicy} from './enrollmentRuntime.ts';
+import {reconcileEnrollmentAfterIdentityReview} from './enrollmentCrm.ts';
 import {auditLog} from './audit.ts';
 import {randomUUID} from 'node:crypto';
 import {restoreMistakenFulfilment} from './agreementRestore.ts';
@@ -67,8 +69,12 @@ export function mountTrustRoutes(
       const key=[r.lead_id,r.candidate_id].sort().join(':');
       if(seen.has(key)||!requestAllowed(e,r.source_profile,req,'crm.read')||!requestAllowed(e,r.candidate_profile,req,'crm.read')||!permittedRecord(e,r.source_profile,'crm.followup')||!permittedRecord(e,r.candidate_profile,'crm.followup'))return false;
       seen.add(key);return true;
-    }).map((r:any)=>({leadId:r.lead_id,candidateId:r.candidate_id,name:r.source_profile.fullName||r.lead_id,candidateName:r.candidate_profile.fullName||r.candidate_id,basis:identityMatch(r.source_profile,r.candidate_profile)}));
-    res.json({reviews});
+    });
+    res.set('Cache-Control','no-store');
+    if(req.query?.summary==='1'){
+      return res.json({pendingCount:new Set(reviews.map((r:any)=>r.lead_id)).size});
+    }
+    res.json({reviews:reviews.map((r:any)=>({leadId:r.lead_id,candidateId:r.candidate_id,name:r.source_profile.fullName||r.lead_id,candidateName:r.candidate_profile.fullName||r.candidate_id,basis:identityMatch(r.source_profile,r.candidate_profile)}))});
   }));
   app.get('/api/crm/leads/:id/identity-comparison',wrap(async(req:any,res:any)=>{
     const {l,e}=await leadAccess(req);
@@ -180,7 +186,7 @@ export function mountTrustRoutes(
       const log = (l.profile.followUpLogs || []).find(
         (v: any) => v.requestId === req.params.requestId && v.actor === e.id,
       );
-      if (log) return res.json({ saved: true, leadId: l.id, ...log.result });
+      if (log) return res.json({ saved: true, leadId: l.id, ...log.result, lead: {...l.profile,id:l.id} });
       invalid("Operation not found", 404);
     }),
   );
@@ -200,7 +206,7 @@ export function mountTrustRoutes(
   );
   app.get('/api/crm/leads/:id/stage-context',wrap(async(req:any,res:any)=>{
     const {l}=await leadAccess(req,'crm.read');const {pool}=await import('./store.ts');
-    res.set('Cache-Control','no-store').json({leadId:l.id,...await salesProgressContext(pool,l.id,l.profile)});
+    res.set('Cache-Control','no-store').json({leadId:l.id,assistedEnrollmentAvailable:enrollmentServicePolicy().servicing,...await salesProgressContext(pool,l.id,l.profile)});
   }));
   app.post('/api/crm/leads/:id/agreement-restore',wrap(async(req:any,res:any)=>{const {l,e}=await leadAccess(req,'crm.followup');const {tx}=await import('./store.ts');res.json(await tx((c:any)=>restoreMistakenFulfilment(c,l.id,e.id,req.body,(p:any)=>requestAllowed(e,p,req))));}));
   app.post('/api/crm/leads/:id/enrollment-void',wrap(async(req:any,res:any)=>{
@@ -213,6 +219,8 @@ export function mountTrustRoutes(
       await lockIdentityRegistry(c);
       const current=await lockLead(c,l.id,(p:any)=>requestAllowed(e,p,req));
       return operation(c,e.id,req.body,{leadId:l.id,kind:'stage'},async()=>{
+        if(req.body.newStage==='progress:enrolled'&&enrollmentServicePolicy().servicing)
+          invalid('enrollment_assistance_required',409);
         const decision=await validateSalesProgress(c,l.id,current,req.body);
         if(req.body.newStage===current.currentStage)invalid('阶段没有变化，请勿重复保存');
         const stageFactId=randomUUID();
@@ -390,6 +398,7 @@ export function mountTrustRoutes(
               await c.query('UPDATE portal_leads SET profile=:p2 WHERE id=:p1',[subjectId,released]);
               await activateIdentityLead(c,released,e.id);
             }
+            if(!remaining.length)await reconcileEnrollmentAfterIdentityReview(c,resolution.canonicalLeadId,e.id);
             return { saved: true, leadId: l.id,remainingCandidates:remaining.length,nextCandidateId:remaining[0]?.candidate_id,...resolution };
           });
         }),

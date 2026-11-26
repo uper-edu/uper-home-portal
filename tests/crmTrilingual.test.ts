@@ -115,6 +115,7 @@ test("work-calendar weekdays, durations and guidance render without language lea
   for (const lang of ["en", "id", "zh"] as const) {
     const html = renderToStaticMarkup(
       React.createElement(CrmPolicySettings, {
+        initialTopic: "schedule",
         lang,
         isLight: true,
         policyConfig: DEFAULT_CRM_POLICY_CONFIG,
@@ -170,6 +171,8 @@ test("static bilingual labels have Indonesian entries and templates have no extr
     "src/components/crm/CrmCustomerDetails.tsx",
     "src/pages/CrmWorkbench.tsx",
     "src/components/CrmAccess.tsx",
+    "src/components/admin/AdminLoginView.tsx",
+    "src/components/admin/AdminAccountMenu.tsx",
     "src/utils/crmLanguage.ts",
     "src/components/NotificationCenter.tsx",
   ];
@@ -263,11 +266,11 @@ test("language preference presents three visible exclusive choices without a fil
 });
 
 test("customer edit choices preserve owner labels, stale values and disabled stage permissions", async () => {
-  const { CrmSingleSelect } =
-    await import("../src/components/crm/CrmSingleSelect.tsx");
+  const { AdminSingleSelect } =
+    await import("../src/components/admin/AdminSingleSelect.tsx");
   for (const lang of ["en", "id", "zh"] as const) {
     const html = renderToStaticMarkup(
-      React.createElement(CrmSingleSelect, {
+      React.createElement(AdminSingleSelect, {
         label: "TEST Owner",
         value: "old-owner",
         options: [
@@ -287,7 +290,7 @@ test("customer edit choices preserve owner labels, stale values and disabled sta
     assert.match(html, /aria-haspopup="dialog"/);
     assert.doesNotMatch(html, /<select/);
     const disabled = renderToStaticMarkup(
-      React.createElement(CrmSingleSelect, {
+      React.createElement(AdminSingleSelect, {
         label: "TEST Stage",
         value: "Historical stage",
         options: [],

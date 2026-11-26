@@ -1,0 +1,59 @@
+.crm-opportunity-workspace { display: grid; gap: 16px; }
+.crm-opportunity-workspace:has(>.crm-opportunity-detail-shell){margin-top:0}
+.crm-opportunity-workspace > a { justify-self: start; }
+.crm-opportunity-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.crm-opportunity-filters input { min-height: 40px; border: 1px solid var(--admin-border); border-radius: 10px; padding: 0 12px; background: transparent; }
+.crm-opportunity-table { overflow: auto; }
+.crm-opportunity-table table { width: 100%; border-collapse: collapse; text-align: start; }
+.crm-opportunity-table th,
+.crm-opportunity-table td { text-align: start; padding: 12px; border-bottom: 1px solid var(--admin-border); }
+.crm-opportunity-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr)); gap:12px 24px; margin:0; }
+.crm-opportunity-summary dt,.crm-opportunity-summary .crm-list-secondary { color:var(--admin-muted); font-size:12px; }
+.crm-opportunity-summary dd { margin:4px 0 0; overflow-wrap:anywhere; }
+.crm-opportunity-summary .crm-list-secondary { display:block; margin-top:3px; }
+.crm-opportunity-records { padding: 12px; border-bottom: 1px solid var(--admin-border); }
+.crm-course-records { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.crm-course-records li { padding: 12px; border: 1px solid var(--admin-border); border-radius: 10px; overflow-wrap: anywhere; }
+.crm-course-records li p { margin: 4px 0; }
+.crm-opportunity-feedback { position: fixed; inset: auto 20px 20px auto; z-index: 20; padding: 10px 14px; border-radius: 10px; background: var(--admin-surface); color: var(--admin-text); border: 1px solid var(--admin-border); }
+.crm-enrollment-notice-target {
+  min-height: 100dvh;
+  max-width: 960px;
+  margin-inline: auto;
+  padding: clamp(16px,4vw,48px);
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  overflow-wrap: anywhere;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 16px;
+}
+.crm-enrollment-notice-target dl { width: 100%; }
+.crm-enrollment-notice-target dl > div { padding: 12px; border: 1px solid var(--admin-border); border-radius: 10px; }
+.crm-enrollment-email-history { margin: 0; padding: 0; list-style: none; }
+.crm-course-records .crm-enrollment-email-history li { border: 0; border-radius: 0; padding: 8px 0; }
+.crm-course-records .crm-enrollment-email-history li + li { border-top: 1px solid var(--admin-border); }
+
+.crm-opportunity-detail-shell{display:grid;gap:16px;grid-template-columns:minmax(0,1fr);align-items:start;min-width:0}
+.crm-opportunity-detail-shell[data-sidebar=true]{grid-template-columns:var(--admin-record-sidebar-width) minmax(0,1fr);gap:16px 20px}
+.crm-detail-root .crm-opportunity-detail-column[hidden]{display:none}
+.crm-opportunity-detail-column .crm-detail-header{align-items:center;flex-wrap:wrap}
+.crm-opportunity-detail-body{overflow-wrap:anywhere}
+.crm-opportunity-detail-column :is(.crm-opportunity-summary,.crm-opportunity-sections) .crm-work-link{color:var(--admin-action)}
+.crm-opportunity-detail-column :is(.crm-opportunity-summary,.crm-opportunity-sections) .crm-work-link:hover{text-decoration:underline}
+.crm-opportunity-sections>section+section{margin-top:20px;padding-top:20px;border-top:1px solid var(--admin-border)}
+.crm-opportunity-sections h2{margin:0 0 12px;font-size:16px;font-weight:650}
+.crm-opportunity-detail-body .crm-course-records .crm-disclosure-heading{min-height:36px;font-size:14px;color:var(--admin-action)}
+.crm-opportunity-record-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.crm-opportunity-detail-shell.crm-detail-root[data-record-scroll=independent] .crm-opportunity-detail-column{
+  position:static;height:var(--admin-record-pane-height);max-height:var(--admin-record-pane-height);
+}
+
+.crm-purchase-intent-entry { display:inline-flex; align-items:center; gap:6px; text-align:start; }
+.crm-purchase-intent-entry svg { flex:none; }
+.crm-work-identity > .crm-purchase-intent-entry { align-self:start; }
+.crm-purchase-intent-review > p,.crm-purchase-intent-review blockquote { margin:0; white-space:pre-wrap; }
+.crm-purchase-intent-review section { display:grid; gap:8px; justify-items:start; }
+.crm-purchase-intent-review section ol { width:100%; }
+.crm-opportunity-next-actions { display:flex; flex-wrap:wrap; gap:4px 12px; }

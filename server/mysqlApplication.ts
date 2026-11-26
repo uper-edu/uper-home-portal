@@ -1,20 +1,19 @@
 import {passwordChangeGate} from './portal/localAuth.ts';
 import {mountClientDiagnostics} from './clientDiagnostics.ts';
-import {listPromotionReviews,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
-import {campaignPromotionPath,campaignPromotionShortUrl,PROMOTION_SHORT_CODE_PREFIX} from "../src/utils/campaignPromotion.ts";
+import {listPromotionReviews,promotionReviewCounts,reviewPromotion,promotionReviewResult} from "./portal/promotionReviews.ts";
+import {campaignPromotionPath,campaignPromotionShortUrl,promotionIdForShortSlug,PROMOTION_SHORT_CODE_PREFIX} from "../src/utils/campaignPromotion.ts";
 import {presetPromotionOwner,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
-import {addCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
+import {addCampaignPromotion,campaignPromotionResult,deleteCampaignPromotion,resolvePromotion,publicPromotion} from "./portal/campaignPromotion.ts";
 import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
 import {resolveCampaignLinks} from "../src/utils/campaignCode.ts";
 import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
 import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
-import {ensureInstagramBioCampaign} from './portal/campaignPresets.ts';
 import {canonicalCampaignId} from '../src/utils/organicCampaign.ts';
 import {mountMetadataHeaders,mountMetadataHtml} from './siteMetadata.ts';
-import {frontendStaticOptions} from './staticCache.ts';
+import {frontendStaticCompression,frontendStaticOptions} from './staticCache.ts';
 import {companyConfiguration,productionConfiguration} from './companyTrial.ts';
 import {acquireCompanyRuntimeLease} from '../cloud/mysql/company-maintenance.mjs';
-import { configureAccessTransport } from "./portal/accessTransport.ts";
+import { configureAccessTransport, validMutationOrigin } from "./portal/accessTransport.ts";
 import express from 'express';
 import path from 'node:path';
 import {mountHskAssets} from './hskAssets.ts';
@@ -25,14 +24,15 @@ import {pool,tx} from './portal/store.ts';
 import {nativePool} from '../cloud/mysql/runtime.mjs';
 import {mountSite} from '../cloud/mysql/site.mjs';
 import {approvedRemoteDevelopment} from '../cloud/mysql/transport.mjs';
+import {portalWorkerEnabled} from './environment.mjs';
 import {platform} from './portal/identity.ts';
 import {visitor} from './portal/runtime.ts';
 import {leadTier,taskDeadline} from './portal/followup.ts';
-import {campaignsContext} from '../cloud/mysql/campaign-context.mjs';
+import {campaignContextMiddleware} from '../cloud/mysql/campaign-context.mjs';
 import {loadCampaigns,getCurrentCampaigns,saveCampaign,deleteCampaign,trackCampaignImpression,synthesizeCampaignAiAssets,getCampaignByIdOrCode} from './campaignStorage.ts';
 import {log} from './logger.ts';
-import {mountRequestTracing} from './requestTracing.ts';
-export async function startMysqlApplication(){
+import {mountRequestTracing,requestErrorContext} from './requestTracing.ts';
+export async function startMysqlApplication(runtimeVersion=createRuntimeVersion()){
 const company=companyConfiguration();
 const production=productionConfiguration();
 const deployment=company || production;
@@ -44,7 +44,8 @@ if(!activeLocal&&process.env.TRIAL_DATASET!=='synthetic')throw Error('Migration-
 if(process.env.PLATFORM_MODE!=='local')throw Error('Local acceptance only; server deployment requires a separate gate');
 const port=deployment?.port || Number(process.env.PORT || 4412);
 const remoteDev=approvedRemoteDevelopment(process.env);
-if(remoteDev&&(port!==3000||process.env.PORTAL_WORKER_ENABLED==='true'))throw Error('Remote development requires port 3000 and no notification worker');
+const workerEnabled=portalWorkerEnabled();
+if(remoteDev&&port!==3000)throw Error('Remote development requires port 3000 and no notification worker');
 if(!Number.isInteger(port)||port<1024||port>65535||(port===3000&&!activeLocal&&!remoteDev))throw Error('Independent local MySQL port required; 3000 cutover not authorized');
 const faults=process.env.PORTAL_FAULT_TEST==='true';
 if(!faults && ['TRIAL_MODEL_STUB','TRIAL_PRIMARY_FAILURE','TRIAL_CONTENT_FAILURE_ONCE','TRIAL_FOLLOWUP_FAILURE_ONCE'].some(k=>process.env[k]==='true'))throw Error('Fault injection requires explicit local test mode');
@@ -60,7 +61,6 @@ if(process.env.TRIAL_MODEL_STUB==='true'||process.env.TRIAL_PRIMARY_FAILURE==='t
     process.env.DEEPSEEK_API_BASE_URL='http://127.0.0.1:4413/deepseek';
   }
 }
-const runtimeVersion=createRuntimeVersion();
 const app=express();
 // First middleware: trace id adoption plus the per-request access-log line.
 mountRequestTracing(app);
@@ -83,8 +83,9 @@ const wrap=(fn:any)=>(q:any,r:any)=>Promise.resolve(fn(q,r)).catch((e:any)=>{con
 app.get(`${PROMOTION_SHORT_CODE_PREFIX}/:code`,wrap(async(q:any,r:any)=>{
  r.set('Cache-Control','no-store');
  const code=q.params.code;
- const presetOwner=presetPromotionOwner(code);
- const p=presetOwner ? code : promotionShortCodePattern.test(code)
+ const presetId=promotionIdForShortSlug(code);
+ const presetOwner=presetPromotionOwner(presetId);
+ const p=presetOwner ? presetId : promotionShortCodePattern.test(code)
   ? (await pool.query('SELECT p FROM campaign_promotion_short_links WHERE short_code=:p1',[code])).rows[0]?.p
   : undefined;
  const resolved=p?await resolvePromotion(pool,p):null;
@@ -97,15 +98,28 @@ app.get('/api/promotion-links/:p',wrap(async(q:any,r:any)=>{
  if(!resolved)return r.status(404).json({status:'unverified'});
  r.json({status:'verified',promotion:publicPromotion(resolved)});
 }));
-app.use('/api',async (_q,_r,next)=>{try{const rows=(await pool.query("SELECT config FROM trial_campaigns ORDER BY created_at DESC")).rows;campaignsContext.run(rows.map(r=>r.config),next);}catch(e){next(e);}});
-await mountPortal(app);await ensureOrganicCampaign();await tx(ensureInstagramBioCampaign);mountChat(app);
+app.use('/api',campaignContextMiddleware(pool));
+await mountPortal(app);await ensureOrganicCampaign();mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
-app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>r.json({reviews:await listPromotionReviews(r.locals.crmEmployee)})));
+app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>{
+ const actor=r.locals.crmEmployee;
+ r.set('Cache-Control','no-store');
+ r.json(q.query.summary==='1' ? await promotionReviewCounts(actor) : {reviews:await listPromotionReviews(actor)});
+}));
 app.get('/api/crm/campaigns/sources/promotions/:leadId/results/:requestId',wrap(async(q:any,r:any)=>r.json(await promotionReviewResult(q.params.leadId,q.params.requestId,r.locals.crmEmployee))));
 app.post('/api/crm/campaigns/sources/promotions/:leadId/review',wrap(async(q:any,r:any)=>r.json(await reviewPromotion(q.params.leadId,q.body,r.locals.crmEmployee))));
 app.get(['/api/crm/campaigns/:idOrCode','/api/campaigns/:idOrCode'],wrap(async(q:any,r:any)=>{const list=q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns();const resolved=await getCampaignByIdOrCode(q.params.idOrCode);const campaign=resolved && list.find(c=>c.id===resolved.id);if(!campaign)return r.status(404).json({error:'Campaign not found'});const {stats,...publicCampaign}=campaign;r.json({success:true,campaign:q.path.startsWith('/api/crm')?campaign:publicCampaign});}));
+app.get('/api/crm/campaigns/:id/links/results/:requestId',wrap(async(q:any,r:any)=>{
+ const actor=r.locals.crmEmployee;
+ if(!actor.permissions.includes('campaigns.manage'))return r.status(403).json({error:'Permission denied'});
+ r.set('Cache-Control','no-store').json(await campaignPromotionResult(q.params.id,q.params.requestId,actor.id));
+}));
 app.post('/api/crm/campaigns/:id/links',wrap(async(q:any,r:any)=>r.json({success:true,...await addCampaignPromotion(q.params.id,q.body,r.locals.crmEmployee.id)})));
+app.delete('/api/crm/campaigns/:id/links/:linkId',wrap(async(q:any,r:any)=>{
+ if(!r.locals.crmEmployee.permissions.includes('campaigns.manage')||!validMutationOrigin(q))return r.status(403).json({error:'Permission denied'});
+ r.json(await deleteCampaignPromotion(q.params.id,q.params.linkId,r.locals.crmEmployee.id));
+}));
 app.post('/api/crm/campaigns',wrap(async(q:any,r:any)=>r.json({success:true,campaign:await saveCampaign({...q.body,__actor:r.locals.crmEmployee.id},{kind:"create"})})));
 app.put('/api/crm/campaigns/:id',wrap(async(q:any,r:any)=>r.json({success:true,campaign:await saveCampaign({...q.body,__actor:r.locals.crmEmployee.id},{kind:"update",id:q.params.id})})));
 app.delete('/api/crm/campaigns/:id',wrap(async(q:any,r:any)=>r.json({success:await deleteCampaign(q.params.id)})));
@@ -123,16 +137,16 @@ app.post(['/api/crm/campaigns/:idOrCode/impression','/api/campaigns/:idOrCode/im
 app.use('/api',(_q,r)=>r.status(404).json({error:'API endpoint not found'}));
 if(process.env.TRIAL_FRONTEND_DIRECTORY){
   const directory=path.resolve(process.env.TRIAL_FRONTEND_DIRECTORY);
+  app.use(frontendStaticCompression);
   app.use(express.static(directory,frontendStaticOptions(directory)));
   mountMetadataHtml(app,directory,nativePool);
 }
-app.use((e:any,q:any,r:any,_next:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,path:q.path,status,traceId:r.locals.traceId,error:e});r.status(status).json({error:status===413?'Request too large':'Request could not be processed'});});
-if(process.env.PORTAL_WORKER_ENABLED==='true'&&!activeLocal&&!((company||production)&&process.env.PORTAL_NOTIFICATION_MODE==='configured')){
- if(process.env.PORTAL_NOTIFICATION_MODE!=='simulation')throw Error('This local acceptance requires simulated notifications');
+app.use((e:any,q:any,r:any,_next:any)=>{const status=e.status||503;log[status<500?'warn':'error']('http.error',{method:q.method,status,traceId:r.locals.traceId,...requestErrorContext(q,e)});r.status(status).json({error:status===413?'Request too large':'Request could not be processed'});});
+if(workerEnabled&&!activeLocal&&!company&&!production){
  const channels=(await pool.query("SELECT * FROM notification_channels")).rows;
- if(channels.some(c=>c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');
+ if(channels.some(c=>!c.config.deleted&&c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');
 }
-const timer=process.env.PORTAL_WORKER_ENABLED==='true'?startWorker():null;
+const timer=workerEnabled?startWorker({paymentAnalytics:true}):null;
 const server=app.listen(port,deployment?.host || '127.0.0.1',()=>log.info('app.ready',{mysqlReady:true,port,workerEnabled:!!timer}));
 let closing=false;
 async function shutdown(){if(closing)return;closing=true;log.info('app.shutdown',{draining:true});if(timer)await stopWorker(timer);modelStub?.close();server.close(async()=>{if(releaseCompanyLease)await releaseCompanyLease();await pool.end();log.info('app.shutdown',{draining:false});setImmediate(()=>process.exit(0));});}

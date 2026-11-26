@@ -1,8 +1,8 @@
 import {CrmFormSummary} from './CrmFormLayout';
-import {AdminFormActions} from '../AdminFormLayout';
-import { CrmDisclosure } from "./CrmDisclosure";
+import {AdminFormActions,AdminFormFeedback} from '../AdminFormLayout';
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { useEffect, useRef, useState } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { AdminFieldLabel } from "../AdminForm";
 import { crmError, type CrmLanguage } from "../../utils/crmLanguage";
 import { draftsFor } from "../../utils/crmDrafts";
@@ -47,7 +47,7 @@ export function CrmAttendanceFields({
         : t('Confirmation withdrawn', 'Konfirmasi ditarik', '已撤销确认')}{record.confirmed && <> · {record.mode === 'onsite' ? t('Onsite', 'Di lokasi', '现场') : t('Online', 'Daring', '线上')}</>}</p>}
       <div className="crm-attendance-mode">
       <AdminFieldLabel required>{t("Participation mode", "Mode partisipasi", "参与方式")}</AdminFieldLabel>
-      <CrmSingleSelect
+      <AdminSingleSelect
         label={t("Participation mode", "Mode partisipasi", "参与方式")}
         required
         value={mode}
@@ -129,6 +129,7 @@ export function CrmAttendanceEditor({
     [busy, setBusy] = useState(false),
     [status, setStatus] = useState(""),
     [failed, setFailed] = useState(false);
+  const [pending,setPending]=useState<{campaignId:string;mode:string;confirmed:boolean}>();
   const request = useRef(draft.requestId || crypto.randomUUID()),
     errorFocus = useRef<HTMLParagraphElement>(null);
   const campaign = linkedParticipationCampaign(lead, campaigns);
@@ -166,8 +167,8 @@ export function CrmAttendanceEditor({
     return () => controller.abort();
   }, [lead.id, expanded, retry]);
   useEffect(() => {
-    if (failed) errorFocus.current?.focus();
-  }, [failed, status]);
+    if (failed||pending) errorFocus.current?.focus();
+  }, [failed, pending, status]);
   useEffect(() => {
     const dirty = !!mode && mode !== (record?.confirmed ? record.mode : "");
     if (dirty)
@@ -179,55 +180,53 @@ export function CrmAttendanceEditor({
     else delete cache[lead.id];
     onDirty?.(dirty);
   }, [mode, boundCampaignId, campaign?.id, record?.confirmed, record?.mode]);
-  const save = async (confirmed: boolean) => {
-    if (busy || !campaign || !selectedMode || contextChanged) return;
-    setBusy(true);
-    onBusy?.(true);
-    setStatus("");
-    setFailed(false);
-    try {
-      const response = await fetch(
-        `/api/crm/leads/${encodeURIComponent(lead.id)}/attendance`,
-        {
-          method: "POST",
-          signal: AbortSignal.timeout(20000),
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            requestId: request.current,
-            campaignId: campaign.id,
-            mode: selectedMode,
-            confirmed,
-          }),
-        },
-      );
-      const data = await response.json();
-      if (!response.ok) throw Error(data.error);
-      onUpdated(data.lead);
-      request.current = crypto.randomUUID();
-      delete cache[lead.id];
-      setMode("");
-      setBoundCampaign("");
-      onDirty?.(false);
-      setStatus(
-        confirmed
-          ? t("Participation recorded", "Partisipasi dicatat", "已记录参与确认")
-          : t("Confirmation withdrawn", "Konfirmasi ditarik", "已撤销确认"),
-      );
-    } catch (error) {
-      setFailed(true);
-      setStatus(
-        ["TimeoutError", "AbortError"].includes((error as Error).name)
-          ? "Save outcome unknown; retry unchanged draft"
-          : (error as Error).message,
-      );
-    } finally {
-      setBusy(false);
-      onBusy?.(false);
-    }
+  const complete=(updated:any)=>{
+    if(updated?.id!==lead.id)throw Error();
+    onUpdated(updated);
+    request.current=crypto.randomUUID();delete cache[lead.id];
+    setPending(undefined);setMode('');setBoundCampaign('');setFailed(false);
+    onDirty?.(false);setStatus('');
+  };
+  const save=async(confirmed:boolean)=>{
+    if(busy||pending||!campaign||!selectedMode||contextChanged)return;
+    const original={campaignId:campaign.id,mode:selectedMode,confirmed};
+    setBusy(true);onBusy?.(true);setStatus('');setFailed(false);
+    try{
+      const response=await fetch('/api/crm/leads/'+encodeURIComponent(lead.id)+'/attendance',{
+        method:'POST',signal:AbortSignal.timeout(20000),headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({requestId:request.current,...original}),
+      });
+      if(response.status>=400&&response.status<500){
+        const data=await response.json().catch(()=>null);
+        setFailed(true);setStatus(data?.error||'Save failed');return;
+      }
+      if(!response.ok)throw Error();
+      complete((await response.json()).lead);
+    }catch{
+      setPending(original);onDirty?.(true);
+      setStatus(t('Check the current participation record before submitting again.','Periksa catatan partisipasi sebelum mengirim ulang.','结果待确认，请先核对当前参与记录。'));
+    }finally{setBusy(false);onBusy?.(false);}
+  };
+  const check=async()=>{
+    if(busy||!pending)return;
+    setBusy(true);onBusy?.(true);
+    try{
+      const response=await fetch('/api/crm/leads/'+encodeURIComponent(lead.id),{cache:'no-store'});
+      if(!response.ok)throw Error();
+      const data=await response.json(),current=data.lead??data;
+      const found=current.attendanceRecords?.find((row:any)=>row.campaignId===pending.campaignId);
+      if(found?.mode!==pending.mode||found?.confirmed!==pending.confirmed){
+        setStatus(t('The current record differs from your submission. Your draft is retained.','Catatan saat ini berbeda dari pengajuan Anda. Draf disimpan.','当前记录与提交内容不同，草稿已保留。'));
+        return;
+      }
+      complete(current);
+    }catch{
+      setStatus(t('Unable to check the current record. Your draft is retained.','Catatan saat ini belum dapat diperiksa. Draf disimpan.','暂时无法核对当前记录，草稿已保留。'));
+    }finally{setBusy(false);onBusy?.(false);}
   };
   return (
     <>
-      <CrmDisclosure
+      <AdminDisclosure
         heading={t(
           "Record event participation (optional)",
           "Catat partisipasi acara (opsional)",
@@ -250,7 +249,7 @@ export function CrmAttendanceEditor({
             campaign={campaign}
             record={record}
             mode={selectedMode}
-            busy={busy}
+            busy={busy||!!pending}
             contextChanged={contextChanged}
             lang={lang}
             isLight={isLight}
@@ -264,12 +263,11 @@ export function CrmAttendanceEditor({
             }}
           />
         )}
-      </CrmDisclosure>
-      {status && (failed || !expanded) && (
-        <p ref={errorFocus} tabIndex={-1} role={failed ? "alert" : "status"}>
-          {failed ? crmError(status, lang) : status}
-        </p>
-      )}
+      </AdminDisclosure>
+      {status&&(pending||failed)&&<AdminFormFeedback ref={errorFocus} tabIndex={-1} lang={lang}
+        state={pending?'unknown':'error'}>{failed?crmError(status,lang):status}</AdminFormFeedback>}
+      {pending&&<button className="crm-work-button" type="button" disabled={busy} onClick={()=>void check()}>
+        {t('Check participation record','Periksa catatan partisipasi','核对参与记录')}</button>}
       {failed && !loaded && !loading && (
         <button
           className="crm-work-button"

@@ -21,14 +21,14 @@ import {CrmSaveFeedback} from "./CrmDetailWorkspace";
 import { CrmSalesDialog } from "./CrmSalesDialog";
 import { presentFollowUpTask } from "../../utils/crmTaskPresentation";
 import { MessageSquarePlus, NotebookPen, Plus } from "lucide-react";
-import { CrmDisclosure } from "./CrmDisclosure";
+import { AdminDisclosure } from "../admin/AdminDisclosure";
 import { CrmFollowupHistory } from "./CrmFollowupHistory";
 import { CrmTaskCard } from "./CrmTaskCard";
 import { projectPendingTasks } from "../../utils/crmTaskPresentation";
 import { emptyFollowUpLabel } from "../../utils/crmFollowUp";
 import { describeFollowUpTask } from "../../utils/crmFollowUp";
 import { useEffect, useId, useRef, useState } from "react";
-import { CrmSingleSelect } from "./CrmSingleSelect";
+import { AdminSingleSelect } from "../admin/AdminSingleSelect";
 import { calendarSample } from "../../utils/workCalendar";
 import { formatCrmOperatingTime } from "../../utils/crmOperatingTime";
 import { crmValue, type CrmLanguage } from "../../utils/crmLanguage";
@@ -147,11 +147,13 @@ export function CrmStageEditor({
         ? t("No saved result was found for this request. You can retry the original save.", "Hasil tersimpan untuk permintaan ini belum ditemukan. Anda dapat mengulangi penyimpanan awal.", "尚未找到该请求的保存结果，可重试原保存。")
         : error === "stage_save_failed"
           ? t("The stage was not saved. Your draft is kept.", "Tahap belum tersimpan. Draf tetap tersedia.", "阶段未保存，草稿已保留。") : courseError(error,lang)!==error?courseError(error,lang):trustError(error, lang);
-  const options:Array<{value:string,label:string}> = salesProgressStages.map(([value,zh,en,id])=>({value,label:lang==='zh'?zh:lang==='id'?id:en}));
+  const assisted=stageContext?.assistedEnrollmentAvailable===true;
+  const selectableStages=salesProgressStages.filter(([value])=>!assisted||value!=='progress:enrolled');
+  const options:Array<{value:string,label:string}> = selectableStages.map(([value,zh,en,id])=>({value,label:lang==='zh'?zh:lang==='id'?id:en}));
   const chosen=salesProgressStages.find(v=>v[0]===stage);
   if(!isSalesProgressStage(currentStage))options.unshift({value:currentStage as any,label:crmValue(currentStage,lang)+'（旧阶段，待确认）'});
   const actions=(<AdminFormActions data-admin-form="" className={inDrawer?"crm-editor-actions crm-stage-drawer-actions":"crm-stage-actions"}>
-          <button type="button" className="crm-work-button crm-editor-primary" data-primary="true" disabled={disabled || busy || (unknown&&!retryAllowed) || (!changed&&!unknown) || (versionConflict&&!unknown)} onClick={save}>
+          <button type="button" className="crm-work-button crm-editor-primary" data-primary="true" disabled={disabled || busy || (assisted&&stage==='progress:enrolled'&&!unknown) || (unknown&&!retryAllowed) || (!changed&&!unknown) || (versionConflict&&!unknown)} onClick={save}>
             {busy && busyAction === "save" ? t("Saving…", "Menyimpan…", "保存中…") : unknown ? t("Retry original save", "Ulangi penyimpanan awal", "重试原保存") : t('Save','Simpan','保存')}
           </button>
           {!unknown && <button type="button" className="crm-work-button" disabled={busy} onClick={()=>{if(inDrawer){onClose?.();return;}setStage(currentStage);setReason('');setBasisRefs([]);setEnrollmentConfirmed(false);}}>{!inDrawer&&savedStage&&!changed ? ui("完成") : ui("取消")}</button>}
@@ -163,21 +165,22 @@ export function CrmStageEditor({
       <div className={inDrawer?'crm-editor-scroll':undefined}>
       {inDrawer&&<AdminRequiredNote lang={lang}/>}
       {!isSalesProgressStage(currentStage)&&<p className="crm-stage-help">{ui("旧阶段保留为“")}{crmValue(currentStage,lang)}{ui("”，未自动映射。请选择符合实际的新阶段并明确保存。")}</p>}
-      <AdminFormSection className="crm-form-section" title={<>{t('New sales stage','Tahap penjualan baru','选择新阶段')}{inDrawer&&<span className="crm-stage-current">{t(' [Current: ',' [Saat ini: ',' [当前：')}{crmValue(currentStage,lang)}]</span>}</>}>
-      {inDrawer?<fieldset className="crm-stage-options"><legend>{ui("选择新阶段 *")}</legend>{salesProgressStages.map(([value,zh,en,id])=><label className="admin-field admin-field--choice" key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{stageShortDescription(value,lang)}</small></span></label>)}</fieldset>:(
-      <CrmSingleSelect
+      <AdminFormSection className="crm-form-section" title={<AdminFieldLabel required={inDrawer}>{t('New sales stage','Tahap penjualan baru','选择新阶段')}</AdminFieldLabel>}>
+      {inDrawer?<fieldset className="crm-stage-options"><legend className="sr-only">{ui("选择新阶段 *")}</legend>{selectableStages.map(([value,zh,en,id])=><label className="admin-field admin-field--choice" key={value} data-selected={stage===value} data-current={currentStage===value}><input type="radio" required aria-required="true" name={`stage-${lead.id}`} value={value} checked={stage===value} disabled={disabled||busy||unknown||currentStage===value} onChange={()=>{setStage(value);setSavedStage(null);setError('');setReasonInvalid(false);}}/><span><strong>{lang==='zh'?zh:lang==='id'?id:en}{currentStage===value ? ui("（当前）") : ''}</strong><small>{stageShortDescription(value,lang)}</small></span></label>)}</fieldset>:(
+      <AdminSingleSelect
         label={t("Update sales stage", "Ubah tahap penjualan", "修改销售阶段")}
         value={stage}
         onChange={(value) => { setStage(value); setError(""); setReasonInvalid(false); setSavedStage(null); if (value === currentStage) setReason(""); }}
         disabled={disabled || busy || unknown} options={options} lang={lang} isLight={isLight}
       />)}
 
+      {assisted&&<p className="crm-work-muted">{t("Start course enrollment from the opportunity.","Mulai pendaftaran kelas dari peluang.","课程报名请从商机发起协助报名。")}</p>}
       {inDrawer&&chosen&&<p className="crm-stage-choice-help">{progressDefinition(chosen[0],lang)}</p>}
       </AdminFormSection>
       {changed&&versionConflict&&<p role="alert">{ui("服务端阶段已变化，草稿仍保留。最新：")}{crmValue(latestStage.stage,lang)}。<button type="button" disabled={busy||unknown} onClick={()=>{setBaseStage(latestStage.stage);setBaseRevision(latestStage.version);}}>{ui("保留草稿并采用已核对的最新基准")}</button></p>}
       {!inDrawer&&chosen&&<p className="crm-stage-help">{progressDefinition(chosen[0],lang)}</p>}
       {!inDrawer&&!disabled && <p className="crm-stage-help">{t("Stage changes are saved manually. Choose a stage, link evidence or describe the facts, then save.", "Perubahan tahap disimpan secara manual. Pilih tahap, isi alasan wajib, lalu simpan.", "阶段变更需手动保存：选择阶段，关联依据或填写事实说明后保存。")}</p>}
-      {stage==='progress:enrolled'&&(changed||unknown)&&<CrmEnrollmentFields value={enrollment} onChange={(q:any)=>{setEnrollment(q);setEnrollmentConfirmed(q.confirmed===true);}} lang={lang} isLight={isLight} disabled={disabled||busy||unknown} request={request}/>}
+      {!assisted&&stage==='progress:enrolled'&&(changed||unknown)&&<CrmEnrollmentFields value={enrollment} onChange={(q:any)=>{setEnrollment(q);setEnrollmentConfirmed(q.confirmed===true);}} lang={lang} isLight={isLight} disabled={disabled||busy||unknown} request={request}/>}
       {(changed || unknown) && <section className="crm-form-section" aria-label={t("Stage facts and evidence","Fakta dan bukti tahap","阶段事实与依据")}><div className="crm-stage-draft">
         <div className="crm-stage-facts-intro"><div className="crm-stage-facts-heading"><label htmlFor={id}><AdminFieldLabel required={!basisRefs.length}>{t("Facts supporting the stage", "Fakta pendukung tahap", "具体事实说明")}</AdminFieldLabel></label><button type="button" className="crm-work-link" aria-expanded={showExample} aria-controls={id+'-example'} onClick={()=>setShowExample(v=>!v)}>{t('Example','Contoh','填写示例')}</button></div>
         <p id={id + "-help"} className="crm-stage-help">{stageFactsGuidance(stage,lang)} {t('Or link an original record below.','Atau tautkan catatan asli di bawah.','也可直接关联下方原文。')}</p>
@@ -609,7 +612,7 @@ function LegacyCrmTrustPanel({
             )}
           </button>
         ) : ["open", "overdue"].includes(task.status) ? (
-          <CrmSingleSelect
+          <AdminSingleSelect
             label={t("Task actions", "Tindakan tugas", "任务操作")}
             displayValue="⋯"
             value=""
@@ -1058,7 +1061,7 @@ function LegacyCrmTrustPanel({
                         onChange={(e) => setPurpose(e.target.value)}
                       />
                     </label>}
-                    {!["create_request","edit"].includes(editor.kind)&&<CrmSingleSelect
+                    {!["create_request","edit"].includes(editor.kind)&&<AdminSingleSelect
                       label={t("Time meaning", "Makna waktu", "时间含义")}
                       value={timing}
                       onChange={setTiming}
@@ -1095,7 +1098,7 @@ function LegacyCrmTrustPanel({
                   </label>
                 )}
                 {["link","link_request"].includes(editor.kind) && (
-                  <CrmSingleSelect
+                  <AdminSingleSelect
                     label={t("Task", "Tugas", "任务")}
                     value={choice}
                     onChange={setChoice}
@@ -1119,7 +1122,7 @@ function LegacyCrmTrustPanel({
                 )}
                 {editor.kind === "identity" && <p>{lead.fullName} ↔ {editor.task.name} · {editor.task.email||editor.task.whatsapp} · {t('Compare the original records and confirm with evidence. Same contact details do not prove the same person.','Bandingkan catatan asli dan konfirmasi dengan bukti. Kontak sama tidak membuktikan orang yang sama.','请对照原记录并填写核实依据；相同联系方式不证明属于同一人。')}</p>}
                 {editor.kind === "identity" && (
-                  <CrmSingleSelect
+                  <AdminSingleSelect
                     label={t("Decision", "Keputusan", "判断")}
                     value={choice}
                     onChange={setChoice}
@@ -1181,7 +1184,7 @@ function LegacyCrmTrustPanel({
       </div>
       {mode === "identity" &&
         data?.candidates.some((c: any) => c.decision === "pending") && (
-          <CrmDisclosure open
+          <AdminDisclosure open
             heading={
               <>{t("Identity candidates", "Kandidat identitas", "身份候选")}</>
             }
@@ -1205,7 +1208,7 @@ function LegacyCrmTrustPanel({
                   {c.name} · {c.email||c.whatsapp} · {kindLabel("identity")}
                 </button>
               ))}
-          </CrmDisclosure>
+          </AdminDisclosure>
         )}
       {mode !== "identity" && data && !workflowOpen && (
         <CrmFollowupHistory
@@ -1228,7 +1231,7 @@ function LegacyCrmTrustPanel({
                   (v.status === "migration_hold" &&
                     ["Enrolled", "Lost"].includes(lead.currentStage)),
               ) && (
-                <CrmDisclosure
+                <AdminDisclosure
                   heading={t("Past tasks", "Riwayat tugas", "历史任务")}
                   open={historyOpen}
                   onToggle={(e) => setHistoryOpen(e.currentTarget.open)}
@@ -1241,7 +1244,7 @@ function LegacyCrmTrustPanel({
                           ["Enrolled", "Lost"].includes(lead.currentStage)),
                     )
                     .map(renderTask)}
-                </CrmDisclosure>
+                </AdminDisclosure>
               )}
             </>
           }

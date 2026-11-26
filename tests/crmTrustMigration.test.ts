@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 if (process.env.MYSQL_NATIVE_TEST_ENV) {
   const { setupNativeTest } = await import("./helpers/mysql.mjs");
+  const { disposeNativeTest } = await import("./helpers/disposeNativeTest.mjs");
   const fixture = await setupNativeTest("trust_upgrade");
   const { openTrialDatabase } = await import("../cloud/mysql/database.mjs");
   const { migrate } = await import("../cloud/mysql/migrate.mjs");
@@ -50,7 +51,9 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
       )
     )[0];
     const beforeEvents = (await db.query("SELECT * FROM outbox"))[0];
-    assert.equal((await migrate(db, fixture.name)).version, 10);
+    await migrate(db, fixture.name);
+    const [[trustMarker]] = await db.query("SELECT state FROM trial_schema_versions WHERE version=9");
+    assert.equal(trustMarker?.state, "ready");
     assert.deepEqual(
       (await db.query("SELECT * FROM portal_leads"))[0],
       beforeLead,
@@ -83,4 +86,5 @@ if (process.env.MYSQL_NATIVE_TEST_ENV) {
     );
   });
   await db.end();
+  await disposeNativeTest(fixture);
 }

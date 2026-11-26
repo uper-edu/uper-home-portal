@@ -1,19 +1,9 @@
 import configuration from "../src/data/analyticsEnvironments.json" with { type: "json" };
 
 /** Public destination metadata only. Runtime credentials are never part of this object. */
-export function analyticsBuildConfiguration(target, publicEnvironment) {
+export function analyticsBuildConfiguration(target) {
+  if (!Object.hasOwn(configuration.environments, target)) throw Error("Unknown analytics build target");
   const expected = configuration.environments[target];
-  if (!expected) throw Error("Unknown analytics build target");
-  const id = publicEnvironment.VITE_UPER_MEASUREMENT_ID;
-  if (!id)
-    throw Error(
-      "Missing VITE_UPER_MEASUREMENT_ID for " +
-        target +
-        "; use its assigned GA stream",
-    );
-  if (id !== expected.measurementId)
-    throw Error(
-      "GA measurement ID does not match the assigned " + target + " stream",
-    );
+  if (!/^G-[A-Z0-9]+$/.test(expected.measurementId??"")) throw Error("Invalid GA measurement ID for " + target);
   return { target, ...expected };
 }

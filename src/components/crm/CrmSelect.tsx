@@ -1,5 +1,5 @@
 import { Children, Fragment, isValidElement, type ReactNode } from "react";
-import { CrmSingleSelect, type CrmChoice } from "./CrmSingleSelect";
+import { AdminSingleSelect, type AdminSelectChoice } from "../admin/AdminSingleSelect";
 import type { CrmLanguage } from "../../utils/crmLanguage";
 const text = (node: ReactNode): string => {
   if (node == null || typeof node === "boolean") return "";
@@ -9,8 +9,8 @@ const text = (node: ReactNode): string => {
   return Children.toArray(node).map(text).join("");
 };
 /** Read existing option declarations without changing values, labels or disabled placeholders. */
-export function crmSelectChoices(children: ReactNode): CrmChoice[] {
-  const choices: CrmChoice[] = [];
+export function crmSelectChoices(children: ReactNode): AdminSelectChoice[] {
+  const choices: AdminSelectChoice[] = [];
   Children.forEach(children, (child) => {
     if (
       !isValidElement<{
@@ -46,5 +46,5 @@ export function CrmSelect({
   disabled?: boolean;
   className?: string;
 }) {
-  return <CrmSingleSelect {...props} options={crmSelectChoices(children)} />;
+  return <AdminSingleSelect {...props} options={crmSelectChoices(children)} />;
 }

@@ -19,7 +19,6 @@ export function campaignReviewUrl(href:string,filters:CampaignFilters,campaignId
  if(campaignId)url.searchParams.set('sourceCampaign',campaignId);
  return url.href;
 }
-export type SourceReviewState={pending:boolean;loading:boolean;unavailable:boolean};
-export function sourceReviewState(promotions:{available:boolean;counts:Record<string,number>},loading:boolean):SourceReviewState{
- return {pending:promotions.available&&Object.values(promotions.counts).some(n=>n>0),loading,unavailable:!loading&&!promotions.available};
+export function sourceReviewState(pendingCount:number|undefined,loading:boolean){
+ return {pending:!loading&&(pendingCount??0)>0,unavailable:!loading&&pendingCount===undefined};
 }

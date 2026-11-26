@@ -25,8 +25,6 @@ if (process.env.P0_TRUST_REUSE === "true") {
 Object.assign(process.env, {
   PORT: "4426",
   PLATFORM_MODE: "local",
-  PORTAL_WORKER_ENABLED: "false",
-  PORTAL_NOTIFICATION_MODE: "simulation",
   PORTAL_FAULT_TEST: "true",
   TRIAL_MODEL_STUB: "true",
   TRIAL_FRONTEND_DIRECTORY: new URL("../build/p0-trust/web", import.meta.url)

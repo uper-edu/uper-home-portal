@@ -68,11 +68,13 @@ export async function managementRequest(actor: string, url: string, body: any) {
     });
     const data = await r.json();
     if (!r.ok) {
+      const wrongCurrentPassword = url === "/api/crm/auth/password" &&
+        r.status === 401 && data.error === "Current password is incorrect";
       if (
-        r.status < 500 &&
+        wrongCurrentPassword || (r.status < 500 &&
         ![401, 403].includes(r.status) &&
         ((!p.unknown && data.error !== "access_operation_conflict") ||
-          data.error === "access_operation_cancelled")
+          data.error === "access_operation_cancelled"))
       )
         forgetAccessOperation(p.operationId);
       else p.unknown = true;

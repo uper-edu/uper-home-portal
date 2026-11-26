@@ -1,4 +1,16 @@
 {
+  "The current campaign is outside these filters. Its details and draft stay open.": [
+    "Kampanye ini di luar hasil filter. Detail dan draf tetap terbuka.",
+    "当前活动不在筛选结果中，详情及草稿仍保留。"
+  ],
+  "Campaign actions": [
+    "Tindakan kampanye",
+    "活动操作"
+  ],
+  "Back to campaign details": [
+    "Kembali ke detail kampanye",
+    "返回活动详情"
+  ],
   "Address": [
     "Alamat",
     "地址"
@@ -50,6 +62,22 @@
   "Retry": [
     "Coba lagi",
     "重试"
+  ],
+  "Check save result": [
+    "Periksa hasil penyimpanan",
+    "查询保存结果"
+  ],
+  "No result yet. The original draft is retained.": [
+    "Hasil belum ditemukan. Draf tetap tersimpan.",
+    "暂未查到结果，原草稿已保留。"
+  ],
+  "Unable to check the result. The original draft is retained.": [
+    "Hasil belum dapat diperiksa. Draf tetap tersimpan.",
+    "暂时无法查询结果，原草稿已保留。"
+  ],
+  "Save outcome unknown. Check the original result before saving again.": [
+    "Hasil simpan belum pasti. Periksa hasil awal sebelum menyimpan lagi.",
+    "保存结果尚未确认，请先查询原操作。"
   ],
   "Retry original request": [
     "Ulangi permintaan awal",
@@ -119,9 +147,21 @@
     "Semua status",
     "全部状态"
   ],
-  "Archive a campaign by changing its status in Edit information. Campaigns with promotion links or verified source associations cannot be deleted.": [
-    "Untuk mengarsipkan kampanye, ubah statusnya melalui Edit informasi. Kampanye yang memiliki tautan promosi atau asosiasi sumber terverifikasi tidak dapat dihapus.",
-    "可在“编辑信息”中将活动状态改为已归档。已有推广链接或已核实来源关联的活动不能删除。"
+  "This campaign has customer attribution and cannot be deleted.": [
+    "Kampanye ini memiliki atribusi pelanggan dan tidak dapat dihapus.",
+    "此活动已有客户归因，无法删除。"
+  ],
+  "Campaign has verified source links; preserve its attribution history": [
+    "Kampanye ini memiliki asosiasi sumber terverifikasi dan tidak dapat dihapus.",
+    "此活动已有核实的来源关联，无法删除。"
+  ],
+  "Campaign could not be deleted.": [
+    "Kampanye tidak dapat dihapus.",
+    "无法删除此活动。"
+  ],
+  "Deletion could not be confirmed. Check the campaign list before trying again.": [
+    "Penghapusan belum dapat dikonfirmasi. Periksa daftar kampanye sebelum mencoba lagi.",
+    "暂时无法确认删除结果，请先查看活动列表。"
   ],
   "Asia/Jakarta (UTC+7)": [
     "Asia/Jakarta (UTC+7)",
@@ -489,10 +529,6 @@
   "Medium *": [
     "Media promosi *",
     "推广方式 *"
-  ],
-  "More campaign actions": [
-    "Tindakan kampanye lainnya",
-    "更多活动操作"
   ],
   "More filters": [
     "Filter lainnya",
@@ -1735,6 +1771,12 @@
   "Opens Link Hub. Visitors can choose online consultation, the handbook, or the community.": ["Membuka Link Hub. Pengunjung dapat memilih konsultasi daring, buku panduan, atau komunitas.", "打开链接导航页，访客可选择在线咨询、手册或社群。"],
   "Opens the UPER homepage. Visitors can browse the site or choose an online consultation.": ["Membuka beranda UPER. Pengunjung dapat menjelajahi situs atau memilih konsultasi daring.", "打开 UPER 官网首页，访客可以浏览网站或进入在线咨询。"],
   "Opens the HSK page for course and exam information.": ["Membuka halaman HSK untuk informasi kursus dan ujian.", "打开 HSK 专页，查看课程和考试信息。"],
+  "Opens course enrollment for class schedules, fees, and applications.": ["Membuka halaman pendaftaran untuk melihat jadwal, biaya, dan mengajukan pendaftaran.", "打开课程报名页，查看班次和学费并申请报名。"],
+  "Course enrollment by promotion link": ["Pendaftaran kursus menurut tautan promosi", "按推广链接统计课程报名"],
+  "Saved course records": ["Catatan kursus tersimpan", "已保存业务记录"],
+  "Seats reserved": ["Kursi diberikan", "已获席订单"],
+  "Enrollments confirmed after full payment": ["Pendaftaran terkonfirmasi setelah pelunasan", "核实足额到账后报名成功"],
+  "Saved records include course preferences, waitlists, and applications with a seat. Counts are cumulative.": ["Catatan mencakup preferensi kursus, daftar tunggu, dan permohonan yang mendapat kursi. Jumlah ditampilkan secara kumulatif.", "业务记录包括选课需求、候补和已获席申请，表中数字均为累计。"],
   "Opens the CSCA page for assessment and preparation information.": ["Membuka halaman CSCA untuk informasi asesmen dan persiapan.", "打开 CSCA 专页，查看考试与备考信息。"],
   "Opens the study abroad advisory page.": ["Membuka halaman konsultasi studi ke luar negeri.", "打开留学咨询服务页。"],
   "Opens the study tours page for programme information.": ["Membuka halaman program tur studi.", "打开研学游页面，查看项目信息。"],
@@ -1870,5 +1912,61 @@
     "atau buka Masalah sumber promosi untuk memeriksa.",
     "也可打开「推广来源异常」核对。"
   ],
-  "Campaign": ["Kampanye", "营销活动"]
+  "Campaign": ["Kampanye", "营销活动"],
+  "Delete promotion link": [
+    "Hapus tautan promosi",
+    "删除推广链接"
+  ],
+  "Delete promotion link: {name}": [
+    "Hapus tautan promosi: {name}",
+    "删除推广链接：{name}"
+  ],
+  "Delete {name}?": [
+    "Hapus {name}?",
+    "删除「{name}」？"
+  ],
+  "Shared short links and QR codes will stop working after deletion.": [
+    "Tautan pendek dan kode QR yang sudah dibagikan tidak akan berfungsi setelah dihapus.",
+    "删除后，已分享的短链和二维码将失效。"
+  ],
+  "Promotion link not found.": [
+    "Tautan promosi tidak ditemukan.",
+    "找不到这条推广链接。"
+  ],
+  "System preset links cannot be deleted.": [
+    "Tautan bawaan sistem tidak dapat dihapus.",
+    "系统预置链接不可删除。"
+  ],
+  "This promotion link has customer attribution and cannot be deleted.": [
+    "Tautan ini sudah dikaitkan dengan pelanggan dan tidak dapat dihapus.",
+    "这条推广链接已有客户归因，不可删除。"
+  ],
+  "This promotion link was deleted.": [
+    "Tautan promosi ini sudah dihapus.",
+    "这条推广链接已删除。"
+  ],
+  "Could not delete the promotion link.": [
+    "Tautan promosi gagal dihapus.",
+    "无法删除推广链接。"
+  ],
+  "Deletion result unknown. Check whether the link is still listed.": [
+    "Hasil penghapusan belum diketahui. Periksa apakah tautan masih ada di daftar.",
+    "删除结果尚未确认，请核对链接是否仍在列表中。"
+  ],
+  "The link is still listed. Refresh before trying again.": [
+    "Tautan masih ada di daftar. Muat ulang sebelum mencoba lagi.",
+    "链接仍在列表中，请刷新后再操作。"
+  ],
+  "Check deletion result": [
+    "Periksa hasil penghapusan",
+    "核对删除结果"
+  ],
+  "Promotion link deleted.": [
+    "Tautan promosi dihapus.",
+    "推广链接已删除。"
+  ],
+  "Working…": [
+    "Memproses…",
+    "处理中…"
+  ]
 }

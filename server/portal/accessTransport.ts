@@ -41,9 +41,9 @@ export const trustedOrigin = (q: Request) => {
   const origins = publicOrigins(process.env);
   return origins.includes(current) ? current : origins[0] || current;
 };
-export const validMutationOrigin = (q: Request) => {
+export const validMutationOrigin = (q: Request, contentTypes: string | string[] = "application/json") => {
   const origin = typeof q.headers.origin === "string" ? q.headers.origin : "";
   const current = `${q.protocol}://${q.get("host")}`;
   const origins = publicOrigins(process.env);
-  return !!q.is("application/json") && origin === current && (!origins.length || origins.includes(origin));
+  return !!q.is(contentTypes) && origin === current && (!origins.length || origins.includes(origin));
 };

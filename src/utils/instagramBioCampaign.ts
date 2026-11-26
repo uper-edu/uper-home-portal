@@ -1,6 +1,5 @@
 import type { CampaignPromotionLink, CrmCampaignRecord } from '../types/crmCampaign';
 import { PROMOTION_EXPERIENCE } from './campaignPromotion';
-import {promotionJourneyUrl} from './promotionNavigation';
 
 export const INSTAGRAM_BIO_CAMPAIGN = 'instagram-bio';
 export const INSTAGRAM_BIO_PRESET = 'instagram_bio_v1';
@@ -27,10 +26,6 @@ export function instagramBioCampaign(at = new Date().toISOString()): CrmCampaign
       totalRevenue: 0, conversionRate: null, budgetCost: null, roi: null },
     createdAt: at, updatedAt: at,
   };
-}
-
-export function linkHubConsultUrl(input: URLSearchParams, language: 'en' | 'id' | 'zh') {
-  return promotionJourneyUrl('/chat?' + new URLSearchParams({lang:language}), input, 'linkhub');
 }
 
 export function isInstagramBioPromotion(value: CampaignPromotionLink, language: string) {

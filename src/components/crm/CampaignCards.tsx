@@ -1,3 +1,5 @@
+import {CrmRecordRow} from './CrmRecordWorkspace';
+import {formatCurrency} from '../../utils/currency';
 import { campaignUi, campaignUiLocale } from "../../utils/campaignI18n";
 import React from "react";
 import {
@@ -66,25 +68,28 @@ function CustomerMetrics({
     </dl>
   );
 }
-export function CampaignSidebarSummary({
+export function CampaignSidebarRow({
   campaign,
   lang,
   reviewCount,
+  selected,
+  onClick,
 }: {
   campaign: CrmCampaignRecord;
   lang: "en" | "id" | "zh";
   reviewCount?: number;
+  selected: boolean;
+  onClick: () => void;
 }) {
   const u = campaignUi(lang);
   const organic = isOrganicCampaign(campaign),
     entry = campaignEntrySummary(campaign, lang),
     date = campaignDateRange(campaign, lang);
-  return (
-    <>
-      {(campaign.presetKey || campaign.systemManaged) && <span className="campaign-preset-badge">{u("System preset")}</span>}
-      <strong>
-        {organic ? organicCampaignName(lang) : campaignName(campaign, lang)}
-      </strong>
+  const name=organic?organicCampaignName(lang):campaignName(campaign,lang);
+  return <CrmRecordRow selected={selected} name={name} title={u("Open campaign: {name}",{name})}
+    onClick={onClick} meta={<>
+      {(campaign.presetKey||campaign.systemManaged)&&<span className="campaign-preset-badge">{u("System preset")}</span>}
+      <code>{campaign.code}</code>
       <span>
         {organic
           ? u("Read-only · System managed")
@@ -127,8 +132,7 @@ export function CampaignSidebarSummary({
           )}
         </span>
       )}
-    </>
-  );
+    </>}/>;
 }
 export function CampaignCards({
   campaigns,
@@ -140,7 +144,7 @@ export function CampaignCards({
 }: {
   campaigns: CrmCampaignRecord[];
   lang: "en" | "id" | "zh";
-  onOpen: (campaign: CrmCampaignRecord, tab?: CampaignCardTab) => void;
+  onOpen: (campaign: CrmCampaignRecord, tab?: CampaignCardTab, addPromotion?: boolean) => void;
   onEdit?: (campaign: CrmCampaignRecord) => void;
   reviewCounts?: PromotionReviewCounts;
   onReview?: (campaign: CrmCampaignRecord) => void;
@@ -297,7 +301,7 @@ export function CampaignCards({
                     <span>
                       {typeof c.stats?.budgetCost === "number" &&
                       Number.isFinite(c.stats.budgetCost)
-                        ? `IDR ${c.stats.budgetCost.toLocaleString(campaignUiLocale(lang))}`
+                        ? formatCurrency(c.stats.budgetCost,lang)
                         : u("Not recorded")}
                     </span>
                   </div>
@@ -307,7 +311,7 @@ export function CampaignCards({
                   <button
                     type="button"
                     className="campaign-card-primary"
-                    onClick={() => onOpen(c, "overview")}
+                    onClick={() => onOpen(c, "overview", entry.kind === "empty" && !!onEdit)}
                   >
                     <QrCode size={15} aria-hidden="true" />
                     {entry.kind === "empty" && !onEdit

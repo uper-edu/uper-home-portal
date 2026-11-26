@@ -40,7 +40,7 @@ test("invalid work hours render a localized preview boundary, never negative wor
     const config = structuredClone(DEFAULT_CRM_POLICY_CONFIG);
     config.businessHours.startTime = "22:00";
     config.businessHours.endTime = "20:00";
-    const html = renderToStaticMarkup(React.createElement(CrmPolicySettings, { isLight: true, lang, policyConfig: config, onSavePolicy: async () => true, onResetPolicy: async () => true }));
+    const html = renderToStaticMarkup(React.createElement(CrmPolicySettings, { isLight: true, lang, initialTopic: "schedule", policyConfig: config, onSavePolicy: async () => true, onResetPolicy: async () => true }));
     assert.ok(html.includes(policyMessage("policy_calendar_invalid", lang)));
     assert.doesNotMatch(html.replace(/<[^>]*>/g, " "), /-2\.0|-12|● Active Calling/);
     assert.match(html, /aria-label=/);
