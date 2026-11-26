@@ -1,4 +1,3 @@
-import {AdminSavedReadError} from '../AdminFormLayout';
 import {AdminTopicHeader} from '../admin/AdminTopicHeader';
 import {Plus} from 'lucide-react';
 import {AdminPageAction} from '../admin/AdminPageAction';
@@ -12,12 +11,12 @@ import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {AdminStatus} from '../AdminStatus';
 import {AdminField} from '../AdminForm';
-import {AdminStaticField,AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
+import {AdminFormFeedback,AdminSavedReadError,AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
 import { CrmSaveFeedback } from './CrmDetailWorkspace';
 import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {AdminSingleSelect, type AdminSelectChoice} from '../admin/AdminSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
-import {compareEnrollmentTemplates,defaultEnrollmentCourseName,enrollmentTemplateFormats,enrollmentTeacherTypes,enrollmentTemplateQuote,templateSize,type EnrollmentTemplate,type EnrollmentTeachingCourse} from '../../utils/enrollmentTemplates';
+import {compareEnrollmentTeachingCourses,compareEnrollmentTemplates,defaultEnrollmentCourseName,enrollmentTemplateFormats,enrollmentTeacherTypes,enrollmentTemplateQuote,templateSize,type EnrollmentTemplate,type EnrollmentTeachingCourse} from '../../utils/enrollmentTemplates';
 import {formatCurrency} from '../../utils/currency';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
@@ -27,11 +26,13 @@ type TemplateDraft=Omit<EnrollmentTemplate,'format'|'teacherType'>&{
  format:EnrollmentTemplate['format']|'';
  teacherType:EnrollmentTemplate['teacherType']|'';
 };
+type SizeField='capacity'|'minimumPaid';
 type Props={lang:CrmLanguage;isLight:boolean;selected?:string;createFromCourse?:string;onCreateClass?:(id:string)=>void;onDraftChange?:(dirty:boolean)=>void; quoteEdit?:{id:string;onReturn:()=>void}};
 
 export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,onCreateClass,onDraftChange,quoteEdit}:Props){
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const title=t('Class templates','Templat kelas','班型模板');
+ const createTemplateLabel=t('New class template','Buat templat kelas','新建班型模版');
  const [catalog,setCatalog]=useState<Catalog>(),[read,setRead]=useState<'loading'|'ready'|'denied'|'error'>('loading');
  const {filters,change,clear}=useEnrollmentSettingsFilters('templates',{search:'',level:'',quote:'',format:'',teacher:'',sort:'course'});
  const [draft,setDraft]=useState<TemplateDraft>(),[manualName,setManualName]=useState(false),[dirty,setDirty]=useState(false);
@@ -43,6 +44,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  const [deleted,setDeleted]=useState(false);
  const request=useRef<AbortController|null>(null),inFlight=useRef(false),located=useRef<string|undefined>(undefined);
  const openedFromCourse=useRef<string|undefined>(undefined);
+ const editedSizes=useRef(new Set<SizeField>());
  const money=(amount:number)=>formatCurrency(amount,lang);
  const formats={standard:t('Standard','Standar','标准班'),small:t('Small group','Kelompok kecil','小班'),'one-on-one':t('One-to-one','Privat','一对一')};
  const teachers={local:t('Local teacher','Pengajar lokal','本土教师'),foreign:t('Foreign teacher','Pengajar asing','外教')};
@@ -100,6 +102,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  const priceStatus=(item:Pick<EnrollmentTemplate,'saleUnitPrice'>)=><AdminStatus tone={item.saleUnitPrice?'success':'warning'}>{item.saleUnitPrice?t('Quote configured','Harga tersedia','报价已配置'):t('Quote pending','Harga belum dikonfirmasi','报价待确认')}</AdminStatus>;
  const edit=(item?:EnrollmentTemplate,courseId='')=>{
    if(!item&&!newCourse)return;
+   editedSizes.current.clear();
    const seed:TemplateDraft=item??{id:crypto.randomUUID(),revision:0,name:'',courseId,format:'',teacherType:'',
      minimumPaid:0,capacity:0,standardUnitPrice:null,saleUnitPrice:null};
    setDraft({...seed,name:item?.name??auto(seed)});setManualName(!!item&&item.name!==auto(item));setError('');setDirty(false);
@@ -119,6 +122,15 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      return manual?next:{...next,name:auto(next)};
    });
    setDirty(true);setError('');
+ };
+ const changeFormat=(format:EnrollmentTemplate['format'])=>{
+   const {capacity,minimumPaid}=templateSize[format];
+   patch({format,...(!editedSizes.current.has('capacity')&&{capacity}),
+     ...(!editedSizes.current.has('minimumPaid')&&{minimumPaid})});
+ };
+ const changeSize=(key:SizeField,value:number)=>{
+   editedSizes.current.add(key);
+   patch({[key]:value});
  };
  useEffect(()=>{
    if(!quoteEdit||read!=='ready'||draft)return;
@@ -140,6 +152,18 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  const save=async(e:React.FormEvent)=>{
    e.preventDefault();
    if(!draft||!draft.courseId||!draft.format||!draft.teacherType||inFlight.current||pending)return;
+   if(!termsLocked){
+     const {standardUnitPrice,saleUnitPrice,minimumPaid,capacity}=draft;
+     if(minimumPaid>capacity){
+       setError(t('The minimum cannot exceed the seat limit.','Jumlah minimum tidak boleh melebihi kapasitas.','人数下限不能超过人数上限。'));return;
+     }
+     if((standardUnitPrice===null)!==(saleUnitPrice===null)){
+       setError(t('Enter both prices, or leave both blank.','Isi kedua harga atau kosongkan keduanya.','请填写两项报价，或将两项都留空。'));return;
+     }
+     if(standardUnitPrice!==null&&saleUnitPrice!==null&&saleUnitPrice>standardUnitPrice){
+       setError(t('The enrollment price cannot exceed the standard price.','Harga pendaftaran tidak boleh melebihi harga standar.','报名价不能高于标准价。'));return;
+     }
+   }
    const requestId=crypto.randomUUID();
    inFlight.current=true;setBusy(true);setError('');
    try{
@@ -195,9 +219,9 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      setDeleteError(t('Deletion is unconfirmed. Check the original result.','Penghapusan belum terkonfirmasi. Periksa hasil awal.','删除结果尚未确认，请查询原操作结果。'));
    }finally{inFlight.current=false;setBusy(false);}
  };
- const field=(label:string,value:string,options:AdminSelectChoice[],change:(v:string)=>void,locked=false)=>locked
-   ? <AdminStaticField label={label} value={options.find(option=>option.value===value)?.label}/>
-   : <AdminField required>{label}<AdminSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change}/></AdminField>;
+ const field=(label:string,value:string,options:AdminSelectChoice[],change:(v:string)=>void,searchable=false)=><AdminField required>{label}
+   <AdminSingleSelect label={label} lang={lang} isLight={isLight} value={value} options={options} onChange={change} searchable={searchable} disabled={busy||!!pending}/>
+ </AdminField>;
  const termsLocked=!!draft&&referencedTemplates.has(draft.id);
  const searchLabel=t('Search templates','Cari templat','搜索模板');
  const filterControls=<div className="crm-class-config-filters">
@@ -212,14 +236,45 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      value={filters.quote} onChange={quote=>change({quote})} options={[
        {value:'ready',label:t('Configured','Tersedia','已配置')},{value:'missing',label:t('Pending','Menunggu','待确认')}]}/>
  </div>;
- const draftCourse=draft&&course(draft.courseId),draftQuote=draft&&draftCourse&&enrollmentTemplateQuote(draft,draftCourse.sessions);
+ const draftCourse=draft&&course(draft.courseId);
+ const draftQuote=draft&&draftCourse&&(draft.saleUnitPrice??0)>0&&(draft.saleUnitPrice??0)<=(draft.standardUnitPrice??0)
+   ?enrollmentTemplateQuote(draft,draftCourse.sessions):null;
+ const editorTitle=quoteEdit?t('Set template quote','Atur harga templat','设置班型报价'):
+   draft?.revision?t('Edit template','Edit templat','编辑模板'):createTemplateLabel;
+ const returnToClass=t('Back to class draft','Kembali ke draf kelas','返回班次草稿');
+ const formatLabel=t('Class type','Jenis kelas','班型');
+ const teacherLabel=t('Teacher type','Jenis pengajar','教师类型');
+ const sizeFields=[
+   ['minimumPaid',t('Minimum fully paid','Minimum peserta lunas','人数下限（到账为准）')],
+   ['capacity',t('Seat limit','Jumlah peserta maksimum','人数上限')],
+ ] as const;
+ const unitPriceFields=[
+   ['standardUnitPrice',t('Standard price per period','Harga standar per jam pelajaran','每节标准价')],
+   ['saleUnitPrice',t('Enrollment price per period','Harga pendaftaran per jam pelajaran','每节报名价')],
+ ] as const;
+ const tuitionFields=draftQuote?[
+   [t('Standard total','Total harga standar','标准总价'),draftQuote.standardPrice?<del>{money(draftQuote.standardPrice)}</del>:'—'],
+   [t('Enrollment total','Total harga pendaftaran','报名总价'),<strong>{money(draftQuote.price)}</strong>],
+ ] as const:[];
+ const pricingSection=draft&&<AdminFormSection variant="subgroup" title={t('Tuition','Biaya kursus','课程报价')}
+   description={termsLocked?t('Classes already use this template. Class size and prices are locked.','Kelas sudah menggunakan templat ini. Jumlah peserta dan harga terkunci.','已有班次使用此模板，人数和报价已锁定。'):
+     t('Enter both prices in rupiah per period, or leave both blank to set the quote later.','Isi kedua harga per jam pelajaran dalam rupiah, atau kosongkan keduanya untuk mengaturnya nanti.','按每节课填写两项印尼盾报价，也可全部留空稍后设置。')}>
+   {termsLocked?<AdminFormSummary fields={[
+     ...unitPriceFields.map(([key,label])=>[label,draft[key]===null?'—':money(draft[key])] as const),...tuitionFields,
+   ]}/>:<>
+     <AdminFormGrid>{unitPriceFields.map(([key,label])=><AdminField key={key}>{label}
+       <input type="number" min="1" value={draft[key]??''} onChange={e=>patch({[key]:e.target.value?Number(e.target.value):null})}/>
+     </AdminField>)}</AdminFormGrid>
+     {draftQuote&&<AdminFormSummary title={t('Total tuition','Total biaya kursus','学费总价')} fields={tuitionFields}/>}
+   </>}
+ </AdminFormSection>;
  const ready=!!catalog&&read!=='denied';
  const titleActions=<AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={read==='loading'} onClick={()=>void load()}/>;
  return <div className="crm-course-catalog">
      {!quoteEdit&&<><AdminTopicHeader title={title} isLight={isLight}
        subtitle={t('Set class size, teacher type and tuition for each course’s class templates.','Atur ukuran kelas, jenis pengajar, dan biaya pada templat setiap kursus.','按课程维护建班模板，设置人数、教师类型和报价。')}
        actions={<>{titleActions}
-       <AdminPageAction icon={Plus} variant="primary" label={t('New template','Templat baru','新建模板')} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></>}/>
+       <AdminPageAction icon={Plus} variant="primary" label={createTemplateLabel} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></>}/>
      {ready&&filterControls}
      {ready&&<EnrollmentSettingsListSummary lang={lang} count={visible.length} total={catalog.templates.length}
        filtered={!!(filters.search||filters.level||filters.format||filters.teacher||filters.quote)} onClear={clear}>
@@ -277,52 +332,59 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
      {deleteError&&<p role="alert">{deleteError}</p>}
    </AdminConfirmation>}
    </>}
-   {quoteEdit&&!draft&&<AdminEditor lang={lang} light={isLight} variant="drawer" title={title} onClose={quoteEdit.onReturn}
-     footer={<button type="button" onClick={quoteEdit.onReturn}>{t('Return to class draft','Kembali ke draf kelas','返回班次草稿')}</button>}>
+   {quoteEdit&&!draft&&<AdminEditor lang={lang} light={isLight} variant="drawer" responsiveForm title={editorTitle} onClose={quoteEdit.onReturn}
+     footer={<button type="button" onClick={quoteEdit.onReturn}>{returnToClass}</button>}>
      <AdminListState lang={lang} state={read==='ready'?'empty':read} onRetry={()=>void load()}/>
    </AdminEditor>}
    {draft&&<AdminEditor lang={lang} light={isLight} variant="drawer" className="crm-course-editor" responsiveForm required busy={busy}
-     title={draft.revision?t('Edit template','Edit templat','编辑模板'):t('New template','Templat baru','新建模板')} onClose={close} onSubmit={save}
-     footer={<><button type="button" onClick={close} disabled={busy||!!pending}>{quoteEdit?t('Back to class draft','Kembali ke draf kelas','返回班次草稿'):t('Cancel','Batal','取消')}</button>
-       {pending?<button type="button" disabled={busy} onClick={check}>{t('Check save result','Periksa hasil','查询保存结果')}</button>:
-         <button type="submit" data-primary="" disabled={busy}>{quoteEdit?t('Save and return','Simpan dan kembali','保存并返回'):t('Save','Simpan','保存')}</button>}</>}>
-     {error&&<p role="alert">{error}</p>}{pending&&<CrmSaveFeedback lang={lang} state="unknown"/>}
+     title={editorTitle} description={quoteEdit?draft.name:undefined} closeDisabled={!!pending} onClose={close} onSubmit={save}
+     footer={<>
+       {busy?<AdminFormFeedback className="basis-full" lang={lang} state="saving">
+         {pending&&t('Checking save result…','Memeriksa hasil simpan…','正在查询保存结果…')}
+       </AdminFormFeedback>:pending?<AdminFormFeedback className="basis-full" lang={lang} state="unknown">{error}</AdminFormFeedback>:
+         error&&<AdminFormFeedback className="basis-full" lang={lang} state="error">{error}</AdminFormFeedback>}
+       {pending?<button type="button" data-primary="" disabled={busy} onClick={check}>{t('Check save result','Periksa hasil','查询保存结果')}</button>:
+         <><button type="button" onClick={close} disabled={busy}>{quoteEdit?returnToClass:t('Cancel','Batal','取消')}</button>
+           <button type="submit" data-primary="" disabled={busy}>{quoteEdit?t('Save and return','Simpan dan kembali','保存并返回'):t('Save','Simpan','保存')}</button></>}
+     </>}>
      <fieldset disabled={busy||!!pending} data-admin-section-stack="open">
+       {quoteEdit&&pricingSection}
        <AdminFormSection variant="subgroup" title={t('Course','Kursus','课程')}>
-         {field(t('Select a course','Pilih kursus','选择课程'),draft.courseId,catalog?.courses.filter(c=>c.teaching&&(c.active||c.id===draft.courseId)).map(c=>({value:c.id,label:c.name}))??[],v=>patch({courseId:v}),!!draft.revision)}
+         {!draft.revision&&field(t('Select a course','Pilih kursus','选择课程'),draft.courseId,
+           catalog?.courses.filter(c=>c.teaching&&c.active).sort(compareEnrollmentTeachingCourses(lang)).map(c=>({value:c.id,label:c.name}))??[],
+           v=>patch({courseId:v}),true)}
          {draftCourse?.teaching&&<AdminFormSummary fields={[
+           ...(draft.revision?[[t('Course','Kursus','课程'),draftCourse.name,'wide'] as const]:[]),
            [t('Level','Level','级别'),draftCourse.teaching.level],
            [t('Main textbook and edition','Buku ajar utama dan edisi','主教材及版本'),draftCourse.teaching.material],
            [t('Periods','Jam pelajaran','总节数'),draftCourse.sessions],
            [t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）'),draftCourse.teaching.minutes],
          ]}/>}
+         {draft.revision>0&&!draftCourse?.teaching&&<AdminFormSummary fields={[[t('Course','Kursus','课程'),draftCourse?.name??'—']]}/>}
        </AdminFormSection>
        <AdminFormSection variant="subgroup" title={t('Class type and teacher','Jenis kelas dan pengajar','班型与师资')}>
-         <AdminFormGrid>
-           {field(t('Class type','Jenis kelas','班型'),draft.format,enrollmentTemplateFormats.map(value=>({value,label:formats[value]})),v=>{const format=v as EnrollmentTemplate['format'];patch({format,capacity:templateSize[format].capacity,minimumPaid:templateSize[format].minimumPaid});},!!draft.revision)}
-           {field(t('Teacher type','Jenis pengajar','教师类型'),draft.teacherType,enrollmentTeacherTypes.map(value=>({value,label:teachers[value]})),v=>patch({teacherType:v as EnrollmentTemplate['teacherType']}),!!draft.revision)}
-           <div data-admin-full-width="">
-             <AdminField required>{t('Template name','Nama templat','模板名称')}<input required maxLength={200} value={draft.name} onChange={e=>{setManualName(true);patch({name:e.target.value},true);}}/></AdminField>
-             <div className="admin-template-name-help">
-               <small className="crm-work-muted">{t('The default name uses the course, class type and teacher type in English format. You can edit it.','Nama bawaan memakai kursus, jenis kelas, dan jenis pengajar dalam format bahasa Inggris. Nama dapat diedit.','默认用英文格式按课程、班型和教师类型命名，可手动修改。')}</small>
-               {manualName&&draft.name!==auto(draft)&&<button type="button" className="crm-work-link"
-                 onClick={()=>{setManualName(false);patch({},false);}}>{t('Use default name','Gunakan nama bawaan','使用默认名称')}</button>}
-             </div>
-           </div>
-         </AdminFormGrid>
+         {draft.revision?<AdminFormSummary fields={[[formatLabel,draft.format?formats[draft.format]:'—'],[teacherLabel,draft.teacherType?teachers[draft.teacherType]:'—']]}/>:
+           <AdminFormGrid>
+             {field(formatLabel,draft.format,enrollmentTemplateFormats.map(value=>({value,label:formats[value]})),v=>changeFormat(v as EnrollmentTemplate['format']))}
+             {field(teacherLabel,draft.teacherType,enrollmentTeacherTypes.map(value=>({value,label:teachers[value]})),v=>patch({teacherType:v as EnrollmentTemplate['teacherType']}))}
+           </AdminFormGrid>}
+         <div>
+           <AdminField required>{t('Template name','Nama templat','模板名称')}<input required maxLength={200} value={draft.name} onChange={e=>{setManualName(true);patch({name:e.target.value},true);}}/>
+             {!draft.revision&&!manualName&&<small>{t('Generated in English from the course, class type and teacher type.','Dibuat dalam bahasa Inggris dari kursus, jenis kelas dan jenis pengajar.','根据课程、班型和教师类型自动生成英文名称。')}</small>}
+           </AdminField>
+           {manualName&&draft.name!==auto(draft)&&<div className="admin-template-name-help"><button type="button" className="crm-work-link"
+             onClick={()=>{setManualName(false);patch({},false);}}>{t('Use default name','Gunakan nama bawaan','使用默认名称')}</button></div>}
+         </div>
        </AdminFormSection>
-       <AdminFormSection variant="subgroup" title={t('Class size','Jumlah peserta','招生人数')}><AdminFormGrid>
-         {([['minimumPaid',t('Minimum fully paid to open','Minimum peserta lunas','足额到账开班底线')],['capacity',t('Seat limit','Kapasitas','招生上限')]] as const).map(([key,label])=>termsLocked?<AdminStaticField key={key} label={label} value={draft[key]}/>:<AdminField required key={key}>{label}<input required type="number" min="1" max="200" value={draft[key]||''} onChange={e=>patch({[key]:Number(e.target.value)})}/></AdminField>)}
-       </AdminFormGrid></AdminFormSection>
-       <AdminFormSection variant="subgroup" title={t('Price per period','Harga per jam pelajaran','每节报价')}><AdminFormGrid>
-         {([['standardUnitPrice',t('Standard price (Rp)','Harga standar (Rp)','标准价（Rp）')],['saleUnitPrice',t('Enrollment price (Rp)','Harga pendaftaran (Rp)','报名优惠价（Rp）')]] as const).map(([key,label])=>termsLocked?<AdminStaticField key={key} label={label} value={draft[key]}/>:<AdminField key={key}>{label}<input type="number" min="1" value={draft[key]??''} onChange={e=>patch({[key]:e.target.value?Number(e.target.value):null})}/></AdminField>)}
-       </AdminFormGrid>
-       {draftQuote?<AdminFormSummary title={t('Total tuition','Total biaya kursus','学费总价')} fields={[
-         [t('Standard total','Total harga standar','标准总价'),draftQuote.standardPrice?<del>{money(draftQuote.standardPrice)}</del>:'—'],
-         [t('Enrollment total','Total harga pendaftaran','报名总价'),<strong>{money(draftQuote.price)}</strong>],
-       ]}/>:<p className="crm-work-muted">{priceStatus(draft)}</p>}
-       {termsLocked&&<p className="crm-work-muted">{t('This template is used by a class. Class size and prices are locked.','Templat ini sudah dipakai oleh kelas. Kapasitas dan harga terkunci.','此模板已有班次，人数和报价已锁定。')}</p>}
-       <small className="crm-work-muted">{t('Published classes and existing orders keep their saved prices.','Kelas terbit dan pesanan lama mempertahankan harga tersimpan.','已发布班次和已有订单沿用原价。')}</small></AdminFormSection>
+       <AdminFormSection variant="subgroup" title={t('Class size','Jumlah peserta','班级人数')}
+         description={!draft.format?t('Choose a class type to set the default class size.','Pilih jenis kelas untuk mengisi jumlah peserta bawaan.','选择班型后自动带出默认人数。'):undefined}>
+         {termsLocked?<AdminFormSummary fields={sizeFields.map(([key,label])=>[label,draft[key]])}/>:<AdminFormGrid>
+           {sizeFields.map(([key,label])=><AdminField required key={key}>{label}
+             <input required type="number" min="1" max="200" disabled={!draft.format} value={draft[key]||''} onChange={e=>changeSize(key,Number(e.target.value))}/>
+           </AdminField>)}
+         </AdminFormGrid>}
+       </AdminFormSection>
+       {!quoteEdit&&pricingSection}
      </fieldset>
    </AdminEditor>}
    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{setDiscard(false);if(quoteEdit)quoteEdit.onReturn();else{setDraft(undefined);setDirty(false);}}}/>}

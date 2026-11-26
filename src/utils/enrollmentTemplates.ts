@@ -33,12 +33,23 @@ export type EnrollmentTemplate = {
 export const enrollmentTemplateFormats = ['standard','small','one-on-one'] as const;
 export const enrollmentTeacherTypes = ['local','foreign'] as const;
 
-export function compareEnrollmentTemplates(courses:readonly EnrollmentTeachingCourse[],language:string,sort='course') {
-  const ranks = new Map(courses.map(course=>[course.id,enrollmentLevels.findIndex(level=>level===course.teaching?.level)]));
-  const rank = (id:string) => {
-    const index = ranks.get(id) ?? -1;
-    return index < 0 ? enrollmentLevels.length : index;
+const courseLevelRank = (course?: EnrollmentTeachingCourse) => {
+  const index = enrollmentLevels.findIndex(level => level === course?.teaching?.level);
+  return index < 0 ? enrollmentLevels.length : index;
+};
+
+export function compareEnrollmentTeachingCourses(language:string,sort='level') {
+  const collator = new Intl.Collator(language,{numeric:true});
+  return (a:EnrollmentTeachingCourse,b:EnrollmentTeachingCourse) => {
+    const name = collator.compare(a.name,b.name);
+    if (sort==='name-asc'||sort==='name-desc') return (sort==='name-desc'?-name:name)||a.id.localeCompare(b.id);
+    return courseLevelRank(a)-courseLevelRank(b)||name||a.id.localeCompare(b.id);
   };
+}
+
+export function compareEnrollmentTemplates(courses:readonly EnrollmentTeachingCourse[],language:string,sort='course') {
+  const ranks = new Map(courses.map(course=>[course.id,courseLevelRank(course)]));
+  const rank = (id:string) => ranks.get(id) ?? enrollmentLevels.length;
   const collator = new Intl.Collator(language,{numeric:true});
   return (a:EnrollmentTemplate,b:EnrollmentTemplate) => {
     const name = collator.compare(a.name,b.name);

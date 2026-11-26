@@ -1,12 +1,12 @@
 import {AdminTopicHeader} from '../admin/AdminTopicHeader';
-import {Plus} from 'lucide-react';
+import {Check,Plus} from 'lucide-react';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
 import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
 import {enrollmentIntroductionFields,enrollmentIntroductionLanguages,enrollmentIntroductionLimits,enrollmentIntroductionStages,type EnrollmentCourseIntroduction,type EnrollmentIntroductionLanguage,type EnrollmentIntroductionStage} from '../../utils/enrollmentCourseIntroduction';
-import {defaultEnrollmentCourseName} from '../../utils/enrollmentTemplates';
+import {compareEnrollmentTeachingCourses,defaultEnrollmentCourseName} from '../../utils/enrollmentTemplates';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminPageAction} from '../admin/AdminPageAction';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
@@ -15,7 +15,8 @@ import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
 import {useEffect,useId,useRef,useState} from 'react';
 import {AdminField} from '../AdminForm';
-import {AdminSavedReadError,AdminStaticField,AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
+import {AdminFormFeedback,AdminSavedReadError,AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
+import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {AdminEditor} from '../admin/AdminEditor';
 import { CrmSaveFeedback } from './CrmDetailWorkspace';
 import { AdminDetailTabs } from '../admin/AdminDetailTabs';
@@ -97,20 +98,12 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  const teach=(key:string,value:unknown)=>patch('teaching',{...form.config.teaching,[key]:value});
  const books=[...new Set<string>((data?.courses??[]).flatMap((c:any)=>c.teaching?.material?[c.teaching.material]:[]))].sort((a,b)=>a.localeCompare(b,lang));
  const textbookLabel=t('Main textbook and edition','Buku ajar utama dan edisi','主教材及版本');
- const visibleLabel=t('Visible to learners','Ditampilkan kepada siswa','学员可见');
+ const visibleLabel=t('Shown in the learner’s course introduction.','Ditampilkan pada pengantar kursus untuk siswa.','显示在学员端的课程介绍中。');
  const fixed=!!data?.courses.find((c:any)=>c.id===form?.id)?.teaching;
- const levelRank=(course:any)=>{
-   const rank=enrollmentLevels.indexOf(course.teaching?.level);
-   return rank<0?enrollmentLevels.length:rank;
- };
  const searchQuery=filters.search.trim().toLowerCase();
  const rows=data?.courses.filter((c:any)=>(!filters.level||c.teaching?.level===filters.level)&&
    (!filters.status||(c.active?'published':'draft')===filters.status)&&
-   [c.name,c.teaching?.material].some(v=>v?.toLowerCase().includes(searchQuery))).sort((a:any,b:any)=>{
-   const name=a.name.localeCompare(b.name,lang,{numeric:true});
-   return (filters.sort==='name-desc'?-name:filters.sort==='name-asc'?name:levelRank(a)-levelRank(b)||name)||
-     a.id.localeCompare(b.id);
- })??[];
+   [c.name,c.teaching?.material].some(v=>v?.toLowerCase().includes(searchQuery))).sort(compareEnrollmentTeachingCourses(lang,filters.sort))??[];
  const close=()=>{if(dirty||unknown)setDiscard(true);else setForm(null);};
  async function finishSave() {
    setDirty(false);setForm(null);pending.current=null;
@@ -201,24 +194,33 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  {form&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
   title={form.revision?t('Edit course','Edit kursus','编辑课程'):t('Create course','Buat kursus','创建课程')}
   lang={lang} light={isLight} busy={busy} onClose={close} onSubmit={save}
-  footer={unknown
-    ?<button type="button" disabled={busy} onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button>
-    :<><button type="button" disabled={busy} onClick={close}>{t('Cancel','Batal','取消')}</button>
-      <button type="submit" data-primary="" disabled={busy}>{t('Save','Simpan','保存')}</button></>}>
-  {error&&<p role="alert">{error}</p>}
-  {latest&&<aside><p>{t('Latest standard price','Harga standar terbaru','最新标准价')}：{money(latest.price)}</p>
-    <button type="button" className="crm-work-button" onClick={()=>{setForm((f:any)=>({...f,revision:latest.revision}));setLatest(null);setError('');}}>{t('Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿继续')}</button>
-  </aside>}
-  {unknown&&<CrmSaveFeedback state="unknown" lang={lang}/>}
+  footer={<>
+    {busy?<AdminFormFeedback className="basis-full" state="saving" lang={lang}>
+      {state==='checking'&&t('Checking save result…','Memeriksa hasil simpan…','正在查询保存结果…')}
+    </AdminFormFeedback>:unknown?<AdminFormFeedback className="basis-full" state="unknown" lang={lang}>{error}</AdminFormFeedback>:
+      error&&<AdminFormFeedback className="basis-full" state="error" lang={lang}>{error}</AdminFormFeedback>}
+    {unknown
+      ?<button type="button" data-primary="" disabled={busy} onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button>
+      :<><button type="button" disabled={busy} onClick={close}>{t('Cancel','Batal','取消')}</button>
+        <button type="submit" data-primary="" disabled={busy}>{t('Save','Simpan','保存')}</button></>}
+  </>}>
+  <div data-admin-stack="">
+  {latest&&<AdminFormSection variant="card" title={t('Review the latest revision','Tinjau revisi terbaru','核对最新版本')}>
+    <AdminFormSummary fields={[[t('Latest standard price','Harga standar terbaru','最新标准价'),money(latest.price)]]}/>
+    <AdminPageAction icon={Check} label={t('Keep draft after review','Pertahankan draf setelah ditinjau','核对后保留草稿继续')}
+      disabled={busy||unknown} className="justify-self-start" onClick={()=>{setForm((f:any)=>({...f,revision:latest.revision}));setLatest(null);setError('');}}/>
+  </AdminFormSection>}
   <div data-admin-section-stack="open">
-  <AdminFormSection variant="subgroup" title={t('Course details','Informasi kursus','课程信息')}>
-    <AdminFormGrid>
-      {fixed?<>
-        <AdminStaticField label={t('Level','Level','级别')} value={form.config.teaching.level}/>
-        <AdminStaticField label={textbookLabel} value={form.config.teaching.material}/>
-        <AdminStaticField label={t('Periods','Jam pelajaran','总节数')} value={form.config.sessions}/>
-        <AdminStaticField label={t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')} value={form.config.teaching.minutes}/>
-      </>:<>
+  <AdminFormSection variant="subgroup" title={t('Course details','Informasi kursus','课程信息')}
+    description={fixed?t('These four fields are fixed after the course is first saved. Create a new course to use different values.',
+      'Keempat kolom ini dikunci setelah kursus pertama kali disimpan. Buat kursus baru untuk menggunakan nilai yang berbeda.',
+      '这四项在课程首次保存后锁定。如需调整，请新建课程。'):undefined}>
+    {fixed?<AdminFormSummary fields={[
+      [t('Level','Level','级别'),form.config.teaching.level],
+      [textbookLabel,form.config.teaching.material],
+      [t('Periods','Jam pelajaran','总节数'),form.config.sessions],
+      [t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）'),form.config.teaching.minutes],
+    ]}/>:<AdminFormGrid>
       <AdminField required>{t('Level','Level','级别')}<AdminSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
         label={t('Level','Level','级别')} value={form.config.teaching.level} onChange={v=>teach('level',v)} options={enrollmentLevels.map(value=>({value,label:value}))}/></AdminField>
       <AdminField required>{textbookLabel}
@@ -228,7 +230,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
           onChange={value=>{setAddingBook(value==='new-textbook:');teach('material',value.startsWith('book:')?value.slice(5):'');}}/>
       </AdminField>
       {addingBook&&<AdminField required data-admin-full-width="">{t('New textbook name and edition','Judul dan edisi buku baru','新教材名称及版本')}
-        <input required maxLength={1200} value={form.config.teaching.material} onChange={e=>teach('material',e.target.value)}/></AdminField>}
+        <input required maxLength={1200} disabled={busy||unknown} value={form.config.teaching.material} onChange={e=>teach('material',e.target.value)}/></AdminField>}
       <AdminField required>{t('Periods','Jam pelajaran','总节数')}<input type="number" required min="1" max="1000" disabled={busy||unknown} value={form.config.sessions} onChange={e=>patch('sessions',e.target.value)}/></AdminField>
       <AdminField required>{t('Minutes per period','Menit per jam pelajaran','每节时长（分钟）')}
         <AdminSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
@@ -237,15 +239,14 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
           options={[30,45,50,60,90].map(minutes=>({value:String(minutes),label:String(minutes)}))}
           onChange={v=>teach('minutes',Number(v))}/>
       </AdminField>
-      </>}
-      <AdminField required data-admin-full-width="">{t('Course name','Nama kursus','课程名称')}
+    </AdminFormGrid>}
+      <AdminField required>{t('Course name','Nama kursus','课程名称')}
         <input type="text" required maxLength={200} disabled={busy||unknown} value={form.config.name}
           onChange={e=>{setManualName(!!e.target.value.trim());patch('name',e.target.value);}}/>
-        <small>{t('The default name uses the level, textbook, period count and duration in English format. You can edit it.','Nama bawaan memakai level, buku ajar, jumlah jam pelajaran, dan durasi dalam format bahasa Inggris. Nama dapat diedit.','默认用英文格式按「级别 · 主教材 · 总节数 × 每节时长」生成，可手动修改。')}</small>
+        {!fixed&&<small>{t('Generated in English from the course details. You can edit it.','Dibuat dalam bahasa Inggris dari informasi kursus dan dapat diedit.','根据课程信息自动生成英文名称，可直接修改。')}</small>}
       </AdminField>
-    </AdminFormGrid>
   </AdminFormSection>
-  <AdminFormSection variant="subgroup" title={t('Teaching content','Materi pembelajaran','教学内容')}>
+  <AdminFormSection variant="subgroup" title={t('Teaching content','Materi pembelajaran','教学内容')} description={visibleLabel}>
     <AdminDetailTabs id={contentTabsId} value={contentLanguage} label={contentLanguageLabel} contentId={contentPanelId}
       disabled={busy||unknown} tabs={[
         {id:'en',label:'English'},{id:'id',label:'Bahasa Indonesia'},{id:'zh',label:'中文'},
@@ -253,7 +254,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
         const locale=enrollmentIntroductionLanguages.find(candidate=>candidate===value);
         if(locale)setContentLanguage(locale);
       }}/>
-    <div id={contentPanelId} role="tabpanel" aria-labelledby={contentTabsId+'-tab-'+contentLanguage}>
+    <div id={contentPanelId} role="tabpanel" aria-labelledby={contentTabsId+'-tab-'+contentLanguage} data-admin-stack="">
       {isStagedCourse&&<AdminField>{t('Course stage','Tahap kursus','课程阶段')}
         <AdminSingleSelect lang={lang} isLight={isLight} disabled={busy||unknown}
           label={t('Course stage','Tahap kursus','课程阶段')} value={contentStage}
@@ -263,7 +264,7 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
           ]} onChange={value=>setContentStage(enrollmentIntroductionStages.find(candidate=>candidate===value)??'course')}/>
       </AdminField>}
       {enrollmentIntroductionFields.map(field=><AdminField key={field}>
-        <span>{introductionLabels[field]} <span className="crm-work-muted text-xs font-normal">· {visibleLabel}</span></span>
+        {introductionLabels[field]}
         <textarea disabled={busy||unknown} maxLength={enrollmentIntroductionLimits[field]}
           value={visibleContent?.[field]??''} onChange={event=>{
             const next={...visibleContent,[field]:event.target.value};
@@ -275,18 +276,23 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
           }}/>
       </AdminField>)}
     </div>
-    {(['knowledge','learningOutcomes','resources'] as const).some(key=>form.config.teaching[key])&&<details>
-      <summary>{t('Existing unlocalized content','Konten lama tanpa bahasa','既有未分语种内容')}</summary>
+    {(['knowledge','learningOutcomes','resources'] as const).some(key=>form.config.teaching[key])&&<AdminDisclosure density="compact"
+      heading={t('Existing unlocalized content','Konten lama tanpa bahasa','既有未分语种内容')}>
+      <div data-admin-stack="">
       {([['knowledge','Core topics','Topik utama','核心知识点'],['learningOutcomes','Learning outcomes','Hasil belajar','学习成果'],['resources','Practice resources','Sumber latihan','练习资源']] as const).map(([key,en,id,zh])=><AdminField key={key}>
         <span>{t(en,id,zh)}</span>
         <textarea disabled={busy||unknown} maxLength={key==='knowledge'?1200:2500} value={form.config.teaching[key]} onChange={e=>teach(key,e.target.value)}/>
       </AdminField>)}
-    </details>}
+      </div>
+    </AdminDisclosure>}
   </AdminFormSection>
   <AdminFormSection variant="subgroup" title={t('Publication settings','Pengaturan publikasi','发布设置')}>
-    <label className="admin-field admin-field--choice"><input type="checkbox" disabled={busy||unknown} checked={form.config.active} onChange={e=>patch('active',e.target.checked)}/>
-      <span>{t('Publish for new enrollment','Terbitkan untuk pendaftaran baru','发布并允许新报名')}</span></label>
+    <AdminField>
+      <input type="checkbox" disabled={busy||unknown} checked={form.config.active} onChange={e=>patch('active',e.target.checked)}/>
+      <span>{t('Publish for new enrollment','Terbitkan untuk pendaftaran baru','发布并允许新报名')}</span>
+    </AdminField>
   </AdminFormSection>
+  </div>
   </div>
  </AdminEditor>}
  {deleting&&<AdminConfirmation light={isLight} danger busy={deleteState==='saving'||deleteState==='checking'}
