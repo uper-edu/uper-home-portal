@@ -31,7 +31,7 @@ import '../components/crm/crm-record-workspace.css';
 import '../components/admin-workspace.css';
 import '../components/crm/crm-operations-workspace.css';
 import { accessError } from "../utils/accessLanguage";
-import { Fragment, type MouseEvent, useEffect, useRef, useState } from "react";
+import { Fragment, type MouseEvent, useEffect, useId, useRef, useState } from "react";
 import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail, KeyRound } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
@@ -447,6 +447,25 @@ export function AccessWorkspace({
     setRole(next);
     setDirty(true);
     setPreview(null);
+  };
+  const previewHintId = useId();
+  const previewHeading = useRef<HTMLHeadingElement>(null);
+  const needsRolePreview = Boolean(role && !preview);
+  useEffect(() => {
+    if (preview) previewHeading.current?.focus();
+  }, [preview]);
+  const previewRole = async () => {
+    if (busy || !role) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const result = await api("/roles/preview", { ...role });
+      setPreview(result.affected);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
   const finishSave = async (result:{user?:Omit<User,'effective'>;revision?:number;signInRequired?:boolean}={}) => {
     setNotice("");
@@ -945,6 +964,9 @@ export function AccessWorkspace({
           dialogRef={panel} onClose={close} busy={busy} bodyClassName="access-editor-body"
           title={user?t("User settings","Pengaturan pengguna","用户设置"):t("Role settings","Pengaturan peran","角色设置")}
           footer={<>
+              {needsRolePreview && <p className="access-role-preview-hint" id={previewHintId} role="status">
+                {t("Preview the impact first", "Pratinjau dampaknya dahulu", "请先预览影响")}
+              </p>}
               {user?.id && can("access.sessions") && (
                 <>
                   <button type="button" disabled={busy||!why.trim()} onClick={()=>setSensitiveAction('sessions')}>
@@ -956,13 +978,17 @@ export function AccessWorkspace({
                 </>
               )}
               <button type="button" disabled={busy} onClick={close}>{t("Cancel","Batal","取消")}</button>
+              {role && <button type="button" disabled={busy} onClick={() => void previewRole()}>
+                {t("Preview impact", "Pratinjau dampak", "预览影响")}
+              </button>}
               <button type="button" data-primary=""
+                aria-describedby={needsRolePreview ? previewHintId : undefined}
                 disabled={
                   busy ||
                   !why.trim() ||
                   (!!user && !can("access.users")) ||
                   (!dirty && !larkDraft) ||
-                  (!!role && !preview) ||
+                  needsRolePreview ||
                   (!user?.id && !!user && password.length < 8)
                 }
                 onClick={() => void save()}
@@ -1425,56 +1451,6 @@ export function AccessWorkspace({
                     </div>
                   </Fragment>
                 ))}
-                <button
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    setErr("");
-                    try {
-                      const d = await api("/roles/preview", { ...role });
-                      setPreview(d.affected);
-                    } catch (e) {
-                      setErr((e as Error).message);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  {t("Preview impact", "Pratinjau dampak", "预览影响")}
-                </button>
-                {preview && (
-                  <section className="access-impact">
-                    <h3>
-                      {t("Affected staff", "Staf terdampak", "受影响员工")}：
-                      {preview.length}
-                    </h3>
-                    {preview.map((p) => (
-                      <div key={p.user.id}>
-                        <strong>{p.user.displayName}</strong>
-                        {permissionCatalog
-                          .filter(
-                            (entry) =>
-                              JSON.stringify(
-                                p.before.grants?.[entry.key] || [],
-                              ) !==
-                              JSON.stringify(p.after.grants?.[entry.key] || []),
-                          )
-                          .map((entry) => (
-                            <p key={entry.key}>
-                              {entry.names[col]}：
-                              {(p.before.grants?.[entry.key] || [])
-                                .map((scope) => scopeLabel(scope, entry.key))
-                                .join(", ") || "—"}{" "}
-                              →{" "}
-                              {(p.after.grants?.[entry.key] || [])
-                                .map((scope) => scopeLabel(scope, entry.key))
-                                .join(", ") || "—"}
-                            </p>
-                          ))}
-                      </div>
-                    ))}
-                  </section>
-                )}
               </AdminFormSection>
             )}
             <AdminField>
@@ -1486,6 +1462,37 @@ export function AccessWorkspace({
                 onChange={(e) => setWhy(e.target.value)}
               />
             </AdminField>
+            {role && preview && (
+              <section className="access-impact">
+                <h3 ref={previewHeading} tabIndex={-1}>
+                  {t("Affected staff", "Staf terdampak", "受影响员工")}：
+                  {preview.length}
+                </h3>
+                {preview.map((p) => (
+                  <div key={p.user.id}>
+                    <strong>{p.user.displayName}</strong>
+                    {permissionCatalog
+                      .filter(
+                        (entry) =>
+                          JSON.stringify(p.before.grants?.[entry.key] || []) !==
+                          JSON.stringify(p.after.grants?.[entry.key] || []),
+                      )
+                      .map((entry) => (
+                        <p key={entry.key}>
+                          {entry.names[col]}：
+                          {(p.before.grants?.[entry.key] || [])
+                            .map((scope) => scopeLabel(scope, entry.key))
+                            .join(", ") || "—"}{" "}
+                          →{" "}
+                          {(p.after.grants?.[entry.key] || [])
+                            .map((scope) => scopeLabel(scope, entry.key))
+                            .join(", ") || "—"}
+                        </p>
+                      ))}
+                  </div>
+                ))}
+              </section>
+            )}
         </AdminEditor>
       )}
     </div>

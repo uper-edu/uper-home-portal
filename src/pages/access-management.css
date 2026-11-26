@@ -244,6 +244,12 @@
 }
 .access-panel { --admin-editor-width: 720px; }
 .access-editor-body { display: grid; align-content: start; gap: var(--admin-form-field-gap); }
+.access-role-preview-hint {
+  margin: 0;
+  margin-inline-end: auto;
+  color: var(--af-muted);
+  font-size: 13px;
+}
 .access-error {
   color: #9f1239;
   background: #fff1f2;

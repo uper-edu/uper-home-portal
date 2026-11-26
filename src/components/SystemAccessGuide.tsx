@@ -16,9 +16,9 @@ const chapters=[
     ['Authorized user administrators can edit accounts. Only staff with session management permission can reset credentials or revoke sessions.',
      'Administrator dengan izin pengelolaan pengguna dapat mengedit akun. Reset kredensial dan pencabutan sesi memerlukan izin pengelolaan sesi.',
      '有用户管理权限才能编辑账号；重置密码和撤销会话需要会话管理权限。'],
-    ['To change role grants, open Roles, select a role, and preview the impact before saving. Change audit is available to authorized staff.',
-     'Untuk mengubah izin, buka Peran, pilih peran, lalu pratinjau dampaknya sebelum menyimpan. Audit perubahan tersedia bagi staf berwenang.',
-     '有角色管理权限时，从「角色」打开对应详情，修改授权后先预览影响再保存。有审计权限可查看「变更审计」。'],
+    ['To change role grants, open a role. Select Preview impact next to Save changes at the bottom of the editor and review the affected staff before saving. Change audit is available to authorized staff.',
+     'Untuk mengubah izin, buka sebuah peran. Pilih Pratinjau dampak di sebelah Simpan perubahan di bagian bawah, lalu periksa staf yang terdampak sebelum menyimpan. Audit perubahan tersedia bagi staf berwenang.',
+     '有角色管理权限时，从「角色」打开对应详情。修改后，在抽屉底部点击「保存修改」旁的「预览影响」，核对受影响员工后再保存。有审计权限可查看「变更审计」。'],
   ]},
   {id:'notifications',title:['Notifications and Lark','Notifikasi dan Lark','通知与 Lark'],steps:[
     ['Open Notification settings from your account menu to manage your own Lark connection and notification settings.',
