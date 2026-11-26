@@ -67,17 +67,22 @@ export type DashboardSource={
   campaignId?:string;
   campaignCode?:string;
 };
+export function dashboardChannelKey(source:DashboardSource){
+  return source.kind==='verified'?JSON.stringify([source.source,source.medium]):source.kind;
+}
 export type DashboardSources=DashboardSource&{orders:number;first:number;mature:number;paidWithinWindow:number};
 export type DashboardReservationOutcome={
   key:string;orders:number;eligible:number;observing:number;timingUnknown:number;
   proof:number;paidAfterProof:number;paidWithoutPriorProof:number;
 };
+export type DashboardChannelOutcome=DashboardReservationOutcome&{source:DashboardSource;unpaidWithProof:number};
 export type DashboardTrend={date:string;paid:number;cash:DashboardCash|null};
 export type DashboardFollowup={open:number;overdue:number};
 export type DashboardQueueAges={under24:number;under72:number;atLeast72:number;unknown:number};
 export type DashboardFinanceQueue={
   pending:number;oldest:string|null;refunds:number;refundOutstanding:number;receivable:number;
   reviewAges:DashboardQueueAges;refundAges:DashboardQueueAges;
+  pendingByClass?:Record<string,number>;
 };
 export type DashboardDemand={level:string;period:string;format:string;state:string;count:number};
 export type DashboardMovement={
@@ -118,8 +123,10 @@ export function dashboardReportingDates(from:string,to:string,now=Date.now()){
 }
 export const dashboardAdSpendScale=10_000;
 export type DashboardAdSpendMapping={promotionId:string;campaignId:string;campaignCode:string};
+export type DashboardAdSpendChannel={source:string;medium:string};
 export type DashboardAdSpendRow={
   platform:string;accountId:string;currency:string;campaignId:string;name:string;amount:number;mapping:DashboardAdSpendMapping|null;
+  channel?:DashboardAdSpendChannel;
 };
 export type DashboardAdSpend={
   from:string;to:string;expectedDays:number;
@@ -139,12 +146,24 @@ export type DashboardEconomicsRow=DashboardTeachingRow&{
 export type DashboardTeaching<T extends DashboardTeachingRow=DashboardTeachingRow>={
   from:string;to:string;expectedDays:number;asOf:string;cohorts:T[];
 };
+export type DashboardKpiTarget={target:number;planned?:{date:string;value:number}};
+export type DashboardKpiPlan={
+  first?:DashboardKpiTarget;paid?:DashboardKpiTarget;net?:DashboardKpiTarget;paymentRate?:number;
+};
+export type DashboardWallboard={
+  priorDay:{orders:number;paid:number;net:number|null};
+  dailyPaid:{date:string;paid:number;previous:number;net:number|null;previousNet:number|null}[];
+  traffic:DashboardTraffic|null;
+  channels:DashboardChannelOutcome[];
+  kpiPlan?:DashboardKpiPlan;
+};
 export type DashboardSnapshot={
   asOf:string;
   period:{from:string;to:string;compareFrom:string;compareTo:string};
   trafficPeriod:{from:string;to:string};
   traffic?:DashboardTraffic|null;
   adSpend?:DashboardAdSpend|null;
+  wallboard?:DashboardWallboard;
   teaching?:DashboardTeaching|null;
   economics?:DashboardTeaching<DashboardEconomicsRow>|null;
   current:DashboardMetrics;

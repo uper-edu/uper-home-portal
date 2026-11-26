@@ -1,5 +1,5 @@
 import {dashboardAdSpendScale,dashboardDate,dashboardDay,dashboardReportingDates,
-  type DashboardAdSpend,type DashboardAdSpendMapping,type DashboardAdSpendRow} from '../../src/utils/crmOperationsDashboard.ts';
+  type DashboardAdSpend,type DashboardAdSpendChannel,type DashboardAdSpendMapping,type DashboardAdSpendRow} from '../../src/utils/crmOperationsDashboard.ts';
 import {promotionIdPattern,promotionKindForMedium} from '../../src/utils/promotionNavigation.ts';
 import type {trafficEnvironment} from './operationsDashboardTraffic.ts';
 
@@ -13,7 +13,7 @@ type AdReport={
 };
 type StoredDay={
   platform:string;accountId:string;currency:string;extractedAt:string;
-  campaigns:(AdCampaign&{mapping:DashboardAdSpendMapping|null})[];
+  campaigns:(AdCampaign&{mapping:DashboardAdSpendMapping|null;channel?:DashboardAdSpendChannel})[];
 };
 
 const prefix=(environment:Environment,date:string)=>`dashboard_ads_v1:${environment}:${date}:`;
@@ -103,15 +103,18 @@ export function summarizeDashboardAdSpendImport(report:AdReport){
 }
 
 export async function storeDashboardAdSpend(db:Client,environment:Environment,report:AdReport){
-  const links=new Map<string,DashboardAdSpendMapping>();
+  const links=new Map<string,{mapping:DashboardAdSpendMapping;channel?:DashboardAdSpendChannel}>();
   const requested=[...new Set(report.mappings.values())];
   for(let start=0;start<requested.length;start+=150){
     const {rows}=await db.query(`SELECT i.p,c.id,c.code,c.config FROM campaign_promotion_index i
       JOIN trial_campaigns c ON c.id=i.campaign_id WHERE i.p IN (:p1)`,[requested.slice(start,start+150)]);
     for(const row of rows){
       const link=row.config?.promotionLinks?.find((candidate:{id:string})=>candidate.id===row.p);
-      if(link&&(link.promotionKind??promotionKindForMedium(link.medium))==='paid')
-        links.set(row.p,{promotionId:row.p,campaignId:row.id,campaignCode:row.code});
+      if(link&&(link.promotionKind??promotionKindForMedium(link.medium))==='paid'){
+        const channel=typeof link.source==='string'&&link.source&&typeof link.medium==='string'&&link.medium?
+          {source:link.source,medium:link.medium}:undefined;
+        links.set(row.p,{mapping:{promotionId:row.p,campaignId:row.id,campaignCode:row.code},channel});
+      }
     }
   }
   if(requested.some(id=>!links.has(id)))throw Error('Every advertising mapping must reference an existing paid UPER promotion link');
@@ -119,7 +122,8 @@ export async function storeDashboardAdSpend(db:Client,environment:Environment,re
   for(const day of report.days){
     const stored:StoredDay={platform,accountId,currency,extractedAt,campaigns:day.campaigns.map(row=>{
       const promotionId=report.mappings.get(row.campaignId);
-      return {...row,mapping:promotionId?links.get(promotionId)??null:null};
+      const link=promotionId?links.get(promotionId):undefined;
+      return {...row,mapping:link?.mapping??null,channel:link?.channel};
     })};
     await db.query(`INSERT INTO portal_settings(id,value) VALUES(:p1,:p2)
       ON DUPLICATE KEY UPDATE value=IF(value->>'$.extractedAt'<:p3,:p2,value)`,
@@ -150,7 +154,7 @@ export async function readDashboardAdSpend(db:Client,environment:Environment,fro
     for(const row of daily){
       summary.amount=checkedSum(summary.amount,row.amount);
       if(row.mapping)summary.mapped=checkedSum(summary.mapped,row.amount);
-      const key=JSON.stringify([...scope,row.campaignId,row.mapping?.promotionId,row.mapping?.campaignId]);
+      const key=JSON.stringify([...scope,row.campaignId,row.mapping?.promotionId,row.mapping?.campaignId,row.channel?.source,row.channel?.medium]);
       const group=campaigns.get(key)??{...row,platform,accountId,currency,extractedAt,amount:0};
       group.amount=checkedSum(group.amount,row.amount);
       if(extractedAt>group.extractedAt){group.extractedAt=extractedAt;group.name=row.name;}

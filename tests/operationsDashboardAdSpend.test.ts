@@ -22,7 +22,7 @@ function fixtureDatabase(){
     if(sql.includes('JOIN trial_campaigns')){
       assert.deepEqual(args,[['hsk-paid']]);
       return {rows:[{p:'hsk-paid',id:'c-id',code:'hsk-nov',config:{promotionLinks:[
-        {id:'hsk-paid',medium:'cpc'},
+        {id:'hsk-paid',source:'google',medium:'cpc'},
       ]}}]};
     }
     if(sql.startsWith('INSERT')){
@@ -90,6 +90,7 @@ test('currency and account totals stay separate and reimport replaces a day only
   assert.deepEqual(reportView?.accounts.map(row=>row.days),[2,2]);
   assert.equal(reportView?.expectedDays,3);
   assert.equal(reportView?.campaigns.find(row=>row.currency==='IDR')?.mapping?.campaignId,'c-id');
+  assert.deepEqual(reportView?.campaigns.find(row=>row.currency==='IDR')?.channel,{source:'google',medium:'cpc'});
   assert.equal(reportView?.campaigns.some(row=>row.currency==='IDR'&&row.campaignId==='200'),false);
   assert.equal(await readDashboardAdSpend(database,'prod','2026-11-22','2026-11-24',now),null);
 });

@@ -1,5 +1,5 @@
 import type {Express,Request,Response} from 'express';
-import {dashboardScopes,readDashboardFilters,type DashboardCash,type DashboardChange,type DashboardCohort,type DashboardFilters,
+import {dashboardChannelKey,dashboardScopes,readDashboardFilters,type DashboardCash,type DashboardChange,type DashboardChannelOutcome,type DashboardCohort,type DashboardFilters,
   type DashboardMetrics,type DashboardMovementPage,type DashboardQueueAges,type DashboardReservationOutcome,type DashboardSnapshot,type DashboardSource,type DashboardSources,type DashboardTrend} from '../../src/utils/crmOperationsDashboard.ts';
 import {enrollmentManagementScopes} from '../../src/utils/crmEnrollmentManagement.ts';
 import {crmInstant} from '../../src/utils/crmOperatingTime.ts';
@@ -8,6 +8,7 @@ import {readEnrollmentManagementSummaries} from './enrollmentManagement.ts';
 import {readEnrollmentFinancePendingSummary} from './enrollmentFinanceWorklist.ts';
 import type {Employee} from './identity.ts';
 import {readGaTraffic,trafficEnvironment} from './operationsDashboardTraffic.ts';
+import {readDashboardKpiPlan} from './operationsDashboardKpi.ts';
 import {readDashboardAdSpend} from './operationsDashboardAdSpend.ts';
 import {readDashboardTeaching} from './operationsDashboardTeaching.ts';
 import {tx} from './store.ts';
@@ -43,7 +44,8 @@ export function dashboardWindows(filters:DashboardFilters,now:number){
     const duration=(last-start)+day;
     compare={start:start-duration,end:current.end-duration};
   }
-  return {current,compare,today:{start:today,end:now},latest:{start:today-7*day,end:today}};
+  return {current,compare,today:{start:today,end:now},latest:{start:today-7*day,end:today},
+    previousWeek:{start:today-14*day,end:today-7*day},sameTimeLastWeek:{start:today-7*day,end:now-7*day}};
 }
 const rangeArgs=(window:Window)=>[marks(window.start),marks(window.end)];
 const shortWindow=(window:Window)=>({from:date(window.start),to:date(Math.max(window.start,window.end-1))});
@@ -189,9 +191,11 @@ export function summarizeDashboardOrders(facts:OrderFact[],window:Window,now:num
 export function dashboardReservationOutcomes(facts:OrderFact[],window:Window,now:number){
   const entries=new Map<string,DashboardReservationOutcome>();
   const languages=new Map<string,DashboardReservationOutcome>();
+  const channels=new Map<string,DashboardChannelOutcome>();
   const seen=new Set<string>();
+  const empty=(key:string)=>({key,orders:0,eligible:0,observing:0,timingUnknown:0,proof:0,paidAfterProof:0,paidWithoutPriorProof:0});
   function outcome(groups:Map<string,DashboardReservationOutcome>,key:string){
-    const row=groups.get(key)??{key,orders:0,eligible:0,observing:0,timingUnknown:0,proof:0,paidAfterProof:0,paidWithoutPriorProof:0};
+    const row=groups.get(key)??empty(key);
     groups.set(key,row);
     return row;
   }
@@ -203,7 +207,11 @@ export function dashboardReservationOutcomes(facts:OrderFact[],window:Window,now
     const mature=cutoff<=now;
     const paid=instant(fact.paidAt),proof=instant(fact.firstProofAt);
     const within=(time:number)=>time>=created&&time<=cutoff;
-    for(const row of [outcome(entries,fact.entry||'unknown'),outcome(languages,fact.language||'unknown')]){
+    const key=dashboardChannelKey(fact.orderSource);
+    const channel=channels.get(key)??{...empty(key),source:{key,kind:fact.orderSource.kind,source:fact.orderSource.source,
+      medium:fact.orderSource.medium},unpaidWithProof:0};
+    channels.set(key,channel);
+    for(const row of [channel,outcome(entries,fact.entry||'unknown'),outcome(languages,fact.language||'unknown')]){
       row.orders++;
       if(!mature)row.observing++;
       else if(hasUnknownPaymentTime(fact))row.timingUnknown++;
@@ -216,9 +224,10 @@ export function dashboardReservationOutcomes(facts:OrderFact[],window:Window,now
         }
       }
     }
+    if(mature&&!hasUnknownPaymentTime(fact)&&within(proof)&&!within(paid))channel.unpaidWithProof++;
   }
-  const ordered=(groups:Map<string,DashboardReservationOutcome>)=>[...groups.values()].sort((a,b)=>b.orders-a.orders||a.key.localeCompare(b.key));
-  return {entries:ordered(entries),languages:ordered(languages)};
+  const ordered=<T extends DashboardReservationOutcome>(groups:Map<string,T>)=>[...groups.values()].sort((a,b)=>b.orders-a.orders||a.key.localeCompare(b.key));
+  return {entries:ordered(entries),languages:ordered(languages),channels:ordered(channels)};
 }
 
 export function dashboardPaymentCohorts(facts:OrderFact[],window:Window,now:number):DashboardCohort[]{
@@ -271,7 +280,7 @@ type GroupTotal={paid:number;net:number};
 type ActivitySummary=ReturnType<typeof summarizeDashboardActivity>;
 const unknownSource:DashboardSource={key:'unknown',kind:'unknown',source:'',medium:''};
 function contributionChannel(source=unknownSource):DashboardSource{
-  const key=source.kind==='verified'?JSON.stringify([source.source,source.medium]):source.kind;
+  const key=dashboardChannelKey(source);
   return {key,kind:source.kind,source:source.source,medium:source.medium};
 }
 export function summarizeDashboardActivity(orders:(ActivityFact&{paidAt:string|null})[],movements:CashFact[]|null,window:Window){
@@ -353,7 +362,7 @@ export function summarizeDashboardQueueAges(timestamps:(string|null)[],now:numbe
 }
 
 async function financeQueue(c:Client,now:number){
-  const {pending,oldest,submittedAt}=await readEnrollmentFinancePendingSummary(c);
+  const {pending,oldest,submittedAt,pendingByClass}=await readEnrollmentFinancePendingSummary(c);
   const {rows:[r]}=await c.query(`SELECT COUNT(*) AS refunds,
     COUNT(CASE WHEN f.created_at>:p2 AND f.created_at<=:p1 THEN 1 END) AS under24,
     COUNT(CASE WHEN f.created_at>:p3 AND f.created_at<=:p2 THEN 1 END) AS under72,
@@ -369,7 +378,7 @@ async function financeQueue(c:Client,now:number){
         o.state='awaiting_payment' AND (o.received>0 OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.upload_expires_at>=UTC_TIMESTAMP(6)))) AS receivable
     FROM enrollment_refund_cases f JOIN enrollment_orders o ON o.id=f.order_id WHERE o.state='refunding'`,
   [marks(now),marks(now-day),marks(now-3*day)]);
-  return {pending,oldest,refunds:Number(r.refunds),refundOutstanding:Number(r.outstanding),receivable:Number(r.receivable),
+  return {pending,oldest,pendingByClass,refunds:Number(r.refunds),refundOutstanding:Number(r.outstanding),receivable:Number(r.receivable),
     reviewAges:summarizeDashboardQueueAges(submittedAt,now),refundAges:{
       under24:Number(r.under24),under72:Number(r.under72),atLeast72:Number(r.atLeast72),unknown:Number(r.ageUnknown),
     }};
@@ -392,12 +401,14 @@ async function demandSummary(c:Client){
 
 export async function readOperationsDashboardSnapshot(c:Client,actor:Employee,filters:DashboardFilters,now:number,
   reportTopic:'acquisition'|'wallboard'|'teaching'|'economics'|null=null):Promise<DashboardSnapshot>{
+  if(reportTopic==='wallboard')filters=readDashboardFilters(new URLSearchParams());
   const scope=dashboardScopes(actor),windows=dashboardWindows(filters,now);
   const selected={start:windows.compare.start,end:windows.current.end};
   const independent=selected.end<windows.latest.start;
-  const bounds={start:Math.min(selected.start,windows.latest.start),end:independent?selected.end:now};
+  const television=reportTopic==='wallboard';
+  const bounds={start:Math.min(selected.start,television?windows.previousWeek.start:windows.latest.start),end:independent?selected.end:now};
   const recent={start:windows.latest.start,end:now};
-  const includeProofs=reportTopic==='acquisition';
+  const includeProofs=reportTopic==='acquisition'||television;
   let orders=await orderFacts(c,bounds,filters,includeProofs);
   if(independent){
     const newer=await orderFacts(c,recent,filters,includeProofs);
@@ -430,15 +441,30 @@ export async function readOperationsDashboardSnapshot(c:Client,actor:Employee,fi
   const from=date(selectedWindow.start),to=date(Math.min(selectedWindow.end,windows.today.start)-1);
   const environment=trafficEnvironment(process.env.PORTAL_ENV??'dev');
   const traffic=reportTopic==='acquisition'||reportTopic==='wallboard'?await readGaTraffic(c,environment,from,to,now):undefined;
-  const adSpend=reportTopic==='acquisition'&&scope.marketing?await readDashboardAdSpend(c,environment,from,to,now):undefined;
+  const completeMonthEnd=date(windows.today.start-1);
+  const monthFrom=date(windows.current.start);
+  const adSpend=scope.marketing&&(reportTopic==='acquisition'||television)?
+    await readDashboardAdSpend(c,environment,television?monthFrom:from,television?completeMonthEnd:to,now):undefined;
+  const {channels,...reservationOutcomes}=includeProofs?dashboardReservationOutcomes(orders,windows.current,now):{entries:[],languages:[],channels:[]};
+  let wallboard:DashboardSnapshot['wallboard'];
+  if(television){
+    const prior=summarizeDashboardOrders(orders,windows.sameTimeLastWeek,now).metrics;
+    const daily=summarizeDashboardActivity(orders,movements,windows.latest).trend;
+    const previous=summarizeDashboardActivity(orders,movements,windows.previousWeek).trend;
+    wallboard={priorDay:{orders:prior.orders,paid:prior.paid,net:movements?summarizeDashboardCash(movements,windows.sameTimeLastWeek).net:null},
+      dailyPaid:daily.map((row,index)=>({date:row.date,paid:row.paid,previous:previous[index].paid,
+        net:row.cash?.net??null,previousNet:previous[index].cash?.net??null})),
+      traffic:await readGaTraffic(c,environment,monthFrom,completeMonthEnd,now),channels,
+      kpiPlan:await readDashboardKpiPlan(c,environment,now,scope.finance)};
+  }
   const economicsView=reportTopic==='economics'&&scope.operations&&scope.finance;
   const teachingView=reportTopic==='teaching'&&scope.operations;
   const lessonReport=teachingView||economicsView?await readDashboardTeaching(c,environment,{from,to,level:filters.level,format:filters.format,now},economicsView):null;
-  return {asOf:new Date(now).toISOString(),period:periods(windows),trafficPeriod:shortWindow(windows.latest),traffic,adSpend,
+  return {asOf:new Date(now).toISOString(),period:periods(windows),trafficPeriod:shortWindow(windows.latest),traffic,adSpend,wallboard,
     teaching:teachingView?lessonReport?.teaching:undefined,economics:economicsView?lessonReport?.economics:undefined,
     current:current.metrics,compare:compare.metrics,today:today.metrics,
     sources:current.sources,compareSources:compare.sources,latestSources:latest.sources,entries:current.entries,latestEntries:latest.entries,
-    reservationOutcomes:includeProofs?dashboardReservationOutcomes(orders,windows.current,now):{entries:[],languages:[]},
+    reservationOutcomes,
     upcoming,demand,queue,followup,trend:activity.trend,compareTrend:previousActivity.trend,...changes,
     cohorts:dashboardPaymentCohorts(orders,windows.current,now),
     cash:movements?{current:summarizeDashboardCash(movements,windows.current),compare:summarizeDashboardCash(movements,windows.compare),

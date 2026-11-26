@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type {Express,Request,Response} from 'express';
 import {dashboardPath,dashboardScopes,dashboardTopics,readDashboardFilters} from '../src/utils/crmOperationsDashboard.ts';
+import {dashboardKpiPlan,readDashboardKpiPlan} from '../server/portal/operationsDashboardKpi.ts';
 import type {Employee} from '../server/portal/identity.ts';
 
 // Module initialization creates a pool only. Each route test rejects before opening a connection.
@@ -45,6 +46,37 @@ test('operating periods cut at Jakarta midnight and compare the same portion of 
   assert.throws(()=>dashboardWindows({...filters,period:'custom',from:'2026-02-30',to:'2026-03-03'},now),/dashboard_invalid_period/);
   assert.throws(()=>dashboardWindows({...filters,period:'custom',from:'2026-01-01',to:'2026-11-01'},now),/dashboard_invalid_period/);
   assert.throws(()=>dashboardWindows({...filters,period:'custom',from:'2026-11-25',to:'2026-11-26'},now),/dashboard_invalid_period/);
+});
+
+test('wallboard keeps approved monthly targets and selects the latest eligible checkpoint for each metric',()=>{
+  const saved={targets:{first:260,paid:320,net:280_000_000,paymentRate:.62},milestones:{
+    '2026-10-25':{first:500,net:500},
+    '2026-11-23':{first:220,paid:290,net:242_000_000},
+    '2026-11-25':{first:226,paid:-1},
+    '2026-11-26':{first:229,paid:299,net:285_000_000},
+  }};
+  const plan=dashboardKpiPlan(saved,'2026-11-25',true);
+  assert.deepEqual(plan,{
+    first:{target:260,planned:{date:'2026-11-25',value:226}},
+    paid:{target:320,planned:{date:'2026-11-23',value:290}},
+    net:{target:280_000_000,planned:{date:'2026-11-23',value:242_000_000}},
+    paymentRate:.62,
+  });
+  assert.deepEqual(dashboardKpiPlan(saved,'2026-11-25',false),{...plan,net:undefined});
+  assert.deepEqual(dashboardKpiPlan({targets:{first:0,paid:1.5,net:'300',paymentRate:62}},'2026-11-25',true),
+    {first:undefined,paid:undefined,net:undefined,paymentRate:undefined});
+  assert.deepEqual(dashboardKpiPlan({targets:{paid:320,paymentRate:0}},'2026-11-25',true),
+    {first:undefined,paid:{target:320},net:undefined,paymentRate:0});
+});
+
+test('wallboard reads the current WIB monthly plan within the active environment',async()=>{
+  const now=Date.parse('2026-11-30T17:00:00Z');
+  const plan=await readDashboardKpiPlan({async query(sql,args){
+    assert.match(sql,/^SELECT\b/);
+    assert.deepEqual(args,['dashboard_monthly_kpi_v1:dev:2026-12']);
+    return {rows:[{value:{targets:{first:260},milestones:{'2026-12-01':{first:0}}}}]};
+  }},'dev',now,true);
+  assert.deepEqual(plan.first,{target:260,planned:{date:'2026-12-01',value:0}});
 });
 
 test('known confirmations are unique by purchase and first payment is unique by verified learner',()=>{
@@ -117,18 +149,39 @@ test('reservation paths share the observed order cohort and split payments aroun
     {...base,id:'e',createdAt:'2026-11-24T02:00:00Z',paidAt:null,state:'awaiting_payment'},
     {...base,id:'f',paidAt:'2026-11-22T02:00:00Z',firstProofAt:'2026-11-20T02:00:00Z',entry:undefined,language:undefined},
   ];
-  const {entries,languages}=dashboardReservationOutcomes(facts,window,now);
+  const {entries,languages,channels}=dashboardReservationOutcomes(facts,window,now);
   assert.deepEqual(entries[0],{key:'ai_chat',orders:4,eligible:2,observing:1,timingUnknown:1,proof:2,
     paidAfterProof:1,paidWithoutPriorProof:1});
   assert.equal(entries.find(row=>row.key==='website')?.paidWithoutPriorProof,1);
   assert.equal(languages.find(row=>row.key==='id')?.proof,0);
   assert.equal(languages.find(row=>row.key==='unknown')?.eligible,1);
   const {metrics}=summarizeDashboardOrders(facts,window,now);
-  for(const group of [entries,languages]){
+  for(const group of [entries,languages,channels]){
     assert.equal(group.reduce((sum,row)=>sum+row.orders,0),metrics.orders);
     assert.equal(group.reduce((sum,row)=>sum+row.eligible,0),metrics.mature);
     assert.equal(group.reduce((sum,row)=>sum+row.paidAfterProof+row.paidWithoutPriorProof,0),metrics.paidWithinWindow);
   }
+});
+
+test('wallboard groups different campaigns by source and medium and reconciles the three payment outcomes',()=>{
+  const {current,sameTimeLastWeek,previousWeek}=dashboardWindows(filters,now);
+  assert.equal(new Date(sameTimeLastWeek.end).toISOString(),'2026-11-18T03:00:00.000Z');
+  assert.equal(new Date(previousWeek.end).toISOString(),'2026-11-17T17:00:00.000Z');
+  const source=(campaign:string)=>classifyDashboardSource(true,'meta','paid_social','ad-'+campaign,campaign,campaign);
+  const order={state:'awaiting_payment',createdAt:'2026-11-10T02:00:00Z',paidAt:null,
+    learnerId:null,orderSource:source('a'),learnerSource:source('a'),mode:'self' as const};
+  const {channels}=dashboardReservationOutcomes([
+    {...order,id:'proof-after-paid',paidAt:'2026-11-11T02:00:00Z',firstProofAt:'2026-11-12T02:00:00Z'},
+    {...order,id:'proof-no-pay',orderSource:source('b'),firstProofAt:'2026-11-12T02:00:00Z'},
+    {...order,id:'late-proof-no-pay',firstProofAt:'2026-11-20T02:00:00Z'},
+    {...order,id:'immature',createdAt:'2026-11-24T02:00:00Z'},
+  ],current,now);
+  assert.equal(channels.length,1);
+  assert.equal(channels[0].eligible,3);
+  assert.equal(channels[0].paidWithoutPriorProof,1);
+  assert.equal(channels[0].unpaidWithProof,1);
+  assert.equal(channels[0].observing,1);
+  assert.equal(channels[0].source.campaignId,undefined);
 });
 
 test('overview splits WIB days and reconciles order-source, format and level change groups',()=>{

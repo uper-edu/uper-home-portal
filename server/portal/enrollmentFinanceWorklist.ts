@@ -4,7 +4,7 @@ import {enrollmentFinanceEvidence,readEnrollmentLearnerPaymentRows,withEnrollmen
 
 type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
 type Candidate={
-  id:string;state:string;class_state:string;name:string;price:number;received:number;
+  id:string;class_id:string;state:string;class_state:string;name:string;price:number;received:number;
   level:string;format:string;period:string;firstLessonAt:string;
   data:{firstProofAvailableAt?:string;firstReviewDueAt?:string;learnerReceiptProofLinks?:unknown};
 };
@@ -30,7 +30,7 @@ export async function readEnrollmentFinanceProgress(c:Client,orders:{
 
 async function readPendingEnrollmentTransfers(c:Client,search:string) {
   // Canonical roots bound the lookup. The shared evidence matcher resolves legacy aliases and supplements.
-  const candidates:Candidate[]=(await c.query(`SELECT o.id,o.state,o.price,o.received,o.data,o.data->>'$.name' AS name,
+  const candidates:Candidate[]=(await c.query(`SELECT o.id,o.class_id,o.state,o.price,o.received,o.data,o.data->>'$.name' AS name,
       e.state AS class_state,e.data->>'$.level' AS level,e.data->>'$.format' AS format,e.data->>'$.period' AS period,
       e.first_lesson_at AS firstLessonAt
     FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
@@ -56,7 +56,7 @@ async function readPendingEnrollmentTransfers(c:Client,search:string) {
         if(transfer.verifiedAmount!==undefined)continue;
         const reviewDueAt=transfer.submittedAt===order.data.firstProofAvailableAt?order.data.firstReviewDueAt:undefined;
         queue.push({
-          id:order.id,name:order.name,price:Number(order.price),received:Number(order.received),
+          id:order.id,classId:order.class_id,name:order.name,price:Number(order.price),received:Number(order.received),
           level:order.level,format:order.format,period:order.period,firstLessonAt:order.firstLessonAt,
           status:enrollmentOrderStatus(order.state,order.class_state),hasProof:true,proofAt:transfer.submittedAt,reviewDueAt,
           transfer:{id:transfer.id,amount:transfer.amount,proofCount:transfer.proofCount},
@@ -72,11 +72,14 @@ export async function readEnrollmentFinanceWorklist(c:Client,search:string,page:
   queue.sort((a,b)=>Number(!a.reviewDueAt)-Number(!b.reviewDueAt)||(a.reviewDueAt??'').localeCompare(b.reviewDueAt??'')||
     a.proofAt.localeCompare(b.proofAt)||a.id.localeCompare(b.id)||a.transfer.id.localeCompare(b.transfer.id));
   const actualPage=page>1&&(page-1)*pageSize>=queue.length?1:page;
-  return {orders:queue.slice((actualPage-1)*pageSize,actualPage*pageSize),page:actualPage,pageSize,total:queue.length};
+  return {orders:queue.slice((actualPage-1)*pageSize,actualPage*pageSize).map(({classId,...row})=>row),
+    page:actualPage,pageSize,total:queue.length};
 }
 
 export async function readEnrollmentFinancePendingSummary(c:Client){
   const pending=await readPendingEnrollmentTransfers(c,'');
   const oldest=pending.reduce<string|null>((date,row)=>!date||row.proofAt<date?row.proofAt:date,null);
-  return {pending:pending.length,oldest,submittedAt:pending.map(row=>row.proofAt)};
+  const byClass=new Map<string,number>();
+  for(const {classId} of pending)byClass.set(classId,(byClass.get(classId)??0)+1);
+  return {pending:pending.length,oldest,submittedAt:pending.map(row=>row.proofAt),pendingByClass:Object.fromEntries(byClass)};
 }
