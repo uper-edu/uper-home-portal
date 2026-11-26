@@ -11,7 +11,7 @@ import {readGaTraffic,trafficEnvironment} from './operationsDashboardTraffic.ts'
 import {readDashboardKpiEditorPlan,readDashboardKpiList,readDashboardKpiPlan,saveDashboardKpiEditorPlan} from './operationsDashboardKpi.ts';
 import {readDashboardAdSpend} from './operationsDashboardAdSpend.ts';
 import {readDashboardTeaching} from './operationsDashboardTeaching.ts';
-import {quoteTeacherSettlement,readTeacherSettlements,saveTeacherSettlement,teacherSettlementTargets} from './operationsDashboardTeacherSettlements.ts';
+import {quoteTeacherSettlement,readTeacherSettlements,saveTeacherSettlement,TeacherSettlementOverlap,teacherSettlementTargets} from './operationsDashboardTeacherSettlements.ts';
 import {validMutationOrigin} from './accessTransport.ts';
 import {tx} from './store.ts';
 import {invalid} from './trustWorkflow.ts';
@@ -506,8 +506,13 @@ export function mountOperationsDashboard(app:Express,wrap:(fn:(q:Request,r:Respo
     const actor=await financeActor(q);
     if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);
     const environment=trafficEnvironment(process.env.PORTAL_ENV??'dev');
-    r.set('Cache-Control','private, no-store').json(await tx(c=>
-      saveTeacherSettlement(c,environment,q.body,actor.id)));
+    r.set('Cache-Control','private, no-store');
+    try{
+      r.json(await tx(c=>saveTeacherSettlement(c,environment,q.body,actor.id),{isolation:'READ COMMITTED'}));
+    }catch(error){
+      if(!(error instanceof TeacherSettlementOverlap))throw error;
+      r.status(error.status).json({error:error.message,existing:{number:error.number,month:error.month}});
+    }
   }));
   app.get('/api/crm/operations-dashboard/kpi',wrap(async(q,r)=>{
     const actor=await staff(q,'crm.dashboard.kpi.manage');

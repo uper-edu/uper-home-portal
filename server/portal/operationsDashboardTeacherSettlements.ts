@@ -25,11 +25,26 @@ function readRecord(value:unknown):TeacherSettlement|null{
   return typeof row.revision==='string'?row as TeacherSettlement:null;
 }
 
-export async function readTeacherSettlements(db:Client,env:Environment,month:string){
-  const key=monthPrefix(env,monthValue(month));
+async function readSettlementsByPrefix(db:Client,key:string){
   const {rows}=await db.query("SELECT value FROM portal_settings WHERE id LIKE :p1 ESCAPE '=' ORDER BY id",
     [key.replaceAll('_','=_')+'%']);
-  return {month,records:rows.map(row=>readRecord(row.value)).filter(record=>record!==null)};
+  return rows.map(row=>readRecord(row.value)).filter(record=>record!==null);
+}
+
+export async function readTeacherSettlements(db:Client,env:Environment,month:string){
+  return {month,records:await readSettlementsByPrefix(db,monthPrefix(env,monthValue(month)))};
+}
+
+export class TeacherSettlementOverlap extends Error {
+  readonly status=409;
+  constructor(readonly number:string,readonly month:string){
+    super('teacher_settlement_already_recorded');
+  }
+}
+
+function periodsOverlap(first?:TeacherServicePeriod,second?:TeacherServicePeriod){
+  // Historical lines without dates cover the whole class or booking for deduplication.
+  return !first||!second||first.from<=second.to&&second.from<=first.to;
 }
 
 type TargetRow={id:string;level:string;format:DashboardTeachingFormat;teacher:string|null;first_lesson:string|null;batch_number:string|null;
@@ -110,17 +125,19 @@ function draft(input:unknown):TeacherSettlementDraft{
   });
   for(const [index,line] of lines.entries()){
     if(lines.slice(0,index).some(prior=>prior.kind===line.kind&&prior.referenceId===line.referenceId&&
-      (!prior.service||!line.service||prior.service.from<=line.service.to&&line.service.from<=prior.service.to)))
+      periodsOverlap(prior.service,line.service)))
       invalid('teacher_settlement_lines_duplicate');
   }
   return {number,month,revision:typeof revision==='string'?revision:null,reason,lines};
 }
 
-// The caller owns the transaction. The primary key serializes submissions sharing a settlement number.
+// The caller owns the transaction. Serialize the overlap check and write across all statement numbers.
 export async function saveTeacherSettlement(db:Client,env:Environment,input:unknown,actorId:string,now=Date.now()){
   const incoming=draft(input);
   const {number,month,reason}=incoming,key=prefix(env)+number;
   if(incoming.revision&&!reason)invalid('teacher_settlement_reason');
+  await db.query('INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id',
+    ['dashboard_teacher_settlement_lock_v1:'+env,{}]);
   await db.query('INSERT INTO portal_settings(id,value) VALUES(:p1,:p2) ON DUPLICATE KEY UPDATE id=id',[key,{}]);
   const {rows:[stored]}=await db.query('SELECT value FROM portal_settings WHERE id=:p1 FOR UPDATE',[key]);
   const prior=readRecord(stored.value);
@@ -131,6 +148,13 @@ export async function saveTeacherSettlement(db:Client,env:Environment,input:unkn
   if(same)return prior;
   if(incoming.revision!==(prior?.revision??null))
     invalid(incoming.revision===null?'teacher_settlement_duplicate':'teacher_settlement_conflict',409);
+  const otherStatements=await readSettlementsByPrefix(db,prefix(env));
+  for(const statement of otherStatements){
+    if(statement.number===number)continue;
+    if(statement.lines.some(({target,service})=>incoming.lines.some(line=>
+      line.kind===target.kind&&line.referenceId===target.referenceId&&periodsOverlap(service,line.service))))
+      throw new TeacherSettlementOverlap(statement.number,statement.month);
+  }
   const targets=new Map(prior?.lines.map(line=>[line.target.kind+':'+line.target.referenceId,line.target]));
   const lines:TeacherSettlement['lines']=[];
   for(const {kind,referenceId,lessons,lessonFee,service} of incoming.lines){

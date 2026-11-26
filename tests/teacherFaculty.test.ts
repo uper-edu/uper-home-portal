@@ -136,7 +136,10 @@ test('settlement freezes approved CNY fee and IDR conversion, rejects cross-stag
   assert.equal((await save(draft)).revision,record.revision);
   assert.equal(record.lines[0].rate?.kind==='lesson'&&record.lines[0].rate.amountMinor,12_345);
   await saveFacultyRates(db,teacher,{revision:1,source:'新协议',terms:[rate({amountMinor:50_000})]},'mock-finance');
-  await assert.rejects(save({...draft,number:'MOCK/2',lines:[line]}),{message:'teacher_settlement_rate_changed'});
+  await assert.rejects(save({...draft,number:'MOCK/2',lines:[line]}),
+    {message:'teacher_settlement_already_recorded',status:409,number:record.number});
+  await assert.rejects(save({...draft,number:'MOCK/2',lines:[{...line,service:{...line.service,to:'2026-04-28',from:'2026-04-28'}}]}),
+    {message:'teacher_settlement_rate_changed'});
   const history=await save({...draft,revision:record.revision,reason:'模拟更正折算依据',lines:[{...line,service:{...line.service,basis:'更新凭据'}},other]});
   assert.equal(history.lines[0].rate?.kind==='lesson'&&history.lines[0].rate.amountMinor,12_345);
   assert.equal(summarizeTeacherSettlements((await readTeacherSettlements(db,'dev','2026-04')).records).IDR,1_455_000);

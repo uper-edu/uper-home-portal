@@ -64,6 +64,8 @@ const copy={
   saved:['教师结算已保存。','Teacher settlement saved.','Penyelesaian biaya pengajar tersimpan.'],
   invalid:['请核对结算单号、月份、课时数和教师课时费。单号可使用字母、数字及 . / _ -。','Check the settlement number, month, lesson count and fee per lesson. Use letters, digits or . / _ - in the number.','Periksa nomor penyelesaian, bulan, jumlah sesi, dan honor per sesi. Gunakan huruf, angka, atau . / _ - pada nomor.'],
   duplicate:['该结算单号已存在。请在原结算月份找到记录并更正。','This number already exists. Find the record in its settlement month and correct it there.','Nomor ini sudah ada. Buka catatan pada bulan penyelesaian awal untuk mengoreksinya.'],
+  alreadyRecorded:['这段课已登记结算。请更正原结算单。','These lessons have already been settled. Correct the original statement.','Sesi ini sudah diselesaikan. Koreksi catatan penyelesaian awal.'],
+  originalStatement:['原结算单','Original statement','Catatan penyelesaian awal'],
   linesDuplicate:['同一班次或约课的授课期间不能重叠。未关联教师档案的历史班次只能登记一条。','Service periods for the same class or booking cannot overlap. Historical classes without faculty have one line.','Periode mengajar untuk kelas atau pemesanan yang sama tidak boleh tumpang tindih. Kelas lama tanpa profil hanya satu rincian.'],
   teacherMissing:['请先在班次或约课中指派教师。','Assign a teacher in the class or booking first.','Tetapkan pengajar pada kelas atau pemesanan terlebih dahulu.'],
   conflict:['记录已有新版本。请关闭后重新打开最新记录，再核对并更正。','A newer revision exists. Close and reopen the latest record before correcting it.','Versi terbaru tersedia. Tutup dan buka kembali catatan terbaru sebelum mengoreksi.'],
@@ -172,9 +174,10 @@ export function CrmTeacherSettlements({lang,isLight,asOf,refresh,filter,onFacult
 type LineDraft={id:number;kind:TeacherSettlementKind;target:TeacherSettlementTarget|null;lessons:string;lessonFee:string;
   from:string;to:string;convertedIDR:string;basis:string;quote:TeacherRateQuote|null;quoteError:boolean;};
 const blankLine=(id:number):LineDraft=>({id,kind:'class',target:null,lessons:'',lessonFee:'',from:'',to:'',convertedIDR:'',basis:'',quote:null,quoteError:false});
-type Issue='invalid'|'duplicate'|'linesDuplicate'|'teacherMissing'|'conflict'|'targetGone'|'unknown'|'missingRate'|'splitRate'|'rateChanged';
+type Issue='invalid'|'duplicate'|'alreadyRecorded'|'linesDuplicate'|'teacherMissing'|'conflict'|'targetGone'|'unknown'|'missingRate'|'splitRate'|'rateChanged';
 const serverIssues:Record<string,Issue>={
   teacher_settlement_duplicate:'duplicate',teacher_settlement_lines_duplicate:'linesDuplicate',
+  teacher_settlement_already_recorded:'alreadyRecorded',
   teacher_settlement_conflict:'conflict',teacher_settlement_target:'targetGone',
   teacher_settlement_teacher_missing:'teacherMissing',
   teacher_settlement_rate_required:'missingRate',teacher_settlement_rate_missing:'missingRate',
@@ -199,6 +202,7 @@ function SettlementEditor({lang,isLight,record,month:initialMonth,onClose,onConf
   const pending=useRef(false);
   const [discard,setDiscard]=useState(false);
   const [issue,setIssue]=useState<Issue|null>(null);
+  const [originalStatement,setOriginalStatement]=useState('');
   const locked=busy||issue==='unknown'||issue==='conflict';
   function change(action:()=>void){
     setDirty(true);setIssue(null);action();
@@ -226,7 +230,9 @@ function SettlementEditor({lang,isLight,record,month:initialMonth,onClose,onConf
       const response=await fetch(endpoint,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       if(response.ok){onSaved(await response.json());return;}
       if(response.status===401||response.status===403){onDenied();return;}
-      const {error}=await response.json().catch(()=>({}));
+      const {error,existing}=await response.json().catch(()=>({}));
+      setOriginalStatement(typeof existing?.number==='string'&&typeof existing?.month==='string'
+        ?existing.month+' · '+existing.number:'');
       setIssue(response.status>=500?'unknown':Object.hasOwn(serverIssues,error)?serverIssues[error]:'invalid');
     }catch{setIssue('unknown');}
     finally{pending.current=false;setBusy(false);}
@@ -257,7 +263,9 @@ function SettlementEditor({lang,isLight,record,month:initialMonth,onClose,onConf
       {record&&<AdminField required>{t('reason')}<textarea className="admin-text-input" required value={reason} maxLength={500}
         disabled={locked} onChange={event=>change(()=>setReason(event.target.value))}/></AdminField>}
       {busy&&<AdminFormFeedback state="saving" lang={lang}/>}
-      {issue&&<AdminFormFeedback state={issue==='unknown'||issue==='conflict'?'unknown':'error'} lang={lang}>{t(issue)}</AdminFormFeedback>}
+      {issue&&<AdminFormFeedback state={issue==='unknown'||issue==='conflict'?'unknown':'error'} lang={lang}>
+        {t(issue)}{issue==='alreadyRecorded'&&originalStatement&&' '+t('originalStatement')+' '+originalStatement}
+      </AdminFormFeedback>}
     </AdminForm>
     {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)}
       onDiscard={issue==='conflict'?onConflictClose:onClose}/>}

@@ -73,6 +73,15 @@ test('settlement replay deduplicates normalized numbers and rejects duplicate cl
   assert.equal(audit.length,1);
 });
 
+test('different statement numbers and months cannot both settle the same historical class',async()=>{
+  const {save,report,audit}=harness();
+  const first=await save({...input,lines:[ordinary]});
+  await assert.rejects(save({...input,number:'MOCK/002',month:'2026-12',lines:[ordinary]}),
+    {message:'teacher_settlement_already_recorded',status:409,number:first.number,month:first.month});
+  assert.equal((await report('2026-12')).records.length,0);
+  assert.equal(audit.length,1);
+});
+
 test('correction moves the payable between periods, preserves history and rejects stale revision',async()=>{
   const {save,report,stored,audit}=harness();
   const original=await save(input);
