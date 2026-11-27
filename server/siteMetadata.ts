@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Express } from "express";
+import {hasPublicSalesWallboard} from "./portal/publicSalesWallboard.ts";
 import {
   cleanPath,
   isPrivatePath,
@@ -84,7 +85,8 @@ export function mountMetadataHtml(app: Express, directory: string, db: any) {
       // Asset misses must never masquerade as HTML pages.
       if (/\.[a-z0-9]{1,6}$/i.test(q.path)) return r.status(404).end();
       const route = cleanPath(q.path);
-      const admin = /^\/(crm|academics|finance|cms|system)(\/|$)/i.test(route);
+      if(route.toLowerCase()==='/sales'&&!hasPublicSalesWallboard())return r.status(404).end();
+      const admin = /^\/(crm|academics|finance|sales|cms|system)(\/|$)/i.test(route);
       const cookieName = admin ? "uper_admin_ui_lang=" : "uper_public_ui_lang=";
       const preference = (q.headers.cookie || "")
         .split(";")

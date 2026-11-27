@@ -1,7 +1,8 @@
 import ApplicationErrorBoundary from './components/ApplicationErrorBoundary';
 import VisitorBoundary from './components/VisitorBoundary';
 import {RouteMetadata,MetadataProvider} from './components/PageMetadata';
-import {normalizeSiteLanguage} from './utils/siteMetadata';
+import {cleanPath,normalizeSiteLanguage} from './utils/siteMetadata';
+import {salesWallboardPath} from './utils/salesWallboard';
 import {useTranslation} from 'react-i18next';
 import CmsContentStatus from './components/CmsContentStatus';
 import React, { Suspense, lazy, useEffect } from 'react';
@@ -63,6 +64,8 @@ const StandAloneChat = lazyWithRetry(loadStandaloneChat);
 const CrmWorkbench = lazyWithRetry(() => import('./pages/CrmWorkbench'));
 const AcademicWorkbench = lazyWithRetry(() => import('./pages/AcademicWorkbench'));
 const FinanceWorkbench = lazyWithRetry(() => import('./pages/FinanceWorkbench'));
+const TestSalesWallboard = import.meta.env.MODE==='test'?lazyWithRetry(() => import('./components/crm/CrmOperationsDashboard')
+  .then(module=>({default:module.PublicSalesWallboard}))) : null;
 const AccessWorkbench = lazyWithRetry(() => import('./pages/AccessWorkbench'));
 const CmsWorkbench = lazyWithRetry(() => import('./pages/CmsWorkbench'));
 
@@ -88,7 +91,7 @@ function PageLoading() {
 }
 
 function AnalyticsTracker() {
-  usePageTracking();
+  usePageTracking(cleanPath(useLocation().pathname).toLowerCase()!==salesWallboardPath);
   return null;
 }
 
@@ -137,6 +140,7 @@ export default function App() {
                 <Route path="crm" element={<CrmWorkbench />} />
                 <Route path="academics" element={<AcademicWorkbench />} />
                 <Route path="finance" element={<FinanceWorkbench />} />
+                {TestSalesWallboard&&<Route path={salesWallboardPath} element={<TestSalesWallboard/>}/>}
                 
                 {/* Standalone Official Website CMS & Media Repository */}
                 <Route path="system" element={<AccessWorkbench />} />

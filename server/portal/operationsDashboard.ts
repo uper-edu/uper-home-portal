@@ -16,6 +16,8 @@ import {quoteTeacherSettlement,readTeacherSettlements,saveTeacherSettlement,Teac
 import {validMutationOrigin} from './accessTransport.ts';
 import {tx} from './store.ts';
 import {invalid} from './trustWorkflow.ts';
+import {salesWallboardApi,salesWallboardSnapshot} from '../../src/utils/salesWallboard.ts';
+import {hasPublicSalesWallboard,shareWallboardSnapshot} from './publicSalesWallboard.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 const day=86_400_000, wib=7*3_600_000;
@@ -479,6 +481,15 @@ export async function readOperationsDashboardSnapshot(c:Client,actor:Employee,fi
 
 export function mountOperationsDashboard(app:Express,wrap:(fn:(q:Request,r:Response)=>Promise<unknown>)=>(q:Request,r:Response)=>void,
   staff:(q:Request,permission:string)=>Promise<Employee>){
+  if(hasPublicSalesWallboard()){
+    const displayScope:Employee={id:'sales-wallboard-display',teams:[],scope:'all',
+      permissions:['crm.read','crm.operations.manage','crm.payments.verify','crm.followup','campaigns.manage']};
+    const read=shareWallboardSnapshot(()=>tx(async c=>salesWallboardSnapshot(
+      await readOperationsDashboardSnapshot(c,displayScope,readDashboardFilters(new URLSearchParams()),Date.now(),'wallboard'))));
+    app.get(salesWallboardApi,wrap(async(_q,r)=>{
+      r.set('Cache-Control','no-store').json(await read());
+    }));
+  }
   async function financeActor(q:Request){
     const actor=await staff(q,'crm.payments.verify');
     if(!dashboardScopes(actor).finance)invalid('dashboard_forbidden',403);

@@ -166,11 +166,11 @@ export function trackEnrollmentStep(...step:
 }
 export const trackPageView = (_path?: string, _title?: string) =>
   withAnalytics(current => current.page());
-export function usePageTracking() {
+export function usePageTracking(enabled=true) {
   const location = useLocation();
   useEffect(() => {
-    trackPageView();
-  }, [location]);
+    if(enabled)trackPageView();
+  }, [location,enabled]);
 }
 export const trackLanguageSwitch = (language: string) =>
   trackEvent("change_language", { language });

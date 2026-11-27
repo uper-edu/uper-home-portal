@@ -92,7 +92,8 @@ export type DashboardDemand={level:string;period:string;format:string;state:stri
 export type DashboardSupply={
   level:string;period:string;waiting:number;requests:number;seats:number;physicalSeats:number;
 };
-export function dashboardSupply(classes:readonly EnrollmentClassSummary[],demand:readonly DashboardDemand[]|null){
+export function dashboardSupply(classes:readonly (Pick<EnrollmentClassSummary,'level'|'period'|'available'|'accepting'>&{counts:{waiting:number}})[],
+  demand:readonly DashboardDemand[]|null){
   const groups=new Map<string,DashboardSupply>();
   const group=(level:string,period:string)=>{
     const key=JSON.stringify([level,period]);

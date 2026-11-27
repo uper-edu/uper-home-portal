@@ -94,7 +94,7 @@ export function writeEnrollmentClassFilters(params:URLSearchParams,filters:Enrol
     else params.delete(classFilterParams[key]);
   }
 }
-export function enrollmentClassShortfall(row:EnrollmentClassSummary) {
+export function enrollmentClassShortfall(row:{minimumPaid:number;counts:{paid:number}}) {
   return Math.max(0,row.minimumPaid-row.counts.paid);
 }
 

@@ -24,6 +24,8 @@ import {crmInstant,formatCrmEventTime,formatCrmOperatingTime} from '../../utils/
 import {formatCurrency} from '../../utils/currency';
 import {promotionKindForMedium} from '../../utils/promotionNavigation';
 import {dashboardLabel,type DashboardWord} from './crmOperationsDashboardText';
+import {salesWallboardApi,type SalesWallboardSnapshot,type WallboardClass} from '../../utils/salesWallboard';
+import {readAdminLanguage} from '../../utils/adminLanguagePreference';
 import './crm-operations-dashboard.css';
 
 type Translate=(key:DashboardWord)=>string;
@@ -61,9 +63,9 @@ function paymentSampleNote(metrics:DashboardSnapshot['current'],t:Translate,coun
   return t(issue)+(metrics.observing?' · '+count(metrics.observing):'');
 }
 
-function useDashboard(url:string,accessKey:string,enabled:boolean,polling:boolean,revision:number){
+function useDashboard<T=DashboardSnapshot>(url:string,accessKey:string,enabled:boolean,polling:boolean,revision:number,credentials?:RequestCredentials){
   const key=url+'|'+accessKey;
-  const [state,setState]=useState<{key:string;snapshot?:DashboardSnapshot;error?:number}>({key:''});
+  const [state,setState]=useState<{key:string;snapshot?:T;error?:number}>({key:''});
   const [loading,setLoading]=useState(enabled);
   useEffect(()=>{
     if(!enabled)return;
@@ -72,13 +74,13 @@ function useDashboard(url:string,accessKey:string,enabled:boolean,polling:boolea
     const read=async()=>{
       setLoading(true);
       try{
-        const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+        const response=await fetch(url,{signal:controller.signal,cache:'no-store',credentials});
         if(!response.ok){
           if(!controller.signal.aborted)setState(prior=>({key,error:response.status,
             snapshot:response.status>=500&&prior.key===key?prior.snapshot:undefined}));
           return;
         }
-        const snapshot:DashboardSnapshot=await response.json();
+        const snapshot:T=await response.json();
         if(!controller.signal.aborted)setState({key,snapshot});
       }catch{
         if(!controller.signal.aborted)setState(prior=>({key,error:503,snapshot:prior.key===key?prior.snapshot:undefined}));
@@ -91,7 +93,7 @@ function useDashboard(url:string,accessKey:string,enabled:boolean,polling:boolea
     };
     void read();
     return ()=>{controller.abort();if(timer)clearTimeout(timer);};
-  },[key,url,enabled,polling,revision]);
+  },[key,url,enabled,polling,revision,credentials]);
   return {...(enabled&&state.key===key?state:{}),loading:enabled&&(loading||state.key!==key)};
 }
 
@@ -173,7 +175,7 @@ function Trend({title,series,comparison,display,t,onDay,maximum}:{title:string;s
   </Panel>;
 }
 
-function Capacity({row,t}:{row:EnrollmentClassSummary;t:Translate}){
+function Capacity({row,t}:{row:WallboardClass;t:Translate}){
   const held=Math.max(0,row.occupied-row.counts.paid);
   const width=(count:number)=>Math.min(100,100*count/Math.max(1,row.capacity))+'%';
   return <>
@@ -189,7 +191,7 @@ function Capacity({row,t}:{row:EnrollmentClassSummary;t:Translate}){
   </>;
 }
 
-function Upcoming({rows,t,lang,limited,onNavigate,pendingByClass}:{rows:EnrollmentClassSummary[];t:Translate;lang:CrmLanguage;
+function Upcoming({rows,t,lang,limited,onNavigate,pendingByClass}:{rows:WallboardClass[];t:Translate;lang:CrmLanguage;
   limited?:boolean;onNavigate?:(href:string)=>void;pendingByClass?:Record<string,number>}){
   return <Panel title={t('nextClasses')} aside={<span>{t('last14')}</span>} className="ops-dash-upcoming">
     {rows.length?<ul>{(limited?rows.slice(0,3):rows).map(row=>{
@@ -211,7 +213,7 @@ function Upcoming({rows,t,lang,limited,onNavigate,pendingByClass}:{rows:Enrollme
   </Panel>;
 }
 
-function Queue({data,t,wallboard=false,onNavigate,lang='zh'}:{data:DashboardSnapshot;t:Translate;wallboard?:boolean;
+function Queue({data,t,wallboard=false,onNavigate,lang='zh'}:{data:Pick<SalesWallboardSnapshot,'queue'|'followup'|'demand'>;t:Translate;wallboard?:boolean;
   onNavigate?:(href:string)=>void;lang?:CrmLanguage}){
   const rows:[DashboardWord,number|undefined,string?,string?][]=[
     ['review',data.queue?.pending,financePath,wallboard&&data.queue?t('tvCurrentQueueAge')+' · '+data.queue.reviewAges.atLeast72:
@@ -314,7 +316,7 @@ function wallboardSourceIdentified(source:DashboardSource){
     !['(none)','(not set)','(data not available)'].includes(source.medium);
 }
 
-function wallboardChannels(data:DashboardSnapshot){
+function wallboardChannels(data:SalesWallboardSnapshot){
   type Row={source:DashboardSource;orders:number;eligible:number;paid:number;noProof:number;withProof:number;
     first:number;previousFirst:number;sessions?:number;funnel?:EnrollmentFunnelCounts;spend:Map<string,number>};
   const rows=new Map<string,Row>();
@@ -359,7 +361,7 @@ function wallboardChannels(data:DashboardSnapshot){
   return [...primary,...selected.filter(row=>row.source.kind!=='verified')];
 }
 
-function WallboardChannels({data,rows,t,lang}:{data:DashboardSnapshot;rows:ReturnType<typeof wallboardChannels>;t:Translate;lang:CrmLanguage}){
+function WallboardChannels({data,rows,t,lang}:{data:SalesWallboardSnapshot;rows:ReturnType<typeof wallboardChannels>;t:Translate;lang:CrmLanguage}){
   const number=new Intl.NumberFormat(languageTag[lang]);
   const percent=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
   const traffic=data.wallboard?.traffic;
@@ -431,7 +433,7 @@ function WallboardPayment({rows,t,lang}:{rows:ReturnType<typeof wallboardChannel
   </Panel>;
 }
 
-function WallboardSupply({data,t}:{data:DashboardSnapshot;t:Translate}){
+function WallboardSupply({data,t}:{data:SalesWallboardSnapshot;t:Translate}){
   const groups=dashboardSupply(data.upcoming,data.demand);
   const shownLevels=dashboardLevels.filter(level=>groups.some(row=>row.level===level));
   return <Panel title={t('tvSupply')} className="ops-dash-tv-supply" aside={<span>{t('tvSupplyLegend')}</span>}>
@@ -471,7 +473,7 @@ function WallboardSeries({series,format,dates}:{series:{date:string;current:numb
   </div>;
 }
 
-function WallboardTrend({data,t,lang}:{data:DashboardSnapshot;t:Translate;lang:CrmLanguage}){
+function WallboardTrend({data,t,lang}:{data:SalesWallboardSnapshot;t:Translate;lang:CrmLanguage}){
   const rows=data.wallboard?.dailyPaid??[];
   const hasCash=rows.some(row=>row.net!==null&&row.net!==undefined);
   const amounts=rows.flatMap(row=>row.net!=null&&row.previousNet!=null?[{date:row.date,current:row.net,previous:row.previousNet}]:[]);
@@ -487,7 +489,7 @@ function WallboardTrend({data,t,lang}:{data:DashboardSnapshot;t:Translate;lang:C
   </Panel>;
 }
 
-function WallboardLevelChanges({data,t,lang}:{data:DashboardSnapshot;t:Translate;lang:CrmLanguage}){
+function WallboardLevelChanges({data,t,lang}:{data:SalesWallboardSnapshot;t:Translate;lang:CrmLanguage}){
   const levels=['HSK 1','HSK 2','HSK 3','HSK 4'];
   const groups=new Map(levels.map(level=>[level,{paid:0,previous:0}]));
   const other={paid:0,previous:0};
@@ -525,7 +527,7 @@ function WallboardLevelChanges({data,t,lang}:{data:DashboardSnapshot;t:Translate
   </Panel>;
 }
 
-function WallboardIntake({data,t,lang}:{data:DashboardSnapshot;t:Translate;lang:CrmLanguage}){
+function WallboardIntake({data,t,lang}:{data:SalesWallboardSnapshot;t:Translate;lang:CrmLanguage}){
   const traffic=data.traffic;
   const number=new Intl.NumberFormat(languageTag[lang]);
   const percent=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
@@ -848,7 +850,7 @@ function WallboardCumulativeKpi({label,value,previous,plan,monthProgress,format,
   </article>;
 }
 
-function WallboardRateKpi({data,t,percent,count}:{data:DashboardSnapshot;t:Translate;
+function WallboardRateKpi({data,t,percent,count}:{data:SalesWallboardSnapshot;t:Translate;
   percent:(value:number)=>string;count:(value:number)=>string}){
   const current=data.current,previous=data.compare;
   const rate=current.mature?current.paidWithinWindow/current.mature:null;
@@ -878,7 +880,7 @@ function WallboardRateKpi({data,t,percent,count}:{data:DashboardSnapshot;t:Trans
   </article>;
 }
 
-function WallboardKpis({data,t,lang,compactMoney}:{data:DashboardSnapshot;t:Translate;lang:CrmLanguage;compactMoney:(value:number)=>string}){
+function WallboardKpis({data,t,lang,compactMoney}:{data:SalesWallboardSnapshot;t:Translate;lang:CrmLanguage;compactMoney:(value:number)=>string}){
   const number=new Intl.NumberFormat(languageTag[lang]);
   const format=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
   const monthProgress=dashboardKpiMonthProgress(Date.parse(data.asOf));
@@ -928,7 +930,7 @@ function WallboardKpis({data,t,lang,compactMoney}:{data:DashboardSnapshot;t:Tran
   </section>;
 }
 
-function Wallboard({data,lang,t,stale}:{data:DashboardSnapshot;lang:CrmLanguage;t:Translate;stale:boolean}){
+function Wallboard({data,lang,t,stale}:{data:SalesWallboardSnapshot;lang:CrmLanguage;t:Translate;stale:boolean}){
   const board=useRef<HTMLDivElement>(null);
   const [full,setFull]=useState(false);
   useEffect(()=>{
@@ -952,10 +954,10 @@ function Wallboard({data,lang,t,stale}:{data:DashboardSnapshot;lang:CrmLanguage;
   const monthEnd=new Date(data.period.from+'T00:00:00Z');
   monthEnd.setUTCMonth(monthEnd.getUTCMonth()+1,0);
   const rows=wallboardChannels(data);
-  const classStart=(row:EnrollmentClassSummary)=>crmInstant(row.firstLessonAt)?.getTime()??Infinity;
+  const classStart=(row:WallboardClass)=>crmInstant(row.firstLessonAt)?.getTime()??Infinity;
   const leader=rows.reduce<(typeof rows)[number]|undefined>((top,row)=>
     wallboardSourceIdentified(row.source)&&row.first>(top?.first??0)?row:top,undefined);
-  const short=data.upcoming.reduce<EnrollmentClassSummary|undefined>((earliest,row)=>
+  const short=data.upcoming.reduce<WallboardClass|undefined>((earliest,row)=>
     enrollmentClassShortfall(row)>0&&(!earliest||classStart(row)<classStart(earliest))?row:earliest,undefined);
   return <div className="ops-dash-tv-outer" ref={board} data-fullscreen={full||undefined}>
     <div className="ops-dash-tv">
@@ -998,6 +1000,17 @@ function Wallboard({data,lang,t,stale}:{data:DashboardSnapshot;lang:CrmLanguage;
       <footer role="status">{stale?t('stale'):t('asOf')+' · '+formatWib(data.asOf)+' WIB'}</footer>
     </div>
   </div>;
+}
+
+export function PublicSalesWallboard(){
+  const selected=new URLSearchParams(window.location.search).get('lang');
+  const lang=selected==='zh'||selected==='id'||selected==='en'?selected:readAdminLanguage();
+  const t:Translate=key=>dashboardLabel(lang,key);
+  const data=useDashboard<SalesWallboardSnapshot>(salesWallboardApi,'',true,true,0,'omit');
+  return <main className="ops-dash-tv-public" aria-label={t('tvTitle')}>
+    {data.snapshot?<Wallboard data={data.snapshot} lang={lang} t={t} stale={Boolean(data.error)}/>:
+      <p role={data.error?'alert':'status'}>{t(data.error?'error':'load')}</p>}
+  </main>;
 }
 
 function AcquisitionReservations({outcomes,t,lang,isLight}:{outcomes:DashboardSnapshot['reservationOutcomes'];

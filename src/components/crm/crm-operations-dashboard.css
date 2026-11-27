@@ -143,6 +143,9 @@ button.ops-dash-link{padding:0;border:0;background:none;cursor:pointer;text-alig
 .ops-dash-float i[data-negative]{background:var(--admin-warning)}
 .ops-dash-pagination{justify-content:end;margin-top:10px}
 
+.ops-dash-tv-public{min-height:100dvh;background:#0d1717;color:#eff8f3}
+.ops-dash-tv-public>.ops-dash-tv-outer{border-radius:0}
+.ops-dash-tv-public>p{margin:0;padding:24px}
 .ops-dash-tv-outer{
   background:#0d1717;border-radius:14px;container-type:inline-size;overflow:hidden;
 }

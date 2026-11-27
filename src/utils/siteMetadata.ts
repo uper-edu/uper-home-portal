@@ -232,7 +232,7 @@ export function workspaceMetadata(
 }
 export function isPrivatePath(pathname: string) {
   if (/^\/enrollment\/(?:mine|payment|help)(?:\/|$)/i.test(pathname)) return true;
-  return /^\/(?:crm|academics|finance|cms|system|studio|chat|consult|style-guide|api)(?:\/|$)/i.test(
+  return /^\/(?:crm|academics|finance|sales|cms|system|studio|chat|consult|style-guide|api)(?:\/|$)/i.test(
     pathname,
   );
 }
@@ -322,7 +322,7 @@ export function resolveMetadata(
       !!page ||
       enrollmentHelp ||
       dynamic ||
-      /^\/(crm|academics|finance|cms|system|chat|consult|style-guide)$/i.test(path);
+      /^\/(crm|academics|finance|sales|cms|system|chat|consult|style-guide)$/i.test(path);
   let title: string, description: string;
   if (workspaceNames[workspace])
     ({ title, description } = workspaceMetadata(
@@ -342,6 +342,9 @@ export function resolveMetadata(
     const info=page??publicPages["/enrollment"];
     title = `${metadataWords(info.title, lang)} | UPER`;
     description = metadataWords(info.description, lang);
+  } else if (path.toLowerCase() === "/sales") {
+    title = metadataWords(["Sales Wallboard", "Layar Penjualan", "销售大屏"], lang) + " | UPER";
+    description = metadataWords(["Course operations dashboard.", "Dasbor operasional kursus.", "课程经营看板。"], lang);
   } else if (path === "/style-guide") {
     title =
       metadataWords(
