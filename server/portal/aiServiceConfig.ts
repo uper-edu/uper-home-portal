@@ -9,7 +9,7 @@ import {acceptedModel,requestAiReply} from './aiProviderRequest.ts';
 import {readAiReply} from './chatProviderReply.ts';
 import type {AiSupplierId} from '../../src/utils/aiSupplier.ts';
 import {managedSupplierForModel, saveAiSettings, selectableAiModels, supplierViews} from './aiSupplierSettings.ts';
-import {aiModelSlots,defaultReasoningEffort,effortField,isClaudeModel,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection,type ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
+import {aiModelSlots,defaultReasoningEffort,effortField,isClaudeModel,isGeminiModel,reasoningEfforts,sameAiSelection,selectedReasoningEffort,supportsReasoningEffort,type AiSelection,type ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
 export {aiModels};
 export {acceptedModel};
 const defaults=()=>initialAiSelection(process.env.OPENAI_MODEL);
@@ -28,7 +28,7 @@ export function providerFor(model:string,reasoningEffort?:ReasoningEffort,manage
  const deep=model==='deepseek-v4-pro'||model==='deepseek-flash'||model==='deepseek-chat';
  const minimax=model==='MiniMax-M3.1-Flash';
  const minimaxDirect=minimax&&managedSupplier==='minimax';
- const provider=minimaxDirect?'minimax':isClaudeModel(model)?'anthropic':deep?'deepseek':'openai';
+ const provider=minimaxDirect?'minimax':isClaudeModel(model)?'anthropic':isGeminiModel(model)?'gemini':deep?'deepseek':'openai';
  return {
   model,
   provider,
@@ -100,7 +100,7 @@ export async function probeModel(model:string,reasoningEffort?:ReasoningEffort,c
   const checkJson=(content:string)=>{try {if(JSON.parse(content)?.ok===true)return;} catch {} throw Error('invalid_json');};
   const direct=await ask();if(!acceptedModel(model,direct.model||''))throw Error('model_mismatch');checkJson(direct.content);
   const streamed=await ask(true);const actual=streamed.model||'';if(!streamed.content||!acceptedModel(model,actual))throw Error('stream_incomplete');
-  if(isClaudeModel(model)||p.provider==='minimax')checkJson(streamed.content);
+  if(isClaudeModel(model)||p.provider==='minimax'||p.provider==='gemini')checkJson(streamed.content);
   const {extractWithAI}=await import('./aiExtraction.ts');const traced:typeof fetch=async(input,init)=>{calls++;return request(input,{...init,redirect:'error'});};const extracted=await extractWithAI('我的课程预算是150万印尼盾。',{},traced,[p]);if(!acceptedModel(model,extracted.model)||!extracted.observations.some((v:any)=>v.field==='budgetAmount'&&v.value===1500000))throw Error('extraction_failed');
   return {model,ok:true,actualModel:actual,calls,durationMs:Date.now()-start};
  }catch(e){const message=(e as Error).message;return {model,ok:false,error:/^(provider_http_\d+|model_mismatch|invalid_json|stream_missing|stream_error|stream_incomplete|extraction_failed)$/.test(message)?message:'test_failed',calls,durationMs:Date.now()-start};}

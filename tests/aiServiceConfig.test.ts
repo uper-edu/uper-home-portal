@@ -5,8 +5,52 @@ import {compareGoals} from '../server/portal/goalReview';
 import {selectableAiModels,supplierViews} from '../server/portal/aiSupplierSettings';
 import {aiCredentialTarget} from '../server/portal/integrationCredentialTargets';
 import {credentialSlot,credentialSource,credentialTarget} from '../server/portal/integrationCredentials';
+import {readAiReply} from '../server/portal/chatProviderReply';
+import {geminiModels} from '../src/utils/aiModelSelection';
 
 const claudeHaiku='claude-haiku-5-5',claudeSonnet='claude-sonnet-5-5';
+
+test('Gemini model choices are gated by the verified Google credential and use its dedicated endpoint',()=>{
+ const current={primary:'gpt-6-luna',fallback:'deepseek-v4-pro'};
+ const settings={current,suppliers:{gemini:{id:'gemini' as const,name:'Google (Gemini)',models:[...geminiModels],enabled:true,verified:true}}};
+ const withoutKey=selectableAiModels(settings,supplierViews(settings,{openai:true}));
+ const withKey=selectableAiModels(settings,supplierViews(settings,{gemini:true}));
+ for(const model of geminiModels){
+  assert.equal(withoutKey.includes(model),false);
+  assert.deepEqual(validateSelection({primary:model,fallback:current.fallback},withKey),{primary:model,fallback:current.fallback});
+  assert.deepEqual(providerFor(model),{model,provider:'gemini',key:undefined,url:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'});
+ }
+});
+
+test('Gemini verifies structured replies, streaming and CRM extraction using the requested model',async()=>{
+ for(const model of geminiModels){
+  const calls:string[]=[];
+  const request:typeof fetch=async(url,init)=>{
+   assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions');
+   assert.equal(new Headers(init?.headers).get('authorization'),'Bearer fixture-gemini');
+   assert.equal(init?.redirect,'error');
+   const body=JSON.parse(String(init?.body));
+   assert.equal(body.model,model);
+   assert.equal(body.reasoning_effort,'low');
+   assert.ok(body.max_tokens>0);
+   assert.equal(body.max_completion_tokens,undefined);
+   if(body.stream){
+    calls.push('stream');
+    const chunk={model,choices:[{delta:{content:'{"ok":true}'},finish_reason:'stop'}]};
+    return new Response(`data: ${JSON.stringify(chunk)}\n\ndata: [DONE]\n\n`,{headers:{'content-type':'text/event-stream'}});
+   }
+   assert.deepEqual(body.response_format,{type:'json_object'});
+   const extraction=body.messages.some((message:any)=>message.content.includes('You extract CRM evidence'));
+   calls.push(extraction?'extraction':'direct');
+   const content=extraction?{observations:[{kind:'field',field:'budgetAmount',value:1500000,quote:'150万印尼盾',subject:'customer',temporality:'current',change:'state'}]}:{ok:true};
+   return Response.json({model,choices:[{message:{content:JSON.stringify(content)},finish_reason:'stop'}]});
+  };
+  const verified=await probeModel(model,'low','fixture-gemini',request,'gemini');
+  assert.equal(verified.ok,true,JSON.stringify(verified));
+  assert.deepEqual(calls,['direct','stream','extraction']);
+  await assert.rejects(readAiReply(Response.json({model:'another-model',choices:[{message:{content:'{}'}}]}),()=>{},()=>{}, model),/model_mismatch/);
+ }
+});
 
 test('verified Claude credentials make the configured models selectable without a separate activation',()=>{
  const current={primary:'gpt-6-luna',fallback:'deepseek-v4-pro'};
@@ -123,7 +167,7 @@ test('only complete System Administrator can manage AI, not CRM Manager or Sales
  assert.equal(isAiAdministrator({roles:['access_admin'],permissions:permissions.slice(1)}),false);
 });
 test('model selection is allowlisted, different and strips unexpected properties',()=>{
- assert.deepEqual(aiModels,['gpt-6.2-sol','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','MiniMax-M3.1-Flash','deepseek-v4-pro','deepseek-flash','deepseek-chat','claude-haiku-5-5','claude-sonnet-5-5']);
+ assert.deepEqual(aiModels,['gpt-6.2-sol','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','gpt-4o','MiniMax-M3.1-Flash','deepseek-v4-pro','deepseek-flash','deepseek-chat','claude-haiku-5-5','claude-sonnet-5-5','gemini-3.5-flash-lite','gemini-3.8-flash']);
  for(const model of aiModels){
   const other=model==='gpt-6-luna'?'gpt-4o':'gpt-6-luna';
   assert.deepEqual(validateSelection({primary:model,fallback:other}),{primary:model,fallback:other});

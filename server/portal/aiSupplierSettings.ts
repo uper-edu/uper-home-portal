@@ -24,7 +24,8 @@ export function supplierViews(settings: Settings, keys: Record<string, boolean>)
 export function selectableAiModels(settings: Settings, suppliers: AiSupplierView[]): string[] {
   const available = new Set<string>(suppliers.filter(supplier => supplier.credentialReady).flatMap(supplier => supplier.models));
   // The older MiniMax model can still use its configured gateway until a direct provider is registered.
-  const templateModels = [...aiSupplierTemplates.anthropic.models,...(settings.suppliers?.minimax ? aiSupplierTemplates.minimax.models : [])];
+  const templateModels = aiSupplierIds.filter(id=>id!=='minimax'||settings.suppliers?.minimax)
+    .flatMap(id=>aiSupplierTemplates[id].models as readonly string[]);
   return aiModels.filter(model => !templateModels.some(candidate => candidate === model) || available.has(model) || usesModel(settings, model));
 }
 

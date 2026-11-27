@@ -1,5 +1,5 @@
 import {chatTokenUsage,type ChatTokenUsage} from './chatTokenUsage.ts';
-import {isClaudeModel} from '../../src/utils/aiModelSelection.ts';
+import {isClaudeModel,isGeminiModel} from '../../src/utils/aiModelSelection.ts';
 import {acceptedModel, claudeFinishReason, claudeTextBlock, decodeAiMessage, requestAiReply, type AiProvider} from './aiProviderRequest.ts';
 
 type ReplyProgress = { content: string; model?: string };
@@ -14,6 +14,7 @@ export async function readAiReply(response: Response, onProgress: (progress: Rep
   const streamed = response.headers.get("content-type")?.includes("text/event-stream") === true;
   let content = "", model: string | undefined, finish: string | undefined, done = false;
   const claude = requestedModel !== undefined && isClaudeModel(requestedModel);
+  const gemini = requestedModel !== undefined && isGeminiModel(requestedModel);
   let claudeUsage: {input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number} = {};
   function recordClaudeUsage(update: typeof claudeUsage | undefined) {
     claudeUsage = {...claudeUsage, ...update};
@@ -51,6 +52,7 @@ export async function readAiReply(response: Response, onProgress: (progress: Rep
     if (payload.usage) onUsage(payload.usage);
     if (payload.error) throw Error("Provider response error");
     model = payload.model || model;
+    if (gemini && model && (typeof model !== 'string' || !acceptedModel(requestedModel!, model))) throw Error('model_mismatch');
     const choice = payload.choices?.[0];
     finish = choice?.finish_reason || finish;
     content += (streamed ? choice?.delta?.content : choice?.message?.content) || "";
@@ -91,7 +93,8 @@ export async function readAiReply(response: Response, onProgress: (progress: Rep
   }
 
   if (finish === "length") throw Error("Answer truncated");
-  if (streamed && (!done || claude && (!model || !finish))) throw Error("Missing provider stream end marker");
+  if (streamed && (!done || (claude||gemini) && (!model || !finish))) throw Error("Missing provider stream end marker");
+  if (gemini && !model) throw Error('model_mismatch');
   if (finish && finish !== "stop") throw Error(`Provider stopped with finish_reason: ${finish}`);
   return { streamed, content, model };
 }

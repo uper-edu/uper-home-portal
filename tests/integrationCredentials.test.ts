@@ -112,7 +112,7 @@ test('direct credential setup preserves each service’s verification, replaceme
   mountIntegrationCredentials(app(routes) as any,{
     ...mountOptions,
     target:async(_db,slot)=>slot.type==='ai'?{
-      id:target,legacy:()=>slot.resource==='minimax'?undefined:{key:'legacy-fixture'},fields:['key'],context:[slot.resource,configuration],validation:'provider',
+      id:target,legacy:()=>['minimax','gemini'].includes(slot.resource)?undefined:{key:'legacy-fixture'},fields:['key'],context:[slot.resource,configuration],validation:'provider',
       validate:async values=>values.key==='verified-fixture'||{kind:'ai_auth_rejected'},
     }:slot.type==='lark-app'?{
       id:target,legacy:()=>({key:'legacy-fixture'}),fields:['key'],context:[configuration],validation:'provider',
@@ -238,6 +238,9 @@ test('direct credential setup preserves each service’s verification, replaceme
   handlers=defaultTargets;
   assert.deepEqual((await aiStatus('minimax')).data.context,['minimax','MiniMax-M3.1-Flash']);
   assert.deepEqual((await aiStatus('anthropic')).data.context,['anthropic','claude-haiku-5-5','claude-sonnet-5-5']);
+  const geminiStatus=await aiStatus('gemini');
+  assert.deepEqual(geminiStatus.data.context,['gemini','gemini-3.5-flash-lite','gemini-3.8-flash']);
+  assert.notEqual(geminiStatus.data.source,'legacy');
   modelSettings.current={...unchangedModels,fallback:'MiniMax-M3.1-Flash'};
   assert.equal((await aiAction(admin,'set',0,'verified-fixture','minimax')).data.error,'credential_minimax_legacy_in_use');
   modelSettings.current=unchangedModels;
@@ -256,6 +259,11 @@ test('direct credential setup preserves each service’s verification, replaceme
   assert.equal(modelSettings.suppliers?.minimax?.enabled,false);
   assert.equal(modelSettings.suppliers?.minimax?.verified,false);
   assert.equal((await aiStatus('minimax')).data.source,'revoked');
+  assert.equal((await aiAction(operator,'set',0,'verified-fixture','gemini')).status,403);
+  assert.equal((await aiAction(admin,'set',0,'verified-fixture','gemini')).data.outcome,'verified');
+  assert.equal((await aiStatus('gemini')).data.source,'managed');
+  assert.deepEqual(modelSettings.suppliers?.gemini?.models,['gemini-3.5-flash-lite','gemini-3.8-flash']);
+  assert.deepEqual(modelSettings.current,unchangedModels);
   function integrationAction(kind:string,action:string,revision:number,extra:object={},requestId=randomUUID()){
     return call(admin,'POST',{action,revision,requestId,...extra},undefined,undefined,kind,'default');
   }

@@ -3,8 +3,10 @@ export type ReasoningEffort=typeof reasoningEfforts[number];
 export const defaultReasoningEffort:ReasoningEffort='low';
 const reasoningModels=['gpt-6.2-sol','gpt-6.1-sol','gpt-6.1-terra','gpt-6-luna','MiniMax-M3.1-Flash'];
 export const claudeModels = ['claude-haiku-5-5', 'claude-sonnet-5-5'] as const;
+export const geminiModels = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'] as const;
 export const isClaudeModel = (model: string) => claudeModels.some(candidate => candidate === model);
-export const supportsReasoningEffort=(model:string)=>reasoningModels.includes(model)||isClaudeModel(model);
+export const isGeminiModel = (model: string) => geminiModels.some(candidate => candidate === model);
+export const supportsReasoningEffort=(model:string)=>reasoningModels.includes(model)||isClaudeModel(model)||isGeminiModel(model);
 
 export type AiSelection={
   primary:string;

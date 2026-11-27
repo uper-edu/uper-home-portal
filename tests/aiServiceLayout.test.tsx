@@ -28,27 +28,31 @@ test('Claude selections display in the shared model controls with independent ef
  assert.match(html,/备用模型推理强度/);
 });
 test('routing options show exact models and honor eligibility instead of hiding unavailable choices',()=>{
- const [haiku,sonnet,minimax]=['claude-haiku-5-5','claude-sonnet-5-5','MiniMax-M3.1-Flash'];
+ const [haiku,sonnet,minimax,gemini]=['claude-haiku-5-5','claude-sonnet-5-5','MiniMax-M3.1-Flash','gemini-3.8-flash'];
  const suppliers:AiSupplierView[]=[
   {id:'anthropic',name:'Anthropic',models:[haiku],registered:true,credentialReady:true,inUse:false},
   {id:'minimax',name:'MiniMax',models:[minimax],registered:true,credentialReady:true,inUse:false},
+  {id:'gemini',name:'Google (Gemini)',models:[gemini],registered:true,credentialReady:true,inUse:false},
  ];
  const choices=(models:string[],rows:AiSupplierView[]=suppliers)=>aiModelOptions({models,suppliers:rows},'zh');
- const options=choices([...data.models,haiku,minimax]);
+ const options=choices([...data.models,haiku,minimax,gemini]);
  assert.deepEqual(options.find(choice=>choice.value===minimax),{value:minimax,label:minimax});
  assert.deepEqual(options.find(choice=>choice.value===sonnet),{value:sonnet,label:sonnet,disabled:true,description:'此型号需要重新核验凭证'});
  const missing=choices(data.models,[]);
  assert.deepEqual(missing.find(choice=>choice.value===haiku),{value:haiku,label:haiku,disabled:true,description:'请先核验供应商凭证'});
+ assert.deepEqual(missing.find(choice=>choice.value===gemini),{value:gemini,label:gemini,disabled:true,description:'请先核验供应商凭证'});
+ assert.deepEqual(options.find(choice=>choice.value===gemini),{value:gemini,label:gemini});
  assert.equal(choices([...data.models,minimax],[]).find(choice=>choice.value===minimax)?.description,'直连密钥核验前使用旧网关');
  assert.match(render({selection:{...selection,fallback:sonnet},data:{...data,suppliers}}),/<button[^>]*type="submit"[^>]*disabled=""/);
 });
-test('all four default suppliers share the credential management entry and show exact model IDs',()=>{
+test('all five default suppliers share the credential management entry and show exact model IDs',()=>{
  const html=renderToStaticMarkup(<AiSupplierCatalog lang="zh"
   renderCredential={(id,label,info)=><tr key={id}><td>{label}{info}</td><td/><td>管理凭证</td></tr>}/>);
- for(const name of ['OpenAI','DeepSeek','Anthropic (Claude)','MiniMax'])assert.ok(html.includes(name));
+ for(const name of ['OpenAI','DeepSeek','Anthropic (Claude)','MiniMax','Google (Gemini)'])assert.ok(html.includes(name));
  assert.match(html,/Anthropic \(Claude\).*claude-haiku-5-5.*claude-sonnet-5-5/);
  assert.match(html,/MiniMax.*MiniMax-M3\.1-Flash/);
- assert.equal((html.match(/管理凭证/g)||[]).length,4);
+ assert.match(html,/Google \(Gemini\).*gemini-3\.5-flash-lite.*gemini-3\.8-flash/);
+ assert.equal((html.match(/管理凭证/g)||[]).length,5);
  assert.doesNotMatch(html,/新增供应商|启用供应商/);
 });
 test('editing has one test-and-save action and unknown activation replaces it with result lookup',()=>{

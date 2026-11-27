@@ -1,4 +1,4 @@
-import {defaultReasoningEffort, isClaudeModel, type ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
+import {defaultReasoningEffort, isClaudeModel, isGeminiModel, type ReasoningEffort} from '../../src/utils/aiModelSelection.ts';
 import {modelParameters} from './modelParameters.ts';
 
 export type AiProvider = {model: string; url: string; key?: string; provider?:string; reasoningEffort?: ReasoningEffort};
@@ -47,7 +47,7 @@ export function requestAiReply(request: typeof fetch, provider: AiProvider, mess
     {role:'system',content:'Return exactly one JSON object without Markdown fences or any text outside the JSON.'}, ...messages,
   ]:messages;
   return request(url, {
-    method: 'POST', signal, redirect:miniMaxDirect?'error':redirect,
+    method: 'POST', signal, redirect:miniMaxDirect||isGeminiModel(model)?'error':redirect,
     headers: {Authorization: 'Bearer ' + key, 'Content-Type': 'application/json'},
     body: JSON.stringify({
       model, messages:prompt,
@@ -78,6 +78,9 @@ export function decodeAiMessage(body: any, requestedModel: string) {
       content: Array.isArray(body.content) ? body.content.map(claudeTextBlock).join('') : '',
       finish: claudeFinishReason(body.stop_reason),
     };
+  }
+  if (isGeminiModel(requestedModel) && (typeof body.model !== 'string' || !acceptedModel(requestedModel, body.model))) {
+    throw Error('model_mismatch');
   }
   return {model: body.model || requestedModel, content: body.choices?.[0]?.message?.content || '', finish: body.choices?.[0]?.finish_reason};
 }
