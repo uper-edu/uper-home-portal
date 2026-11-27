@@ -932,17 +932,41 @@ function WallboardKpis({data,t,lang,compactMoney}:{data:SalesWallboardSnapshot;t
 
 function Wallboard({data,lang,t,stale}:{data:SalesWallboardSnapshot;lang:CrmLanguage;t:Translate;stale:boolean}){
   const board=useRef<HTMLDivElement>(null);
-  const [full,setFull]=useState(false);
+  const fullscreenPending=useRef(false);
+  const [fullscreen,setFullscreen]=useState<'native'|'viewport'|null>(null);
   useEffect(()=>{
-    const changed=()=>setFull(document.fullscreenElement===board.current);
+    const changed=()=>setFullscreen(mode=>document.fullscreenElement===board.current?'native':mode==='native'?null:mode);
     document.addEventListener('fullscreenchange',changed);
     return ()=>document.removeEventListener('fullscreenchange',changed);
   },[]);
-  const toggle=async()=>{
+  useEffect(()=>{
+    if(fullscreen!=='viewport')return;
+    const close=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'&&!event.defaultPrevented)setFullscreen(null);
+    };
+    document.addEventListener('keydown',close);
+    return ()=>document.removeEventListener('keydown',close);
+  },[fullscreen]);
+  const toggleFullscreen=async()=>{
+    const element=board.current;
+    if(!element||fullscreenPending.current)return;
+    if(fullscreen==='viewport'){
+      setFullscreen(null);
+      return;
+    }
+    const exiting=document.fullscreenElement===element;
+    fullscreenPending.current=true;
     try{
-      if(document.fullscreenElement===board.current)await document.exitFullscreen();
-      else await board.current?.requestFullscreen();
-    }catch{setFull(false);}
+      if(exiting)await document.exitFullscreen();
+      else if(document.fullscreenEnabled)await element.requestFullscreen({navigationUI:'hide'});
+    }catch{
+      // An embedded or background page can be denied native fullscreen.
+    }finally{
+      fullscreenPending.current=false;
+    }
+    if(element.isConnected){
+      setFullscreen(document.fullscreenElement===element?'native':exiting?null:'viewport');
+    }
   };
   const money=(value:number)=>formatCurrency(value,lang);
   const compact=new Intl.NumberFormat(languageTag[lang],{notation:'compact',maximumFractionDigits:1});
@@ -959,11 +983,12 @@ function Wallboard({data,lang,t,stale}:{data:SalesWallboardSnapshot;lang:CrmLang
     wallboardSourceIdentified(row.source)&&row.first>(top?.first??0)?row:top,undefined);
   const short=data.upcoming.reduce<WallboardClass|undefined>((earliest,row)=>
     enrollmentClassShortfall(row)>0&&(!earliest||classStart(row)<classStart(earliest))?row:earliest,undefined);
-  return <div className="ops-dash-tv-outer" ref={board} data-fullscreen={full||undefined}>
+  const fullscreenAction=fullscreen==='native'?'closeFullscreen':fullscreen==='viewport'?'closeWallboardViewport':'fullscreen';
+  return <div className="ops-dash-tv-outer" ref={board} data-fullscreen={fullscreen??undefined}>
     <div className="ops-dash-tv">
       <header><div><span>UPER</span> <strong>{t('tvTitle')}</strong></div>
         <div><time dateTime={data.asOf}>{formatWib(data.asOf)} WIB</time>
-          <AdminPageAction label={t(full?'closeFullscreen':'fullscreen')} icon={full?Minimize:Maximize} onClick={()=>void toggle()}/></div>
+          <AdminPageAction label={t(fullscreenAction)} icon={fullscreen?Minimize:Maximize} onClick={toggleFullscreen}/></div>
       </header>
       <div className="ops-dash-tv-strip ops-dash-tv-summary">
         <strong>{leader?<>{sourceTitle(leader.source,t)} {t('tvChannelFirst')} · {leader.first} {t('tvLearnerUnit')}</>:t('tvMonthCompare')}</strong>

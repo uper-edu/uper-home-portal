@@ -149,10 +149,14 @@ button.ops-dash-link{padding:0;border:0;background:none;cursor:pointer;text-alig
 .ops-dash-tv-outer{
   background:#0d1717;border-radius:14px;container-type:inline-size;overflow:hidden;
 }
-.ops-dash-tv-outer:fullscreen{
+.ops-dash-tv-outer:is(:fullscreen,[data-fullscreen="viewport"]){
   display:flex;flex-direction:column;align-items:center;overflow:auto;overscroll-behavior:contain;border-radius:0;
 }
-.ops-dash-tv-outer:fullscreen .ops-dash-tv{
+.ops-dash-tv-outer[data-fullscreen="viewport"]{
+  position:fixed;inset:0;z-index:1000;
+}
+body:has(.ops-dash-tv-outer[data-fullscreen="viewport"]){overflow:hidden}
+.ops-dash-tv-outer:is(:fullscreen,[data-fullscreen="viewport"]) .ops-dash-tv{
   width:min(100%,calc(100dvh * 16 / 9));
   min-height:min(100dvh,calc(100dvw * 9 / 16));
   flex:none;margin-block:auto;container-type:inline-size;

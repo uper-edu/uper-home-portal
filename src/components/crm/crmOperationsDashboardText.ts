@@ -106,6 +106,7 @@ const words={
   refresh:['Refresh','Muat ulang','刷新'],
   fullscreen:['Full screen','Layar penuh','全屏展示'],
   closeFullscreen:['Exit full screen','Keluar dari layar penuh','退出全屏'],
+  closeWallboardViewport:['Exit expanded view','Keluar dari tampilan diperluas','退出窗口铺满'],
   month:['Month to date','Bulan ini','本月至今'],
   week:['Last 7 days','7 hari terakhir','近 7 天'],
   days:['Last 30 days','30 hari terakhir','近 30 天'],
