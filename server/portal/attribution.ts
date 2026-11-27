@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {promotionEvidenceKeys, promotionIdPattern, promotionKindForMedium, promotionLandingPaths} from '../../src/utils/promotionNavigation.ts';
 import {canonicalCampaignId} from '../../src/utils/organicCampaign.ts';
+import {threadsPromotionId} from '../../src/utils/threadsPromotion.ts';
 /** Marketing attribution is first-touch metadata, never an identity or permission grant. */
 export function firstTouchAttribution(
   existing: Record<string, any>,
@@ -47,13 +48,14 @@ async function campaignForCode(db: any, code: string, lockCampaign: boolean) {
 
 export async function resolvePromotion(db: any, p: string, lockCampaign = false) {
  if (!promotionIdPattern.test(p)) return null;
- const index = (await db.query('SELECT campaign_id FROM campaign_promotion_index WHERE p=:p1', [p])).rows[0];
- if (!index) return null;
+ const id = threadsPromotionId(p) ?? p;
+ const index = (await db.query('SELECT campaign_id FROM campaign_promotion_index WHERE p=:p1', [id])).rows[0];
+ if (!index || (id !== p && index.campaign_id !== 'social-bio')) return null;
  const row = (await db.query(lockCampaign
   ? 'SELECT id,code,config FROM trial_campaigns WHERE id=:p1 FOR SHARE'
   : 'SELECT id,code,config FROM trial_campaigns WHERE id=:p1', [index.campaign_id])).rows[0];
  if (!row) return null;
- const link = row.config?.promotionLinks?.find((item: any) => item.id === p);
+ const link = row.config?.promotionLinks?.find((item: any) => item.id === id);
  return link ? {campaign: {...row.config, id:row.id, code:row.code}, link} : null;
 }
 

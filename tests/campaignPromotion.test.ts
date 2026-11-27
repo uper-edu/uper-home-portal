@@ -5,6 +5,10 @@ import {createServer} from 'node:net';
 import {promotionInput,promotionIdPrefix,campaignPromotionPath,campaignPromotionShortUrl,campaignPromotionUrl,promotionIdForShortSlug,PROMOTION_EXPERIENCE} from '../src/utils/campaignPromotion.ts';
 import {allocatePromotionShortCode,backfillPromotionShortLinks,presetPromotionOwner,promotionShortCodePattern} from '../cloud/mysql/promotion-short-links.mjs';
 import {systemCampaignDefaults} from '../cloud/mysql/system-campaign-defaults.mjs';
+import {campaignPromotionResults} from '../src/utils/crmCampaignMetrics.ts';
+import {promotionAttribution} from '../server/portal/attribution.ts';
+
+const legacyThreadsIds=['threads-social-profile-bio-261110092327','threads-social-profile-bio-261110093006'];
 test('promotion configuration validates actual experience, source encoding and canonical link',()=>{
  const v=promotionInput({source:' Instagram ',medium:'paid_social',language:'en',experience:PROMOTION_EXPERIENCE});
  assert.equal(v.source,'instagram');
@@ -39,12 +43,12 @@ test('short-code allocation retries a collision without overwriting another prom
  assert.deepEqual([...entries],[['222222','old-p'],['333333','new-p']]);
  await assert.rejects(allocatePromotionShortCode('new-p',async()=>{throw Error('Storage error');}),/Storage error/);
 });
-test('Threads presets reuse the two production IDs and accept already issued short codes',async()=>{
+test('Threads uses the short IDs and keeps already issued aliases',async()=>{
  const records=systemCampaignDefaults('2026-11-10T00:00:00.000Z');
  const threads=records.find(row=>row.id==='social-bio').promotionLinks.filter(link=>link.source==='threads'&&link.landingPath!=='/enrollment');
  assert.deepEqual(threads.map(link=>[link.id,link.landingPath]),[
-  ['threads-social-profile-bio-261110092327','/link'],
-  ['threads-social-profile-bio-261110093006','/chat'],
+  ['bio-th','/link'],
+  ['chat-th','/chat'],
  ]);
  const index=threads.map(link=>({p:link.id,campaign_id:'social-bio'}));
  const saved=index.map(({p},i)=>({p,short_code:i===0?'abc234':'def567'}));
@@ -58,6 +62,7 @@ test('Threads presets reuse the two production IDs and accept already issued sho
   assert.equal(campaignPromotionShortUrl(link.id,'https://example.test',saved[i].short_code),'https://example.test/s/'+slug);
   assert.equal(promotionIdForShortSlug(slug),link.id);
   assert.equal(promotionIdForShortSlug(link.id),link.id);
+  assert.equal(promotionIdForShortSlug(legacyThreadsIds[i]),link.id);
   assert.deepEqual(Object.fromEntries(new URL(campaignPromotionUrl(link,'https://example.test','social-bio')).searchParams),{
    p:link.id,lang:'id',utm_source:'threads',utm_medium:'social',utm_campaign:'social-bio',utm_content:'profile-bio',
   });
@@ -65,6 +70,31 @@ test('Threads presets reuse the two production IDs and accept already issued sho
  await backfillPromotionShortLinks(db);
  saved.length=0;
  await backfillPromotionShortLinks(db);
+});
+
+test('historical Threads URLs and CRM first-touch totals use the same canonical promotion',async()=>{
+ const campaign=systemCampaignDefaults('at').find(row=>row.id==='social-bio');
+ const old=legacyThreadsIds[0];
+ const db={query:async(sql:string,args:string[])=>{
+  if(sql.includes('campaign_promotion_index')){
+   assert.deepEqual(args,['bio-th']);
+   return {rows:[{campaign_id:'social-bio'}]};
+  }
+  return {rows:[{id:'social-bio',code:'social-bio',config:campaign}]};
+ }};
+ const oldTouch=await promotionAttribution(db,{}, {promotionLinkId:old,promotionParameters:[{key:'p',value:old}]});
+ const newTouch=await promotionAttribution(db,{}, {promotionLinkId:'bio-th'});
+ assert.equal(oldTouch.rawPromotionLinkId,old);
+ assert.equal(oldTouch.promotionLinkId,'bio-th');
+ assert.equal(newTouch.promotionLinkId,'bio-th');
+ const results=campaignPromotionResults([
+  {id:'older',...oldTouch,promotionLinkId:old,verifiedPayments:{sources:[{sourceLeadId:'older',received:200,refunded:50,net:150}]}},
+  {id:'newer',...newTouch},
+ ],campaign);
+ const row=results.find(item=>item.key==='bio-th');
+ assert.equal(row?.customers,2);
+ assert.equal(row?.net,150);
+ assert.equal(results.some(item=>item.key===old||item.key===':unverified'),false);
 });
 if(process.env.MYSQL_NATIVE_TEST_ENV){
  const {setupNativeTest}=await import('./helpers/mysql.mjs');
@@ -81,7 +111,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
    const {openTrialDatabase}=await import('../cloud/mysql/database.mjs');
    const {migrate}=await import('../cloud/mysql/migrate.mjs');
    const db=await openTrialDatabase(process.env);
-   const ids=['threads-social-profile-bio-261110092327','threads-social-profile-bio-261110093006'];
+   const ids=['bio-th','chat-th'];
    const aliases=['abc234','def567'];
    try{
     const readCampaign=async()=>(await db.query("SELECT config FROM trial_campaigns WHERE id='social-bio'"))[0][0].config;
@@ -94,7 +124,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
     const [initialAliases]=await db.query('SELECT p FROM campaign_promotion_short_links');
     assert.equal(initialAliases.length,0);
 
-    // Recreate an upgraded database where these links already existed as custom entries.
+    // Verify a migrated database with previously issued short codes.
     const existing=structuredClone(initial);
     const threads=ids.map((id,i)=>{
      const link=existing.promotionLinks.find(item=>item.id===id);
@@ -114,7 +144,7 @@ if(process.env.MYSQL_NATIVE_TEST_ENV){
      assert.deepEqual(saved,ids.map((p,i)=>({p,short_code:aliases[i]})));
     }
     for(const [i,link] of threads.entries()){
-     for(const slug of [aliases[i],link.id,['bio-th','chat-th'][i]]){
+     for(const slug of [aliases[i],link.id,legacyThreadsIds[i]]){
       const redirect=await fetch(process.env.APP_URL+'/s/'+slug,{redirect:'manual'});
       assert.equal(redirect.status,302);
       assert.equal(redirect.headers.get('location'),campaignPromotionPath(link,'social-bio'));

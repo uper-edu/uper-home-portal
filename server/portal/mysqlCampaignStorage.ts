@@ -15,6 +15,7 @@ import { allocateCampaignCode } from "./campaignCodeAllocation.ts";
 import { CAMPAIGN_LINK_PLACEHOLDER } from "../../src/utils/campaignCode.ts";
 import { validCampaignBudget, CAMPAIGN_BUDGET_ERROR } from "../../src/utils/campaignBudget.ts";
 import {attachPromotionShortCodes,hasPromotionCustomerAttribution,promotionShortCodes,removePromotionIndexes} from './campaignPromotion.ts';
+import {canonicalCampaignPromotionId} from '../../src/utils/threadsPromotion.ts';
 export function loadCampaigns(){return campaignsContext.getStore() || [];}
 export async function getCurrentCampaigns(employee?: any) {
  const campaigns = loadCampaigns();
@@ -48,11 +49,12 @@ export async function getCurrentCampaigns(employee?: any) {
  for(const row of journeyRows){
   if(!visibleCustomers.has(row.customer_id))continue;
   const links=enrollmentByCampaign.get(row.campaign_id)??new Map();
-  const totals=links.get(row.promotion_id)??{submitted:0,seats:0,confirmed:0};
+  const promotionId=canonicalCampaignPromotionId(row.campaign_id,row.promotion_id);
+  const totals=links.get(promotionId)??{submitted:0,seats:0,confirmed:0};
   totals.submitted+=Number(row.submitted);
   totals.seats+=Number(row.seats);
   totals.confirmed+=Number(row.confirmed);
-  links.set(row.promotion_id,totals);
+  links.set(promotionId,totals);
   enrollmentByCampaign.set(row.campaign_id,links);
  }
  return campaigns.map(campaign => ({

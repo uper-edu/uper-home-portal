@@ -1,5 +1,6 @@
 import type {CampaignPromotionLink} from '../types/crmCampaign.ts';
 import {promotionLandingPaths, promotionKindForMedium, promotionCodePattern} from './promotionNavigation';
+import {threadsPromotionId} from './threadsPromotion';
 
 export const PROMOTION_EXPERIENCE = 'questionnaire_assessment_consultation';
 export const PROMOTION_EXPERIENCE_LABEL = 'Questionnaire → assessment when applicable → AI consultation';
@@ -42,18 +43,12 @@ export function campaignPromotionUrl(link:CampaignPromotionLink,origin:string,ca
 
 export const PROMOTION_SHORT_CODE_PREFIX = '/s';
 
-const presetShortSlugs = new Map([
- ['threads-social-profile-bio-261110092327','bio-th'],
- ['threads-social-profile-bio-261110093006','chat-th'],
-]);
-const presetIdsByShortSlug = new Map([...presetShortSlugs].map(([id,slug])=>[slug,id]));
-
 export function promotionIdForShortSlug(slug:string) {
- return presetIdsByShortSlug.get(slug) ?? slug;
+ return threadsPromotionId(slug) ?? slug;
 }
 
 export function campaignPromotionShortUrl(id:string,origin:string,shortCode?:string) {
- const path=`${PROMOTION_SHORT_CODE_PREFIX}/${encodeURIComponent(presetShortSlugs.get(id) ?? shortCode ?? id)}`;
+ const path=`${PROMOTION_SHORT_CODE_PREFIX}/${encodeURIComponent(threadsPromotionId(id) ?? shortCode ?? id)}`;
  return new URL(path,origin).toString();
 }
 

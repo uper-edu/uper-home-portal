@@ -9,6 +9,7 @@ import evergreenLinks from '../src/data/evergreenPromotionLinks.json' with {type
 import {defaultRules} from '../server/portal/policy.ts';
 import {systemCampaignDefaults} from '../cloud/mysql/system-campaign-defaults.mjs';
 import {SYSTEM_LARK_GROUP_NAME} from '../server/portal/larkSystemChannels.ts';
+import {canonicalCampaignPromotionId} from '../src/utils/threadsPromotion.ts';
 
 function fixture(){
   const tables=[...spec.baseline,...Object.keys(spec.tables)].map(name=>({name,engine:'InnoDB'}));
@@ -92,7 +93,8 @@ test('manual seed SQL carries exactly the system presets that startup used to in
   assert.deepEqual(rule,defaultRules.find(item=>item.event==='lead.assigned'));
   const presets=[...script.matchAll(/'(\{"id":"[^']*\})'/g)].map(match=>parse(match[1]));
   const expected=systemCampaignDefaults('at').find(record=>record.id==='social-bio').promotionLinks.map(({createdAt,...link})=>link);
-  assert.deepEqual(presets,expected);
+  // The historical seed precedes the manually executed Threads ID cutover.
+  assert.deepEqual(presets.map(link=>({...link,id:canonicalCampaignPromotionId('social-bio',link.id)})),expected);
   const groupName=script.match(/CONCAT\('(Lark )',CONVERT\(0x([0-9A-F]+) USING utf8mb4\)\)/);
   assert.equal(groupName[1]+Buffer.from(groupName[2],'hex').toString('utf8'),SYSTEM_LARK_GROUP_NAME);
   assert.doesNotMatch(script,/\b(?:DROP TABLE|TRUNCATE|FOREIGN KEY|REFERENCES|DELETE FROM|ALTER TABLE|CREATE TABLE)\b/i);

@@ -207,6 +207,21 @@ test('one browser lookup is shared and conflicting promotion IDs never hit the n
   assert.equal(calls,1);
 });
 
+test('browser lookup accepts the canonical Threads ID for a saved long URL only in social-bio', async t => {
+  const valid={campaignId:'social-bio',campaignCode:'social-bio',source:'threads',medium:'social',
+    language:'id',promotionKind:'unpaid'};
+  const request=t.mock.method(globalThis,'fetch',async(url:string)=>Response.json({
+    promotion:url.endsWith('092327')
+      ? {...valid,id:'bio-th',landingPath:'/link'}
+      : {...valid,id:'chat-th',landingPath:'/chat',campaignId:'other-campaign'},
+  }));
+  const initial=await lookupPromotion(new URLSearchParams('p=threads-social-profile-bio-261110092327'));
+  assert.equal(initial?.state,'verified');
+  if(initial?.state==='verified')assert.equal(initial.promotion.id,'bio-th');
+  assert.deepEqual(await lookupPromotion(new URLSearchParams('p=threads-social-profile-bio-261110093006')),{state:'unavailable'});
+  assert.equal(request.mock.callCount(),2);
+});
+
 test('a delayed promotion response cannot replace the timed-out context', async t => {
   let finish!: (response: Response) => void;
   let signal: AbortSignal | null | undefined;

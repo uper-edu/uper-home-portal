@@ -2,6 +2,7 @@ import type {CrmCampaignRecord} from '../types/crmCampaign';
 import {promotionKindForMedium, type PromotionKind} from './promotionNavigation';
 import {hasConfirmedEnrollment} from './crmEnrollment';
 import { matchesCampaign } from "./crmCampaignLink.ts";
+import { canonicalCampaignPromotionId } from './threadsPromotion';
 export function campaignMetrics(leads: any[], campaign: any) {
   const unique = [
     ...new Map(leads.map((l, i) => [l.id || `record-${i}`, l])).values(),
@@ -78,10 +79,11 @@ export type PromotionResultRow = {
 export function promotionResultKey(lead: any, campaign: CrmCampaignRecord): string {
   const reviewed = lead.promotionReview;
   if (reviewed?.status === 'linked' && reviewed.campaignId === campaign.id) {
-    return reviewed.linkId ? ':manual:' + reviewed.linkId : ':manual-campaign';
+    return reviewed.linkId ? ':manual:' + canonicalCampaignPromotionId(campaign.id,reviewed.linkId) : ':manual-campaign';
   }
   if (reviewed?.status === 'invalid') return ':invalid';
-  const p = lead.promotionLinkStatus === 'verified' ? lead.promotionLinkId : undefined;
+  const p = lead.promotionLinkStatus === 'verified' && lead.promotionLinkId
+    ? canonicalCampaignPromotionId(campaign.id,lead.promotionLinkId) : undefined;
   if (p && campaign.promotionLinks?.some(link => link.id === p)) return p;
   if (lead.promotionLinkStatus === 'unverified' || lead.rawPromotionLinkId || p) return ':unverified';
   return campaign.code === 'organic' ? ':untagged' : ':campaign';

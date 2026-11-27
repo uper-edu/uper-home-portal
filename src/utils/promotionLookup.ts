@@ -1,4 +1,5 @@
 import { promotionIdentity, promotionLandingPaths, promotionCodePattern, type PublicPromotion } from './promotionNavigation';
+import { canonicalCampaignPromotionId } from './threadsPromotion';
 
 type Lookup = { state: 'verified'; promotion: PublicPromotion } | { state: 'unverified' | 'unavailable' };
 type CacheEntry = { lookup: Lookup | Promise<Lookup>; retryAfter?: number; timedOut?: boolean; offline?: boolean; languageRetry?: Promise<Lookup> };
@@ -24,7 +25,7 @@ function requestPromotion(p:string, timeout:number, onTimeout?:()=>void):Promise
       if (response.status === 404 || response.status === 400) return { state: 'unverified' };
       if (!response.ok) return { state: 'unavailable' };
       const { promotion } = await response.json() as { promotion: PublicPromotion };
-      if (promotion?.id === p && promotionLandingPaths.includes(promotion.landingPath)
+      if (promotion?.id === canonicalCampaignPromotionId(promotion?.campaignId,p) && promotionLandingPaths.includes(promotion.landingPath)
         && typeof promotion.campaignId==='string' && promotion.campaignId.trim()
         && validCode(promotion.source) && validCode(promotion.medium) && validCode(promotion.campaignCode)
         && ['unpaid','paid','unclassified'].includes(promotion.promotionKind)

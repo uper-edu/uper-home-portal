@@ -27,10 +27,25 @@ v<YYYYMMDDHHMMSS>_<简短用途>.sql
 | `v20261126213651_empty_portal_schema.sql` | 2026-11-26 21:36:51 | 全新 MySQL 8 空库，当前 v20 启动契约的 70 张表 | 按批次标记建立完整结构，核对列与索引后登记 1–20；有归属且无数据的中断可续跑 | 空库 ①，核对库名后手工执行 | 结构、门禁、同名表保护、中断续跑及重跑见空库测试 |
 | `v20261126213844_empty_portal_system.sql` | 2026-11-26 21:38:44 | 空库 ① 已完成 | 建立系统初值；公司 test 可在同一事务合并获批的经营初值、教师附件和运营配置 | 空库 ②，核对环境后手工执行；公司 test 的私有业务输入与此脚本同一会话执行 | 目标库绑定、启动门禁、事务回滚与保留后续编辑见空库测试 |
 | `v20261126213845_empty_portal_accounts.sql` | 2026-11-26 21:38:45 | 空库 ② 已完成，账号未初始化 | 以 local 3000 的七种角色和 11 个登录名为模板，只开户经批准且提供新临时密码的账号 | 空库 ③，在同一客户端会话先读私有开户文件，再手工执行 | 角色、首次改密、销售越权及重跑见空库测试 |
+| `v20261127020339_threads_promotion_ids.sql` | 2026-11-27 02:03:39 | MySQL 8、v20 就绪、`social-bio` 已初始化 | 仅把两条 Threads 推广 ID 改为 `bio-th`、`chat-th`，同步推广索引和已发放的短码。客户与报名历史保留原始 ID | 关闭应用和 worker 后手工执行。新库先完成系统初值；已有库在切换新版前执行 | 独立库覆盖原 ID、新 ID、重复执行、冲突回滚和切换前反向恢复 |
 
 ### 全新空库初始化
 
 按表中空库 ① → ② → ③ 的顺序执行。需要干净的目标库、独立核对的库名、环境和获批开户清单。开户文件根据新临时密码离线生成，始终存放在私有位置。完成后的脚本重跑保留账号改密、权限调整、运营配置和业务数据。公司 test 重建按手册的 [经营初值步骤](../docs/operations/manual-database-startup.md#公司-test-经营初值)准备独立私有 SQL。空库中断与回退使用 [空库手工初始化手册](../docs/operations/manual-database-startup.md#全新空库初始化)。配套测试为 [manualEmptyDatabase.mysql.test.mjs](../tests/manualEmptyDatabase.mysql.test.mjs)。
+
+### Threads 推广 ID 切换
+
+核对实际库名、保存推广配置及索引备份，并在停写窗口执行。使用 MySQL 8 批处理客户端，遇错即停。已有库先具备 v20 结构和 `social-bio` 系统预设。新库在系统初值完成后执行，私有初值含旧 ID 或短 ID 均可。新版启动前须核对索引已包含两个短 ID。
+
+```sh
+mysql --host=<主机> --port=<端口> --user=<账号> -p --batch --default-character-set=utf8mb4 \
+  --init-command="SET @uper_expected_database='<核定库名>', @uper_threads_direction='forward'" \
+  <核定库名> < sql/v20261127020339_threads_promotion_ids.sql
+```
+
+核对 `social-bio` 的两条配置、推广索引和已发放的短码。新旧短链应分别到达 `/link?p=bio-th` 和 `/chat?p=chat-th`，并保留原 UTM 参数。核对客户与报名统计，重跑应零变更。
+
+失败时事务回滚。若留下 `uper_threads_promotion_ids_20261127020339` 例程，用 `SHOW CREATE PROCEDURE` 比对脚本定义，确认归属后清理再重试。新版承接流量前，可在停写时将同一命令的方向改为 `reverse`，核对原 ID 和短码恢复后切回旧应用。若新版已承接流量，保留现有 ID 和业务写入并向前修复。v20 整体回退前，须先核对这一步的状态。
 
 ### `95eea57` → v20 批次：前置版本、执行顺序与回退
 

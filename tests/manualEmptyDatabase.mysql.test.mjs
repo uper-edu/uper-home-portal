@@ -19,7 +19,10 @@ const files=[
   'v20261126213651_empty_portal_schema.sql',
   'v20261126213844_empty_portal_system.sql',
   'v20261126213845_empty_portal_accounts.sql',
+  'v20261127020339_threads_promotion_ids.sql',
 ];
+const threadsRoutine='uper_threads_promotion_ids_20261127020339';
+const oldThreadsIds=['threads-social-profile-bio-261110092327','threads-social-profile-bio-261110093006'];
 const routineNames=['schema','system','accounts'].map(step=>'uper_bootstrap_empty_'+step+'_v20');
 const expectedStaff={
   Eric:["Eric Wang",["finance"]],
@@ -60,7 +63,9 @@ test('manual empty MySQL bootstrap, recovery and academic permissions',{
   assert.equal(Number(server.isolated),1);
   assert.equal(server.scheduler,'OFF');
 
-  const [schema,system,accounts]=await Promise.all(files.map(file=>readFile(join(root,'sql',file),'utf8')));
+  const [schema,system,accounts,threads]=await Promise.all(files.map(file=>readFile(join(root,'sql',file),'utf8')));
+  const forward="SET @uper_threads_direction='forward';\n"+threads;
+  const reverse="SET @uper_threads_direction='reverse';\n"+threads;
   const sha=value=>createHash('sha256').update(value).digest('hex');
   const binary=name=>join(process.env.MYSQL_BIN_DIRECTORY ?? '.',name);
   assert.ok(process.env.MYSQL_BIN_DIRECTORY,'Set the matching MySQL client bin directory');
@@ -196,7 +201,52 @@ test('manual empty MySQL bootstrap, recovery and academic permissions',{
     await removeFixtureRoutine(routineNames[1]);
     assert.equal(persisted(primary),before);
     run(primary,system);
+    await refuses(/promotion preset bio-th/);
+    run(primary,forward);
     await refuses(/unprepared accounts setting/);
+  });
+
+  await t.test('Threads ID cutover rolls back conflicts, preserves legacy links and is reversible before traffic',async()=>{
+    const campaignDb=await createSchema();
+    run(campaignDb,schema);
+    run(campaignDb,system);
+    await useSchema(campaignDb);
+    const clearFailedRoutine=async()=>{
+      const [[row]]=await admin.query('SHOW CREATE PROCEDURE '+mysql.escapeId(threadsRoutine));
+      assert.match(row['Create Procedure'],/uper:threads:20261127020339/);
+      await admin.query('DROP PROCEDURE '+mysql.escapeId(threadsRoutine));
+    };
+    await admin.execute("INSERT INTO campaign_promotion_short_links(short_code,p) VALUES('abc234',?)",[oldThreadsIds[0]]);
+    await admin.execute("INSERT INTO portal_leads(id,business_number,profile) VALUES('history','TEST-HISTORY',JSON_OBJECT('promotionLinkId',?))",[oldThreadsIds[0]]);
+    const original=persisted(campaignDb);
+    run(campaignDb,forward,{expected:primary,failure:/Invalid JSON text/});
+    assert.equal(persisted(campaignDb),original);
+    await admin.query("INSERT INTO campaign_promotion_index(p,campaign_id) VALUES('chat-th','organic')");
+    const conflicting=persisted(campaignDb);
+    run(campaignDb,forward,{failure:/ownership conflict/});
+    await clearFailedRoutine();
+    assert.equal(persisted(campaignDb),conflicting);
+    await admin.query("DELETE FROM campaign_promotion_index WHERE p='chat-th'");
+    assert.equal(persisted(campaignDb),original);
+    run(campaignDb,forward);
+    const migrated=persisted(campaignDb);
+    assert.notEqual(migrated,original);
+    assert.deepEqual((await admin.query("SELECT p FROM campaign_promotion_short_links WHERE short_code='abc234'"))[0],[{p:'bio-th'}]);
+    assert.equal((await admin.query("SELECT profile FROM portal_leads WHERE id='history'"))[0][0].profile.promotionLinkId,oldThreadsIds[0]);
+    assert.equal(await count('campaign_promotion_index'),14);
+    run(campaignDb,forward);
+    assert.equal(persisted(campaignDb),migrated);
+    run(campaignDb,reverse);
+    assert.equal(persisted(campaignDb),original);
+    run(campaignDb,reverse);
+    assert.equal(persisted(campaignDb),original);
+    run(campaignDb,forward);
+    await admin.query("UPDATE portal_leads SET profile=JSON_SET(profile,'$.promotionLinkId','bio-th') WHERE id='history'");
+    const serving=persisted(campaignDb);
+    run(campaignDb,reverse,{failure:/Short Threads IDs are already in use/});
+    await clearFailedRoutine();
+    assert.equal(persisted(campaignDb),serving);
+    await useSchema(primary);
   });
 
   credentialDir=await mkdtemp(join(directory,'account-fixture-'));
@@ -243,6 +293,19 @@ test('manual empty MySQL bootstrap, recovery and academic permissions',{
     }
     assert.equal(health?.status,200,app.output());
     assert.equal((await health.json()).status,'ok');
+    for(const [index,id] of ['bio-th','chat-th'].entries()){
+      for(const slug of [id,oldThreadsIds[index]]){
+        const response=await fetch(app.url+'/s/'+slug,{redirect:'manual'});
+        assert.equal(response.status,302);
+        const landing=new URL(response.headers.get('location'),app.url);
+        assert.equal(landing.pathname,index===0?'/link':'/chat');
+        assert.equal(landing.searchParams.get('p'),id);
+        assert.equal(landing.searchParams.get('utm_source'),'threads');
+        assert.equal(landing.searchParams.get('utm_campaign'),'social-bio');
+        const promotion=await fetch(app.url+'/api/promotion-links/'+slug);
+        assert.equal((await promotion.json()).promotion.id,id);
+      }
+    }
 
     function client(){
       let cookie='';
@@ -275,6 +338,36 @@ test('manual empty MySQL bootstrap, recovery and academic permissions',{
       assert.deepEqual([...after.data.employee.roles].sort(),[...expectedRoles].sort());
       if(expectedRoles.includes('crm_leader')){
         assert.deepEqual(after.data.employee.grants['crm.dashboard.kpi.manage'],['all']);
+      }
+      if(id==='Robert'){
+        const historical={lead:'threads-older',order:randomUUID(),promotion:oldThreadsIds[0]};
+        const current={lead:'threads-newer',order:randomUUID(),promotion:'bio-th'};
+        const entries=[historical,current];
+        try{
+          for(const entry of entries){
+            await admin.execute('INSERT INTO portal_leads(id,business_number,profile) VALUES(?,?,?)',[
+              entry.lead,entry.lead,JSON.stringify({id:entry.lead,campaignId:'social-bio',promotionLinkStatus:'verified',promotionLinkId:entry.promotion}),
+            ]);
+            await admin.execute("INSERT INTO enrollment_customer_records(kind,record_id,lead_id,created_at) VALUES('order',?,?,UTC_TIMESTAMP(6))",[entry.order,entry.lead]);
+            await admin.execute("INSERT INTO enrollment_record_attribution(kind,record_id,attribution) VALUES('order',?,?)",[
+              entry.order,JSON.stringify({campaignId:'social-bio',promotionId:entry.promotion,verified:true}),
+            ]);
+          }
+          await admin.execute("INSERT INTO enrollment_notification_receipts(event_key,channel,kind,subject_id,payload,state,recorded_at) VALUES('threads-fixture','email','payment_confirmed',?,JSON_OBJECT(),'accepted',UTC_TIMESTAMP(6))",[historical.order]);
+          const campaign=await request('/api/crm/campaigns/social-bio');
+          assert.equal(campaign.status,200,JSON.stringify(campaign.data));
+          const report=campaign.data.campaign.promotionResults;
+          assert.equal(report.find(row=>row.key==='bio-th').customers,2);
+          assert.deepEqual(report.find(row=>row.key==='bio-th').enrollmentJourney,{submitted:2,seats:2,confirmed:1});
+          assert.equal(report.some(row=>row.key===oldThreadsIds[0]||row.key===':unverified'),false);
+        }finally{
+          await admin.query("DELETE FROM enrollment_notification_receipts WHERE event_key='threads-fixture'");
+          for(const {lead,order} of entries){
+            await admin.execute('DELETE FROM enrollment_record_attribution WHERE record_id=?',[order]);
+            await admin.execute('DELETE FROM enrollment_customer_records WHERE record_id=?',[order]);
+            await admin.execute('DELETE FROM portal_leads WHERE id=?',[lead]);
+          }
+        }
       }
       const classes=await request('/api/crm/enrollment/classes');
       if(!expectedRoles.includes('academic_admin')){
@@ -356,6 +449,7 @@ test('manual empty MySQL bootstrap, recovery and academic permissions',{
     await removeFixtureRoutine(routineNames[1]);
     assert.equal(persisted(business),before);
     run(business,privateSeed.sql+system);
+    run(business,forward);
     run(business,payload+accounts);
     await verifyStartupDatabase(admin,business,{PORTAL_ENV:'test',PLATFORM_MODE:'local'});
     assert.equal(await count('enrollment_classes'),1);

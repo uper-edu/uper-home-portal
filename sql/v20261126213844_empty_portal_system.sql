@@ -152,8 +152,11 @@ bootstrap: BEGIN
     END IF;
     IF EXISTS(SELECT 1 FROM cms_collections c LEFT JOIN uper_seed_cms_collections s USING(name) WHERE s.name IS NULL)
        OR EXISTS(SELECT 1 FROM notification_rules r LEFT JOIN uper_seed_notification_rules s USING(id) WHERE s.id IS NULL)
-       OR EXISTS(SELECT 1 FROM campaign_promotion_index p LEFT JOIN uper_seed_campaign_promotion_index s USING(p)
-           WHERE s.p IS NULL OR s.campaign_id<>p.campaign_id)
+       OR EXISTS(SELECT 1 FROM campaign_promotion_index p LEFT JOIN uper_seed_campaign_promotion_index s
+           ON s.campaign_id=p.campaign_id AND (s.p=p.p
+             OR (p.campaign_id='social-bio' AND p.p='threads-social-profile-bio-261110092327' AND s.p='bio-th')
+             OR (p.campaign_id='social-bio' AND p.p='threads-social-profile-bio-261110093006' AND s.p='chat-th'))
+           WHERE s.p IS NULL)
        OR (SELECT COUNT(*) FROM uper_seed_trial_campaigns WHERE id IN ('organic','social-bio')
            AND code=id AND config->>'$.systemManaged'='true')<>2
        OR NOT EXISTS(SELECT 1 FROM uper_seed_notification_channels WHERE id='lark-group-default'
