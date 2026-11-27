@@ -6,7 +6,6 @@ import {AdminListState} from '../admin/AdminList';
 import {AdminField,AdminForm,AdminRequiredNote} from '../AdminForm';
 import {AdminFormSection} from '../AdminFormLayout';
 import {CrmSaveFeedback} from './CrmDetailWorkspace';
-import {CrmEnrollmentBank} from './CrmEnrollmentBank';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 import {enrollmentBusinessDayLimit,enrollmentEmailRuleFields,enrollmentEmailRuleLimits,enrollmentRuleDefaults,enrollmentRuleFields,
   type EnrollmentRuleField,type EnrollmentRules} from '../../utils/enrollmentRules';
@@ -36,10 +35,9 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange,secondaryA
   const [busy,setBusy]=useState(false);
   const [pending,setPending]=useState<string>();
   const [checkState,setCheckState]=useState<"missing"|"error">();
-  const [bankDirty,setBankDirty]=useState(false);
   const inFlight=useRef(false);
   const dirty=!!saved&&enrollmentRuleFields.some(field=>draft[field]!==String(saved[field]));
-  useEffect(()=>{onDraftChange(dirty||bankDirty||busy||!!pending);},[dirty,bankDirty,busy,pending,onDraftChange]);
+  useEffect(()=>{onDraftChange(dirty||busy||!!pending);},[dirty,busy,pending,onDraftChange]);
   useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
 
   async function load(keepDraft=false,signal?:AbortSignal) {
@@ -183,6 +181,5 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange,secondaryA
         t('Save outcome unknown.','Hasil penyimpanan belum diketahui.','暂未确认是否保存成功。')} <button type="button" className="crm-work-link" onClick={()=>void checkResult()}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></CrmSaveFeedback>}
     </div>
     </AdminForm>
-    {saved&&<CrmEnrollmentBank lang={lang} isLight={isLight} active={active} onDraftChange={setBankDirty}/>}
   </section>;
 }

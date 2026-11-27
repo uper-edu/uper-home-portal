@@ -1,4 +1,4 @@
-import {canVerifyPayments} from './crmPaymentWorklist';
+import {canVerifyPayments} from './accessControl';
 import type {AccessEmployee} from './accessControl';
 /** Default only: explicit records, filters and module links are never overridden. */
 export function defaultCrmModule(employee:AccessEmployee):'payments'|'leads'{

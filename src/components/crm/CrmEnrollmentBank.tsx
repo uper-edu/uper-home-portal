@@ -5,6 +5,8 @@ import {AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayou
 import { CrmSaveFeedback } from './CrmDetailWorkspace';
 import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {AdminPageAction} from '../admin/AdminPageAction';
+import {AdminPageHeader} from '../admin/AdminPageHeader';
+import {AdminListState} from '../admin/AdminList';
 import {AdminEditor} from '../admin/AdminEditor';
 import {enrollmentBankFields,enrollmentBankPlaceholder,hasConfiguredEnrollmentBank,type EnrollmentBank} from '../../utils/enrollmentBank';
 import type {CrmLanguage} from '../../utils/crmLanguage';
@@ -28,8 +30,8 @@ function editableBank(bank:EnrollmentBank):EnrollmentBank {
   };
 }
 
-export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
-  lang:CrmLanguage;isLight:boolean;active:boolean;onDraftChange:(dirty:boolean)=>void;
+export function CrmEnrollmentBank({lang,isLight,onDraftChange,onBusyChange}:{
+  lang:CrmLanguage;isLight:boolean;onDraftChange:(dirty:boolean)=>void;onBusyChange:(busy:boolean)=>void;
 }) {
   const t=(copy:Copy)=>copy[lang==='zh'?0:lang==='id'?2:1];
   const [saved,setSaved]=useState<Settings>();
@@ -43,8 +45,10 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
   const [reviewedConflict,setReviewedConflict]=useState(false);
   const original=saved&&editableBank(saved.bank);
   const dirty=!!(draft&&original&&fields.some(key=>draft.bank[key].trim()!==original[key]));
-  useEffect(()=>{onDraftChange(dirty||busy||!!pending);},[dirty,busy,pending,onDraftChange]);
+  useEffect(()=>{onDraftChange(dirty);},[dirty,onDraftChange]);
   useEffect(()=>()=>onDraftChange(false),[onDraftChange]);
+  useEffect(()=>{onBusyChange(busy||!!pending);},[busy,pending,onBusyChange]);
+  useEffect(()=>()=>onBusyChange(false),[onBusyChange]);
   async function load(signal?:AbortSignal) {
     try{
       const response=await fetch(path,{cache:'no-store',signal});
@@ -56,11 +60,11 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
     }catch{if(!signal?.aborted)setError('load');}
   }
   useEffect(()=>{
-    if(!active||saved||hidden)return;
+    if(saved||hidden)return;
     const abort=new AbortController();
     void load(abort.signal);
     return ()=>abort.abort();
-  },[active,saved,hidden]);
+  },[saved,hidden]);
 
   function success(settings:Settings) {
     setSaved(settings);setPending(undefined);setDraft(undefined);
@@ -88,25 +92,24 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
     finally{setBusy(false);}
   }
   const close=()=>{if(!busy&&!pending){if(dirty)setDiscard(true);else setDraft(undefined);}};
-  if(hidden)return null;
   const title=t(['报名收款账户','Enrollment bank account','Rekening pembayaran pendaftaran']);
   return <>
-    <AdminFormSection title={title} variant="card"
-      description={t(['修改只影响之后获席的新订单。现有订单保留原收款账户。','Changes apply to future orders. Existing orders keep their original bank details.','Perubahan berlaku untuk pesanan baru. Pesanan lama tetap memakai rekening sebelumnya.'])}
-      actions={saved&&<AdminPageAction icon={Pencil} aria-haspopup="dialog" label={t(['编辑收款账户','Edit bank account','Edit rekening'])} onClick={event=>{
+    <AdminPageHeader title={title}
+      subtitle={t(['修改只影响之后获席的新订单。现有订单保留原收款账户。','Changes apply to future orders. Existing orders keep their original bank details.','Perubahan berlaku untuk pesanan baru. Pesanan lama tetap memakai rekening sebelumnya.'])}
+      actions={saved&&!hidden&&<AdminPageAction icon={Pencil} aria-haspopup="dialog" label={t(['编辑收款账户','Edit bank account','Edit rekening'])} onClick={event=>{
         event.currentTarget.focus({preventScroll:true});
         setError(undefined);setReviewedConflict(false);
         setDraft({...saved,bank:editableBank(saved.bank)});
-      }}/>}>
-      {!saved&&error==='load'?<CrmSaveFeedback state="error" lang={lang}>
+      }}/>}/>
+      {hidden?<AdminListState lang={lang} state="denied"/>:!saved&&error==='load'?<CrmSaveFeedback state="error" lang={lang}>
         {t(['暂时无法读取收款账户。','The bank account could not be loaded.','Rekening belum dapat dimuat.'])}{' '}
         <button type="button" className="crm-work-link" onClick={()=>void load()}>{t(['重试','Retry','Coba lagi'])}</button>
       </CrmSaveFeedback>:saved?hasConfiguredEnrollmentBank(saved)
         ? <AdminFormSummary fields={editFields.map(key=>[t(labels[key]),saved.bank[key]])}/>
         : <p className="crm-work-muted">{t(['尚未配置正式收款账户。','No bank account is configured for enrollment payments.','Rekening pembayaran pendaftaran belum diatur.'])}</p>:
         <p role="status">{t(['正在加载…','Loading…','Memuat…'])}</p>}
-    </AdminFormSection>
-    {active&&draft&&<AdminEditor variant="drawer" required responsiveForm title={t(['编辑收款账户','Edit bank account','Edit rekening'])}
+
+    {draft&&<AdminEditor variant="drawer" required responsiveForm title={t(['编辑收款账户','Edit bank account','Edit rekening'])}
       description={t(['学员获席后会看到这些转账信息。变更仅适用于之后获席的新订单。','Learners see these transfer details after securing a seat. Changes apply to future orders.','Peserta melihat detail transfer ini setelah mendapat kursi. Perubahan berlaku untuk pesanan berikutnya.'])}
       lang={lang} light={isLight} busy={busy} closeDisabled={!!pending} onClose={close}
       onSubmit={event=>{event.preventDefault();void save();}}
@@ -141,7 +144,7 @@ export function CrmEnrollmentBank({lang,isLight,active,onDraftChange}:{
             fields={fields.map(key=>[t(labels[key]),original[key]||'—'])}/>}
         </div>
     </AdminEditor>}
-    {active&&discard&&<AdminDiscardDialog lang={lang} isLight={isLight}
+    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight}
       onKeep={()=>setDiscard(false)} onDiscard={()=>{setDraft(undefined);setDiscard(false);}}/>}
   </>;
 }

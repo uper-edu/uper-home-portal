@@ -62,6 +62,7 @@ function loadStandaloneChat() {
 const StandAloneChat = lazyWithRetry(loadStandaloneChat);
 const CrmWorkbench = lazyWithRetry(() => import('./pages/CrmWorkbench'));
 const AcademicWorkbench = lazyWithRetry(() => import('./pages/AcademicWorkbench'));
+const FinanceWorkbench = lazyWithRetry(() => import('./pages/FinanceWorkbench'));
 const AccessWorkbench = lazyWithRetry(() => import('./pages/AccessWorkbench'));
 const CmsWorkbench = lazyWithRetry(() => import('./pages/CmsWorkbench'));
 
@@ -135,6 +136,7 @@ export default function App() {
                 {/* Sales & Telemarketing CRM Workbench */}
                 <Route path="crm" element={<CrmWorkbench />} />
                 <Route path="academics" element={<AcademicWorkbench />} />
+                <Route path="finance" element={<FinanceWorkbench />} />
                 
                 {/* Standalone Official Website CMS & Media Repository */}
                 <Route path="system" element={<AccessWorkbench />} />

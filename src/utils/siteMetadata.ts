@@ -132,11 +132,16 @@ export const publicPages: Record<string, { title: Words; description: Words }> =
   };
 export const workspaceNames: Record<string, Words> = {
   academics: ["Academic Management", "Manajemen Akademik", "教务管理"],
+  finance: ["Finance Management", "Manajemen Keuangan", "财务管理"],
   crm: ["Sales Management", "Manajemen Penjualan", "销售管理"],
   cms: ["Content Management", "Manajemen Konten", "内容管理"],
   system: ["System Management", "Manajemen Sistem", "系统管理"],
 };
 export const moduleNames: Record<string, Record<string, Words>> = {
+  finance: {
+    payments: ["Payment verification","Verifikasi pembayaran","收款核验"],
+    "enrollment-bank": ["Enrollment bank account","Rekening pembayaran pendaftaran","报名收款账户"],
+  },
   academics: {
     courses: ["Courses", "Kursus", "课程"],
     "enrollment-templates": ["Class templates", "Templat kelas", "班型模板"],
@@ -227,7 +232,7 @@ export function workspaceMetadata(
 }
 export function isPrivatePath(pathname: string) {
   if (/^\/enrollment\/(?:mine|payment|help)(?:\/|$)/i.test(pathname)) return true;
-  return /^\/(?:crm|academics|cms|system|studio|chat|consult|style-guide|api)(?:\/|$)/i.test(
+  return /^\/(?:crm|academics|finance|cms|system|studio|chat|consult|style-guide|api)(?:\/|$)/i.test(
     pathname,
   );
 }
@@ -317,7 +322,7 @@ export function resolveMetadata(
       !!page ||
       enrollmentHelp ||
       dynamic ||
-      /^\/(crm|academics|cms|system|chat|consult|style-guide)$/i.test(path);
+      /^\/(crm|academics|finance|cms|system|chat|consult|style-guide)$/i.test(path);
   let title: string, description: string;
   if (workspaceNames[workspace])
     ({ title, description } = workspaceMetadata(
@@ -326,6 +331,7 @@ export function resolveMetadata(
         (workspace === "crm"
           ? "leads"
           : workspace === "academics" ? "courses"
+          : workspace === "finance" ? "payments"
           : workspace === "system"
             ? "users"
             : "partners"),

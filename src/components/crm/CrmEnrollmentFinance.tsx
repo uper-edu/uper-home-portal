@@ -1,3 +1,4 @@
+import {enrollmentPaymentPath} from '../../utils/financeNavigation';
 import {AdminDateField} from '../admin/AdminDateField';
 import {AdminListPagination} from '../admin/AdminList';
 import {paymentWorkspaceLabel} from '../../utils/crmPaymentPresentation';
@@ -467,7 +468,7 @@ export function CrmEnrollmentFinance({actorId,lang,isLight=true,refreshVersion,o
             :t('本单款项冲抵新单','Applied to a new order','Dana digunakan untuk pesanan baru')}</strong>
           {' · '}{formatCurrency(credit.amount,lang)}{' · '}<time dateTime={credit.appliedAt}>{formatCrmEventTime(credit.appliedAt)}</time>
           <p>{t('银行流水号','Bank reference','Nomor referensi bank')} · {credit.reference}</p>
-          <a className="crm-work-link" href={'/crm?tab=payments&enrollmentOrder='+encodeURIComponent(credit.orderId)}>
+          <a className="crm-work-link" href={enrollmentPaymentPath(credit.orderId)}>
             {t('查看关联订单','View related order','Lihat pesanan terkait')}
           </a>
         </li>)}</ul>

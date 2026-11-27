@@ -31,7 +31,7 @@ export function applyPageMetadata(doc: Document, m: Metadata) {
   doc.head.querySelectorAll(selector).forEach((e) => e.remove());
   doc.documentElement.lang = m.lang === "zh" ? "zh-CN" : m.lang;
   // Non-sensitive UI preference lets the next HTML response match the browser before JS starts.
-  const admin = /^\/(crm|academics|cms|system)(\/|$)/i.test(doc.location.pathname);
+  const admin = /^\/(crm|academics|finance|cms|system)(\/|$)/i.test(doc.location.pathname);
   if (admin || !isPrivatePath(doc.location.pathname)) {
     doc.cookie = `${admin ? "uper_admin_ui_lang" : "uper_public_ui_lang"}=${m.lang}; Path=/; Max-Age=31536000; SameSite=Lax${doc.location.protocol === "https:" ? "; Secure" : ""}`;
   }
@@ -89,7 +89,7 @@ export function MetadataProvider({ children }: { children: React.ReactNode }) {
     entries = useRef(new Map<string, Entry>());
   current.current = {
     path: location.pathname,
-    lang: /^\/(crm|academics|cms|system)(\/|$)/i.test(location.pathname)
+    lang: /^\/(crm|academics|finance|cms|system)(\/|$)/i.test(location.pathname)
       ? readAdminLanguage()
       : normalizeSiteLanguage(i18n.resolvedLanguage || i18n.language),
   };
@@ -199,7 +199,7 @@ export function RouteMetadata() {
     <PageMetadata
       fallback
       lang={
-        /^\/(crm|academics|cms|system)(\/|$)/i.test(location.pathname)
+        /^\/(crm|academics|finance|cms|system)(\/|$)/i.test(location.pathname)
           ? readAdminLanguage()
           : undefined
       }

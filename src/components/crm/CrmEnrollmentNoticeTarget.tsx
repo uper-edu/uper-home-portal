@@ -1,3 +1,4 @@
+import {enrollmentPaymentPath} from '../../utils/financeNavigation';
 import { useEffect, useState } from 'react';
 import { AdminPageHeader } from '../admin/AdminPageHeader';
 import { crmLocale, type CrmLanguage } from '../../utils/crmLanguage';
@@ -65,7 +66,7 @@ export function CrmEnrollmentNoticeTarget({lang}:{lang:CrmLanguage}) {
       !data?<p role="status">{t('正在加载…','Loading…','Memuat…')}</p>:<>
         {data.type==='report'&&<p>{t('统计周以 WIB 周一 00:00 为界，结束日期不计入。','Weeks are bounded by Monday 00:00 WIB. The end date is excluded.','Minggu dibatasi Senin pukul 00.00 WIB. Tanggal akhir tidak termasuk.')}</p>}
         <dl className="crm-opportunity-summary">{pairs.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-        {data.type==='payment'&&<a className="crm-work-link" href={'/crm?tab=payments&enrollmentOrder='+encodeURIComponent(data.id)}>
+        {data.type==='payment'&&<a className="crm-work-link" href={enrollmentPaymentPath(data.id)}>
           {t('前往收款核验','Go to payment verification','Buka verifikasi pembayaran')}</a>}
       </>}
   </main>;

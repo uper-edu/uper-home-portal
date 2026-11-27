@@ -1,3 +1,4 @@
+import {enrollmentPaymentPath,enrollmentVerificationPath as financePath} from '../../utils/financeNavigation';
 import {lazy,Suspense,useEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
 import {ArrowUpRight,Maximize,Minimize,SlidersHorizontal} from 'lucide-react';
 import {AdminTopicFrame} from '../AdminTopicFrame';
@@ -28,7 +29,6 @@ import './crm-operations-dashboard.css';
 type Translate=(key:DashboardWord)=>string;
 const TeacherSettlements=lazy(()=>import('./CrmTeacherSettlements').then(module=>({default:module.CrmTeacherSettlements})));
 const languageTag={zh:'zh-CN',en:'en-GB',id:'id-ID'} as const;
-const financePath='/crm?tab=payments&paymentView=enrollment';
 const salesPath='/crm?tab=leads';
 const cashComponents=['received','refunded','returned','net'] as const;
 type CashComponent=typeof cashComponents[number];
@@ -794,7 +794,7 @@ function Finance({data,filter,lang,t,onNavigate}:{data:DashboardSnapshot;filter:
     <Panel title={t('movements')+' · '+t(kind)} aside={day&&<button type="button" className="crm-work-button" onClick={()=>{setDay('');setPage(1);}}>{day} · {t('clear')}</button>}>
       {report?.data?.rows.length?<Table headers={[t('order'),t('movementReference'),t('recordedAt'),t('settledAt'),t('type'),t('amount')]}>
         {report.data.rows.map(row=><tr key={row.kind+':'+row.reference}>
-          <th scope="row"><Link href={financePath+'&enrollmentOrder='+encodeURIComponent(row.orderId)} onNavigate={onNavigate}>{row.orderId}</Link></th>
+          <th scope="row"><Link href={enrollmentPaymentPath(row.orderId)} onNavigate={onNavigate}>{row.orderId}</Link></th>
           <td>{row.reference}</td><td>{formatCrmEventTime(row.at)}</td><td>{row.settledAt?formatCrmEventTime(row.settledAt):'—'}</td>
           <td>{t(row.kind)}</td><td>{money(row.kind==='refunded'?-row.amount:row.amount)}</td>
         </tr>)}

@@ -1,10 +1,10 @@
 import {isPaymentMethod} from './crmPaymentMethods';
-import {permittedRecord,type AccessEmployee} from './accessControl';
+import {canVerifyPayments,permittedRecord,type AccessEmployee} from './accessControl';
+export {canVerifyPayments} from './accessControl';
 import {paymentSummary,type PaymentEntry,type PaymentLedger} from './crmPayments';
 export type PaymentListFilters={state:'outstanding'|'terminated'|'unpaid'|'partial'|'paid'|'unpriced'|'nocharge'|'pending'|'verified'|'rejected'|'void'|'all';kind:'all'|'receipt'|'refund';search:string;page:number};
 export type PaymentListRow={leadId:string;projectId:string;customer:string;course:string;expected:number|null;received:number;refunded:number;remaining:number|null;overpaid:number;pending:number;pendingReceipts:number;settlement?:ReturnType<typeof paymentSummary>['settlement'];state:ReturnType<typeof paymentSummary>['state'];enrolledAt:string;ownerId:string;owner:string};
 const fail=(message:string,status=400):never=>{throw Object.assign(Error(message),{status});};
-export function canVerifyPayments(actor:AccessEmployee){return actor.active!==false&&actor.permissions.includes('crm.read')&&actor.permissions.includes('crm.payments.verify');}
 export function paymentListFilters(raw:any={}):PaymentListFilters{
  const state=raw.state??'outstanding',kind=raw.kind??'all',search=raw.search??'',page=raw.page??'1';
  if(!['outstanding','terminated','unpaid','partial','paid','unpriced','nocharge','pending','verified','rejected','void','all'].includes(state)||!['all','receipt','refund'].includes(kind)||typeof search!=='string'||search.length>120||!['string','number'].includes(typeof page)||!/^\d{1,6}$/.test(String(page))||Number(page)<1)fail('payment_filters_invalid');

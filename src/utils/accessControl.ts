@@ -184,6 +184,11 @@ export const canManageAcademics = (actor: Pick<AccessEmployee, "active" | "permi
 export const canReadFacultyCompensation = (actor: AccessEmployee) =>
   canManageAcademics(actor) || (permittedRecord(actor, {}, "crm.read") && permittedRecord(actor, {}, "crm.payments.verify"));
 
+export const canVerifyPayments = (actor: Pick<AccessEmployee,'active'|'permissions'>) =>
+  actor.active!==false && actor.permissions.includes('crm.read') && actor.permissions.includes('crm.payments.verify');
+
+export const canManageEnrollmentFinance = (actor: AccessEmployee) =>
+  permittedRecord(actor, {}, "crm.read") && permittedRecord(actor, {}, "crm.payments.verify");
 export function retireTeamGrants(config: RoleConfig): RoleConfig {
   const next = structuredClone(config);
   for (const [key, scope] of Object.entries(next.grants))

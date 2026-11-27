@@ -13,6 +13,7 @@ import type { CrmLanguage } from "../utils/crmLanguage";
 import "./admin-header.css";
 import "./crm/crm-language-switch.css";
 import { availableWorkspaces, type AdminWorkspace } from "../utils/adminWorkspace";
+import {defaultCrmModule} from '../utils/crmLanding';
 
 export function adminText(
   lang: CrmLanguage,
@@ -73,6 +74,7 @@ export function AdminHeader({
     value === "crm"
       ? text("Sales management", "Manajemen penjualan", "销售管理")
       : value === "academics" ? text("Academic management", "Manajemen akademik", "教务管理")
+      : value === "finance" ? text("Finance management", "Manajemen keuangan", "财务管理")
       : value === "cms" ? text("Content management", "Manajemen konten", "内容管理") : text("System management", "Manajemen sistem", "系统管理");
   useEffect(() => {
     const close = (event: KeyboardEvent | PointerEvent) => {
@@ -132,7 +134,7 @@ export function AdminHeader({
               aria-label={text("Workspaces", "Ruang kerja", "工作区")}
             >
               {availableWorkspaces(employee).map((value) => {
-                const href='/'+value;
+                const href=value==='crm'&&defaultCrmModule(employee)==='payments'?'/crm?tab=leads':'/'+value;
                 return (
                 <a
                   key={value}
@@ -239,6 +241,7 @@ export function AdminHeader({
         <nav
           className="admin-module-nav"
           aria-label={workspace === "system" ? text("System modules", "Modul sistem", "系统模块")
+            : workspace === "finance" ? text("Finance modules", "Modul keuangan", "财务模块")
             : workspace === "academics" ? text("Academic modules", "Modul akademik", "教务模块")
             : text("Sales modules", "Modul penjualan", "销售模块")}
         >

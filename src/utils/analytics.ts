@@ -55,7 +55,7 @@ function resolvedContext(inputs:ReturnType<typeof contextInputs>,resolved:Awaite
 }
 const context = (): AnalyticsParams => {
   const route = new URL(window.location.href);
-  const lookup = /^\/(crm|cms|system|studio)(?:\/|$)/i.test(route.pathname) ? undefined : lookupPromotion(route.searchParams);
+  const lookup = /^\/(crm|cms|system|studio|finance)(?:\/|$)/i.test(route.pathname) ? undefined : lookupPromotion(route.searchParams);
   const value=resolvedContext(contextInputs(route.href),lookup instanceof Promise?undefined:lookup);
   return {
     ...value,
@@ -122,7 +122,7 @@ function withAnalytics(send: (current: NonNullable<typeof client>, captured?:Ana
     )) return false;
     const route = new URL(href);
     if(/^\/enrollment\/assist\/?$/.test(route.pathname))return false;
-    const publicPage = !/^\/(crm|cms|system|studio)(?:\/|$)/i.test(route.pathname);
+    const publicPage = !/^\/(crm|cms|system|studio|finance)(?:\/|$)/i.test(route.pathname);
     const lookup = publicPage ? lookupPromotion(route.searchParams) : undefined;
     const sendCurrent = () => {
       if (window.location.href !== href) return false;

@@ -84,7 +84,7 @@ export function mountMetadataHtml(app: Express, directory: string, db: any) {
       // Asset misses must never masquerade as HTML pages.
       if (/\.[a-z0-9]{1,6}$/i.test(q.path)) return r.status(404).end();
       const route = cleanPath(q.path);
-      const admin = /^\/(crm|academics|cms|system)(\/|$)/i.test(route);
+      const admin = /^\/(crm|academics|finance|cms|system)(\/|$)/i.test(route);
       const cookieName = admin ? "uper_admin_ui_lang=" : "uper_public_ui_lang=";
       const preference = (q.headers.cookie || "")
         .split(";")

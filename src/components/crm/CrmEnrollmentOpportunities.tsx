@@ -1,3 +1,4 @@
+import {enrollmentPaymentPath} from '../../utils/financeNavigation';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
 import {AdminDisclosure} from '../admin/AdminDisclosure';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
@@ -784,7 +785,7 @@ export function CrmEnrollmentOpportunities({lang,isLight,employees,actorId,canRe
   const employeeName=(id:string|null)=>employees.find(employee=>employee.id===id)?.displayName||id;
   const owner=(row:Opportunity)=>employeeName(row.owner)||t(lang,['未分配','Unassigned','Belum ditugaskan']);
   const customerLink=(row:Opportunity)=>crmHref({tab:'leads',lead:row.customerId});
-  const paymentLink=(record:CourseRecord)=>crmHref({tab:'payments',enrollmentOrder:record.id,opportunityReturn:listPath});
+  const paymentLink=(record:CourseRecord)=>enrollmentPaymentPath(record.id,{opportunityReturn:listPath});
   const openProgress=async(row:Opportunity,agreementId?:string)=>{
     if(busy)return;
     if(document.activeElement instanceof HTMLElement)progressOpener.current=document.activeElement;

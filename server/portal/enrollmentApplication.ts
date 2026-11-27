@@ -10,7 +10,7 @@ import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
 import { validContactEmail } from '../../src/utils/contactEmail.ts';
 import { maskEnrollmentEmail } from '../../src/utils/enrollmentEmailIdentity.ts';
-import { permittedRecord } from '../../src/utils/accessControl.ts';
+import { canManageEnrollmentFinance } from '../../src/utils/accessControl.ts';
 import type { Employee } from './identity.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
 import { allowsEnrollment, expireSeats, mountEnrollmentInterests, reconcileWaitlist, startEnrollmentVacancySimulation, takenSeats } from './enrollmentInterests.ts';
@@ -187,7 +187,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
   const policy = enrollmentServicePolicy();
   const maintenanceMode=async()=>enrollmentServicePolicy(process.env,(await enrollmentMailDelivery()).mode);
   mountEnrollmentRules(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
-  mountEnrollmentBank(app,{wrap,transact:enrollTx,authorize:q=>staff(q,'crm.operations.manage')});
+  const financeActor = async (q: Request) => {
+    const actor = await staff(q, 'crm.payments.verify');
+    // Enrollment orders and the shared receiving account require all-record finance access.
+    if (!canManageEnrollmentFinance(actor)) invalid('enrollment_finance_forbidden', 403);
+    return actor;
+  };
+  mountEnrollmentBank(app,{wrap,transact:enrollTx,authorize:financeActor});
   const base = '/api/enrollment';
   const finance = '/api/crm/enrollment/finance';
   app.get(enrollmentEmailWhatsAppPath,(q,r)=>{
@@ -223,15 +229,6 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     return handler(q, r);
   }));
   mountEnrollmentInterests(app,{wrap,post,transact:enrollTx,session,lockClass,expireSeats,requireNewEnrollment});
-  const financeActor = async (q: Request) => {
-    const actor = await staff(q, 'crm.payments.verify');
-    // Orders have no CRM owner until the customer and opportunity integration is added.
-    // Only existing all-record finance grants can act on unassigned orders.
-    if (!permittedRecord(actor, {}, 'crm.read') || !permittedRecord(actor, {}, 'crm.payments.verify')) {
-      invalid('enrollment_finance_forbidden', 403);
-    }
-    return actor;
-  };
   const supportActor = async (q:Request) => {
     const actor=await staff(q,'crm.followup');
     if(!actor.permissions.includes('crm.read')) invalid('enrollment_support_forbidden',403);

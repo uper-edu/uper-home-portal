@@ -18,7 +18,7 @@ export function AdminAccountMenu({employee,lang,isLight,workspace,busy,error,onC
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const roleLabel = (role: string) => employee.roleLabels?.[role]?.[lang === "zh"?2:lang === "id"?1:0] || adminRoleLabel(role, lang);
-  const preferredRole = workspace === 'academics' ? 'academic_admin' : workspace === 'system' ? 'access_admin' : workspace === 'cms' ? 'cms_admin' : employee.roles.includes('crm_leader') ? 'crm_leader' : 'sales';
+  const preferredRole = workspace === 'academics' ? 'academic_admin' : workspace === 'finance' ? 'finance' : workspace === 'system' ? 'access_admin' : workspace === 'cms' ? 'cms_admin' : employee.roles.includes('crm_leader') ? 'crm_leader' : 'sales';
   const permission=workspacePermissions[workspace??'crm'];
   const currentRole = employee.roles.includes(preferredRole) && (!employee.rolePermissions || employee.rolePermissions[preferredRole]?.includes(permission))
     ? preferredRole : employee.roles.find(role=>employee.rolePermissions?.[role]?.includes(permission))

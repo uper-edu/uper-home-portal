@@ -1,3 +1,4 @@
+import {enrollmentPaymentPath} from '../../utils/financeNavigation';
 import {enrollmentTimeZoneLabel} from '../../utils/enrollmentDateFormat';
 import {enrollmentClassTitle,enrollmentCopy} from '../../utils/enrollmentCatalog';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
@@ -116,8 +117,7 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
     returnParams.set('tab','enrollment-management');returnParams.set('classId',id!);returnParams.set('rosterOrder',orderId);
     if(filter)returnParams.set('rosterStatus',filter);
     if(filter==='history'&&closure)returnParams.set('rosterClosure',closure);
-    return '/crm?'+new URLSearchParams({tab:'payments',paymentView:'enrollment',enrollmentOrder:orderId,
-      rosterReturn:'/crm?'+returnParams});
+    return enrollmentPaymentPath(orderId,{rosterReturn:'/crm?'+returnParams});
   };
   const rememberRoster=(orderId:string,key=rosterPositionBase)=>{
     try{sessionStorage.setItem(key,JSON.stringify({orderId,top:window.scrollY,bodyTop:detailBody.current?.scrollTop,tableLeft:rosterTable.current?.scrollLeft}));}catch{}

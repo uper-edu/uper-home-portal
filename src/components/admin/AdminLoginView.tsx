@@ -24,7 +24,7 @@ export function AdminLoginView({
   onLogin: () => Promise<void>;
   onRetry: () => void;
 }) {
-  const isCms=workspace==='cms',isSystem=workspace==='system',isAcademic=workspace==='academics';
+  const isCms=workspace==='cms',isSystem=workspace==='system',isAcademic=workspace==='academics',isFinance=workspace==='finance';
   const t=(en:string,zh:string)=>lang==='id'?crmId(en):lang==='zh'?zh:en;
   const st=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
   return (
@@ -37,9 +37,9 @@ export function AdminLoginView({
           <div className="crm-sign-in-language"><CrmLanguageSelect lang={lang} onChange={setLang} /></div>
         </header>
         <div className="crm-sign-in-layout">
-          {isAcademic?<section className="crm-sign-in-intro" aria-labelledby="crm-sign-in-intro-title">
-            <h2 id="crm-sign-in-intro-title">{st('Academic management','Manajemen akademik','教务管理')}</h2>
-            <p>{st('Manage courses, class templates, class schedules and faculty.','Kelola kursus, templat kelas, jadwal, dan pengajar.','维护课程、班型模板、班次和教师档案。')}</p>
+          {isAcademic||isFinance?<section className="crm-sign-in-intro" aria-labelledby="crm-sign-in-intro-title">
+            <h2 id="crm-sign-in-intro-title">{isFinance?st('Finance management','Manajemen keuangan','财务管理'):st('Academic management','Manajemen akademik','教务管理')}</h2>
+            <p>{isFinance?st('Verify payments and manage the enrollment bank account.','Verifikasi pembayaran dan kelola rekening pendaftaran.','核验收款，维护报名收款账户。'):st('Manage courses, class templates, class schedules and faculty.','Kelola kursus, templat kelas, jadwal, dan pengajar.','维护课程、班型模板、班次和教师档案。')}</p>
           </section>:<section className="crm-sign-in-intro" aria-labelledby="crm-sign-in-intro-title">
             <span className="crm-sign-in-eyebrow">{isSystem ? st("System workspace","Ruang sistem","系统工作区") : isCms ? cmsText("Content workspace", "内容工作区", lang) : t("Sales workspace", "销售工作区")}</span>
             <h2 id="crm-sign-in-intro-title">{isSystem ? st("Clear responsibilities. Controlled access.","Tanggung jawab jelas. Akses terkendali.","职责清晰，授权有据。") : isCms ? cmsText("Keep website content clear and current.", "让网站内容清晰、及时。", lang) : t("Every customer. A clear next step.", "每一位客户，都有清晰的下一步。")}</h2>
@@ -55,7 +55,7 @@ export function AdminLoginView({
           onSubmit={event=>{event.preventDefault();void onLogin();}}
         >
           <div className="crm-sign-in-lock"><LockKeyhole size={22} aria-hidden="true" /></div>
-          <h1><span>{isAcademic ? st('Academic management sign in','Login manajemen akademik','教务管理登录') : isSystem ? st("System sign in","Login sistem","系统登录") : isCms ? cmsText("CMS sign in", "CMS 登录", lang) : t("CRM sign in", "CRM 登录")}</span><AdminRequiredNote lang={lang} inline/></h1>
+          <h1><span>{isFinance ? st('Finance management sign in','Login manajemen keuangan','财务管理登录') : isAcademic ? st('Academic management sign in','Login manajemen akademik','教务管理登录') : isSystem ? st("System sign in","Login sistem","系统登录") : isCms ? cmsText("CMS sign in", "CMS 登录", lang) : t("CRM sign in", "CRM 登录")}</span><AdminRequiredNote lang={lang} inline/></h1>
           <p className="crm-sign-in-subtitle">{t("Use your staff account", "请使用员工账号登录")}</p>
           {connectionProblem&&<p role="status" className="crm-sign-in-error">
             {st('Could not check your sign-in status.','Status login belum dapat diperiksa.','暂时无法确认登录状态。')}{' '}
