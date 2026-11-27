@@ -1,6 +1,8 @@
+import {grantFixtureReadToOthers} from './helpers/privateFileAcl.mjs';
+import {createPrivateFile} from '../server/privateFile.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {mkdtempSync,writeFileSync,rmSync,chmodSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {randomBytes,randomUUID} from 'node:crypto';
@@ -19,7 +21,7 @@ test('credentials use randomized, version- and environment-bound encryption and 
   const directory=mkdtempSync(join(tmpdir(),'uper-keyring-'));
   t.after(()=>rmSync(directory,{recursive:true,force:true}));
   const file=join(directory,'keyring');
-  writeFileSync(file,JSON.stringify({environment:'dev',active:'old',keys}),{mode:0o600});
+  createPrivateFile(file,JSON.stringify({environment:'dev',active:'old',keys}));
   const original=readCredentialKeyring(file,'dev');
   const value={password:'pretend-secret-for-tests'};
   const first=sealCredential(original,mailSlot,'v1',target,value);
@@ -38,7 +40,7 @@ test('credentials use randomized, version- and environment-bound encryption and 
   assert.deepEqual(openCredential(readCredentialKeyring(file,'dev'),mailSlot,'v1',target,rewritten),value);
   assert.throws(()=>openCredential(readCredentialKeyring(file,'dev'),mailSlot,'v1',target,first));
   assert.throws(()=>readCredentialKeyring(file,'test'));
-  chmodSync(file,0o644);
+  grantFixtureReadToOthers(file);
   assert.throws(()=>readCredentialKeyring(file,'dev'));
 });
 
@@ -46,11 +48,11 @@ test('the deployment file accepts only startup secrets and requires private perm
   const directory=mkdtempSync(join(tmpdir(),'uper-bootstrap-'));
   t.after(()=>rmSync(directory,{recursive:true,force:true}));
   const file=join(directory,'bootstrap');
-  writeFileSync(file,'MYSQL_TRIAL_URL=mysql://fixture.invalid/test\n',{mode:0o600});
+  createPrivateFile(file,'MYSQL_TRIAL_URL=mysql://fixture.invalid/test\n');
   assert.equal(readBootstrapSecrets(file).MYSQL_TRIAL_URL,'mysql://fixture.invalid/test');
   writeFileSync(file,'PORTAL_ENV=prod\n');
   assert.throws(()=>readBootstrapSecrets(file),/Unexpected/);
-  chmodSync(file,0o644);
+  grantFixtureReadToOthers(file);
   assert.throws(()=>readBootstrapSecrets(file),/private/);
 });
 
@@ -59,11 +61,20 @@ const admin:Employee={id:'admin-fixture',active:true,roles:['access_admin'],scop
 const operator:Employee={id:'operator-fixture',active:true,roles:['operator'],scope:'own',teams:[],permissions:['access.read']};
 const staff:Employee={...operator,id:'staff-fixture'};
 
-test('direct credential setup preserves each service’s verification, replacement and revocation rules',{timeout:3000},async t=>{
+// Each Windows key read checks the native DACL. Bound the two concurrency waits separately
+// from the elapsed time for this entire multi-provider integration scenario.
+async function waitForSetup(predicate:()=>boolean){
+  const until=Date.now()+3000;
+  while(!predicate()){
+    assert.ok(Date.now()<until,'credential setup did not reach the expected concurrent state');
+    await new Promise(resolve=>setImmediate(resolve));
+  }
+}
+test('direct credential setup preserves each service’s verification, replacement and revocation rules',{timeout:process.platform==='win32'?120_000:3000},async t=>{
   const directory=mkdtempSync(join(tmpdir(),'uper-slot-fixture-'));
   t.after(()=>rmSync(directory,{recursive:true,force:true}));
   const file=join(directory,'keyring');
-  writeFileSync(file,JSON.stringify({environment:'dev',active:'current',keys}),{mode:0o600});
+  createPrivateFile(file,JSON.stringify({environment:'dev',active:'current',keys}));
   const legacyEnv={PORTAL_ENV:process.env.PORTAL_ENV,PORTAL_CREDENTIAL_KEYRING_FILE:process.env.PORTAL_CREDENTIAL_KEYRING_FILE,
     PORTAL_CREDENTIAL_PROVIDER_CHECKS:process.env.PORTAL_CREDENTIAL_PROVIDER_CHECKS};
   process.env.PORTAL_ENV='dev';
@@ -175,7 +186,7 @@ test('direct credential setup preserves each service’s verification, replaceme
   let resume!:()=>void;
   delayed=new Promise<void>(resolve=>{resume=resolve;});
   const staleSetup=change(admin,'set',3,verified);
-  while(checks!==2)await new Promise(resolve=>setImmediate(resolve));
+  await waitForSetup(()=>checks===2);
   assert.equal((await change(admin,'set',3,verified)).status,409);
   assert.equal(state().candidate,undefined);
   assert.doesNotMatch(JSON.stringify(state()),/verified-fixture|sealed/);
@@ -275,7 +286,7 @@ test('direct credential setup preserves each service’s verification, replaceme
   const requestId=randomUUID();
   const failedInput={values:{key:'wrong-fixture'}};
   const replacing=integrationAction('lark-app','set',1,failedInput,requestId);
-  while(!larkState().setup)await new Promise(resolve=>setImmediate(resolve));
+  await waitForSetup(()=>!!larkState().setup);
   assert.equal(larkKey(),'verified-fixture');
   assert.equal((await integrationAction('lark-app','set',1,failedInput)).data.error,'credential_verification_running');
   finishLark();

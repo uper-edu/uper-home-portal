@@ -41,7 +41,10 @@ test('new account initialization creates the existing nine-account roster with h
   const f = fixture();
   await f.run();
   assert.equal(f.state.users.size,9);
-  assert.equal(f.state.roles.size,6);
+  assert.deepEqual([...f.state.roles.keys()].sort(),[
+    'academic_admin','access_admin','cms_admin','crm_leader','finance','hr_reader','sales',
+  ]);
+  assert.deepEqual(f.state.roles.get('academic_admin').grants,{'academics.manage':'all'});
   assert.deepEqual([...f.state.users.values()].filter(user=>user.roles.includes('access_admin')).map(user=>user.id).sort(),['Ethan','Monite','Robert']);
   for (const name of ['Ethan','Monite']) assert.deepEqual(f.state.users.get(name).roles,['crm_leader','cms_admin','access_admin']);
   assert.ok(f.state.users.get('Suki').roles.includes('finance'));

@@ -148,5 +148,5 @@ export function startEnrollmentWeeklySimulation(transact:(fn:(c:Client)=>Promise
   };
   const timer=setInterval(()=>void tick(),30_000);
   timer.unref();
-  void tick();
+  // The first run is scheduled; restarting the process must not trigger a reconciliation.
 }

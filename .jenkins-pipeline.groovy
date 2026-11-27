@@ -4,9 +4,14 @@ pipeline {
     agent any
 
     options {
+        skipDefaultCheckout(true)
         timestamps()
         disableConcurrentBuilds()
         buildDiscarder(logRotator(numToKeepStr: '30'))
+    }
+
+    parameters {
+        string(name: 'RELEASE_COMMIT', defaultValue: '', description: 'Approved full 40-character release commit; required for production packaging')
     }
 
     environment {
@@ -14,7 +19,7 @@ pipeline {
         ENV = 'prod'
         APP_ENV = 'prod'
         TZ = 'Asia/Jakarta'
-        BRANCH = 'main'
+        BRANCH = 'release'
         GIT_URL = 'git@github.com:uper-edu/uper-home-portal.git'
         NODE_IMAGE = 'node:24.19.0-bookworm-slim'
         BUILD_DIR = 'build/prod'
@@ -30,11 +35,21 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                script {
+                    if (!((params.RELEASE_COMMIT ?: '') ==~ /[0-9a-f]{40}/)) {
+                        error('Specify the approved full release commit before checkout')
+                    }
+                }
                 checkout([$class: 'GitSCM',
                     branches: [[name: "*/${env.BRANCH}"]],
                     userRemoteConfigs: [[url: env.GIT_URL]],
                     extensions: [[$class: 'CloneOption', shallow: true, depth: 1, noTags: true, timeout: 30]]
                 ])
+                script {
+                    if (sh(returnStdout: true, script: 'git rev-parse HEAD').trim() != params.RELEASE_COMMIT) {
+                        error('Checked out release does not match the approved commit; no build or push')
+                    }
+                }
             }
         }
 

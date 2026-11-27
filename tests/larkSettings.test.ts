@@ -1,6 +1,7 @@
+import {createPrivateFile} from '../server/privateFile.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {mkdtempSync,rmSync,writeFileSync} from 'node:fs';
+import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {randomBytes} from 'node:crypto';
@@ -16,7 +17,7 @@ test('stored settings preserve the active key and bindings, and lock identity ag
   const dir=mkdtempSync(join(tmpdir(),'lark-settings-'));
   t.after(()=>rmSync(dir,{recursive:true,force:true}));
   const file=join(dir,'keyring.json');
-  writeFileSync(file,JSON.stringify({environment:'dev',active:'test',keys:{test:randomBytes(32).toString('hex')}}),{mode:0o600});
+  createPrivateFile(file,JSON.stringify({environment:'dev',active:'test',keys:{test:randomBytes(32).toString('hex')}}));
   const values={PORTAL_ENV:'dev',PORTAL_PUBLIC_ORIGIN:'http://localhost:3000',PORTAL_CREDENTIAL_KEYRING_FILE:file,
     LARK_APP_ID:appId,LARK_TENANT_KEY:tenant,LARK_OAUTH_REDIRECT_URI:callback};
   const original=Object.fromEntries(Object.keys(values).map(key=>[key,process.env[key]]));

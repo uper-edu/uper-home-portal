@@ -18,7 +18,6 @@ const requestKey=b=>{if(typeof b.requestId!=='string'||!b.requestId.trim()||b.re
 const validCollection=name=>{if(!collections.includes(name))fail(400,'Invalid collection');return name;};
 const text=(b,key,max,required=false)=>{const value=b[key]??'';if(typeof value!=='string'||value.length>max||(required&&!value.trim()))fail(400,'Invalid '+key);return value.trim();};
 export async function mountSite(app,{db,platform,visitor,portalTx,leadTier,taskDeadline,runtimeVersion,mediaStorage=createCmsMediaStorage()}){
-  for(const name of collections)await db.execute('INSERT INTO cms_collections(name,items) VALUES(?,JSON_ARRAY()) ON DUPLICATE KEY UPDATE name=name',[name]);
   const wrap=fn=>(q,r,next)=>Promise.resolve(fn(q,r,next)).catch(e=>r.status(e.status||503).json({error:e.status&&e.status<500?e.message:'Storage unavailable; operation not saved'}));
   const staff=async q=>{const employee=await platform.authenticate(q);if(!employee)fail(401,'Login required');if(!employee.permissions.includes('cms.manage'))fail(403,'CMS management permission required');return employee;};
   const collection=async(name,c=db)=>{validCollection(name);const [rows]=await c.execute('SELECT items,items_text,revision FROM cms_collections WHERE name=?',[name]);const row=rows[0];return {...row,items:row.items_text===null?row.items:JSON.parse(row.items_text)};};

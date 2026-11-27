@@ -1,15 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {registerHooks} from 'node:module';
+import {stubModules} from './helpers/moduleStubs.mjs';
 import {lockIdentityRegistry} from '../server/portal/identityConsolidation.ts';
 
-const databaseHook=registerHooks({load(url,context,next){
-  if(!url.endsWith('/cloud/mysql/runtime.mjs'))return next(url,context);
-  return {shortCircuit:true,format:'module',source:`
+const databaseHook=stubModules([['/cloud/mysql/runtime.mjs',`
     const unused=()=>{throw Error('Identity enrollment test attempted to open a database');};
     export const nativePool={},pool={},initialize=unused,connection=unused,tx=unused,event=unused,id=unused;
-  `};
-}});
+  `]]);
 const {reconcileEnrollmentAfterIdentityReview,recordEnrollmentCustomer,validateAssistedContacts}=await import('../server/portal/enrollmentCrm.ts');
 databaseHook.deregister();
 

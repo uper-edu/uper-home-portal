@@ -1,16 +1,13 @@
 import assert from 'node:assert/strict';
-import {registerHooks} from 'node:module';
+import {stubModules} from './helpers/moduleStubs.mjs';
 import test from 'node:test';
 import type {Express,Request,Response} from 'express';
 import type {Employee} from '../server/portal/identity';
 
-const databaseHook=registerHooks({load(url,context,next){
- if(!url.endsWith('/cloud/mysql/runtime.mjs'))return next(url,context);
- return {shortCircuit:true,format:'module',source:`
+const databaseHook=stubModules([['/cloud/mysql/runtime.mjs',`
   const unused=()=>{throw Error('Purchase intent test attempted to open a database');};
   export const nativePool={},pool={},initialize=unused,connection=unused,tx=unused,event=unused,id=unused;
- `};
-}});
+ `]]);
 const {mountEnrollmentCrm}=await import('../server/portal/enrollmentCrm');
 databaseHook.deregister();
 

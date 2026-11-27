@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {runTool} from './chat-consultation-process.mjs';
 import {createHash} from 'node:crypto';
 import {mkdir,readFile,readdir,rename,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
@@ -83,7 +84,7 @@ function diagnosis(evaluation:Evaluation){
 }
 
 function invokeWorker(worker:string,request:unknown):unknown{
-  const result=spawnSync(worker,[],{input:JSON.stringify(request),encoding:'utf8',timeout:15*60_000,maxBuffer:256_000});
+  const result=runTool(worker,[],{input:JSON.stringify(request),encoding:'utf8',timeout:15*60_000,maxBuffer:256_000});
   if(result.status!==0)throw Error('Evaluation worker failed: '+(result.error?.message||result.stderr.trim()||result.status));
   return JSON.parse(result.stdout);
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import {spawnSync} from 'node:child_process';
+import {runTool} from './chat-consultation-process.mjs';
 import {readFileSync} from 'node:fs';
 import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -17,7 +17,7 @@ const entry=object({key:{type:'string'},resolved:{type:'boolean'},severe:{type:'
   cause:{type:'string'},scores:object(Object.fromEntries(dimensions.map(name=>[name,{type:'integer',minimum:1,maximum:5}])))});
 
 async function grade(samples,view,model,effort){
-  const result=spawnSync(cli,['-a','never','exec','--ephemeral','--skip-git-repo-check','--sandbox','read-only',
+  const result=runTool(cli,['-a','never','exec','--ephemeral','--skip-git-repo-check','--sandbox','read-only',
     ...(model?['-m',model]:[]),...(effort?['-c','model_reasoning_effort='+JSON.stringify(effort)]:[]),
     '--output-schema',schema,'--output-last-message',output,'-'],{
     cwd:work,encoding:'utf8',timeout:2*60_000,maxBuffer:2_000_000,input:`

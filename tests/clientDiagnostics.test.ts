@@ -1,18 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {registerHooks} from 'node:module';
+import {stubCss} from './helpers/moduleStubs.mjs';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {classifyClientFailure,diagnosticFrames,sanitizeClientDiagnostic,clientFailureText} from '../src/utils/clientDiagnostics';
 import {ApplicationErrorNotice} from '../src/components/ApplicationErrorBoundary';
 import {mountClientDiagnostics} from '../server/clientDiagnostics';
 
-const cssHook=registerHooks({
-  load(url,context,next) {
-    if (url.endsWith('.css')) return {format:'module',source:'',shortCircuit:true};
-    return next(url,context);
-  },
-});
+const cssHook=stubCss();
 const {default:GFormOnboardingModal}=await import('../src/components/GFormOnboardingModal');
 cssHook.deregister();
 

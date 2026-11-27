@@ -1,28 +1,21 @@
 import {createCipheriv, createDecipheriv, randomBytes} from 'node:crypto';
-import {closeSync, constants, fstatSync, openSync, readFileSync} from 'node:fs';
+import {readPrivateFile} from '../privateFile.mjs';
 import {isAbsolute} from 'node:path';
 
 const keyId = /^[a-zA-Z0-9_-]{1,40}$/;
 
 export function readCredentialKeyring(file = process.env.PORTAL_CREDENTIAL_KEYRING_FILE, environment = process.env.PORTAL_ENV) {
   if (!file || !isAbsolute(file)) throw Error('credential_keyring_unavailable');
-  const fd = openSync(file, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-  try {
-    const stat = fstatSync(fd);
-    if (!stat.isFile() || stat.size > 65536 || (stat.mode & 0o177)) throw Error('credential_keyring_permissions');
-    const value = JSON.parse(readFileSync(fd, 'utf8'));
-    if (!environment || value.environment !== environment) throw Error('credential_keyring_environment');
-    const keys = new Map<string, Buffer>();
-    for (const [id, hex] of Object.entries(value.keys ?? {})) {
-      if (!keyId.test(id) || typeof hex !== 'string' || !/^[0-9a-f]{64}$/i.test(hex))
-        throw Error('credential_keyring_invalid');
-      keys.set(id, Buffer.from(hex, 'hex'));
-    }
-    if (!keys.has(value.active)) throw Error('credential_keyring_invalid');
-    return {active: value.active as string, keys};
-  } finally {
-    closeSync(fd);
+  const value = JSON.parse(readPrivateFile(file,'credential_keyring_permissions').toString('utf8'));
+  if (!environment || value.environment !== environment) throw Error('credential_keyring_environment');
+  const keys = new Map<string, Buffer>();
+  for (const [id, hex] of Object.entries(value.keys ?? {})) {
+    if (!keyId.test(id) || typeof hex !== 'string' || !/^[0-9a-f]{64}$/i.test(hex))
+      throw Error('credential_keyring_invalid');
+    keys.set(id, Buffer.from(hex, 'hex'));
   }
+  if (!keys.has(value.active)) throw Error('credential_keyring_invalid');
+  return {active: value.active as string, keys};
 }
 
 export type CredentialKeyring = ReturnType<typeof readCredentialKeyring>;

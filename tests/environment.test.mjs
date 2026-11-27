@@ -1,3 +1,4 @@
+import {readPrivateFile} from '../server/privateFile.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -88,7 +89,8 @@ test('explicit environment preparation creates only the selected file and preser
   const devContents = 'PORTAL_ENV=dev\nOPENAI_API_KEY=fixture-dev\n';
   fs.writeFileSync(devFile, devContents);
   assert.equal(prepare('test').created, true);
-  assert.equal(fs.statSync(testFile).mode & 0o777, 0o600);
+  assert.deepEqual(readPrivateFile(testFile),fs.readFileSync(testFile));
+  if(process.platform!=='win32')assert.equal(fs.statSync(testFile).mode & 0o777,0o600);
   assert.equal(readEnvironment('test', targetDirectory).values.OPENAI_API_KEY, '');
   assert.equal(fs.readFileSync(devFile, 'utf8'), devContents);
   assert.equal(fs.existsSync(prodFile), false);

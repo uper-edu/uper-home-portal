@@ -1,6 +1,7 @@
+import {createPrivateFile} from '../server/privateFile.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,rmSync,writeFileSync} from 'node:fs';
+import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {randomBytes} from 'node:crypto';
@@ -51,7 +52,7 @@ test('CMS object reads use the current encrypted COS credential, reject revoked 
  const dir=mkdtempSync(join(tmpdir(),'uper-cos-keyring-'));
  t.after(()=>rmSync(dir,{recursive:true,force:true}));
  const keyring=join(dir,'keys');
- writeFileSync(keyring,JSON.stringify({environment:'dev',active:'v1',keys:{v1:randomBytes(32).toString('hex')}}),{mode:0o600});
+ createPrivateFile(keyring,JSON.stringify({environment:'dev',active:'v1',keys:{v1:randomBytes(32).toString('hex')}}));
  const fixture={PORTAL_ENV:'dev',PORTAL_CREDENTIAL_KEYRING_FILE:keyring,PORTAL_COS_SECRET_ID:'mock-legacy-id',
    PORTAL_COS_SECRET_KEY:'mock-legacy-key',PORTAL_COS_SECURITY_TOKEN:'mock-legacy-token'};
  const old=Object.fromEntries(Object.keys(fixture).map(key=>[key,process.env[key]]));

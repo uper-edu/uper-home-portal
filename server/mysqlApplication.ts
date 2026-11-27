@@ -7,7 +7,8 @@ import {addCampaignPromotion,campaignPromotionResult,deleteCampaignPromotion,res
 import {campaignTemplate} from "../src/utils/campaignWorkspace.ts";
 import {resolveCampaignLinks} from "../src/utils/campaignCode.ts";
 import {createRuntimeVersion,mountRuntimeVersion} from './runtimeVersion.mjs';
-import {ensureOrganicCampaign} from './portal/mysqlCampaignStorage.ts';
+import {startEnrollmentMaintenance} from './portal/enrollmentApplication.ts';
+import {startEnrollmentMail} from './portal/enrollmentMail.ts';
 import {canonicalCampaignId} from '../src/utils/organicCampaign.ts';
 import {mountMetadataHeaders,mountMetadataHtml} from './siteMetadata.ts';
 import {frontendStaticCompression,frontendStaticOptions} from './staticCache.ts';
@@ -99,7 +100,7 @@ app.get('/api/promotion-links/:p',wrap(async(q:any,r:any)=>{
  r.json({status:'verified',promotion:publicPromotion(resolved)});
 }));
 app.use('/api',campaignContextMiddleware(pool));
-await mountPortal(app);await ensureOrganicCampaign();mountChat(app);
+await mountPortal(app);mountChat(app);
 await mountSite(app,{db:nativePool,platform,visitor,portalTx:tx,leadTier,taskDeadline,runtimeVersion});
 app.get(['/api/crm/campaigns','/api/campaigns'],wrap(async(q:any,r:any)=>r.json({success:true,campaigns:q.path.startsWith('/api/crm')?await getCurrentCampaigns(r.locals.crmEmployee):loadCampaigns().map(({stats,...c})=>c)})));
 app.get('/api/crm/campaigns/sources/promotions',wrap(async(q:any,r:any)=>{
@@ -146,8 +147,13 @@ if(workerEnabled&&!activeLocal&&!company&&!production){
  const channels=(await pool.query("SELECT * FROM notification_channels")).rows;
  if(channels.some(c=>!c.config.deleted&&c.config.mode!=='simulation'))throw Error('Live channels must not be consumed by local acceptance workers');
 }
-const timer=workerEnabled?startWorker({paymentAnalytics:true}):null;
-const server=app.listen(port,deployment?.host || '127.0.0.1',()=>log.info('app.ready',{mysqlReady:true,port,workerEnabled:!!timer}));
+let timer:ReturnType<typeof startWorker>|null=null;
+const server=app.listen(port,deployment?.host || '127.0.0.1',()=>{
+  if(workerEnabled)timer=startWorker({paymentAnalytics:true});
+  startEnrollmentMail();
+  startEnrollmentMaintenance();
+  log.info('app.ready',{mysqlReady:true,port,workerEnabled:!!timer});
+});
 let closing=false;
 async function shutdown(){if(closing)return;closing=true;log.info('app.shutdown',{draining:true});if(timer)await stopWorker(timer);modelStub?.close();server.close(async()=>{if(releaseCompanyLease)await releaseCompanyLease();await pool.end();log.info('app.shutdown',{draining:false});setImmediate(()=>process.exit(0));});}
 process.once('SIGINT',shutdown);process.once('SIGTERM',shutdown);

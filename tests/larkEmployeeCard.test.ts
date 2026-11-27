@@ -2,8 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {registerHooks} from 'node:module';
-const hook=registerHooks({load(url,context,next){return url.endsWith('.css')?{format:'module',source:'export default {}',shortCircuit:true}:next(url,context);}});
+import {stubCss} from './helpers/moduleStubs.mjs';
+const hook=stubCss();
 const {AccessUserCard}=await import('../src/components/AccessRecordCard.tsx');
 hook.deregister();
 test('employee card shows only saved Lark status without binding identifiers',()=>{

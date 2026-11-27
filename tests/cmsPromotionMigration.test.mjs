@@ -45,6 +45,8 @@ function fixture(ready){
  const activityColumns=new Map();
  const connection={
   async query(sql,args){
+   // SQL whitespace is insignificant to MySQL; keep the fixture portable across Git checkouts.
+   sql=sql.replaceAll('\r\n','\n');
    queries.push(sql);
    if(sql.includes('GET_LOCK('))return [[{acquired:1}]];
    if(sql.includes('RELEASE_LOCK('))return [[{released:1}]];

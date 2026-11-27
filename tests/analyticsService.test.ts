@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import {pathToFileURL} from "node:url";
 import path from "node:path";
 import analyticsEnvironments from '../src/data/analyticsEnvironments.json';
 
@@ -65,7 +66,7 @@ test("actual portal services emit only scope-checked saved receipts; failures an
       path.join(dir, "services.mjs"),
       bundled.outputFiles[0].text,
     );
-    const api = await import(path.join(dir, "services.mjs"));
+    const api = await import(pathToFileURL(path.join(dir, "services.mjs")).href);
     api.selectVisitorScope(A);
     let request: any;
     globalThis.fetch = async (url: any, init: any) => {

@@ -1,3 +1,4 @@
+import {createPrivateFile} from '../server/privateFile.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -22,7 +23,7 @@ export function prepareEnvironment(target, {
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
     if (!create) throw Error('Missing .env.' + name + '; run npm run env:prepare -- ' + name);
-    fs.writeFileSync(file, template, {flag: 'wx', mode: 0o600});
+    createPrivateFile(file, template);
     return {created: true, added: Object.keys(defaults)};
   }
   if (!stat.isFile()) throw Error('Environment configuration must be a regular file');

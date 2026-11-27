@@ -1,6 +1,6 @@
 import {createHash,randomUUID} from 'node:crypto';
-import {constants} from 'node:fs';
-import {open} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {readPrivateFile} from '../../server/privateFile.mjs';
 import {validateRole} from '../../src/utils/accessControl.ts';
 import {cmsSeedNames} from './cms-seed.mjs';
 import {cmsMediaUrl,trustedCmsMediaUrl} from './cms-media-storage.mjs';
@@ -118,13 +118,10 @@ export function validateInitialBusinessDefaults(bundle){
  assertPreset(!containsCredential(bundle),'unexpected credential field');
  return {bundle,digest:createHash('sha256').update(JSON.stringify(bundle)).digest('hex')};
 }
+// Owner-only mode on macOS/Linux, owner-only ACL on Windows; symbolic links are refused.
 export async function readInitialBusinessDefaults(file){
- const input=await open(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
- try{
-  const stat=await input.stat();
-  assertPreset(stat.isFile()&&(stat.mode&0o077)===0&&stat.size<=64*1024*1024,'private file (0600, at most 64 MiB)');
-  return validateInitialBusinessDefaults(JSON.parse(await input.readFile('utf8')));
- }finally{await input.close();}
+ const content=readPrivateFile(resolve(file),'Invalid initial business defaults: private file (owner-only access, at most 64 MiB)',64*1024*1024);
+ return validateInitialBusinessDefaults(JSON.parse(content.toString('utf8')));
 }
 
 export async function insertInitialBusinessDefaults(c,{bundle,digest},environment){
