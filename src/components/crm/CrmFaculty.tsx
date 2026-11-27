@@ -437,7 +437,7 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
   }
   const profileName=details?facultyName(Object.fromEntries(facultyLanguages.map(code=>[code,details.profile.content[code]?.name])),lang):'';
   const readRates=details?.rates;
-  const detailLanguage=selectedDetailLanguage??(details?.profile.category==='local'?'id':'zh');
+  const detailLanguage=selectedDetailLanguage??(details?.profile.category==='local'?'en':'zh');
   const shown=details?.profile.content[detailLanguage]??{};
   const shownTitle=facultyTitleLabel(facultyTitles(details?.profile.content),detailLanguage);
   const employmentType=details?.profile.employmentType;
