@@ -164,6 +164,7 @@ Calendar,
   Lightbulb,
   HelpCircle,
   Activity,
+  Megaphone,
   Target,
 } from "lucide-react";
 import {
@@ -1432,7 +1433,7 @@ function CrmWorkspace({
       <AdminHeader workspace="crm" employee={employee} lang={lang} setLang={setLang} isLight={isLight} toggleTheme={toggleTheme}
         navigation={<>
           {canDashboard&&<button type="button" aria-current={crmModule==="dashboard"?"page":undefined} onClick={()=>changeModule("dashboard")}><BarChart3 size={16}/>{adminText(lang,"Operations dashboard","Dasbor operasional","经营看板")}</button>}
-          <button type="button" aria-current={crmModule === "campaigns" ? "page" : undefined} onClick={() => changeModule("campaigns")}><Target size={16}/>{t("Marketing Campaigns", "营销活动中心")}<CrmQueueCount queue="promotion" count={promotionQueue.data?.pendingCount} lang={lang}/></button>
+          <button type="button" aria-current={crmModule === "campaigns" ? "page" : undefined} onClick={() => changeModule("campaigns")}><Megaphone size={16} aria-hidden="true"/>{t("Marketing Campaigns", "营销活动中心")}<CrmQueueCount queue="promotion" count={promotionQueue.data?.pendingCount} lang={lang}/></button>
           <button type="button" aria-current={crmModule === "leads" ? "page" : undefined} onClick={() => changeModule("leads")}><Users size={16}/>{adminText(lang,"Customers","Pelanggan","客户")}<CrmQueueCount queue="identity" count={identityQueue?.pendingCount} lang={lang}/></button>
           <button type="button" aria-current={crmModule === "opportunities" ? "page" : undefined} onClick={()=>changeModule("opportunities")}><Target size={16}/>{adminText(lang,"Opportunities","Peluang","商机")}</button>
           {canEnrollmentManagement&&<button type="button" aria-current={crmModule==="enrollment-management"||crmModule==="enrollment-aftercare"?"page":undefined} onClick={()=>changeModule("enrollment-management")}><ListChecks size={16}/>{adminText(lang,"Enrollment management","Pengelolaan pendaftaran","报名管理")}</button>}
