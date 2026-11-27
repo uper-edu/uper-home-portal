@@ -78,7 +78,8 @@ test('manual DDL includes every original table definition and incremental column
     ['portal_audit','trial_schema_versions','trial_schema_versions','portal_audit']);
   assert.ok(script.indexOf("'release.v18v20.begin',JSON_OBJECT")<script.indexOf('EXECUTE uper_upgrade_ddl'));
   assert.match(script,/CONCAT\('uper-v18v20:',v_run\)/);
-  assert.match(script,/' COMMENT=',QUOTE\(v_marker\)/);
+  assert.match(script,/_utf8mb4' COMMENT=' COLLATE utf8mb4_bin/);
+  assert.match(script,/CONVERT\(QUOTE\(v_marker\) USING utf8mb4\) COLLATE utf8mb4_bin/);
   assert.match(script,/Version or target tables have no tracked upgrade origin/);
   const declared=script.match(/DECLARE v_names JSON DEFAULT JSON_ARRAY[(]([^;]*?)[)];/)[1];
   assert.deepEqual(JSON.parse('['+declared.replaceAll("'",'"')+']'),[...actual.keys()]);
@@ -137,9 +138,9 @@ test('upgrade and rollback share the journal and preserve legacy values and refe
   assert.match(seed,/'group',v_channel_change,'campaign',v_campaign_change,'indexes',v_new_indexes/);
   assert.ok(delivery.indexOf('UPDATE notification_channels SET')<delivery.indexOf("'release.v18v20.delivery',\n"));
   assert.ok(seed.indexOf('UPDATE trial_campaigns SET')<seed.indexOf("'release.v18v20.seed',\n"));
-  for(const key of ['hadManaged','hadUpdatedAt','hadLinks','hadMode','hadRevision']){
-    assert.match(rollback,new RegExp('\\$\\.'+key));
-  }
+  const presenceChecks=[...rollback.matchAll(/JSON_UNQUOTE\(JSON_EXTRACT\(v_(?:patch|group),'\$\.(had[A-Z]\w+)'\)\) IN \('1','true'\)/g)];
+  assert.deepEqual(presenceChecks.map(match=>match[1]),
+    ['hadLinks','hadManaged','hadUpdatedAt','hadManaged','hadMode','hadRevision']);
   assert.match(rollback,/Social-bio campaign does not match its original configuration/);
   assert.match(rollback,/System Lark group changed after rollback began/);
   assert.match(rollback,/Personal Lark configuration does not match its original value/);

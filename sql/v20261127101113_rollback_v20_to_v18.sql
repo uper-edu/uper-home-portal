@@ -142,6 +142,8 @@ main: BEGIN
   START TRANSACTION;
   -- Reverse the seed before delivery because both can update the same channel.
   -- Every comparison, restore and the DML checkpoint share a transaction.
+  -- Presence flags can be JSON booleans or numeric 0/1, depending on how
+  -- MySQL evaluated JSON_CONTAINS_PATH when the upgrade wrote the journal.
   IF CHAR_LENGTH(JSON_UNQUOTE(JSON_EXTRACT(v_seed,'$.ruleHash')))=64 THEN
     IF EXISTS(SELECT 1 FROM notification_jobs WHERE rule_id='lead.assigned')
        OR EXISTS(SELECT 1 FROM rule_versions WHERE id='lead.assigned') THEN
@@ -192,9 +194,9 @@ main: BEGIN
         SET v_i=v_i+1;
       END WHILE;
       SET v_config=JSON_REMOVE(v_config,'$.promotionLinks','$.systemManaged','$.updatedAt');
-      IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadLinks'))='1' THEN SET v_config=JSON_SET(v_config,'$.promotionLinks',v_kept); END IF;
-      IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadManaged'))='1' THEN SET v_config=JSON_SET(v_config,'$.systemManaged',JSON_EXTRACT(v_patch,'$.managed')); END IF;
-      IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadUpdatedAt'))='1' THEN SET v_config=JSON_SET(v_config,'$.updatedAt',JSON_EXTRACT(v_patch,'$.updatedAt')); END IF;
+      IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadLinks')) IN ('1','true') THEN SET v_config=JSON_SET(v_config,'$.promotionLinks',v_kept); END IF;
+      IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadManaged')) IN ('1','true') THEN SET v_config=JSON_SET(v_config,'$.systemManaged',JSON_EXTRACT(v_patch,'$.managed')); END IF;
+      IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadUpdatedAt')) IN ('1','true') THEN SET v_config=JSON_SET(v_config,'$.updatedAt',JSON_EXTRACT(v_patch,'$.updatedAt')); END IF;
       UPDATE trial_campaigns SET config=v_config WHERE id='social-bio';
     END IF;
     IF NOT (SHA2(CAST(v_config AS CHAR CHARACTER SET utf8mb4),256)<=>JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.before'))) THEN
@@ -224,7 +226,7 @@ main: BEGIN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='System Lark group changed; stop';
     END IF;
     SET v_config=JSON_REMOVE(JSON_SET(v_config,'$.groupName',JSON_EXTRACT(v_group,'$.groupName')),'$.systemManaged');
-    IF JSON_UNQUOTE(JSON_EXTRACT(v_group,'$.hadManaged'))='1' THEN SET v_config=JSON_SET(v_config,'$.systemManaged',JSON_EXTRACT(v_group,'$.managed')); END IF;
+    IF JSON_UNQUOTE(JSON_EXTRACT(v_group,'$.hadManaged')) IN ('1','true') THEN SET v_config=JSON_SET(v_config,'$.systemManaged',JSON_EXTRACT(v_group,'$.managed')); END IF;
     IF NOT (SHA2(CAST(v_config AS CHAR CHARACTER SET utf8mb4),256)<=>JSON_UNQUOTE(JSON_EXTRACT(v_group,'$.before'))) THEN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Cannot restore the original Lark group configuration';
     END IF;
@@ -270,8 +272,8 @@ main: BEGIN
         SET v_config=NULL;
       ELSE
         SET v_config=JSON_REMOVE(v_config,'$.mode','$.revision');
-        IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadMode'))='1' THEN SET v_config=JSON_SET(v_config,'$.mode',JSON_EXTRACT(v_patch,'$.mode')); END IF;
-        IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadRevision'))='1' THEN SET v_config=JSON_SET(v_config,'$.revision',JSON_EXTRACT(v_patch,'$.revision')); END IF;
+        IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadMode')) IN ('1','true') THEN SET v_config=JSON_SET(v_config,'$.mode',JSON_EXTRACT(v_patch,'$.mode')); END IF;
+        IF JSON_UNQUOTE(JSON_EXTRACT(v_patch,'$.hadRevision')) IN ('1','true') THEN SET v_config=JSON_SET(v_config,'$.revision',JSON_EXTRACT(v_patch,'$.revision')); END IF;
         UPDATE portal_settings SET value=v_config WHERE id='lark_personal_channel';
       END IF;
     END IF;

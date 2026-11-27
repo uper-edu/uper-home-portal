@@ -978,7 +978,11 @@ main: BEGIN
   WHILE v_i<JSON_LENGTH(v_ddl) DO
     SET v_table=JSON_UNQUOTE(JSON_EXTRACT(v_names,CONCAT('$[',v_i,']')));
     IF NOT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=v_table) THEN
-      SET @uper_upgrade_ddl=CONCAT(JSON_UNQUOTE(JSON_EXTRACT(v_ddl,CONCAT('$[',v_i,']'))),' COMMENT=',QUOTE(v_marker));
+      -- JSON text and the ASCII ownership marker must use the same collation.
+      SET @uper_upgrade_ddl=CONCAT(
+        JSON_UNQUOTE(JSON_EXTRACT(v_ddl,CONCAT('$[',v_i,']'))) COLLATE utf8mb4_bin,
+        _utf8mb4' COMMENT=' COLLATE utf8mb4_bin,
+        CONVERT(QUOTE(v_marker) USING utf8mb4) COLLATE utf8mb4_bin);
       PREPARE uper_upgrade_ddl FROM @uper_upgrade_ddl;
       EXECUTE uper_upgrade_ddl;
       DEALLOCATE PREPARE uper_upgrade_ddl;
