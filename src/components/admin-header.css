@@ -99,6 +99,9 @@
 }
 .admin-popover {
   left: 0;
+  max-block-size: calc(100dvh - 5rem);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 .admin-popover a,
 .admin-account-popover button {
@@ -122,10 +125,14 @@
   background: var(--ah-selected);
   font-weight: 600;
 }
-.admin-popover .admin-site-link {
+.admin-site-links {
   border-top: 1px solid var(--ah-border);
-  margin-top: 6px;
-  border-radius: 0 0 8px 8px;
+  margin: 6px 0 0;
+  padding: 6px 0 0;
+  list-style: none;
+}
+.admin-site-links a {
+  justify-content: space-between;
   color: var(--ah-muted);
 }
 .admin-global-controls {

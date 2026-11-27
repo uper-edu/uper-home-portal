@@ -15,6 +15,13 @@ import "./crm/crm-language-switch.css";
 import { availableWorkspaces, type AdminWorkspace } from "../utils/adminWorkspace";
 import {defaultCrmModule} from '../utils/crmLanding';
 
+const publicSiteLinks = [
+  { href: "/", label: ["Homepage", "Beranda", "网站首页"] },
+  { href: "/link", label: ["Link hub", "Pusat tautan", "链接中心"] },
+  { href: "/chat", label: ["AI chat", "Chat AI", "AI 咨询"] },
+  { href: "/enrollment", label: ["Course enrollment", "Pendaftaran kursus", "课程报名"] },
+] as const;
+
 export function adminText(
   lang: CrmLanguage,
   en: string,
@@ -161,15 +168,16 @@ export function AdminHeader({
                 </a>
                 );
               })}
-              <a
-                className="admin-site-link"
-                href="/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {text("View website", "Lihat situs", "查看网站")}
-                <ExternalLink size={14} aria-hidden="true" />
-              </a>
+              <ul className="admin-site-links" aria-label={text("Public website", "Situs publik", "公开网站")}>
+                {publicSiteLinks.map(({ href, label: [en, id, zh] }) => (
+                  <li key={href}>
+                    <a href={href} target="_blank" rel="noopener noreferrer">
+                      {text(en, id, zh)}
+                      <ExternalLink size={14} aria-hidden="true" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </nav>
           </details>
         </div>
