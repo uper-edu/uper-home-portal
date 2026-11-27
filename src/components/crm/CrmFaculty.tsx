@@ -1,4 +1,4 @@
-import {useEffect,useId,useLayoutEffect,useRef,useState,type FormEvent,type MouseEvent} from 'react';
+import {useEffect,useId,useLayoutEffect,useRef,useState,type FormEvent,type MouseEvent,type ReactNode} from 'react';
 import {Paperclip,Pencil,Plus} from 'lucide-react';
 import {AdminField} from '../AdminForm';
 import {AdminFormFeedback,AdminFormGrid,AdminFormSection} from '../AdminFormLayout';
@@ -13,15 +13,16 @@ import {AdminRecordEntry,AdminRowAction} from '../admin/AdminListControl';
 import {AdminRecordHeader,type AdminBackTarget} from '../admin/AdminRecordHeader';
 import {AdminPageAction} from '../admin/AdminPageAction';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
-import {AdminSearchField} from '../admin/AdminSearchField';
+import {AdminListToolbar} from '../admin/AdminListToolbar';
 import {AdminSingleSelect} from '../admin/AdminSingleSelect';
-import {AdminTopicHeader} from '../admin/AdminTopicHeader';
+import {AdminPageHeader} from '../admin/AdminPageHeader';
 import {CrmDetailActions,CrmRecordTitle} from './CrmRecordWorkspace';
-import {EnrollmentSettingsListSummary,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
+import {useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 import {formatCrmOperatingTime,viewerTimeZone} from '../../utils/crmOperatingTime';
-import {facultyAmount,facultyDateValid,facultyEffectiveDate,facultyEndpoint,facultyFields,facultyFileLimits,facultyLanguages,facultyMinorAmount,facultyName,
-  facultyTeacherLabels,facultyText,type FacultyBio,type FacultyChoice,type FacultyCurrency,type FacultyFileInput,type FacultyFileKind,
+import {facultyAmount,facultyDateValid,facultyEffectiveDate,facultyEmploymentTypes,facultyEndpoint,facultyFields,facultyFileLimits,facultyLanguages,facultyMinorAmount,facultyName,
+  facultyPresetTitles,facultyTeacherLabels,facultyText,facultyTitleLabel,facultyTitleOptions,facultyTitleSelection,facultyTitleSuggestion,facultyTitles,withFacultyTitles,
+  type FacultyBio,type FacultyCurrency,type FacultyDirectoryEntry,type FacultyFileInput,type FacultyFileKind,
   type FacultyProfile,type FacultyRates,type FacultyTerm} from '../../utils/crmFaculty';
 
 const words={
@@ -36,13 +37,21 @@ const words={
   search:['搜索教师姓名','Search teacher names','Cari nama pengajar'],
   allCategories:['全部教师类别','All teacher categories','Semua kategori pengajar'],
   allStatuses:['全部状态','All statuses','Semua status'],
-  sort:['排序','Sort','Urutkan'],
   nameAsc:['姓名升序','Name ascending','Nama menaik'],
   nameDesc:['姓名降序','Name descending','Nama menurun'],
   refresh:['刷新','Refresh','Segarkan'],
   refreshFailed:['刷新失败，仍显示上次读取的档案。','Refresh failed. The previous results are still shown.','Penyegaran gagal. Hasil sebelumnya tetap ditampilkan.'],
   edit:['编辑档案','Edit profile','Edit profil'],
   name:['教师姓名','Teacher name','Nama pengajar'],
+  separateTitle:['拆分姓名和职称','Separate name and title','Pisahkan nama dan jabatan'],
+  noTitle:['不填写','No title','Tanpa jabatan'],
+  employmentType:['任职类型','Employment type','Jenis pekerjaan'],
+  notSpecified:['未填写','Not specified','Belum diisi'],
+  allTitles:['全部职称','All titles','Semua jabatan'],
+  otherTitles:['其他职称','Other titles','Jabatan lainnya'],
+  allEmploymentTypes:['全部任职类型','All employment types','Semua jenis pekerjaan'],
+  allBillingMethods:['全部计费方式','All pay bases','Semua dasar pembayaran'],
+  billingUnset:['未设置计费方式','Pay basis not set','Dasar pembayaran belum diatur'],
   category:['教师类别','Teacher category','Kategori pengajar'],
   status:['状态','Status','Status'],
   active:['可排课','Available for scheduling','Tersedia untuk penjadwalan'],
@@ -71,6 +80,9 @@ const words={
   effective:['本段生效日','Effective from','Berlaku sejak'],
   phase:['费率阶段','Rate phase','Fase tarif'],
   kind:['计费方式','Pay basis','Dasar pembayaran'],
+  lessonBasis:['按课时','Per lesson','Per sesi'],
+  monthlyBasis:['月薪','Monthly salary','Gaji bulanan'],
+  scheduledBasis:['待生效','Not yet effective','Belum berlaku'],
   lesson:['按课时（45 分钟一节）','Per 45-minute lesson','Per sesi 45 menit'],
   monthly:['月薪 · 待分摊','Monthly salary · allocation pending','Gaji bulanan · alokasi tertunda'],
   currency:['币种','Currency','Mata uang'],
@@ -93,7 +105,7 @@ const words={
   education:['教育与语言','Education and languages','Pendidikan dan bahasa'],
   experience:['职务与经历','Roles and experience','Jabatan dan pengalaman'],
   teaching:['研究与教学','Research and teaching','Riset dan pengajaran'],
-  noneInLanguage:['当前语言暂无资料。','No profile information in this language.','Belum ada informasi profil dalam bahasa ini.'],
+  noneInLanguage:['当前语言暂无履历资料。','No biography in this language.','Belum ada riwayat profil dalam bahasa ini.'],
   viewProfileLanguage:['查看资料','View profile in','Lihat profil dalam'],
 } as const;
 type Word=keyof typeof words;
@@ -106,8 +118,9 @@ const profileGroups=[
   {title:'teaching',fields:['researchAreas','academicAchievements','publications','teachingExpertise','strengths','teachingHighlights','teachingFeatures']},
 ] as const satisfies readonly {title:Word;fields:readonly (keyof typeof facultyFields)[]}[];
 const fullWidthFacts=new Set<keyof typeof facultyFields>(['education','positions','publications']);
-const defaultFilters={search:'',category:'',status:'',sort:'name-asc'};
+const defaultFilters={search:'',category:'',status:'',professionalTitle:'',employmentType:'',billingMethod:'',sort:'name-asc'};
 const pageSize=25;
+const employmentChoices=(lang:CrmLanguage)=>Object.entries(facultyEmploymentTypes).map(([value,labels])=>({value,label:facultyText(lang,labels)}));
 
 function followWorkspaceLink(event:MouseEvent<HTMLAnchorElement>,navigate:(href:string)=>void){
   if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.defaultPrevented)return;
@@ -119,7 +132,7 @@ function rateDraft(term:FacultyTerm,key:number):RateDraft{
   return {...term,key,contractGroup:term.contractStart,amount:term.amountMinor===null||term.currency===null?'':facultyAmount(term.amountMinor,term.currency)};
 }
 function hasProfileText(bio?:FacultyBio){
-  return Object.values(bio??{}).some(value=>value?.trim());
+  return Object.entries(bio??{}).some(([field,value])=>field!=='professionalTitle'&&value?.trim());
 }
 async function get<T>(url:string,signal?:AbortSignal){
   const response=await fetch(url,{cache:'no-store',signal});
@@ -135,12 +148,12 @@ function filePayload(file:File){
   });
 }
 
-export function CrmFaculty({lang,isLight,canEdit,canRates,onDraftChange,selectedId,listHref,recordHref,onNavigate}:{
-  lang:CrmLanguage;isLight:boolean;canEdit:boolean;canRates:boolean;onDraftChange:(dirty:boolean)=>void;
-  selectedId?:string;listHref:string;recordHref:(id:string)=>string;onNavigate:(href:string)=>void;
+export function CrmFaculty({lang,isLight,canEdit,canRates,canReadRates=canRates,onDraftChange,selectedId,secondaryActions,listHref,recordHref,onNavigate}:{
+  lang:CrmLanguage;isLight:boolean;canEdit:boolean;canRates:boolean;canReadRates?:boolean;onDraftChange:(dirty:boolean)=>void;
+  selectedId?:string;secondaryActions?:ReactNode;listHref:string;recordHref:(id:string)=>string;onNavigate:(href:string)=>void;
 }){
   const t=(key:Word)=>facultyText(lang,words[key]);
-  const [items,setItems]=useState<FacultyChoice[]>();
+  const [items,setItems]=useState<FacultyDirectoryEntry[]>();
   const [listState,setListState]=useState<'loading'|'ready'|'error'|'denied'>('loading');
   const {filters,change,clear}=useEnrollmentSettingsFilters('faculty',defaultFilters);
   const [page,setPage]=useState(1);
@@ -155,7 +168,7 @@ export function CrmFaculty({lang,isLight,canEdit,canRates,onDraftChange,selected
   useEffect(()=>{
     if(selectedId)return;
     const abort=new AbortController();
-    get<FacultyChoice[]>(facultyEndpoint,abort.signal).then(rows=>{
+    get<FacultyDirectoryEntry[]>(facultyEndpoint,abort.signal).then(rows=>{
       if(!abort.signal.aborted){setItems(rows);setListState('ready');}
     }).catch(error=>{
       if(abort.signal.aborted)return;
@@ -166,8 +179,12 @@ export function CrmFaculty({lang,isLight,canEdit,canRates,onDraftChange,selected
   },[refresh,selectedId]);
   const search=filters.search.trim().toLocaleLowerCase();
   const names=new Intl.Collator(lang,{sensitivity:'base',numeric:true});
+  const billingFilter=canReadRates?filters.billingMethod:'';
+  const optionalMatch=(selected:string,value?:string)=>!selected||selected===(value||'unset');
   const filtered=(items??[]).filter(item=>(!filters.category||item.category===filters.category)&&
     (!filters.status||item.active===(filters.status==='active'))&&
+    optionalMatch(filters.professionalTitle,facultyTitleSelection(item.professionalTitles??{}))&&
+    optionalMatch(filters.employmentType,item.employmentType)&&optionalMatch(billingFilter,item.billingMethod?.kind)&&
     Object.values(item.names).some(name=>name.toLocaleLowerCase().includes(search)))
     .sort((a,b)=>(filters.sort==='name-desc'?-1:1)*names.compare(facultyName(a.names,lang),facultyName(b.names,lang))||a.id.localeCompare(b.id));
   const pageCount=Math.max(1,Math.ceil(filtered.length/pageSize)),currentPage=Math.min(page,pageCount);
@@ -193,38 +210,62 @@ export function CrmFaculty({lang,isLight,canEdit,canRates,onDraftChange,selected
     onNavigate(href);
   };
   const updateFilter=(patch:Parameters<typeof change>[0])=>{change(patch);setPage(1);};
-  const filterSelect=(filter:'category'|'status',label:Word,all:Word,options:{value:string;label:string}[])=>
-    <AdminSingleSelect lang={lang} isLight={isLight} label={t(label)} value={filters[filter]}
+  const filterSelect=(filter:Exclude<keyof typeof defaultFilters,'search'|'sort'>,label:string,all:Word,options:{value:string;label:string}[])=>{
+    const selected=options.find(option=>option.value===filters[filter]);
+    return <AdminSingleSelect lang={lang} isLight={isLight} label={label} value={filters[filter]}
+      displayValue={selected?`${label} · ${selected.label}`:undefined}
       onChange={value=>updateFilter({[filter]:value})} options={[{value:'',label:t(all)},...options]}/>;
+  };
   return <div className="crm-course-catalog">
-    <AdminTopicHeader title={t('title')} subtitle={t('listHint')} isLight={isLight} headingRef={heading} actions={listState!=='denied'&&<>
-      <AdminRefreshAction label={t('refresh')} loading={listState==='loading'} onClick={reload}/>
-      {canEdit&&<AdminPageAction label={t('add')} icon={Plus} variant="primary" aria-haspopup="dialog" onClick={()=>setAdding(true)}/>}
+    <AdminPageHeader title={t('title')} subtitle={t('listHint')} headingRef={heading} actions={(secondaryActions||listState!=='denied')&&<>
+      {secondaryActions}
+      {listState!=='denied'&&<>
+        <AdminRefreshAction label={t('refresh')} loading={listState==='loading'} onClick={reload}/>
+        {canEdit&&<AdminPageAction label={t('add')} icon={Plus} variant="primary" aria-haspopup="dialog" onClick={()=>setAdding(true)}/>}
+      </>}
     </>}/>
-    {items&&<>
-      <div className="crm-class-config-filters">
-        <AdminSearchField label={t('search')} placeholder={t('search')} value={filters.search} onChange={value=>updateFilter({search:value})}/>
-        {filterSelect('category','category','allCategories',(['local','foreign'] as const).map(value=>({value,label:facultyText(lang,facultyTeacherLabels[value])})))}
-        {filterSelect('status','status','allStatuses',(['active','inactive'] as const).map(value=>({value,label:t(value)})))}
-      </div>
-      <EnrollmentSettingsListSummary lang={lang} count={filtered.length} total={items.length}
-        filtered={Boolean(filters.search||filters.category||filters.status)} onClear={()=>{clear();setPage(1);}}>
-        <AdminSingleSelect lang={lang} isLight={isLight} label={t('sort')} value={filters.sort} onChange={value=>updateFilter({sort:value})}
-          options={[{value:'name-asc',label:t('nameAsc')},{value:'name-desc',label:t('nameDesc')}]}/>
-      </EnrollmentSettingsListSummary>
-    </>}
+    {items&&<AdminListToolbar lang={lang} isLight={isLight} count={filtered.length} total={items.length}
+      filtered={Boolean(filters.search||filters.category||filters.status||filters.professionalTitle||filters.employmentType||billingFilter)}
+      onClear={()=>{clear();setPage(1);}}
+      search={{label:t('search'),placeholder:t('search'),value:filters.search,onChange:search=>updateFilter({search})}}
+      sort={{value:filters.sort,onChange:sort=>updateFilter({sort}),options:[
+        {value:'name-asc',label:t('nameAsc')},{value:'name-desc',label:t('nameDesc')},
+      ]}}
+      more={{count:[filters.professionalTitle,filters.employmentType,billingFilter].filter(Boolean).length,fields:<>
+        {filterSelect('professionalTitle',facultyText(lang,facultyFields.professionalTitle),'allTitles',[
+          ...facultyTitleOptions(lang),{value:'legacy',label:t('otherTitles')},{value:'unset',label:t('notSpecified')},
+        ])}
+        {filterSelect('employmentType',t('employmentType'),'allEmploymentTypes',[
+          ...employmentChoices(lang),{value:'unset',label:t('notSpecified')},
+        ])}
+        {canReadRates&&filterSelect('billingMethod',t('kind'),'allBillingMethods',[
+          {value:'lesson',label:t('lessonBasis')},{value:'monthly',label:t('monthlyBasis')},{value:'unset',label:t('billingUnset')},
+        ])}
+      </>}}>
+        {filterSelect('category',t('category'),'allCategories',(['local','foreign'] as const).map(value=>({value,label:facultyText(lang,facultyTeacherLabels[value])})))}
+        {filterSelect('status',t('status'),'allStatuses',(['active','inactive'] as const).map(value=>({value,label:t(value)})))}
+    </AdminListToolbar>}
     {(listState==='error'||!items||listState==='ready'&&!rows.length)&&<AdminListState lang={lang}
       state={listState==='ready'?'empty':listState} message={listState==='error'&&items?t('refreshFailed'):undefined} onRetry={reload}/>}
     {!!rows.length&&<>
       <AdminListTable label={t('title')} viewportRef={table} busy={listState==='loading'}
-        headers={[{label:t('name'),sort:filters.sort==='name-desc'?'descending':'ascending'},t('category'),t('status'),t('rowActions')]}>
+        headers={[{label:t('name'),sort:filters.sort==='name-desc'?'descending':'ascending'},
+          facultyText(lang,facultyFields.professionalTitle),t('category'),t('employmentType'),
+          ...(canReadRates?[t('kind')]:[]),t('status'),t('rowActions')]}>
         {rows.map(item=>{
           const href=recordHref(item.id),entryId='faculty-entry-'+item.id,actionId='faculty-action-'+item.id;
           const name=facultyName(item.names,lang);
+          const billing=item.billingMethod;
           return <tr key={item.id}><th scope="row">
             <AdminRecordEntry id={entryId} href={href} onClick={event=>
               followWorkspaceLink(event,url=>openRecord(item.id,entryId,url))}>{name}</AdminRecordEntry>
-          </th><td>{facultyText(lang,facultyTeacherLabels[item.category])}</td>
+          </th><td>{facultyTitleLabel(item.professionalTitles??{},lang)||'—'}</td>
+          <td>{facultyText(lang,facultyTeacherLabels[item.category])}</td>
+          <td>{item.employmentType?facultyText(lang,facultyEmploymentTypes[item.employmentType]):t('notSpecified')}</td>
+          {canReadRates&&<td>{billing?<>
+            {t(billing.kind==='lesson'?'lessonBasis':'monthlyBasis')}
+            {billing.status!=='effective'&&' · '+t(billing.status==='undated'?'pendingDate':'scheduledBasis')}
+          </>:'—'}</td>}
           <td><AdminStatus active={item.active}>{t(item.active?'active':'inactive')}</AdminStatus></td>
           <td>{canEdit
             ?<AdminRowAction id={actionId} aria-label={t('rowEdit')+' · '+name} aria-haspopup="dialog"
@@ -344,7 +385,7 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
       if(!facultyLanguages.some(lang=>draft.content[lang]?.name?.trim())){
         setFeedback('nameMissing');nameInput.current?.focus();return;
       }
-      body={revision:draft.revision,category:draft.category,active:draft.active,content:draft.content,files};
+      body={revision:draft.revision,category:draft.category,active:draft.active,employmentType:draft.employmentType??null,content:draft.content,files};
     }else{
       const normalized:FacultyTerm[]=[];
       for(const [index,{contractStart,monthsAfterStart,amount,kind,currency,note}] of terms.entries()){
@@ -385,8 +426,8 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
   }
   const languageLabels={zh:'中文',en:'English',id:'Bahasa Indonesia'};
   const tabs=facultyLanguages.map(code=>({id:code,label:languageLabels[code]}));
-  const patchBio=(field:keyof FacultyBio,value:string)=>change(()=>setDraft(prev=>prev&&({...prev,
-    content:{...prev.content,[editorLanguage]:{...prev.content[editorLanguage],[field]:value}}})));
+  const patchBio=(fields:FacultyBio)=>change(()=>setDraft(prev=>prev&&({...prev,
+    content:{...prev.content,[editorLanguage]:{...prev.content[editorLanguage],...fields}}})));
   const patchRate=(key:number,patch:Partial<RateDraft>)=>change(()=>setTerms(prev=>prev.map(term=>term.key===key?{...term,...patch}:term)));
   function changeContractDate(term:RateDraft,contractStart:string){
     change(()=>setTerms(previous=>previous.map(row=>{
@@ -398,6 +439,8 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
   const readRates=details?.rates;
   const detailLanguage=selectedDetailLanguage??(details?.profile.category==='local'?'id':'zh');
   const shown=details?.profile.content[detailLanguage]??{};
+  const shownTitle=facultyTitleLabel(facultyTitles(details?.profile.content),detailLanguage);
+  const employmentType=details?.profile.employmentType;
   const availableLanguage=(['en','zh','id'] as const).find(code=>code!==detailLanguage&&hasProfileText(details?.profile.content[code]));
   const modeTabs=[{id:'profile',label:t('profile')},...(readRates?[{id:'rates',label:t('rates')}]:[])];
   const modeId=contentId+'detail',detailTabsId=tabsId+'detail';
@@ -442,7 +485,11 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
                       onChange={value=>setDetailLanguage(value as CrmLanguage)}/>
                   </div>
                 </div>
-                {shown.name?.trim()&&<dl className="crm-customer-facts">{fact(t('name'),shown.name)}</dl>}
+                {(shown.name?.trim()||shownTitle||employmentType)&&<dl className="crm-customer-facts">
+                  {shown.name?.trim()&&fact(t('name'),shown.name)}
+                  {shownTitle&&fact(facultyText(lang,facultyFields.professionalTitle),shownTitle)}
+                  {employmentType&&fact(t('employmentType'),facultyText(lang,facultyEmploymentTypes[employmentType]))}
+                </dl>}
                 {!hasProfileText(shown)&&<>
                   <AdminListState compact lang={lang} state="empty" message={t('noneInLanguage')}/>
                   {availableLanguage&&<div><AdminRowAction onClick={()=>setDetailLanguage(availableLanguage)}>
@@ -488,9 +535,33 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
     </section>;
   if(!editing||!draft)return <>{detailView}</>;
 
+  const editorBio=draft.content[editorLanguage];
+  const titleSuggestion=mode==='profile'?facultyTitleSuggestion(editorBio):undefined;
+  const titleLabel=facultyText(lang,facultyFields.professionalTitle);
+  const savedTitles=facultyTitles(details?.profile.content);
+  const draftTitles=facultyTitles(draft.content);
+  const titleValue=facultyTitleSelection(draftTitles);
+  const legacyTitles=titleValue==='legacy'?draftTitles:facultyTitleSelection(savedTitles)==='legacy'?savedTitles:undefined;
+  const titleOptions=[{value:'',label:t('noTitle')},...facultyTitleOptions(lang),
+    ...(legacyTitles?[{value:'legacy',label:facultyTitleLabel(legacyTitles,lang)}]:[])];
+  const setTitle=(value:string)=>change(()=>setDraft(previous=>previous&&({...previous,
+    content:withFacultyTitles(previous.content,value==='legacy'&&legacyTitles?legacyTitles:facultyPresetTitles(value)),
+  })));
+  function splitTitle(suggestion:NonNullable<typeof titleSuggestion>){
+    const choice=facultyTitleSelection({[editorLanguage]:suggestion.professionalTitle});
+    change(()=>setDraft(previous=>{
+      if(!previous)return previous;
+      const titles=choice!=='legacy'&&(!titleValue||titleValue===choice)?facultyPresetTitles(choice):
+        {...facultyTitles(previous.content),[editorLanguage]:suggestion.professionalTitle};
+      const content=withFacultyTitles(previous.content,titles);
+      content[editorLanguage]={...content[editorLanguage],name:suggestion.name};
+      return {...previous,content};
+    }));
+    nameInput.current?.focus();
+  }
   const editText=(field:keyof typeof facultyFields)=><AdminField key={field}>{facultyText(lang,facultyFields[field])}
-    <textarea className="admin-text-input" rows={3} maxLength={20000} value={draft.content[editorLanguage]?.[field]??''} disabled={blocked}
-      onChange={event=>patchBio(field,event.target.value)}/></AdminField>;
+    <textarea className="admin-text-input" rows={3} maxLength={20000} value={editorBio?.[field]??''} disabled={blocked}
+      onChange={event=>patchBio({[field]:event.target.value})}/></AdminField>;
   return <>
     {detailView}
     <AdminEditor title={t(!profileExists?'add':mode==='profile'?'edit':'editRates')} description={profileName||undefined}
@@ -519,6 +590,17 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
                 options={(['active','inactive'] as const).map(value=>({value,label:t(value)}))}
                 onChange={value=>change(()=>setDraft({...draft,active:value==='active'}))}/>
             </AdminField>
+            <AdminField as="div"><label>{titleLabel}</label>
+              <AdminSingleSelect label={titleLabel} lang={lang} isLight={isLight} value={titleValue}
+                disabled={blocked} options={titleOptions} onChange={setTitle}/>
+            </AdminField>
+            <AdminField as="div"><label>{t('employmentType')}</label>
+              <AdminSingleSelect label={t('employmentType')} lang={lang} isLight={isLight} value={draft.employmentType??''}
+                disabled={blocked} options={[{value:'',label:t('notSpecified')},...employmentChoices(lang)]}
+                onChange={value=>change(()=>setDraft(previous=>previous&&({...previous,
+                  employmentType:value==='full-time'||value==='part-time'?value:undefined,
+                })))}/>
+            </AdminField>
           </AdminFormGrid>
         </AdminFormSection>
         <AdminFormSection title={t('profile')} description={t('nameHelp')} variant="subgroup">
@@ -526,9 +608,16 @@ function FacultyEditor({id,lang,isLight,canEdit,canRates,onClose,onDraftChange,o
             disabled={blocked} tabs={tabs} onChange={value=>setEditorLanguage(value as CrmLanguage)}/>
           <div id={editorLanguageId} role="tabpanel" aria-labelledby={editorLanguageTabsId+'-tab-'+editorLanguage} data-admin-stack="">
             <AdminField as="div"><label>{t('name')}</label>
-              <input className="admin-text-input" ref={nameInput} maxLength={120} value={draft.content[editorLanguage]?.name??''} disabled={blocked}
-                onChange={event=>patchBio('name',event.target.value)}/>
+              <input className="admin-text-input" ref={nameInput} maxLength={120} value={editorBio?.name??''} disabled={blocked}
+                onChange={event=>patchBio({name:event.target.value})}/>
             </AdminField>
+            {titleSuggestion&&<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <AdminRowAction disabled={blocked} aria-describedby={editorLanguageId+'-title-preview'}
+                onClick={()=>splitTitle(titleSuggestion)}>{t('separateTitle')}</AdminRowAction>
+              <span id={editorLanguageId+'-title-preview'} className="text-sm text-[var(--admin-muted)]">
+                {titleSuggestion.name} · {titleSuggestion.professionalTitle}
+              </span>
+            </div>}
             {profileGroups.map(group=><AdminDisclosure key={group.title} heading={t(group.title)} density="compact">
               <AdminFormGrid>{group.fields.map(editText)}</AdminFormGrid>
             </AdminDisclosure>)}

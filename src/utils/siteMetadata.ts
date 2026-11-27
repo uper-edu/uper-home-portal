@@ -131,11 +131,18 @@ export const publicPages: Record<string, { title: Words; description: Words }> =
     },
   };
 export const workspaceNames: Record<string, Words> = {
+  academics: ["Academic Management", "Manajemen Akademik", "教务管理"],
   crm: ["Sales Management", "Manajemen Penjualan", "销售管理"],
   cms: ["Content Management", "Manajemen Konten", "内容管理"],
   system: ["System Management", "Manajemen Sistem", "系统管理"],
 };
 export const moduleNames: Record<string, Record<string, Words>> = {
+  academics: {
+    courses: ["Courses", "Kursus", "课程"],
+    "enrollment-templates": ["Class templates", "Templat kelas", "班型模板"],
+    "enrollment-classes": ["Classes", "Kelas", "班次"],
+    faculty: ["Faculty directory", "Direktori pengajar", "教师档案"],
+  },
   crm: {
     payments: ["Payment verification","Verifikasi pembayaran","收款核验"],
     "enrollment-aftercare": ["After-sales support", "Layanan purnajual", "售后服务"],
@@ -154,6 +161,7 @@ export const moduleNames: Record<string, Record<string, Words>> = {
     ],
   },
   system: {
+    mail: ["Email configuration", "Konfigurasi email", "邮件配置"],
     ai: ["AI Model Services", "Layanan Model AI", "AI 模型服务"],
     credentials: ["Integrations", "Integrasi", "集成配置"],
     users: ["Users", "Pengguna", "用户管理"],
@@ -219,7 +227,7 @@ export function workspaceMetadata(
 }
 export function isPrivatePath(pathname: string) {
   if (/^\/enrollment\/(?:mine|payment|help)(?:\/|$)/i.test(pathname)) return true;
-  return /^\/(?:crm|cms|system|studio|chat|consult|style-guide|api)(?:\/|$)/i.test(
+  return /^\/(?:crm|academics|cms|system|studio|chat|consult|style-guide|api)(?:\/|$)/i.test(
     pathname,
   );
 }
@@ -309,7 +317,7 @@ export function resolveMetadata(
       !!page ||
       enrollmentHelp ||
       dynamic ||
-      /^\/(crm|cms|system|chat|consult|style-guide)$/i.test(path);
+      /^\/(crm|academics|cms|system|chat|consult|style-guide)$/i.test(path);
   let title: string, description: string;
   if (workspaceNames[workspace])
     ({ title, description } = workspaceMetadata(
@@ -317,6 +325,7 @@ export function resolveMetadata(
       options.module ||
         (workspace === "crm"
           ? "leads"
+          : workspace === "academics" ? "courses"
           : workspace === "system"
             ? "users"
             : "partners"),

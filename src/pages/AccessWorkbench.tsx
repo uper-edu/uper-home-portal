@@ -1,6 +1,9 @@
 import '../components/crm/crm-detail-workspace.css';
 import {IntegrationCredentialsOverview,resolveIntegrationTopic,type IntegrationTopic} from '../components/IntegrationCredentials';
 import {EnrollmentMailWorkspace} from '../components/EnrollmentMailWorkspace';
+import {admissionsMailPath,systemMailView} from '../utils/enrollmentMailNavigation';
+import {guardAdminWorkspaceHistory} from '../utils/adminWorkspaceHistory';
+import {useNavigate} from 'react-router-dom';
 import {SystemAccessGuide} from '../components/SystemAccessGuide';
 import {AdminRefreshAction} from '../components/admin/AdminRefreshAction';
 import {AdminPageHeader} from '../components/admin/AdminPageHeader';
@@ -31,7 +34,7 @@ import '../components/crm/crm-record-workspace.css';
 import '../components/admin-workspace.css';
 import '../components/crm/crm-operations-workspace.css';
 import { accessError } from "../utils/accessLanguage";
-import { Fragment, type MouseEvent, useEffect, useId, useRef, useState } from "react";
+import { Fragment, type MouseEvent, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import {Pencil, Plus, BookOpen, Users, FlaskConical, Mail, KeyRound } from "lucide-react";
 import {TestEnvironmentPanel} from '../components/TestEnvironmentPanel';
 import CrmAccess, { type CrmEmployee } from "../components/CrmAccess";
@@ -130,6 +133,9 @@ export function AccessWorkspace({
   const { isLight, toggleTheme } = useAdminTheme(),
     col = lang === "zh" ? 2 : lang === "id" ? 1 : 0,
     t = (en: string, id: string, zh: string) => adminText(lang, en, id, zh);
+  const navigate=useNavigate();
+  const [mailDraft,setMailDraft]=useState(false);
+  const [mailBusy,setMailBusy]=useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [recoveryDraft,setRecoveryDraft]=useState(false);
   const [recoveryBusy,setRecoveryBusy]=useState(false);
@@ -139,7 +145,7 @@ export function AccessWorkspace({
   const [larkDraft,setLarkDraft]=useState<any>(undefined);
   const [initialLocation] = useState(()=>systemLocation(window.location.href,employee.id));
   const [integrationTopic,setIntegrationTopic]=useState(()=>resolveIntegrationTopic(initialLocation.params.get('credentialTopic')));
-  const [mailView,setMailView]=useState<'accounts'|'pool'>(initialLocation.params.get('mailView')==='pool'?'pool':'accounts');
+  const [mailView,setMailView]=useState(()=>systemMailView(initialLocation.params.get('mailView')));
   const [mailRecordId,setMailRecordId]=useState(initialLocation.params.get(mailView==='pool'?'mailPool':'mailAccount')??'');
   const [mailReturnPool,setMailReturnPool]=useState(initialLocation.params.get('mailFromPool')??'');
   const [tab, setTab] = useState(initialLocation.tab),
@@ -182,6 +188,7 @@ export function AccessWorkspace({
   const [wide,setWide]=useState(()=>window.innerWidth>=recordSplitMinWidth);
   const shellHeight=useCrmShellHeight("[data-admin-header]"),scrollMode=useRecordScrollMode(shellHeight);
   const locationRef=useRef(initialLocation.href);
+  const acceptedHistory=useRef(window.history.state);
   useEffect(()=>{
     if(window.location.pathname+window.location.search!==initialLocation.href)
       window.history.replaceState(window.history.state,'',initialLocation.href);
@@ -198,6 +205,9 @@ export function AccessWorkspace({
   },[]);
   const panel = useRef<HTMLDialogElement>(null);
   const can = (permission: string) => employee.permissions.includes(permission);
+  const canManageInfrastructure=canUseAccessRecovery(employee);
+  const canManageAdmissions=can('crm.operations.manage');
+  const mailAllowed=mailView==='admissions'?canManageAdmissions:canManageInfrastructure;
   useEffect(() => {setNotice("");setLarkValidation("");}, [lang]);
   const api = (path = "", body?: any) =>
     body && !path.endsWith("/preview")
@@ -287,14 +297,14 @@ export function AccessWorkspace({
   };
   useEffect(() => {
     const protect = (e: BeforeUnloadEvent) => {
-      if (editorHasDraft||recoveryDraft||recoveryBusy||integrationDraft||integrationBusy) {
+      if (editorHasDraft||recoveryDraft||recoveryBusy||integrationDraft||integrationBusy||mailDraft||mailBusy) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
-  }, [editorHasDraft,recoveryDraft,recoveryBusy,integrationDraft,integrationBusy]);
+  }, [editorHasDraft,recoveryDraft,recoveryBusy,integrationDraft,integrationBusy,mailDraft,mailBusy]);
   const close = () => {
     if (busy) return;
     if (editorHasDraft) {
@@ -328,13 +338,14 @@ export function AccessWorkspace({
     if(href!==canonical)window.history.replaceState(window.history.state,'',canonical);
     setTab(nextTab);
     setIntegrationTopic(resolveIntegrationTopic(params.get('credentialTopic')));
-    setMailView(params.get('mailView')==='pool'?'pool':'accounts');
+    setMailView(systemMailView(params.get('mailView')));
     setMailRecordId(params.get(params.get('mailView')==='pool'?'mailPool':'mailAccount')??'');
     setMailReturnPool(params.get('mailFromPool')??'');
     setRecordId(nextTab==='users'?params.get('user')||'':nextTab==='roles'?params.get('role')||'':'');
     setRoleFilter(params.get('assignedRole')||'');
     setShowRecords(false);
     locationRef.current=canonical;
+    acceptedHistory.current=window.history.state;
   };
   const proceedNavigation=(href:string)=>{
     if(href===locationRef.current)return;
@@ -342,8 +353,8 @@ export function AccessWorkspace({
     applyLocation(href);
   };
   const requestNavigation=(action:()=>void)=>{
-    if(busy||recoveryBusy||integrationBusy)return;
-    if(editorHasDraft||recoveryDraft||integrationDraft){pendingNavigation.current=action;setDiscarding(true);return;}
+    if(busy||recoveryBusy||integrationBusy||mailBusy)return;
+    if(editorHasDraft||recoveryDraft||integrationDraft||mailDraft){pendingNavigation.current=action;setDiscarding(true);return;}
     if(user||role)resetEditor();
     action();
   };
@@ -364,20 +375,34 @@ export function AccessWorkspace({
     event.preventDefault();
     navigateRecord(module,id,assignedRole);
   };
+  useLayoutEffect(()=>{
+    if(tab!=='mail'||!mailDraft&&!mailBusy)return;
+    return guardAdminWorkspaceHistory(event=>{
+      const {pathname,search,hash}=window.location;
+      const href=pathname+search+hash;
+      if(href===locationRef.current)return;
+      event.stopImmediatePropagation();
+      window.history.pushState(acceptedHistory.current,'',locationRef.current);
+      requestNavigation(()=>{
+        if(pathname==='/system')proceedNavigation(pathname+search);
+        else navigate(href);
+      });
+    });
+  },[tab,mailDraft,mailBusy,requestNavigation,navigate]);
   useEffect(()=>{
     const onPop=()=>{
       const destination=window.location.pathname+window.location.search;
       if(destination===locationRef.current)return;
       if(tab==='credentials'&&systemLocation(destination,employee.id).tab==='credentials'){
         applyLocation(destination);
-      }else if(editorHasDraft||busy||recoveryDraft||recoveryBusy||integrationDraft||integrationBusy){
+      }else if(editorHasDraft||busy||recoveryDraft||recoveryBusy||integrationDraft||integrationBusy||mailDraft||mailBusy){
         window.history.pushState(window.history.state,'',locationRef.current);
         requestNavigation(()=>{window.history.replaceState(window.history.state,'',destination);applyLocation(destination);});
       }else requestNavigation(()=>applyLocation(destination));
     };
     window.addEventListener('popstate',onPop);
     return ()=>window.removeEventListener('popstate',onPop);
-  },[editorHasDraft,busy,recoveryDraft,recoveryBusy,integrationDraft,integrationBusy,user,role,tab,employee.id]);
+  },[editorHasDraft,busy,recoveryDraft,recoveryBusy,integrationDraft,integrationBusy,mailDraft,mailBusy,user,role,tab,employee.id]);
   useEffect(()=>{
     const frame=requestAnimationFrame(()=>{
       if(recordId){recordHeading.current?.focus({preventScroll:true});return;}
@@ -544,6 +569,7 @@ export function AccessWorkspace({
         ? t("All", "Semua", "全部")
         : t("Own", "Sendiri", "本人");
   const modules: Record<string, [string, string, string]> = {
+    academics: ["Academic management", "Manajemen akademik", "教务管理"],
     crm: ["Customers & follow-up", "Pelanggan & tindak lanjut", "客户及跟进"],
     operations: [
       "Sales operations & notifications",
@@ -730,7 +756,7 @@ export function AccessWorkspace({
   };
   return (
     <div data-admin-form="" className="access-page" data-admin-workspace="system" data-theme={isLight ? "light" : "dark"}>
-      <PageMetadata lang={lang} options={{module:tab,state:can("access.read")?undefined:"denied"}}/>
+      <PageMetadata lang={lang} options={{module:tab,state:(tab==='mail'?mailAllowed:can("access.read"))?undefined:"denied"}}/>
       <a className="admin-skip-link" href="#access-main">
         {t("Skip to workspace", "Lewati ke ruang kerja", "跳到工作区")}
       </a>
@@ -751,7 +777,8 @@ export function AccessWorkspace({
               ["test", "Test environment & accounts", "Lingkungan uji & akun", "测试环境和账号"],
             ]
               .filter((a) => a[0] !== "credentials" || isAiAdministrator(employee))
-              .filter((a) => a[0] !== "mail" || canUseAccessRecovery(employee))
+              .filter((a) => can("access.read") || a[0] === "mail")
+              .filter((a) => a[0] !== "mail" || canManageInfrastructure || canManageAdmissions)
               .filter((a) => a[0] !== "test" || data?.testDirectoryAvailable)
               .map((a) => {
                 const Icon = moduleIcons[a[0] as keyof typeof moduleIcons];
@@ -760,7 +787,9 @@ export function AccessWorkspace({
                     type="button"
                     key={a[0]}
                     aria-current={(a[0]==='users'?(isAccessTab(tab)||recoveryView):tab===a[0])?"page":undefined}
-                    onClick={()=>{if(a[0]!=='users'||!isAccessTab(tab)){
+                    onClick={()=>{if(a[0]==='mail'&&!canManageInfrastructure){
+                      requestNavigation(()=>proceedNavigation(admissionsMailPath));return;
+                    }if(a[0]!=='users'||!isAccessTab(tab)){
                       if(a[0]!=='credentials'||tab!=='credentials')navigateRecord(a[0],'');
                     }}}
                   >
@@ -813,7 +842,11 @@ export function AccessWorkspace({
                   label={userTab?t('Add user','Tambah pengguna','新增用户'):t('Add role','Tambah peran','新增角色')}
                   onClick={()=>userTab?openUser(null):openRole(null)}/>}/>
           )}/>}
-        {!can("access.read")||readDenied ? (
+        {tab==='mail'?(mailAllowed?<EnrollmentMailWorkspace key={mailView==='admissions'?'admissions':'infrastructure'}
+          lang={lang} isLight={isLight} canManageInfrastructure={canManageInfrastructure} canManageAdmissions={canManageAdmissions}
+          canManageCredentials={isAiAdministrator(employee)} view={mailView} recordId={mailRecordId} returnPoolId={mailReturnPool}
+          onNavigate={href=>requestNavigation(()=>proceedNavigation(href))} onDraft={setMailDraft} onBusy={setMailBusy}/>
+          :<AdminListState lang={lang} state="denied"/>):!can("access.read")||readDenied ? (
           <p role="alert">
             {t(
               "System management access denied.",
@@ -842,11 +875,6 @@ export function AccessWorkspace({
             {tab==='credentials'&&(isAiAdministrator(employee)?<IntegrationCredentialsOverview lang={lang} isLight={isLight}
               topic={integrationTopic} onTopicChange={navigateIntegrationTopic} onDraftChange={setIntegrationDraft} onBusyChange={setIntegrationBusy}/>:
               <AdminListState lang={lang} state="denied"/>)}
-            {tab==='mail'&&!canUseAccessRecovery(employee)&&<AdminListState lang={lang} state="denied"/>}
-            {tab==='mail'&&canUseAccessRecovery(employee)&&<EnrollmentMailWorkspace lang={lang} isLight={isLight} admin allowed
-              canManageCredentials={isAiAdministrator(employee)}
-              view={mailView} recordId={mailRecordId} returnPoolId={mailReturnPool} onNavigate={href=>requestNavigation(()=>proceedNavigation(href))}
-              onDraft={setRecoveryDraft} onBusy={setRecoveryBusy}/>}
             {tab==='guide'&&<SystemAccessGuide lang={lang} canAudit={can('access.audit')}
               canAi={isAiAdministrator(employee)} canTest={!!data?.testDirectoryAvailable}
               shellHeight={shellHeight}

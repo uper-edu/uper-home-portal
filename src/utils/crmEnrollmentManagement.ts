@@ -17,7 +17,7 @@ export type EnrollmentRosterState=typeof enrollmentRosterStates[number];
 export type EnrollmentClassSummary={
   id:string; batchNumber?:number;teacherType?:'local'|'foreign'; level:string; format:'standard'|'small'; period:'weekday-evening'|'weekend'|'mixed'; schedule:string;
   timeZone?:EnrollmentClassTimeZone;firstLessonAt:string; capacity:number; minimumPaid:number;
-  status:'recruiting'|'opened'|'cancelled'|'closed'; accepting:boolean;
+  status:'recruiting'|'opened'|'cancelled'|'closed'; accepting:boolean; insertionPrice?:number;
   counts:Record<EnrollmentRosterState,number>; occupied:number; available:number;
 };
 export type EnrollmentRosterEntry={

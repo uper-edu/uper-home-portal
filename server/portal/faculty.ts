@@ -1,6 +1,7 @@
 import {isDeepStrictEqual} from 'node:util';
-import {facultyDateValid,facultyEffectiveDate,facultyFields,facultyFileLimits,facultyIdPattern,facultyLanguages,facultyName,
-  type FacultyBio,type FacultyChoice,type FacultyFileKind,type FacultyProfile,type FacultyRateChange,type FacultyRates,type FacultyTerm} from '../../src/utils/crmFaculty.ts';
+import {facultyBillingMethod,facultyDateValid,facultyEffectiveDate,facultyFields,facultyFileLimits,facultyIdPattern,facultyLanguages,facultyName,
+  facultyProfessionalTitleLimit,facultyTitles,
+  type FacultyBio,type FacultyChoice,type FacultyDirectoryEntry,type FacultyFileKind,type FacultyProfile,type FacultyRateChange,type FacultyRates,type FacultyTerm} from '../../src/utils/crmFaculty.ts';
 import {matchesEnrollmentProofSignature} from '../../src/utils/enrollmentProofFile.ts';
 import {invalid} from './trustWorkflow.ts';
 
@@ -33,9 +34,26 @@ async function readValue<T>(db:Client,id:string,lock=false):Promise<T|undefined>
 export async function readFacultyProfile(db:Client,id:string,lock=false){
   return readValue<FacultyProfile>(db,key('profile',checkedFacultyId(id)),lock);
 }
-export async function listFacultyChoices(db:Client,includeInactive=false){
+async function listFacultyProfiles(db:Client):Promise<FacultyProfile[]>{
   const rows=(await db.query('SELECT value FROM portal_settings WHERE id LIKE :p1 ORDER BY id',['faculty:profile:%'])).rows;
-  return rows.filter(({value})=>value.revision&&(includeInactive||value.active)).map(({value})=>choice(value));
+  return rows.map(({value})=>value).filter(profile=>profile.revision);
+}
+export async function listFacultyChoices(db:Client){
+  return (await listFacultyProfiles(db)).filter(profile=>profile.active).map(choice);
+}
+export async function listFacultyDirectory(db:Client,billingAsOf?:string):Promise<FacultyDirectoryEntry[]>{
+  const profiles=await listFacultyProfiles(db);
+  const rates=new Map<string,FacultyRates>();
+  if(billingAsOf&&profiles.length){
+    const {rows}=await db.query('SELECT id,value FROM portal_settings WHERE id IN (:p1)',[profiles.map(profile=>key('rate',profile.id))]);
+    for(const {id,value} of rows)rates.set(id,value);
+  }
+  return profiles.map(profile=>({
+    ...choice(profile),
+    professionalTitles:facultyTitles(profile.content),
+    ...(profile.employmentType&&{employmentType:profile.employmentType}),
+    ...(billingAsOf&&{billingMethod:facultyBillingMethod(rates.get(key('rate',profile.id))?.terms??[],billingAsOf)}),
+  }));
 }
 export async function assignedFaculty(db:Client,id:unknown,category?:string){
   const profile=await readFacultyProfile(db,checkedFacultyId(id),true);
@@ -80,11 +98,17 @@ export async function saveFacultyProfile(db:Client,id:string,input:unknown,actor
   checkedFacultyId(id);
   const body=record(input),revision=integer(body.revision,0,Number.MAX_SAFE_INTEGER-1);
   if((body.category!=='local'&&body.category!=='foreign')||typeof body.active!=='boolean')return facultyError();
+  const requestedEmploymentType=body.employmentType;
+  const employmentType=requestedEmploymentType==='full-time'||requestedEmploymentType==='part-time'?requestedEmploymentType:undefined;
+  if(requestedEmploymentType!=null&&!employmentType)return facultyError();
   const content:FacultyProfile['content']={};
   for(const lang of facultyLanguages){
     const incoming=record(record(body.content)[lang]),bio:FacultyBio={};
     for(const field of ['name',...Object.keys(facultyFields)] as (keyof FacultyBio)[]){
-      if(Object.hasOwn(incoming,field))bio[field]=string(incoming[field],field==='name'?120:20_000);
+      if(Object.hasOwn(incoming,field)){
+        const maxLength=field==='professionalTitle'?facultyProfessionalTitleLimit:field==='name'?120:20_000;
+        bio[field]=string(incoming[field],maxLength);
+      }
     }
     if(Object.keys(bio).length)content[lang]=bio;
   }
@@ -109,7 +133,9 @@ export async function saveFacultyProfile(db:Client,id:string,input:unknown,actor
       }
     }
   }
-  const next:FacultyProfile={id,category:body.category,active:body.active,content,files,revision:revision+1};
+  const savedEmploymentType=requestedEmploymentType===undefined?prior?.employmentType:employmentType;
+  const next:FacultyProfile={id,category:body.category,active:body.active,content,files,revision:revision+1,
+    ...(savedEmploymentType&&{employmentType:savedEmploymentType})};
   if(prior&&!writes.length&&isDeepStrictEqual(prior,{...next,revision:prior.revision}))return prior;
   if((prior?.revision??0)!==revision)return facultyError('conflict',409);
   for(const {fileKey,value} of writes){

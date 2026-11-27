@@ -1,3 +1,4 @@
+import {academicManagePermission} from '../../src/utils/accessControl.ts';
 import {enrollmentTimeZone,isEnrollmentClassTimeZone} from '../../src/utils/enrollmentDateFormat.ts';
 import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
 import {portalPublicOrigin} from './enrollmentEmail.ts';
@@ -10,10 +11,9 @@ import type { Express, Request, Response } from 'express';
 import { pool, tx } from './store.ts';
 import { invalid, operation } from './trustWorkflow.ts';
 import { validMutationOrigin } from './accessTransport.ts';
-import { enrollmentClassLookupLimit, enrollmentInstant, enrollmentScheduleReviewFields, enrollmentWeeklyScheduleText, isEnrollmentInsertionWindow, publicEnrollmentClass, validEnrollmentHolidayDate, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
+import { enrollmentClassLookupLimit, enrollmentInstant, enrollmentScheduleReviewFields, enrollmentWeeklyScheduleText, publicEnrollmentClass, validEnrollmentHolidayDate, validateEnrollmentClass } from '../../src/utils/enrollmentCatalog.ts';
 import { enrollmentMailDelivery } from './enrollmentMail.ts';
 import { enrollmentServicePolicy } from './enrollmentRuntime.ts';
-import { enrollmentReadiness } from './enrollmentApplication.ts';
 import { matchPublishedEnrollmentClass } from './enrollmentInterests.ts';
 import type { EnrollmentClassAdmin, EnrollmentClassConfig } from '../../src/utils/enrollmentCatalog.ts';
 import {assignedFaculty,listFacultyChoices} from './faculty.ts';
@@ -113,21 +113,19 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
 }) {
   mountEnrollmentTemplates(app,{wrap,staff});
   app.get(path, wrap(async (q, r) => {
-    const actor = await staff(q, 'crm.operations.manage');
+    const actor = await staff(q, academicManagePermission);
     const data = await tx(async c => {
       const classes = (await readClasses(c,null))
         .map(row=>({...record(row),opened:Number(row.opened)===1,canDelete:Number(row.canDelete)===1,hasOrders:Number(row.hasOrders)===1}));
       const courses = (await c.query('SELECT id,value FROM crm_courses ORDER BY id')).rows.map((row: any) => ({
         id: row.id, name: row.value.name, active: row.value.active === true, sessions:row.value.sessions, teaching:row.value.teaching,
       }));
-      const active = new Set(courses.filter(course=>course.active).map(course=>course.id));
-      const canOperate = (await enrollmentReadiness(c)).accepting;
-      return { templates:await listEnrollmentTemplates(c), classes:classes.map(row=>({...row,canInsert:canOperate&&row.state==='published'&&active.has(row.courseId)&&isEnrollmentInsertionWindow(row)})), courses,teachers:await listFacultyChoices(c) };
+      return {templates:await listEnrollmentTemplates(c),classes,courses,teachers:await listFacultyChoices(c)};
     });
     r.set('Cache-Control', 'no-store').json({ ...data, actorId: actor.id });
   }));
   app.post(path, wrap(async (q, r) => {
-    const actor = await staff(q, 'crm.operations.manage');
+    const actor = await staff(q, academicManagePermission);
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected', 403);
     const body = q.body;
     if (typeof body?.id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(body.id) ||
@@ -135,7 +133,7 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
       !['draft', 'published'].includes(body.state)) invalid('enrollment_class_invalid');
     if(!body.config||typeof body.config!=='object')invalid('enrollment_class_invalid');
     const result = await tx(c => operation(c, actor.id, body, {
-      leadId: 'class:' + body.id, kind, authorize: () => staff(q, 'crm.operations.manage'),
+      leadId: 'class:' + body.id, kind, authorize: () => staff(q, academicManagePermission),
     }, async () => {
       // Serialize catalog writes before locking class rows, including new-row gap locks.
       // The counter and class publication commit or roll back together.
@@ -238,14 +236,14 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     r.json(result);
   }));
   app.post(path + '/delete', wrap(async (q, r) => {
-    const actor = await staff(q, 'crm.operations.manage');
+    const actor = await staff(q, academicManagePermission);
     if (!validMutationOrigin(q)) invalid('enrollment_origin_rejected', 403);
     const body = q.body;
     const {id,revision} = body ?? {};
     if (typeof id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(id) ||
       !Number.isSafeInteger(revision) || revision < 1) invalid('enrollment_class_invalid');
     const result = await tx(c => operation(c, actor.id, body, {
-      leadId:'class:'+id, kind:deleteKind, authorize:()=>staff(q,'crm.operations.manage'),
+      leadId:'class:'+id, kind:deleteKind, authorize:()=>staff(q,academicManagePermission),
     }, async () => {
       // Publication and enrollment writers must acquire this same class row lock.
       const current = (await c.query('SELECT revision FROM enrollment_classes WHERE id=:p1 FOR UPDATE',[id])).rows[0];
@@ -260,10 +258,10 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
     r.json(result);
   }));
   app.get(path + '/results/:requestId', wrap(async (q, r) => {
-    const actor = await staff(q, 'crm.operations.manage');
+    const actor = await staff(q, academicManagePermission);
     const result = await tx(async c => (await c.query('SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2',
       [actor.id, q.params.requestId])).rows[0]?.result);
-    if (![kind,deleteKind,'enrollment.order.insert'].includes(result?.operationKind)) invalid('enrollment_result_missing', 404);
+    if (![kind,deleteKind].includes(result?.operationKind)) invalid('enrollment_result_missing', 404);
     r.set('Cache-Control', 'no-store').json(result);
   }));
   app.get('/api/enrollment/classes', wrap(async (q, r) => {

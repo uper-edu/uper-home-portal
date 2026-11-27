@@ -6,6 +6,8 @@ import { enrollmentManagementScopes, enrollmentRosterStates, type EnrollmentClas
 import { enrollmentClosureReason } from '../../src/utils/enrollmentOrderStatus.ts';
 import { invalid } from './trustWorkflow.ts';
 import { tx } from './store.ts';
+import {isEnrollmentInsertionWindow} from '../../src/utils/enrollmentCatalog.ts';
+import {enrollmentReadiness} from './enrollmentApplication.ts';
 
 type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
 type Wrap=(handler:(q:Request,r:Response)=>Promise<unknown>)=>(q:Request,r:Response)=>void;
@@ -109,6 +111,12 @@ export function mountEnrollmentManagement(app:Express,wrap:Wrap,staff:(q:Request
       if(!id)return {classes};
       const cohort=classes[0];
       if(!cohort)invalid('enrollment_management_class_not_found',404);
+      if(scope.operations&&cohort.status!=='cancelled'){
+        const offer=(await c.query(`SELECT b.data FROM enrollment_classes b JOIN crm_courses course ON b.course_id=course.id
+          WHERE b.id=:p1 AND b.state='published' AND JSON_EXTRACT(course.value,'$.active')=true`,[id])).rows[0]?.data;
+        if(offer&&isEnrollmentInsertionWindow(offer)&&(await enrollmentReadiness(c)).accepting)
+          cohort.insertionPrice=offer.price;
+      }
       return {cohort,rows:await roster(c,actor,scope,id)};
     });
     r.set('Cache-Control','no-store').json(data);

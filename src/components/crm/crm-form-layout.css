@@ -195,6 +195,11 @@
   gap: var(--admin-space-4, 16px);
   color: var(--af-text);
 }
+.crm-enrollment-rules > form {
+  display: grid;
+  min-width: 0;
+  gap: var(--admin-form-group-gap);
+}
 .crm-enrollment-rules .admin-edit-title h2 {
   display: flex;
   flex-wrap: wrap;

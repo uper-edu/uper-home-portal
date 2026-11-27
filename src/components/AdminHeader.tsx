@@ -12,8 +12,8 @@ import { CrmLanguageSelect } from "./crm/CrmLanguageSelect";
 import type { CrmLanguage } from "../utils/crmLanguage";
 import "./admin-header.css";
 import "./crm/crm-language-switch.css";
-import { availableWorkspaces } from "../utils/adminWorkspace";
-export type AdminWorkspace = "crm" | "cms" | "system";
+import { availableWorkspaces, type AdminWorkspace } from "../utils/adminWorkspace";
+
 export function adminText(
   lang: CrmLanguage,
   en: string,
@@ -22,6 +22,16 @@ export function adminText(
 ) {
   return lang === "zh" ? zh : lang === "id" ? id : en;
 }
+export function AdminModuleLink({href,current,onNavigate,children}:{
+  href:string;current:boolean;onNavigate?:(href:string)=>void;children:ReactNode;
+}){
+  return <a href={href} aria-current={current?'page':undefined} onClick={event=>{
+    if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.altKey||event.shiftKey)return;
+    event.preventDefault();
+    onNavigate?.(href);
+  }}>{children}</a>;
+}
+
 export function AdminHeader({
   employee,
   workspace,
@@ -30,6 +40,7 @@ export function AdminHeader({
   isLight,
   toggleTheme,
   navigation,
+  onWorkspaceNavigate,
 }: {
   employee: CrmEmployee;
   workspace: AdminWorkspace;
@@ -38,6 +49,7 @@ export function AdminHeader({
   isLight: boolean;
   toggleTheme: () => void;
   navigation?: ReactNode;
+  onWorkspaceNavigate?: (href: string) => void;
 }) {
   const root = useRef<HTMLElement>(null);
   const [compact, setCompact] = useState(
@@ -60,6 +72,7 @@ export function AdminHeader({
   const workspaceLabel = (value: AdminWorkspace) =>
     value === "crm"
       ? text("Sales management", "Manajemen penjualan", "销售管理")
+      : value === "academics" ? text("Academic management", "Manajemen akademik", "教务管理")
       : value === "cms" ? text("Content management", "Manajemen konten", "内容管理") : text("System management", "Manajemen sistem", "系统管理");
   useEffect(() => {
     const close = (event: KeyboardEvent | PointerEvent) => {
@@ -118,12 +131,21 @@ export function AdminHeader({
               className="admin-popover"
               aria-label={text("Workspaces", "Ruang kerja", "工作区")}
             >
-              {availableWorkspaces(employee).map((value) => (
+              {availableWorkspaces(employee).map((value) => {
+                const href='/'+value;
+                return (
                 <a
                   key={value}
-                  href={"/" + value}
+                  href={href}
                   onClick={(event) => {
-                    if (value !== workspace) return;
+                    if (value !== workspace) {
+                      if (onWorkspaceNavigate && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+                        event.preventDefault();
+                        event.currentTarget.closest("details")?.removeAttribute("open");
+                        onWorkspaceNavigate(href);
+                      }
+                      return;
+                    }
                     event.preventDefault();
                     const parent = event.currentTarget.closest("details");
                     if (parent) {
@@ -135,7 +157,8 @@ export function AdminHeader({
                 >
                   {workspaceLabel(value)}
                 </a>
-              ))}
+                );
+              })}
               <a
                 className="admin-site-link"
                 href="/"
@@ -215,7 +238,9 @@ export function AdminHeader({
       {navigation && (
         <nav
           className="admin-module-nav"
-          aria-label={workspace === "system" ? text("System modules", "Modul sistem", "系统模块") : text("Sales modules", "Modul penjualan", "销售模块")}
+          aria-label={workspace === "system" ? text("System modules", "Modul sistem", "系统模块")
+            : workspace === "academics" ? text("Academic modules", "Modul akademik", "教务模块")
+            : text("Sales modules", "Modul penjualan", "销售模块")}
         >
           {navigation}
         </nav>

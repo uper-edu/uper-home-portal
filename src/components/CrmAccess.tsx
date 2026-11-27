@@ -7,6 +7,7 @@ import {PageMetadata} from './PageMetadata';
 import {managementRequest,clearAccessPasswords} from "../utils/accessOperationClient";
 import {AccessOperationStatus} from "./AccessOperationStatus";
 import {clearStaffDrafts} from "../utils/crmDrafts";
+import type {AdminWorkspace} from "../utils/adminWorkspace";
 import "./crm/crm-sign-in.css";
 import { crmId } from "../utils/crmIndonesian";
 import {
@@ -42,7 +43,7 @@ export function CrmAccountControls({
 }: {
   lang: "zh" | "en" | "id";
   isLight: boolean;
-  workspace?: "crm" | "cms" | "system";
+  workspace?: AdminWorkspace;
 }) {
   const account = useContext(AccountContext);
   if (!account) return null;
@@ -67,7 +68,7 @@ export default function CrmAccess({
   children,
   workspace = "crm",
 }: {
-  workspace?: "crm" | "cms" | "system";
+  workspace?: AdminWorkspace;
   children: (
     employee: CrmEmployee,
     lang: CrmLanguage,

@@ -1,8 +1,8 @@
-import {AdminTopicHeader} from '../admin/AdminTopicHeader';
+import {AdminPageHeader} from '../admin/AdminPageHeader';
 import {Check,Plus} from 'lucide-react';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
-import {AdminSearchField} from '../admin/AdminSearchField';
-import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
+import {AdminListToolbar} from '../admin/AdminListToolbar';
+import {EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
 import {AdminSingleSelect} from '../admin/AdminSingleSelect';
 import {enrollmentLevels} from '../../utils/enrollmentCatalog';
 import {enrollmentIntroductionFields,enrollmentIntroductionLanguages,enrollmentIntroductionLimits,enrollmentIntroductionStages,type EnrollmentCourseIntroduction,type EnrollmentIntroductionLanguage,type EnrollmentIntroductionStage} from '../../utils/enrollmentCourseIntroduction';
@@ -13,7 +13,7 @@ import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminStatus} from '../AdminStatus';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {formatCurrency} from '../../utils/currency';
-import {useEffect,useId,useRef,useState} from 'react';
+import {useEffect,useId,useRef,useState,type ReactNode} from 'react';
 import {AdminField} from '../AdminForm';
 import {AdminFormFeedback,AdminSavedReadError,AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
 import {AdminDisclosure} from '../admin/AdminDisclosure';
@@ -23,7 +23,9 @@ import { AdminDetailTabs } from '../admin/AdminDetailTabs';
 import { AdminDiscardDialog } from '../admin/AdminDiscardDialog';
 import {courseError} from '../../utils/crmCoursePricing';
 import type {CrmLanguage} from '../../utils/crmLanguage';
-export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:CrmLanguage;isLight:boolean;onDraftChange:(dirty:boolean)=>void;onCreateTemplate:(courseId:string)=>void}){
+export function CrmCourses({lang,isLight,secondaryActions,onDraftChange,onCreateTemplate}:{
+ lang:CrmLanguage;isLight:boolean;secondaryActions?:ReactNode;onDraftChange:(dirty:boolean)=>void;onCreateTemplate:(courseId:string)=>void;
+}){
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const [data,setData]=useState<any>(null),[form,setForm]=useState<any>(null),[error,setError]=useState(''),[state,setState]=useState(''),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[latest,setLatest]=useState<any>(null);
  const pending=useRef<any>(null),gate=useRef(false);const busy=['saving','checking'].includes(state),unknown=state==='unknown';
@@ -144,9 +146,9 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
  };
  useEffect(()=>{if(deleting)onDraftChange(true);return()=>{if(deleting)onDraftChange(false);};},[deleting,onDraftChange]);
  return <div className="crm-course-catalog">
- <AdminTopicHeader title={title} isLight={isLight}
+ <AdminPageHeader title={title}
    subtitle={t('Maintain teaching content and course specifications.','Kelola materi dan spesifikasi kursus.','维护主教材、节数和学习成果。')}
-   actions={<><AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>
+   actions={<>{secondaryActions}<AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={readState==='loading'} onClick={refresh}/>
      {data?.canManage&&<AdminPageAction icon={Plus} variant="primary" label={t('Create course','Buat kursus','创建课程')} disabled={readState!=='ready'||unknown||busy} onClick={()=>edit()}/>}</>}/>
  {awaitingSavedRead&&readState==='error'&&<AdminSavedReadError lang={lang} onRetry={refresh}/>}
  {!form&&unknown&&<div><CrmSaveFeedback state="unknown" lang={lang}/><button type="button" className="crm-work-button" onClick={query}>{t('Check save result','Periksa hasil simpan','查询保存结果')}</button></div>}{!form&&state==='saved'&&<CrmSaveFeedback state="saved" lang={lang}/ >}{!form&&error&&<p role="alert">{error}</p>}
@@ -156,26 +158,22 @@ export function CrmCourses({lang,isLight,onDraftChange,onCreateTemplate}:{lang:C
     ?t('No courses yet. Create and publish a course before confirming enrollment.','Belum ada kursus. Buat dan terbitkan sebelum konfirmasi pendaftaran.','暂无课程。创建并发布课程后，销售才能确认报名。')
     :listState==='error'&&data?t('Refresh failed. Showing the last loaded courses.','Gagal menyegarkan. Kursus yang terakhir dimuat masih ditampilkan.','刷新失败，仍显示上次读取的课程。'):undefined}
    onRetry={refresh}/>}
- {data&&<>
-  <div className="crm-class-config-filters">
-   <AdminSearchField label={t('Search courses','Cari kursus','搜索课程')} placeholder={t('Course or textbook','Kursus atau buku ajar','课程或教材')}
-     value={filters.search} onChange={search=>change({search})}/>
+ {data&&<AdminListToolbar lang={lang} isLight={isLight} count={rows.length} total={data.courses.length}
+   filtered={!!(filters.search||filters.level||filters.status)} onClear={clear}
+   search={{label:t('Search courses','Cari kursus','搜索课程'),placeholder:t('Course or textbook','Kursus atau buku ajar','课程或教材'),
+     value:filters.search,onChange:search=>change({search})}}
+   sort={{value:filters.sort,onChange:sort=>change({sort}),options:[
+      {value:'level',label:t('Level, then course name','Level, lalu nama kursus','级别、课程名称')},
+      {value:'name-asc',label:t('Name · Ascending','Nama · Naik','名称升序')},
+      {value:'name-desc',label:t('Name · Descending','Nama · Turun','名称降序')},
+    ]}}>
    <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Level','Level','级别']} all={['All levels','Semua level','全部级别']}
      value={filters.level} onChange={level=>change({level})} options={enrollmentLevels.map(value=>({value,label:value}))}/>
    <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Publication status','Status publikasi','发布状态']}
      all={['All statuses','Semua status','全部状态']} value={filters.status} onChange={status=>change({status})} options={[
        {value:'published',label:t('Published','Diterbitkan','已发布')},{value:'draft',label:t('Draft','Draf','草稿')},
      ]}/>
-  </div>
-  <EnrollmentSettingsListSummary lang={lang} count={rows.length} total={data.courses.length}
-    filtered={!!(filters.search||filters.level||filters.status)} onClear={clear}>
-    <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Sort','Urutkan','排序']} value={filters.sort} onChange={sort=>change({sort})} options={[
-      {value:'level',label:t('Level, then course name','Level, lalu nama kursus','级别、课程名称')},
-      {value:'name-asc',label:t('Name · Ascending','Nama · Naik','名称升序')},
-      {value:'name-desc',label:t('Name · Descending','Nama · Turun','名称降序')},
-    ]}/>
-  </EnrollmentSettingsListSummary>
- </>}
+ </AdminListToolbar>}
  {!!rows.length&&<AdminListTable label={title} busy={readState==='loading'} headers={[
    {label:t('Course','Kursus','课程'),sort:filters.sort==='name-asc'?'ascending':filters.sort==='name-desc'?'descending':undefined},
    {label:t('Level','Level','级别'),sort:filters.sort==='level'?'ascending':undefined},t('Textbook','Buku ajar','主教材'),

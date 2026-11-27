@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assignedFaculty,listFacultyChoices,readFacultyFile,readFacultyProfile,readFacultyRateDetails,readFacultyRates,saveFacultyProfile,saveFacultyRates} from '../server/portal/faculty.ts';
+import {assignedFaculty,listFacultyChoices,listFacultyDirectory,readFacultyFile,readFacultyProfile,readFacultyRateDetails,readFacultyRates,saveFacultyProfile,saveFacultyRates} from '../server/portal/faculty.ts';
 import {quoteTeacherSettlement,readTeacherSettlements,saveTeacherSettlement} from '../server/portal/operationsDashboardTeacherSettlements.ts';
-import {facultyEffectiveDate,facultyFields,facultyLanguages,facultyRateOn,type FacultyTerm} from '../src/utils/crmFaculty.ts';
+import {facultyEffectiveDate,facultyFields,facultyLanguages,facultyPresetTitles,facultyProfessionalTitleLimit,facultyRateOn,
+  facultyTitleLabel,facultyTitleSelection,facultyTitleSuggestion,facultyTitles,withFacultyTitles,type FacultyTerm} from '../src/utils/crmFaculty.ts';
 import {previewEnrollmentClassSchedule} from '../src/utils/enrollmentClassSchedule.ts';
 import {summarizeTeacherSettlements,teacherSettlementLineAmount} from '../src/utils/crmTeacherSettlements.ts';
 
@@ -26,6 +27,8 @@ function harness(){
     const key=String(args[0]),result=(rows:unknown[]=[])=>({rows:structuredClone(rows)});
     if(sql.includes('FROM enrollment_classes')||sql.includes('FROM enrollment_demands'))
       return result(fixtures.filter(row=>row.id===key));
+    if(sql.includes('WHERE id IN'))
+      return result((args[0] as string[]).filter(id=>map.has(id)).map(id=>({id,value:map.get(id)})));
     if(sql.includes(' WHERE id LIKE ')){
       const prefix=key.replaceAll('=_','_').slice(0,-1);
       return result([...map].filter(([id])=>id.startsWith(prefix)).map(([,value])=>({value})));
@@ -52,6 +55,92 @@ test('all workbook dimensions and independent original text round-trip for three
   assert.deepEqual(await saveFacultyProfile(db,teacher,profile,'mock-ops'),first);
   await assert.rejects(saveFacultyProfile(db,teacher,{...profile,active:false},'mock-ops'),{status:409});
   assert.equal(audit.length,1);
+});
+
+test('legacy names suggest only recognized professional titles and preserve the original title text',()=>{
+  assert.deepEqual(facultyTitleSuggestion({name:'模拟姓名 副教授'}),{name:'模拟姓名',professionalTitle:'副教授'});
+  assert.deepEqual(facultyTitleSuggestion({name:'模拟姓名高级教师'}),{name:'模拟姓名',professionalTitle:'高级教师'});
+  assert.deepEqual(facultyTitleSuggestion({name:'Assoc. Prof. Demo Teacher'}),{name:'Demo Teacher',professionalTitle:'Assoc. Prof.'});
+  assert.deepEqual(facultyTitleSuggestion({name:'Guru Besar Pengajar Simulasi'}),{name:'Pengajar Simulasi',professionalTitle:'Guru Besar'});
+  for(const name of ['模拟姓名 老师','模拟姓名 助教','Demo Teacher, Teaching Assistant','傅副教授','副教授','模拟姓名教授副教授']){
+    assert.equal(facultyTitleSuggestion({name}),undefined);
+  }
+  assert.equal(facultyTitleSuggestion({name:'模拟姓名 副教授',professionalTitle:'高级教师'}),undefined);
+  assert.deepEqual(facultyTitleSuggestion({name:'Assoc. Prof. Demo Teacher',professionalTitle:'Associate Professor'}),
+    {name:'Demo Teacher',professionalTitle:'Assoc. Prof.'});
+});
+
+test('professional titles are optional, saved per language and kept separate from scheduling names',async()=>{
+  const {db,audit}=harness();
+  const original={zh:{name:'模拟姓名 副教授'},en:{name:'Assoc. Prof. Demo Teacher'},id:{name:'Pengajar Simulasi'}};
+  await saveFacultyProfile(db,teacher,{...profile,content:original},'mock-ops');
+  assert.deepEqual((await readFacultyProfile(db,teacher))?.content,original);
+  const priorAssignment=await assignedFaculty(db,teacher);
+  const correction={...profile,revision:1,content:{...original,
+    zh:facultyTitleSuggestion(original.zh),en:facultyTitleSuggestion(original.en)}};
+  await saveFacultyProfile(db,teacher,correction,'mock-ops');
+  assert.deepEqual((await readFacultyProfile(db,teacher))?.content,correction.content);
+  assert.deepEqual(await assignedFaculty(db,teacher),{teacherId:teacher,teacher:'Demo Teacher'});
+  assert.deepEqual(priorAssignment,{teacherId:teacher,teacher:'Assoc. Prof. Demo Teacher'});
+  await assert.rejects(saveFacultyProfile(db,teacher,{...correction,revision:2,content:{...correction.content,
+    zh:{name:'模拟姓名',professionalTitle:'字'.repeat(facultyProfessionalTitleLimit+1)}}},'mock-ops'),{message:'faculty_invalid'});
+  assert.equal((await readFacultyProfile(db,teacher))?.revision,2);
+  assert.equal(audit.length,2);
+});
+
+test('linked titles populate and clear three languages without replacing profile text or inventing translations for legacy titles',async()=>{
+  const {db}=harness();
+  await saveFacultyProfile(db,teacher,{...profile,active:false,content:{
+    zh:{name:'模拟教师',professionalTitle:'副教授'},en:{name:'Assoc. Prof. Demo Teacher'},id:{professionalTitle:' '},
+  }},'mock-ops');
+  await saveFacultyProfile(db,second,{...profile,content:{id:{name:'Pengajar Simulasi'}}},'mock-ops');
+  const directory=await listFacultyDirectory(db);
+  const entries=new Map(directory.map(item=>[item.id,item]));
+  assert.deepEqual(entries.get(teacher)?.professionalTitles,{zh:'副教授'});
+  const titles=entries.get(teacher)?.professionalTitles??{};
+  assert.equal(facultyTitleSelection(titles),'associateProfessor');
+  assert.equal(facultyTitleLabel(titles,'zh'),'副教授');
+  assert.equal(facultyTitleLabel(titles,'id'),'Profesor madya');
+  assert.equal(facultyTitleLabel(titles,'en'),'Associate Professor');
+  assert.equal(facultyTitleLabel(entries.get(second)?.professionalTitles??{},'zh'),'');
+  const legacy={zh:'特聘教授',en:'Visiting Professor'};
+  assert.equal(facultyTitleSelection(legacy),'legacy');
+  assert.equal(facultyTitleLabel(legacy,'zh'),'特聘教授');
+  assert.equal(facultyTitleLabel(legacy,'en'),'Visiting Professor');
+  const original={zh:{name:'模拟教师',education:'保留履历'},en:{name:'Demo Teacher'}};
+  const linked=withFacultyTitles(original,facultyPresetTitles('seniorTeacher'));
+  assert.deepEqual(facultyTitles(linked),{zh:'高级教师',en:'Senior Teacher',id:'Guru senior'});
+  assert.deepEqual(withFacultyTitles(linked,facultyPresetTitles('')),original);
+  assert.deepEqual(await listFacultyChoices(db),[{id:second,category:'foreign',active:true,names:{id:'Pengajar Simulasi'}}]);
+});
+
+test('finance directory returns the effective billing basis, distinguishes pending dates, and omits compensation amounts',async()=>{
+  const {db}=harness();
+  for(const id of [teacher,second,'mock-future','mock-no-rate'])await saveFacultyProfile(db,id,profile,'mock-ops');
+  await saveFacultyRates(db,teacher,{revision:0,terms:[rate(),rate({contractStart:'2026-06-01',kind:'monthly'})]},'mock-finance');
+  await saveFacultyRates(db,second,{revision:0,terms:[rate({contractStart:'',kind:'monthly',currency:null,amountMinor:null})]},'mock-finance');
+  await saveFacultyRates(db,'mock-future',{revision:0,terms:[rate({contractStart:'2026-10-01'})]},'mock-finance');
+  const directory=await listFacultyDirectory(db,'2026-02-01');
+  assert.deepEqual(Object.fromEntries(directory.map(entry=>[entry.id,entry.billingMethod])),{
+    [teacher]:{kind:'lesson',status:'effective'},[second]:{kind:'monthly',status:'undated'},
+    'mock-future':{kind:'lesson',status:'scheduled'},'mock-no-rate':null,
+  });
+  assert.ok((await listFacultyDirectory(db)).every(entry=>!Object.hasOwn(entry,'billingMethod')));
+});
+
+test('employment type is optional, validated, listed and cleared explicitly',async()=>{
+  const {db}=harness();
+  const initial=await saveFacultyProfile(db,teacher,profile,'mock-ops');
+  assert.equal(initial.employmentType,undefined);
+  await assert.rejects(saveFacultyProfile(db,teacher,{...profile,revision:1,employmentType:'unknown'},'mock-ops'),{message:'faculty_invalid'});
+  await saveFacultyProfile(db,teacher,{...profile,revision:1,employmentType:'part-time'},'mock-ops');
+  const legacyUpdate=await saveFacultyProfile(db,teacher,{...profile,revision:2,active:false},'mock-ops');
+  assert.equal(legacyUpdate.employmentType,'part-time');
+  assert.equal((await listFacultyDirectory(db))[0].employmentType,'part-time');
+  await saveFacultyProfile(db,teacher,{...profile,revision:3,employmentType:'full-time'},'mock-ops');
+  assert.equal((await readFacultyProfile(db,teacher))?.employmentType,'full-time');
+  await saveFacultyProfile(db,teacher,{...profile,revision:4,employmentType:null},'mock-ops');
+  assert.equal((await listFacultyDirectory(db))[0].employmentType,undefined);
 });
 
 test('photo and CV are validated, stored privately and projected as metadata',async()=>{

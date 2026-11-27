@@ -8,6 +8,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { usePageTracking } from './utils/analytics';
 import { ThemeProvider } from './utils/theme';
+import { installAdminWorkspaceHistoryGuard } from './utils/adminWorkspaceHistory';
 import {learnerPreviewToken} from './utils/enrollmentLearnerPreview';
 import {SiteChatRoutes} from './components/SiteChatRoutes';
 import {cancelUnmatchedEnrollmentPreload} from './services/enrollmentLandingState';
@@ -60,6 +61,7 @@ function loadStandaloneChat() {
 }
 const StandAloneChat = lazyWithRetry(loadStandaloneChat);
 const CrmWorkbench = lazyWithRetry(() => import('./pages/CrmWorkbench'));
+const AcademicWorkbench = lazyWithRetry(() => import('./pages/AcademicWorkbench'));
 const AccessWorkbench = lazyWithRetry(() => import('./pages/AccessWorkbench'));
 const CmsWorkbench = lazyWithRetry(() => import('./pages/CmsWorkbench'));
 
@@ -106,6 +108,8 @@ function SiteNotFound() {
   return <main className="pt-32 pb-20 px-6 text-center"><h1>{lang==='zh'?'页面未找到':lang==='id'?'Halaman Tidak Ditemukan':'Page Not Found'}</h1><a href="/">{lang==='zh'?'返回首页':lang==='id'?'Kembali ke beranda':'Return home'}</a></main>;
 }
 
+installAdminWorkspaceHistoryGuard();
+
 export default function App() {
   if (learnerPreviewToken()) return <ThemeProvider><BrowserRouter>
     <ApplicationErrorBoundary><Suspense fallback={null}><Routes>
@@ -130,6 +134,7 @@ export default function App() {
 
                 {/* Sales & Telemarketing CRM Workbench */}
                 <Route path="crm" element={<CrmWorkbench />} />
+                <Route path="academics" element={<AcademicWorkbench />} />
                 
                 {/* Standalone Official Website CMS & Media Repository */}
                 <Route path="system" element={<AccessWorkbench />} />

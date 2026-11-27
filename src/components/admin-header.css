@@ -217,7 +217,7 @@
   padding: 4px 24px 8px;
   scrollbar-width: thin;
 }
-.admin-module-nav > button {
+.admin-module-nav > :is(button,a) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -231,12 +231,12 @@
   font-weight: 500;
   color: var(--ah-muted);
 }
-.admin-module-nav > button[aria-current="page"] {
+.admin-module-nav > :is(button,a)[aria-current="page"] {
   color: var(--ah-active);
   background: var(--ah-selected);
   font-weight: 600;
 }
-.admin-module-nav > button:hover {
+.admin-module-nav > :is(button,a):hover {
   background: var(--ah-surface);
 }
 .admin-header :is(a, button, summary):focus-visible {
@@ -356,7 +356,7 @@
   .admin-module-nav {
     padding: 0 12px 8px;
   }
-  .admin-module-nav > button {
+  .admin-module-nav > :is(button,a) {
     min-height: 44px;
     padding: 8px 10px;
     font-size: 13px;

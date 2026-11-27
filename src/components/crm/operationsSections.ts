@@ -1,18 +1,21 @@
+import {admissionsMailPath} from '../../utils/enrollmentMailNavigation';
+
 export const operationGroups = [
  ['Management and working time','Pengelolaan dan jam kerja','管理与工作时间'],
- ['Sales follow-up rules','Aturan tindak lanjut penjualan','销售跟进规则'],
+ ['Sales and enrollment rules','Aturan penjualan dan pendaftaran','销售与报名规则'],
  ['Notifications and audit','Notifikasi dan audit','通知与审计'],
 ] as const;
 export const operationGroupOrder = [0, 1, 2] as const;
-export const enrollmentSettingSections = [
+export const academicSections = [
  {id:'courses',title:['Courses','Kursus','课程']},
  {id:'enrollment-templates',title:['Class templates','Templat kelas','班型模板']},
- {id:'enrollment-classes',title:['Enrollment classes','Kelas pendaftaran','报名班次']},
+ {id:'enrollment-classes',title:['Classes','Kelas','班次']},
  {id:'faculty',title:['Faculty directory','Direktori pengajar','教师档案']},
- {id:'enrollment-rules',title:['Enrollment rules','Aturan pendaftaran','报名规则']},
- {id:'enrollment-mail',title:['Admissions email','Email penerimaan','招生邮件']},
 ] as const;
-export type EnrollmentSettingTopic = typeof enrollmentSettingSections[number]['id'];
+const enrollmentRulesTopic='enrollment-rules';
+const enrollmentMailTopic='enrollment-mail';
+type AcademicTopic=typeof academicSections[number]['id'];
+export type EnrollmentSettingTopic=AcademicTopic|typeof enrollmentRulesTopic|typeof enrollmentMailTopic;
 
 export const operationSections = [
  {id:'assignment',group:1,title:['Automatic assignment','Penugasan otomatis','自动分案'],purpose:['Assign new verified, unassigned customers to selected salespeople.','Tugaskan pelanggan baru terverifikasi tanpa penanggung jawab ke sales terpilih.','将身份已核实且未分配的新客户分配给选定销售。'],steps:[['New verified customer','Round robin','Assignment history'],['Pelanggan baru terverifikasi','Giliran','Riwayat penugasan'],['新客户身份已核实','轮询分配','保留归属历史']]},
@@ -21,6 +24,7 @@ export const operationSections = [
  {id:'first_response',group:1,title:['First response','Respons pertama','首次响应'],purpose:['Set response windows by priority; explicit adviser requests use the high-priority window.','Atur waktu respons menurut prioritas; permintaan penasihat memakai prioritas tinggi.','按优先级设置响应窗口；明确的顾问请求使用高优先级时限。'],steps:[['New request','Determine priority','Calculate deadline'],['Permintaan baru','Tentukan prioritas','Hitung tenggat'],['新请求','确定优先级','计算截止时间']]},
  {id:'retry',group:1,title:['Unanswered contact','Kontak tanpa respons','未接重试'],purpose:['Space genuine attempts and evaluate the configured final response window.','Beri jeda antarupaya nyata dan periksa waktu respons terakhir.','控制真实尝试间隔，并核对配置的最后回复窗口。'],steps:[['No response','Wait for cooldown','Recheck attempt threshold'],['Tanpa respons','Tunggu jeda','Periksa ambang upaya'],['未回复','等待冷却间隔','核对尝试阈值']]},
  {id:'watchdog',group:1,title:['Inactivity reminders','Pengingat tidak aktif','长期未联系提醒'],purpose:['Configure follow-up checks; a reminder is not proof that contact occurred.','Atur pemeriksaan tindak lanjut; pengingat bukan bukti kontak terjadi.','配置未联系检查时长；提醒不等于已经发生联系。'],steps:[['Prior contact','Check next arrangement','Review reminder'],['Kontak sebelumnya','Periksa rencana berikutnya','Tinjau pengingat'],['已有联系','核对后续安排','检查提醒']]},
+ {id:enrollmentRulesTopic,group:1,title:['Enrollment rules','Aturan pendaftaran','报名规则'],purpose:['Manage payment, transfer, refund and email verification rules.','Atur pembayaran, pindah kelas, pengembalian dana, dan verifikasi email.','设置付款、转班、退款与邮箱验证规则。'],steps:[['Verify email','Reserve a seat','Pay tuition'],['Verifikasi email','Pesan kursi','Bayar biaya kursus'],['验证邮箱','获得席位','支付学费']]},
  {id:'milestone',group:1,title:['Trial and assessment','Uji coba dan asesmen','试听与测评'],purpose:['Configure time offsets around recorded events; do not infer attendance or enrollment.','Atur selisih waktu dari peristiwa tercatat; jangan menyimpulkan kehadiran atau pendaftaran.','围绕已记录事件配置时间偏移，不据此推断出席或报名。'],steps:[['Recorded event','Configured offset','Adviser follow-up'],['Peristiwa tercatat','Selisih waktu','Tindak lanjut penasihat'],['已记录事件','应用时间偏移','顾问跟进']]},
  {id:'reactivation',group:1,title:['Renewed inquiries','Pertanyaan kembali','重新咨询'],purpose:['Review previous context when a dormant customer asks again.','Tinjau konteks sebelumnya saat pelanggan lama bertanya kembali.','沉睡客户再次咨询时，先查看历史，再按配置的时限处理。'],steps:[['New inquiry','Review history','Respond within window'],['Pertanyaan baru','Tinjau riwayat','Respons sesuai tenggat'],['再次咨询','查看历史','按时限响应']]},
  {"id": "notification-channels", "group": 2, "title": ["Channels", "Kanal", "通知渠道"], "purpose": ["Configure delivery channels; save each channel separately.", "Atur kanal pengiriman; simpan setiap kanal secara terpisah.", "配置发送渠道；每个渠道独立保存。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
@@ -30,27 +34,46 @@ export const operationSections = [
  {"id": "integration-readiness", "group": 2, "title": ["Integration checks", "Pemeriksaan integrasi", "接入检查"], "purpose": ["Check connectivity and configuration; tests use existing safeguards.", "Periksa koneksi dan konfigurasi; pengujian mengikuti pengamanan yang ada.", "检查连接和配置，测试仍遵循现有保护机制。"], "steps": [["Event", "Recipient and channel", "Delivery record"], ["Peristiwa", "Penerima dan kanal", "Catatan pengiriman"], ["事件", "接收人与渠道", "发送记录"]]},
 ] as const;
 export type OperationSection = typeof operationSections[number]['id'];
-export function resolveEnrollmentSettingsTopic(params:URLSearchParams):EnrollmentSettingTopic {
+export function resolveEnrollmentSettingsTopic(params:URLSearchParams):AcademicTopic {
  const topic=params.get('policyTopic');
  if((!topic||topic==='courses')&&params.has('enrollmentClass')) return 'enrollment-classes';
- return enrollmentSettingSections.find(section=>section.id===topic)?.id??'courses';
+ return academicSections.find(section=>section.id===topic)?.id??'courses';
+}
+function isAcademicTopic(topic:string|null):topic is AcademicTopic {
+ return academicSections.some(section=>section.id===topic);
 }
 
-export function isLegacyEnrollmentSettings(params:URLSearchParams) {
- const topic=params.get('policyTopic');
- return params.get('tab')==='policy' && (enrollmentSettingSections.some(section=>section.id===topic)
-   || (!topic && params.has('enrollmentClass')));
+export function enrollmentSettingsLegacyLocation(params:URLSearchParams,hash='') {
+ const tab=params.get('tab'),requested=params.get('policyTopic');
+ if(tab==='policy'&&requested===enrollmentRulesTopic)return;
+ if(tab!=='enrollment-settings'&&!(tab==='policy'&&(isAcademicTopic(requested)||requested===enrollmentMailTopic||(!requested&&params.has('enrollmentClass')))))return;
+ if(requested===enrollmentMailTopic){
+  const lang=params.get('lang');
+  return admissionsMailPath+(lang?'&'+new URLSearchParams({lang}):'')+hash;
+ }
+ if(requested===enrollmentRulesTopic){
+  const destination=new URLSearchParams(params);
+  destination.set('tab','policy');
+  return '/crm?'+destination+hash;
+ }
+ const topic=resolveEnrollmentSettingsTopic(params);
+ const destination=new URLSearchParams(params);
+ destination.delete('tab');
+ destination.set('policyTopic',topic);
+ return '/academics?'+destination+hash;
 }
 
 export function enrollmentSettingsPath(topic:EnrollmentSettingTopic='courses',options?:{classId?:string;facultyId?:string;returnTo?:string;templateId?:string;createFrom?:string;createFromCourse?:string}){
- const query=new URLSearchParams({tab:'enrollment-settings',policyTopic:topic});
+ if(topic===enrollmentMailTopic)return admissionsMailPath;
+ const academic=isAcademicTopic(topic);
+ const query=new URLSearchParams(academic?{policyTopic:topic}:{tab:'policy',policyTopic:topic});
  if(topic==='enrollment-classes'&&options?.classId)query.set('enrollmentClass',options.classId);
  if(topic==='faculty'&&options?.facultyId)query.set('facultyId',options.facultyId);
  if(options?.templateId)query.set('enrollmentTemplate',options.templateId);
  if(options?.createFrom)query.set('createFromTemplate',options.createFrom);
  if(options?.createFromCourse)query.set('createFromCourse',options.createFromCourse);
  if(options?.returnTo)query.set('enrollmentReturn',options.returnTo);
- return '/crm?'+query;
+ return (academic?'/academics?':'/crm?')+query;
 }
 
 export function resolveOperationTopic(params:URLSearchParams, canManageOperations:boolean, canReadNotifications:boolean):OperationSection {

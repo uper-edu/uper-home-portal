@@ -14,6 +14,7 @@ const p = (
   zh: string,
   scoped = false,
 ) => ({ key, module, names: [en, id, zh] as AccessWords, scoped });
+export const academicManagePermission = "academics.manage";
 export const permissionCatalog = [
   p("crm.payments.verify", "crm", "Verify customer payments", "Verifikasi pembayaran pelanggan", "核验客户收款", true),
   p("crm.read", "crm", "View customers", "Lihat pelanggan", "查看客户", true),
@@ -109,6 +110,13 @@ export const permissionCatalog = [
     "管理通知策略及渠道",
   ),
   p(
+    academicManagePermission,
+    "academics",
+    "Manage courses, classes and faculty",
+    "Kelola kursus, kelas, dan pengajar",
+    "管理课程、班次及教师",
+  ),
+  p(
     "cms.manage",
     "cms",
     "Manage website content and media",
@@ -170,6 +178,12 @@ export type AccessEmployee = {
   roleLabels?: Record<string, AccessWords>;
   rolePermissions?: Record<string, string[]>;
 };
+export const canManageAcademics = (actor: Pick<AccessEmployee, "active" | "permissions">) =>
+  actor.active !== false && actor.permissions.includes(academicManagePermission);
+
+export const canReadFacultyCompensation = (actor: AccessEmployee) =>
+  canManageAcademics(actor) || (permittedRecord(actor, {}, "crm.read") && permittedRecord(actor, {}, "crm.payments.verify"));
+
 export function retireTeamGrants(config: RoleConfig): RoleConfig {
   const next = structuredClone(config);
   for (const [key, scope] of Object.entries(next.grants))

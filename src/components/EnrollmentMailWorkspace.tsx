@@ -23,6 +23,7 @@ import {formatCrmEventTime} from '../utils/crmOperatingTime';
 import {enrollmentMailDefaults,enrollmentMailPoolLimit,isMailPoolStrategy,mailAccountDefaults,mailPoolDailyLimitMax,mailPoolDefaults,mailPoolMembers,mailSmtpEndpoint,mailSmtpProvider,mailSmtpProviders,type EnrollmentMailConfig,type MailAccount,type MailPool} from '../utils/enrollmentMailConfig';
 import {contactEmailText,validContactEmail} from '../utils/contactEmail';
 import type {CrmLanguage} from '../utils/crmLanguage';
+import {admissionsMailPath,systemMailView} from '../utils/enrollmentMailNavigation';
 import './enrollment-mail-workspace.css';
 
 type Usage={daily:number;external:number;monthly:number};
@@ -70,11 +71,13 @@ const readinessWords:Record<string,[string,string,string]>={
   mail_sender_required:['发信池没有可用的发件账号及凭证','The pool has no usable sender with credentials','Pool tidak memiliki akun pengirim dengan kredensial yang dapat digunakan'],
 };
 
-export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canManageCredentials=false,view='accounts',recordId='',returnPoolId='',onNavigate=noop,onDraft=noop,onBusy=noop}:{
-  lang:CrmLanguage;isLight:boolean;admin?:boolean;allowed?:boolean;canManageCredentials?:boolean;
-  view?:'accounts'|'pool';recordId?:string;returnPoolId?:string;onNavigate?:(href:string)=>void;
+export function EnrollmentMailWorkspace({lang,isLight,canManageInfrastructure,canManageAdmissions,canManageCredentials=false,view='accounts',recordId='',returnPoolId='',onNavigate=noop,onDraft=noop,onBusy=noop}:{
+  lang:CrmLanguage;isLight:boolean;canManageInfrastructure:boolean;canManageAdmissions:boolean;canManageCredentials?:boolean;
+  view?:ReturnType<typeof systemMailView>;recordId?:string;returnPoolId?:string;onNavigate?:(href:string)=>void;
   onDraft?:(dirty:boolean)=>void;onBusy?:(busy:boolean)=>void;
 }){
+  const admin=view!=='admissions';
+  const allowed=admin?canManageInfrastructure:canManageAdmissions;
   const t=(zh:string,en:string,id:string)=>lang==='zh'?zh:lang==='id'?id:en;
   const stickyHelpId=useId();
   const memberOrderId=useId();
@@ -321,7 +324,8 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
     finally{setBusy(false);}
   };
   const savedReadError=awaitingSavedRead&&failure==='error';
-  const heading=admin?t('邮件配置','Email configuration','Konfigurasi email'):t('招生邮件','Admissions email','Email penerimaan');
+  const heading=t('邮件配置','Email configuration','Konfigurasi email');
+  const admissionsLabel=t('招生邮件','Admissions email','Email penerimaan');
   const word=(state:string)=>stateWords[state]?t(...stateWords[state]):state;
   const fixedSender=t('为同一报名邮箱固定发件账号','Keep the same sender for each enrollment email address','Gunakan pengirim yang sama untuk setiap alamat email pendaftaran');
   const historyTitle=t('招生邮件发送记录','Admissions email delivery history','Riwayat pengiriman email penerimaan');
@@ -415,10 +419,10 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
     [poolMembersLabel,savedPool.members.join(', ')||'—'],
   ]:undefined;
   return <section className="enrollment-mail-workspace" aria-label={heading}>
-    {admin&&!isDetail&&<AdminPageHeader title={heading} subtitle={poolView
+    {!isDetail&&<AdminPageHeader title={heading} subtitle={!admin?t('管理本环境的发件账号、发信池和招生邮件。','Manage this environment’s sending accounts, sending pools, and admissions email.','Kelola akun pengirim, pool pengiriman, dan email penerimaan di lingkungan ini.'):poolView
       ?t('组合发件账号，设置发信池的额度和账号分配策略。','Group sending accounts and set pool quotas and account routing.','Kelompokkan akun pengirim serta atur kuota dan pembagian beban untuk setiap pool.')
       :t('管理发件账号的连接参数、凭证和发送限额。','Manage sending accounts, connection settings, credentials and quotas.','Kelola akun pengirim, pengaturan koneksi, kredensial, dan kuota.')}
-      actions={allowed&&failure!=='denied'&&<>
+      actions={admin&&allowed&&failure!=='denied'&&<>
         <AdminRefreshAction label={t('刷新','Refresh','Segarkan')} loading={loading} onClick={()=>void refresh()}/>
         {config&&view==='accounts'&&<AdminPageAction icon={Plus} variant="primary" label={t('新增账号','Add account','Tambah akun')} onClick={()=>edit(config.accounts.length)}/>}
         {config?.pools&&view==='pool'&&<AdminPageAction icon={Plus} variant="primary" label={addPoolLabel}
@@ -427,7 +431,12 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
             `Up to ${enrollmentMailPoolLimit} sending pools are allowed`,`Maksimal ${enrollmentMailPoolLimit} pool pengiriman`):undefined}
           onClick={()=>edit('new-pool')}/>}
       </>}/>}
-    {!admin&&<AdminTopicHeader title={heading} isLight={isLight}
+    {!isDetail&&allowed&&failure!=='denied'&&canManageInfrastructure&&<AdminContentNav label={heading} items={[
+      {href:accountListHref,label:t('发件账号','Sending accounts','Akun pengirim'),current:view==='accounts'},
+      {href:poolListHref,label:t('发信池','Sending pool','Pool pengiriman'),current:view==='pool'},
+      ...(canManageAdmissions?[{href:admissionsMailPath,label:admissionsLabel,current:view==='admissions'}]:[]),
+    ]} onNavigate={onNavigate}/>}
+    {!admin&&allowed&&<AdminTopicHeader title={admissionsLabel} isLight={isLight}
       subtitle={t('选择招生发信池，设置发件账号规则，并查询发送记录。','Choose the admissions email pool, set sender rules and review delivery records.','Pilih pool email penerimaan, atur aturan pengirim, dan lihat riwayat pengiriman.')} actions={<>
         {settingsUnknown&&<AdminPageAction icon={ClipboardCheck} label={t('核对保存结果','Check save result','Periksa hasil penyimpanan')}
           disabled={loading||busy} onClick={()=>void checkSettings()}/>}
@@ -436,10 +445,6 @@ export function EnrollmentMailWorkspace({lang,isLight,admin,allowed=true,canMana
           label={busy?t('正在保存…','Saving…','Menyimpan…'):t('保存发信设置','Save email settings','Simpan pengaturan email')}
           disabled={!choiceDirty||!settingsPoolAvailable||settingsConflict||loading&&!busy||!!failure} onClick={()=>void saveChoice()}/>}
     </>}/>}
-    {admin&&!isDetail&&allowed&&failure!=='denied'&&<AdminContentNav label={heading} items={[
-      {href:accountListHref,label:t('发件账号','Sending accounts','Akun pengirim'),current:view==='accounts'},
-      {href:poolListHref,label:t('发信池','Sending pool','Pool pengiriman'),current:view==='pool'},
-    ]} onNavigate={onNavigate}/>}
     {feedback==='saved'&&editing===undefined&&<AdminFormFeedback state="saved" lang={lang} placement="floating"/>}
     {!isDetail&&allowed&&savedReadError&&<AdminSavedReadError lang={lang} busy={loading} onRetry={()=>void refresh()}/>}
     {!isDetail&&(!allowed||!result||failure&&!savedReadError)&&<AdminListState lang={lang} state={!allowed?'denied':failure??'loading'} onRetry={refresh}/>}

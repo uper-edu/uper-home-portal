@@ -1,10 +1,12 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{CrmPolicySettings}from'../src/components/crm/CrmPolicySettings';import{DEFAULT_CRM_POLICY_CONFIG}from'../src/types/crmPolicyConfig';import{enrollmentSettingSections,operationSections,operationGroups,operationGroupOrder,operationSectionForField}from'../src/components/crm/operationsSections';
+import {test} from 'node:test';import assert from 'node:assert/strict';import React from 'react';import{renderToStaticMarkup}from'react-dom/server';import{CrmPolicySettings}from'../src/components/crm/CrmPolicySettings';import{DEFAULT_CRM_POLICY_CONFIG}from'../src/types/crmPolicyConfig';import{academicSections,operationSections,operationGroups,operationGroupOrder,operationSectionForField}from'../src/components/crm/operationsSections';
 test('all operation topics provide three aligned translations and field errors route to the right topic',()=>{
  const firstGroup=operationGroupOrder[0];
  assert.equal(operationGroups[firstGroup][2],'管理与工作时间');
- assert.deepEqual(enrollmentSettingSections.map(section=>section.id),['courses','enrollment-templates','enrollment-classes','faculty','enrollment-rules','enrollment-mail']);
- assert.ok(enrollmentSettingSections.every(section=>section.title.length===3&&section.title.every(Boolean)));
- assert.ok(!operationSections.some(section=>enrollmentSettingSections.some(setting=>setting.id===String(section.id))));
+ assert.deepEqual(academicSections.map(section=>section.id),['courses','enrollment-templates','enrollment-classes','faculty']);
+ assert.equal(operationSections.find(section=>section.id==='enrollment-rules')?.group,1);
+ assert.equal(operationGroups[1][2],'销售与报名规则');
+ assert.ok(academicSections.every(section=>section.title.length===3&&section.title.every(Boolean)));
+ assert.ok(!operationSections.some(section=>academicSections.some(setting=>setting.id===String(section.id))));
  assert.equal(new Set(operationSections.map(section=>section.id)).size,operationSections.length);
  assert.ok(operationSections.some(section=>section.id==='assignment'));
  for(const section of operationSections){
@@ -38,4 +40,15 @@ test('calendar examples keep calendar information but omit simulator, architectu
   assert.ok(!html.includes('View the Sales Operations chapter'));assert.ok(!html.includes('查看在线手册的销售运营章节'));
   assert.equal((html.match(/type="submit"/g)||[]).length,1);
  }
+});
+
+
+test('enrollment rules keep their own form when opened from sales operations',()=>{
+ const rules=React.createElement('form',{'aria-label':'separate enrollment rule form'},React.createElement('button',{type:'submit'},'Save enrollment'));
+ const html=renderToStaticMarkup(React.createElement(CrmPolicySettings,{lang:'zh',isLight:true,
+  initialTopic:'enrollment-rules',policyConfig:DEFAULT_CRM_POLICY_CONFIG,onSavePolicy:async()=>false,onResetPolicy:async()=>false,
+  enrollmentRulesContent:rules,enrollmentRulesDirty:true}));
+ assert.match(html,/aria-current="page"[^>]*>[\s\S]*?报名规则[\s\S]*?有未保存修改/);
+ assert.match(html,/<\/form><div><form aria-label="separate enrollment rule form"/);
+ assert.equal((html.match(/type="submit"/g)||[]).length,1);
 });

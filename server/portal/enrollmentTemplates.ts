@@ -1,3 +1,4 @@
+import {academicManagePermission} from '../../src/utils/accessControl.ts';
 import type {Express, Request, Response} from 'express';
 import {enrollmentLevels} from '../../src/utils/enrollmentCatalog.ts';
 import {enrollmentTeacherTypes,enrollmentTemplateFormats,enrollmentTemplateQuote, type EnrollmentTeaching, type EnrollmentTemplate} from '../../src/utils/enrollmentTemplates.ts';
@@ -41,7 +42,7 @@ export function mountEnrollmentTemplates(app:Express,{wrap,staff}:{
   staff:(q:Request,permission:string)=>Promise<{id:string}>;
 }){
   const path='/api/crm/enrollment/templates';
-  const access=(q:Request)=>staff(q,'crm.operations.manage');
+  const access=(q:Request)=>staff(q,academicManagePermission);
   app.post(path,wrap(async(q,r)=>{
     const actor=await access(q);
     if(!validMutationOrigin(q))invalid('enrollment_origin_rejected',403);

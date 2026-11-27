@@ -1,7 +1,7 @@
 import {PersonalLarkControls} from '../PersonalLarkControls';
 import {RuntimeVersionStatus} from '../RuntimeVersionStatus';
 import type {CrmEmployee} from '../CrmAccess';
-import {adminRoleLabel} from '../../utils/adminWorkspace';
+import {adminRoleLabel,workspacePermissions,type AdminWorkspace} from '../../utils/adminWorkspace';
 import {crmId} from '../../utils/crmIndonesian';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 
@@ -9,7 +9,7 @@ export function AdminAccountMenu({employee,lang,isLight,workspace,busy,error,onC
   employee: Pick<CrmEmployee,'id'|'displayName'|'roles'|'roleLabels'|'rolePermissions'>;
   lang: CrmLanguage;
   isLight: boolean;
-  workspace?: 'crm' | 'cms' | 'system';
+  workspace?: AdminWorkspace;
   busy: boolean;
   error: string;
   onChangePassword: () => void;
@@ -18,8 +18,11 @@ export function AdminAccountMenu({employee,lang,isLight,workspace,busy,error,onC
   const t = (en: string, zh: string) =>
     lang === "id" ? crmId(en) : lang === "zh" ? zh : en;
   const roleLabel = (role: string) => employee.roleLabels?.[role]?.[lang === "zh"?2:lang === "id"?1:0] || adminRoleLabel(role, lang);
-  const preferredRole = workspace === 'system' ? 'access_admin' : workspace === 'cms' ? 'cms_admin' : employee.roles.includes('crm_leader') ? 'crm_leader' : 'sales';
-  const currentRole = employee.roles.includes(preferredRole) && (!employee.rolePermissions || employee.rolePermissions[preferredRole]?.includes(workspace==='system'?'access.read':workspace==='cms'?'cms.manage':'crm.read')) ? preferredRole : employee.roles.find(role=>employee.rolePermissions?.[role]?.includes(workspace==='system'?'access.read':workspace==='cms'?'cms.manage':'crm.read')) || employee.roles[0] || '';
+  const preferredRole = workspace === 'academics' ? 'academic_admin' : workspace === 'system' ? 'access_admin' : workspace === 'cms' ? 'cms_admin' : employee.roles.includes('crm_leader') ? 'crm_leader' : 'sales';
+  const permission=workspacePermissions[workspace??'crm'];
+  const currentRole = employee.roles.includes(preferredRole) && (!employee.rolePermissions || employee.rolePermissions[preferredRole]?.includes(permission))
+    ? preferredRole : employee.roles.find(role=>employee.rolePermissions?.[role]?.includes(permission))
+      || (workspace==='academics'&&employee.roles.includes('finance')?'finance':employee.roles[0]) || '';
   return (
     <details
       className="relative shrink-0 ml-auto"

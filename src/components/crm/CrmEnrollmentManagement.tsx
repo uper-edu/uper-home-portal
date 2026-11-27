@@ -9,19 +9,20 @@ import { AdminContentNav } from '../admin/AdminContentNav';
 import {AdminSearchField} from '../admin/AdminSearchField';
 import type { EnrollmentClosureReason } from '../../utils/enrollmentOrderStatus';
 import { useEffect, useRef, useState } from 'react';
-import {Settings } from 'lucide-react';
+import {Plus,Settings} from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { containPaneKeys, revealRecord } from '../adminScroll';
 import { interestOption } from '../../utils/enrollmentInterestCopy';
 import { crmInstant, formatCrmEventTime } from '../../utils/crmOperatingTime';
 import { formatCurrency } from '../../utils/currency';
 import type { CrmLanguage } from '../../utils/crmLanguage';
-import type { AccessEmployee } from '../../utils/accessControl';
+import {canManageAcademics,type AccessEmployee} from '../../utils/accessControl';
 import { canViewEnrollmentManagement, enrollmentManagementScopes, enrollmentClassManagementPath, enrollmentRosterStates,
   enrollmentClassPageSize, enrollmentClassShortfall, filterEnrollmentClasses, formatEnrollmentClassStart, readEnrollmentClassFilters, writeEnrollmentClassFilters,
   type EnrollmentClassFilters,
   type EnrollmentClassSummary, type EnrollmentRosterEntry, type EnrollmentRosterState } from '../../utils/crmEnrollmentManagement';
 import { CrmEnrollmentSupport } from './CrmEnrollmentResolution';
+import {CrmEnrollmentInsertion} from './CrmEnrollmentInsertion';
 import { AdminSingleSelect } from '../admin/AdminSingleSelect';
 import { AdminPageHeader } from '../admin/AdminPageHeader';
 import { AdminPageAction } from '../admin/AdminPageAction';
@@ -66,8 +67,9 @@ const statuses:Record<EnrollmentClassSummary['status'],Copy>={
   cancelled:['已确认不开班','Class will not open','Kelas tidak dibuka'],
 };
 
-export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupport,aftercare,onNavigate}:{
-  lang:CrmLanguage;isLight:boolean;employee:AccessEmployee;employees:{id:string;displayName?:string}[];canSupport:boolean;aftercare:boolean;onNavigate:(href:string)=>void;
+export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupport,aftercare,onNavigate,onDraftChange}:{
+  lang:CrmLanguage;isLight:boolean;employee:AccessEmployee;employees:{id:string;displayName?:string}[];canSupport:boolean;aftercare:boolean;
+  onNavigate:(href:string)=>void;onDraftChange:(dirty:boolean)=>void;
 }){
   const t=(copy:Copy)=>enrollmentCopy(lang,copy);
   useLocation();
@@ -80,6 +82,8 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
   const classDetail=Boolean(id&&!aftercare);
   const allowed=canViewEnrollmentManagement(employee);
   const scope=enrollmentManagementScopes(employee);
+  const [addingTo,setAddingTo]=useState<string>();
+  const [addedTo,setAddedTo]=useState<string>();
   const authorizationKey=JSON.stringify([employee.id,employee.permissions,employee.grants,employee.scope,employee.active]);
   const [loaded,setLoaded]=useState<{data:Result;key:string}>();
   const result=allowed&&loaded?.key===authorizationKey?loaded.data:undefined;
@@ -336,8 +340,8 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
       :t(['按班次查看报名人数、名单和学员的付款状态。','Review enrollment counts, rosters and learner payment status by class.','Lihat jumlah pendaftar, daftar peserta, dan status pembayaran per kelas.'])}
       actions={allowed&&(scope.operations||canRefresh)&&<>
         {scope.operations&&<AdminPageAction icon={Settings}
-          label={t(['课程与班次设置','Course and class settings','Pengaturan kursus dan kelas'])}
-          onClick={()=>onNavigate(enrollmentSettingsPath('courses',{returnTo:(aftercare?aftercarePath:list)+classFilterQuery}))}/>}
+          label={t(['报名规则','Enrollment rules','Aturan pendaftaran'])}
+          onClick={()=>onNavigate(enrollmentSettingsPath('enrollment-rules',{returnTo:(aftercare?aftercarePath:list)+classFilterQuery}))}/>}
         {canRefresh&&<AdminRefreshAction label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
     </>}/>}
     {!id&&allowed&&canSupport&&<AdminContentNav label={title} onNavigate={onNavigate} items={[
@@ -425,12 +429,21 @@ export function CrmEnrollmentManagement({lang,isLight,employee,employees,canSupp
           <div className="crm-detail-panel crm-enrollment-detail-panel" hidden={recordLayout.listOnly}>
             <AdminRecordHeader back={recordLayout.headerBack} title={<CrmRecordTitle title={cohort?classTitle(cohort):t(['班次详情','Class details','Detail kelas'])}
                 status={cohort&&statusBadge(cohort)} meta={cohort&&[firstLesson(cohort),cohort.schedule].filter(Boolean).join(' · ')}/>}
-              actions={<CrmDetailActions label={t(['班次操作','Class actions','Tindakan kelas'])} secondary={<>{recordLayout.browseAction}
-                {scope.operations&&cohort&&<AdminPageAction id={settingsButtonId} icon={Settings} label={t(['班次设置','Class settings','Pengaturan kelas'])}
+              actions={<CrmDetailActions label={t(['班次操作','Class actions','Tindakan kelas'])}
+                primary={scope.operations&&!!cohort?.insertionPrice&&<AdminPageAction icon={Plus} variant="primary" aria-haspopup="dialog"
+                  label={t(['插班','Add learner','Tambah siswa ke kelas'])} onClick={()=>{setAddedTo(undefined);setAddingTo(cohort.id);}}/>}
+                secondary={<>{recordLayout.browseAction}
+                {canManageAcademics(employee)&&cohort&&<AdminPageAction id={settingsButtonId} icon={Settings} label={t(['教务班次设置','Academic class settings','Pengaturan kelas akademik'])}
                   onClick={()=>openClassSettings(cohort.id)}/>}
                 {canRefresh&&<AdminRefreshAction label={refreshLabel} loading={loading} onClick={()=>setRequestVersion(v=>v+1)}/>}
               </>}/>}/>
             {cohort&&<div className="crm-panel-next">
+              {addedTo===cohort.id&&<p role="status">{t(['已分配席位。','Seat reserved.','Kursi telah dipesan.'])}</p>}
+              {scope.operations&&!!cohort.insertionPrice&&addingTo===cohort.id&&<CrmEnrollmentInsertion
+                key={cohort.id} {...{lang,isLight}} cohort={{id:cohort.id,label:classTitle(cohort),price:cohort.insertionPrice}}
+                onDirty={onDraftChange} onClose={()=>setAddingTo(undefined)} onSaved={()=>{
+                  setAddedTo(cohort.id);setAddingTo(undefined);setRequestVersion(v=>v+1);
+                }}/>}
               <dl className="crm-enrollment-detail-summary">
                 {cohort.status!=='cancelled'&&<div><dt>{t(['开班进度','Class opening','Status pembukaan'])}</dt>
                   <dd>{enrollmentProgress(cohort,false)}</dd></div>}

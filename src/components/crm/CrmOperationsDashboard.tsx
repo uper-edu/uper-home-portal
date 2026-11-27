@@ -1260,7 +1260,7 @@ export function CrmOperationsDashboard({actor,lang,isLight,onNavigate,onLocation
     if(topic==='economics')return <>
       {sections.finance&&<Suspense fallback={<p role="status">{t('load')}</p>}>
         <TeacherSettlements lang={lang} isLight={isLight} asOf={data.asOf} refresh={revision} filter={filter}
-          onFaculty={()=>onNavigate('/crm?tab=enrollment-settings&policyTopic=faculty')}/>
+          onFaculty={()=>onNavigate('/academics?policyTopic=faculty')}/>
       </Suspense>}
       {(!sections.finance||sections.operations)&&<CourseEconomics data={data.economics} t={t} lang={lang}
         allowed={sections.operations&&sections.finance} onNavigate={onNavigate}/>}

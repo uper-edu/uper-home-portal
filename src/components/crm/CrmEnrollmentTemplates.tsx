@@ -1,14 +1,14 @@
-import {AdminTopicHeader} from '../admin/AdminTopicHeader';
+import {AdminPageHeader} from '../admin/AdminPageHeader';
 import {Plus} from 'lucide-react';
 import {AdminPageAction} from '../admin/AdminPageAction';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {AdminEditor} from '../admin/AdminEditor';
 import {AdminConfirmation} from '../admin/AdminConfirmation';
-import {EnrollmentSettingsListSummary,EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
+import {EnrollmentSettingsSelect,useEnrollmentSettingsFilters} from './EnrollmentSettingsListControls';
 import {AdminListState,AdminListTable} from '../admin/AdminList';
 import {AdminRowAction} from '../admin/AdminListControl';
 import {AdminRefreshAction} from '../admin/AdminRefreshAction';
-import {AdminSearchField} from '../admin/AdminSearchField';
+import {AdminListToolbar} from '../admin/AdminListToolbar';
 import {AdminStatus} from '../AdminStatus';
 import {AdminField} from '../AdminForm';
 import {AdminFormFeedback,AdminSavedReadError,AdminFormGrid,AdminFormSection,AdminFormSummary} from '../AdminFormLayout';
@@ -27,9 +27,9 @@ type TemplateDraft=Omit<EnrollmentTemplate,'format'|'teacherType'>&{
  teacherType:EnrollmentTemplate['teacherType']|'';
 };
 type SizeField='capacity'|'minimumPaid';
-type Props={lang:CrmLanguage;isLight:boolean;selected?:string;createFromCourse?:string;onCreateClass?:(id:string)=>void;onDraftChange?:(dirty:boolean)=>void; quoteEdit?:{id:string;onReturn:()=>void}};
+type Props={lang:CrmLanguage;isLight:boolean;secondaryActions?:ReactNode;selected?:string;createFromCourse?:string;onCreateClass?:(id:string)=>void;onDraftChange?:(dirty:boolean)=>void; quoteEdit?:{id:string;onReturn:()=>void}};
 
-export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,onCreateClass,onDraftChange,quoteEdit}:Props){
+export function CrmEnrollmentTemplates({lang,isLight,secondaryActions,selected,createFromCourse,onCreateClass,onDraftChange,quoteEdit}:Props){
  const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
  const title=t('Class templates','Templat kelas','班型模板');
  const createTemplateLabel=t('New class template','Buat templat kelas','新建班型模版');
@@ -49,6 +49,8 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  const formats={standard:t('Standard','Standar','标准班'),small:t('Small group','Kelompok kecil','小班'),'one-on-one':t('One-to-one','Privat','一对一')};
  const teachers={local:t('Local teacher','Pengajar lokal','本土教师'),foreign:t('Foreign teacher','Pengajar asing','外教')};
  const course=(id:string)=>catalog?.courses.find(c=>c.id===id);
+ const draftCourse=draft&&course(draft.courseId);
+ const needsCourse=!!draft&&!draft.revision&&!draftCourse?.teaching;
  const load=async()=>{
    request.current?.abort();
    const controller=new AbortController();
@@ -151,7 +153,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  };
  const save=async(e:React.FormEvent)=>{
    e.preventDefault();
-   if(!draft||!draft.courseId||!draft.format||!draft.teacherType||inFlight.current||pending)return;
+   if(!draft||needsCourse||!draft.courseId||!draft.format||!draft.teacherType||inFlight.current||pending)return;
    if(!termsLocked){
      const {standardUnitPrice,saleUnitPrice,minimumPaid,capacity}=draft;
      if(minimumPaid>capacity){
@@ -224,19 +226,6 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  </AdminField>;
  const termsLocked=!!draft&&referencedTemplates.has(draft.id);
  const searchLabel=t('Search templates','Cari templat','搜索模板');
- const filterControls=<div className="crm-class-config-filters">
-   <AdminSearchField label={searchLabel} placeholder={t('Template, course or textbook','Templat, kursus, atau buku ajar','模板、课程或教材')} value={filters.search} onChange={search=>change({search})}/>
-   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Level','Level','级别']} all={['All levels','Semua level','全部级别']}
-     value={filters.level} onChange={level=>change({level})} options={enrollmentLevels.map(value=>({value,label:value}))}/>
-   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Class type','Jenis kelas','班型']} all={['All class types','Semua jenis kelas','全部班型']}
-     value={filters.format} onChange={format=>change({format})} options={Object.entries(formats).map(([value,label])=>({value,label}))}/>
-   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Teacher type','Jenis pengajar','教师类型']} all={['All teacher types','Semua jenis pengajar','全部教师类型']}
-     value={filters.teacher} onChange={teacher=>change({teacher})} options={Object.entries(teachers).map(([value,label])=>({value,label}))}/>
-   <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Quote status','Status harga','报价状态']} all={['All quote statuses','Semua status harga','全部报价状态']}
-     value={filters.quote} onChange={quote=>change({quote})} options={[
-       {value:'ready',label:t('Configured','Tersedia','已配置')},{value:'missing',label:t('Pending','Menunggu','待确认')}]}/>
- </div>;
- const draftCourse=draft&&course(draft.courseId);
  const draftQuote=draft&&draftCourse&&(draft.saleUnitPrice??0)>0&&(draft.saleUnitPrice??0)<=(draft.standardUnitPrice??0)
    ?enrollmentTemplateQuote(draft,draftCourse.sessions):null;
  const editorTitle=quoteEdit?t('Set template quote','Atur harga templat','设置班型报价'):
@@ -271,19 +260,30 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
  const ready=!!catalog&&read!=='denied';
  const titleActions=<AdminRefreshAction label={t('Refresh','Segarkan','刷新')} loading={read==='loading'} onClick={()=>void load()}/>;
  return <div className="crm-course-catalog">
-     {!quoteEdit&&<><AdminTopicHeader title={title} isLight={isLight}
+     {!quoteEdit&&<><AdminPageHeader title={title}
        subtitle={t('Set class size, teacher type and tuition for each course’s class templates.','Atur ukuran kelas, jenis pengajar, dan biaya pada templat setiap kursus.','按课程维护建班模板，设置人数、教师类型和报价。')}
-       actions={<>{titleActions}
+       actions={<>{secondaryActions}{titleActions}
        <AdminPageAction icon={Plus} variant="primary" label={createTemplateLabel} disabled={!newCourse||read!=='ready'} onClick={()=>edit()}/></>}/>
-     {ready&&filterControls}
-     {ready&&<EnrollmentSettingsListSummary lang={lang} count={visible.length} total={catalog.templates.length}
-       filtered={!!(filters.search||filters.level||filters.format||filters.teacher||filters.quote)} onClear={clear}>
-       <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Sort','Urutkan','排序']} value={filters.sort} onChange={sort=>change({sort})} options={[
+     {ready&&<AdminListToolbar lang={lang} isLight={isLight} count={visible.length} total={catalog.templates.length}
+       filtered={!!(filters.search||filters.level||filters.format||filters.teacher||filters.quote)} onClear={clear}
+       search={{label:searchLabel,placeholder:t('Template, course or textbook','Templat, kursus, atau buku ajar','模板、课程或教材'),
+         value:filters.search,onChange:search=>change({search})}}
+       sort={{value:filters.sort,onChange:sort=>change({sort}),options:[
          {value:'course',label:t('Level, class type and teacher','Level, jenis kelas, dan pengajar','级别、班型、教师类型')},
          {value:'name-asc',label:t('Name · Ascending','Nama · Naik','名称升序')},
          {value:'name-desc',label:t('Name · Descending','Nama · Turun','名称降序')},
-       ]}/>
-     </EnrollmentSettingsListSummary>}
+       ]}}
+       more={{count:Number(!!filters.quote),fields:
+       <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Quote status','Status harga','报价状态']} all={['All quote statuses','Semua status harga','全部报价状态']}
+         value={filters.quote} onChange={quote=>change({quote})} options={[
+           {value:'ready',label:t('Configured','Tersedia','已配置')},{value:'missing',label:t('Pending','Menunggu','待确认')}]}/>}}>
+       <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Level','Level','级别']} all={['All levels','Semua level','全部级别']}
+         value={filters.level} onChange={level=>change({level})} options={enrollmentLevels.map(value=>({value,label:value}))}/>
+       <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Class type','Jenis kelas','班型']} all={['All class types','Semua jenis kelas','全部班型']}
+         value={filters.format} onChange={format=>change({format})} options={Object.entries(formats).map(([value,label])=>({value,label}))}/>
+       <EnrollmentSettingsSelect lang={lang} isLight={isLight} label={['Teacher type','Jenis pengajar','教师类型']} all={['All teacher types','Semua jenis pengajar','全部教师类型']}
+         value={filters.teacher} onChange={teacher=>change({teacher})} options={Object.entries(teachers).map(([value,label])=>({value,label}))}/>
+     </AdminListToolbar>}
      {ready&&selected&&!selectedVisible&&catalog.templates.some(item=>item.id===selected)&&<p className="crm-work-muted">
        {t('The linked template is outside the current filters. Clear filters to show it.',
          'Templat yang ditautkan berada di luar filter saat ini. Hapus filter untuk menampilkannya.','当前筛选未包含链接指向的模板。清除筛选即可查看。')}
@@ -343,9 +343,12 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
          {pending&&t('Checking save result…','Memeriksa hasil simpan…','正在查询保存结果…')}
        </AdminFormFeedback>:pending?<AdminFormFeedback className="basis-full" lang={lang} state="unknown">{error}</AdminFormFeedback>:
          error&&<AdminFormFeedback className="basis-full" lang={lang} state="error">{error}</AdminFormFeedback>}
+       {needsCourse&&<p className="crm-work-muted m-0 basis-full text-sm">
+         {t('Select a course to continue.','Pilih kursus untuk melanjutkan.','请先选择课程。')}
+       </p>}
        {pending?<button type="button" data-primary="" disabled={busy} onClick={check}>{t('Check save result','Periksa hasil','查询保存结果')}</button>:
          <><button type="button" onClick={close} disabled={busy}>{quoteEdit?returnToClass:t('Cancel','Batal','取消')}</button>
-           <button type="submit" data-primary="" disabled={busy}>{quoteEdit?t('Save and return','Simpan dan kembali','保存并返回'):t('Save','Simpan','保存')}</button></>}
+           <button type="submit" data-primary="" disabled={busy||needsCourse}>{quoteEdit?t('Save and return','Simpan dan kembali','保存并返回'):t('Save','Simpan','保存')}</button></>}
      </>}>
      <fieldset disabled={busy||!!pending} data-admin-section-stack="open">
        {quoteEdit&&pricingSection}
@@ -362,6 +365,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
          ]}/>}
          {draft.revision>0&&!draftCourse?.teaching&&<AdminFormSummary fields={[[t('Course','Kursus','课程'),draftCourse?.name??'—']]}/>}
        </AdminFormSection>
+       {!needsCourse&&<>
        <AdminFormSection variant="subgroup" title={t('Class type and teacher','Jenis kelas dan pengajar','班型与师资')}>
          {draft.revision?<AdminFormSummary fields={[[formatLabel,draft.format?formats[draft.format]:'—'],[teacherLabel,draft.teacherType?teachers[draft.teacherType]:'—']]}/>:
            <AdminFormGrid>
@@ -385,6 +389,7 @@ export function CrmEnrollmentTemplates({lang,isLight,selected,createFromCourse,o
          </AdminFormGrid>}
        </AdminFormSection>
        {!quoteEdit&&pricingSection}
+       </>}
      </fieldset>
    </AdminEditor>}
    {discard&&<AdminDiscardDialog lang={lang} isLight={isLight} onKeep={()=>setDiscard(false)} onDiscard={()=>{setDiscard(false);if(quoteEdit)quoteEdit.onReturn();else{setDraft(undefined);setDirty(false);}}}/>}

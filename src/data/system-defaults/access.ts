@@ -81,6 +81,17 @@ export default {
         "cms.manage": "all"
       }
     },
+    "academic_admin": {
+      "names": ["Academic Administrator", "Administrator Akademik", "教务管理员"],
+      "description": [
+        "Manage courses, class templates, classes, faculty and teacher rates",
+        "Kelola kursus, templat kelas, kelas, pengajar, dan tarif pengajar",
+        "管理课程、班型模板、班次、教师档案和课酬"
+      ],
+      "grants": {
+        "academics.manage": "all"
+      }
+    },
     "hr_reader": {
       "names": [
         "HR Recruiter",

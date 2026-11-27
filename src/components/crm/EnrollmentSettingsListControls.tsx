@@ -1,4 +1,4 @@
-import {useEffect,useState,type ReactNode} from 'react';
+import {useEffect,useState} from 'react';
 import type {CrmLanguage} from '../../utils/crmLanguage';
 import {AdminSingleSelect,type AdminSelectChoice} from '../admin/AdminSingleSelect';
 
@@ -32,24 +32,9 @@ export function EnrollmentSettingsSelect({lang,isLight,label,all,options,value,o
   lang:CrmLanguage;isLight:boolean;label:EnrollmentListCopy;all?:EnrollmentListCopy;
   options:AdminSelectChoice[];value:string;onChange:(value:string)=>void;
 }){
-  return <AdminSingleSelect lang={lang} isLight={isLight} label={enrollmentListText(lang,label)} value={value} onChange={onChange}
+  const field=enrollmentListText(lang,label);
+  const selected=value&&options.find(option=>option.value===value);
+  return <AdminSingleSelect lang={lang} isLight={isLight} label={field} value={value} onChange={onChange}
+    displayValue={selected?`${field} · ${selected.label}`:undefined}
     options={all?[{value:'',label:enrollmentListText(lang,all)},...options]:options}/>;
-}
-
-export function EnrollmentSettingsListSummary({lang,count,total,filtered,onClear,children}:{
-  lang:CrmLanguage;count:number;total:number;filtered:boolean;onClear:()=>void;children?:ReactNode;
-}){
-  const t=(copy:EnrollmentListCopy)=>enrollmentListText(lang,copy);
-  return <div className="enrollment-settings-list-toolbar">
-    <div className="enrollment-settings-list-summary">
-      <span role="status" aria-atomic="true" className="crm-work-muted">
-        {t([`Showing ${count} of ${total}`,`Menampilkan ${count} dari ${total}`,`显示 ${count} 条，共 ${total} 条`])}
-      </span>
-      {filtered&&<button type="button" className="crm-work-link" onClick={onClear}>{t(['Clear filters','Hapus filter','清除筛选'])}</button>}
-    </div>
-    {children&&<div className="enrollment-settings-list-sort">
-      <span className="crm-work-muted" aria-hidden="true">{t(['Sort by','Urutkan','排序'])}</span>
-      {children}
-    </div>}
-  </div>;
 }

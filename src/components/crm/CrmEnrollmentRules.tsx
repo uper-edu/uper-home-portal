@@ -1,5 +1,5 @@
 import {AdminTopicHeader} from '../admin/AdminTopicHeader';
-import {useEffect,useId,useRef,useState} from 'react';
+import {useEffect,useId,useRef,useState,type ReactNode} from 'react';
 import {Save} from 'lucide-react';
 import {AdminPageAction} from '../admin/AdminPageAction';
 import {AdminListState} from '../admin/AdminList';
@@ -24,7 +24,7 @@ const emailRuleLabels:Record<typeof enrollmentEmailRuleFields[number],readonly [
   emailSessionHours:['Verified session duration (hours)','Durasi sesi terverifikasi (jam)','邮箱验证会话时长（小时）'],
 };
 
-export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:CrmLanguage;isLight:boolean;active:boolean;onDraftChange:(dirty:boolean)=>void}) {
+export function CrmEnrollmentRules({lang,isLight,active,onDraftChange,secondaryActions}:{lang:CrmLanguage;isLight:boolean;active:boolean;onDraftChange:(dirty:boolean)=>void;secondaryActions?:ReactNode}) {
   const t=(en:string,id:string,zh:string)=>lang==='zh'?zh:lang==='id'?id:en;
   const fieldHelp=useId();
   const heading=useRef<HTMLHeadingElement>(null);
@@ -121,10 +121,9 @@ export function CrmEnrollmentRules({lang,isLight,active,onDraftChange}:{lang:Crm
       subtitle={t('Set shared rules for payments, transfers, refunds and email verification. Existing deadlines stay in effect.',
         'Atur aturan umum untuk pembayaran, pindah kelas, pengembalian dana, dan verifikasi email. Tenggat yang sudah tercatat tetap berlaku.',
         '统一设置付款、转班、退款及邮箱验证规则。已生成的截止时间沿用原记录。')}
-      actions={saved&&
+      actions={<>{secondaryActions}{saved&&
         <AdminPageAction type="submit" icon={Save} variant="primary" label={t('Save','Simpan','保存')}
-          disabled={!dirty||controlsDisabled||feedback==='conflict'}/>
-      }/>
+          disabled={!dirty||controlsDisabled||feedback==='conflict'}/>}</>}/>
     <div className="crm-enrollment-rules-body" data-admin-stack>
       {!saved&&<AdminListState lang={lang}
         state={feedback==='load-error'?'error':feedback==='load-denied'?'denied':'loading'}

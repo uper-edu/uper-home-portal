@@ -11,7 +11,7 @@ import {AdminField,AdminRequiredNote,AdminFieldLabel,AdminForm} from '../AdminFo
 import {readSavedPolicy} from '../../utils/crmPolicyTopicClient';
 import {policyTopicKeys,isPolicyTopic,topicPatch,topicDirty,topicChangeFields,reconcilePolicyDraft,policyEqual,type PolicyTopicRequest,type PolicyTopic} from '../../utils/crmPolicyTopics';
 import {notificationTopicIcons} from "./notificationTopicIcons";
-import {Clock3, ShieldCheck, PhoneMissed, Bell, CalendarCheck, Send, UsersRound} from "lucide-react";
+import {Clock3, ShieldCheck, PhoneMissed, Bell, CalendarCheck, ListChecks, Send, UsersRound} from "lucide-react";
 import {AdminTopicFrame} from "../AdminTopicFrame";
 import {operationSections,operationGroupOrder,operationGroups,operationSectionForField,isNotificationTopic,type OperationSection} from "./operationsSections";
 import { policyConfigErrors, type ConfigErrors } from "../../utils/crmPolicyConfigValidation";
@@ -79,6 +79,8 @@ export interface CrmPolicySettingsProps {
   onNavigateNotifications?: () => void;
   initialTopic?: OperationSection;
   onTopicChange?: (topic:OperationSection)=>void;
+  enrollmentRulesContent?: React.ReactNode;
+  enrollmentRulesDirty?: boolean;
   notificationContent?: React.ReactNode | ((topic:string,active:boolean)=>React.ReactNode);
   onActionControlsChange?: (controls: PolicyActionControls | null) => void;
 }
@@ -233,6 +235,8 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   onNavigateTab,
   onActionControlsChange,
   onNavigateNotifications,
+  enrollmentRulesContent,
+  enrollmentRulesDirty=false,
   notificationContent,
   initialTopic = "permissions",
   onTopicChange,
@@ -281,7 +285,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   const [simPresetTime, setSimPresetTime] = useState<
     "now" | "fri_night" | "sat_night" | "sun_afternoon" | "mon_morning"
   >("fri_night");
-  const sectionDirty=(section:OperationSection)=>isPolicyTopic(section)&&topicDirty(formData,savedPolicy,section);
+  const sectionDirty=(section:OperationSection)=>section==='enrollment-rules'?enrollmentRulesDirty:isPolicyTopic(section)&&topicDirty(formData,savedPolicy,section);
   const activeModifiedCount=isPolicyTopic(activeCategory)?topicChangeFields(formData,savedPolicy,activeCategory).length:0;
   const durationLabel = (d: TimeDuration) => `${d.value} ${crmValue(d.unit,lang)}`;
   const displayPolicyValue=(value:any):string=>typeof value==='boolean'?(value?['Yes','Ya','是']:['No','Tidak','否'])[languageIndex]:Array.isArray(value)?value.map(day=>({en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],id:['Min','Sen','Sel','Rab','Kam','Jum','Sab'],zh:['周日','周一','周二','周三','周四','周五','周六']})[lang][day]??String(day)).join(' · '):value&&typeof value==='object'&&'value'in value?durationLabel(value):String(value??'—');
@@ -1203,7 +1207,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
   return (
     <div className="crm-ops-workspace-sample" data-theme={isLight?'light':'dark'}><AdminTopicFrame selection={activeCategory} label={["Configuration topics","Topik konfigurasi","配置主题"][languageIndex]} navigation={
       <nav className="crm-ops-nav" aria-label={['Operations topics','Topik operasional','运营主题'][languageIndex]}>
-        {operationGroupOrder.map(i=><React.Fragment key={i}><h2>{operationGroups[i][languageIndex]}</h2>{operationSections.filter(section=>section.group===i && !['retry','milestone','reactivation'].includes(section.id) && (i!==2 || notificationContent!=null)).map(section=><button key={section.id} type="button" aria-current={section.id===activeCategory?'page':undefined} disabled={isSaving||isResetting} onClick={()=>{onTopicChange?.(section.id);setShowSimulator(false);setShowCascadeDiagram(false);}}>{React.createElement(notificationTopicIcons[section.id as keyof typeof notificationTopicIcons] || ({assignment:UsersRound,permissions:ShieldCheck,schedule:Clock3,first_response:PhoneCall,retry:PhoneMissed,watchdog:Bell,milestone:CalendarCheck,reactivation:RotateCcw,notifications:Send} as Record<string,typeof Send>)[section.id] || Send,{size:16,"aria-hidden":true})}{section.title[languageIndex]}{sectionDirty(section.id)&&<span aria-label={["Unsaved changes","Perubahan belum disimpan","有未保存修改"][languageIndex]}> ●</span>}{Object.keys({...configErrors,...saveError?.fields}).filter(field=>operationSectionForField(field)===section.id).length>0&&<span aria-label={["Validation errors","Kesalahan validasi","校验错误"][languageIndex]}> !</span>}</button>)}</React.Fragment>)}
+        {operationGroupOrder.map(i=><React.Fragment key={i}><h2>{operationGroups[i][languageIndex]}</h2>{operationSections.filter(section=>section.group===i && !['retry','milestone','reactivation'].includes(section.id) && (i!==2 || notificationContent!=null) && (section.id!=='enrollment-rules'||enrollmentRulesContent!=null)).map(section=><button key={section.id} type="button" aria-current={section.id===activeCategory?'page':undefined} disabled={isSaving||isResetting} onClick={()=>{onTopicChange?.(section.id);setShowSimulator(false);setShowCascadeDiagram(false);}}>{React.createElement(notificationTopicIcons[section.id as keyof typeof notificationTopicIcons] || ({assignment:UsersRound,permissions:ShieldCheck,schedule:Clock3,first_response:PhoneCall,retry:PhoneMissed,watchdog:Bell,milestone:CalendarCheck,reactivation:RotateCcw,'enrollment-rules':ListChecks,notifications:Send} as Record<string,typeof Send>)[section.id] || Send,{size:16,"aria-hidden":true})}{section.title[languageIndex]}{sectionDirty(section.id)&&<span aria-label={["Unsaved changes","Perubahan belum disimpan","有未保存修改"][languageIndex]}> ●</span>}{Object.keys({...configErrors,...saveError?.fields}).filter(field=>operationSectionForField(field)===section.id).length>0&&<span aria-label={["Validation errors","Kesalahan validasi","校验错误"][languageIndex]}> !</span>}</button>)}</React.Fragment>)}
         {modifiedFieldsCount > 0 && <small role="status">{['Unsaved policy changes','Perubahan kebijakan belum disimpan','有未保存的策略修改'][languageIndex]}</small>}
       </nav>}>
       <div className="crm-ops-content"><AdminForm lang={lang} noValidate onSubmit={handleSave} className="crm-form-layout w-full mx-auto">
@@ -2053,7 +2057,7 @@ export const CrmPolicySettings: React.FC<CrmPolicySettingsProps> = ({
         )}
     </div>
     </>}
-    {isPolicyTopic(activeCategory)&&policyRead==='ready'&&ruleExplanation}</AdminForm><div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&activeCategory!=='notification-channels'&&ruleExplanation}</div></AdminTopicFrame>{resetTopic===activeCategory&&<AdminConfirmation light={isLight} busy={isResetting} danger
+    {isPolicyTopic(activeCategory)&&policyRead==='ready'&&ruleExplanation}</AdminForm>{enrollmentRulesContent&&<div hidden={activeCategory!=='enrollment-rules'}>{enrollmentRulesContent}</div>}<div hidden={!isNotificationTopic(activeCategory)}>{typeof notificationContent==='function'?notificationContent(isNotificationTopic(activeCategory)?activeCategory:'notification-rules',isNotificationTopic(activeCategory)):notificationContent}</div>{isNotificationTopic(activeCategory)&&activeCategory!=='notification-channels'&&ruleExplanation}</div></AdminTopicFrame>{resetTopic===activeCategory&&<AdminConfirmation light={isLight} busy={isResetting} danger
  title={['Restore defaults for this topic','Pulihkan standar topik ini','恢复本主题默认值'][languageIndex]}
  description={<>{currentSection.title[languageIndex]} · {['Only this topic is restored and saved. Other drafts and task deadlines stay unchanged.','Hanya topik ini yang dipulihkan dan disimpan. Draf lain dan tenggat tugas tetap.','只恢复并保存当前主题。其他草稿和任务期限保持原样。'][languageIndex]}</>}
  cancelLabel={['Cancel','Batal','取消'][languageIndex]} confirmLabel={['Restore and save','Pulihkan dan simpan','恢复并保存'][languageIndex]}

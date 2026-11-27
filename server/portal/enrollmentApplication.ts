@@ -1,3 +1,4 @@
+import {academicManagePermission} from '../../src/utils/accessControl.ts';
 import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
 import {measureEnrollmentPhase} from '../requestTracing.ts';
 import {enrollmentSessionCookie,enrollmentVisitorDigest,inspectEnrollmentEmailSession,readEnrollmentEmailSession,readEnrollmentSessionDigest,revokeEnrollmentEmailSession} from './enrollmentVisitorSession.ts';
@@ -247,10 +248,10 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
   mountEnrollmentResolution(app,{wrap,post,transact:moneyTx,read:enrollTx,session,lockOrder,lockClass,expireSeats,financeActor,supportActor});
 
   post('/api/crm/enrollment/classes/:id/cancel', async (q,r) => {
-    const actor=await staff(q,'crm.operations.manage');
+    const actor=await staff(q,academicManagePermission);
     const id=String(q.params.id);
     const result=await moneyTx(c=>operation(c,actor.id,q.body,
-      {leadId:'class:'+id,kind:'enrollment.class.cancel',authorize:()=>staff(q,'crm.operations.manage')},async()=>{
+      {leadId:'class:'+id,kind:'enrollment.class.cancel',authorize:()=>staff(q,academicManagePermission)},async()=>{
         const cohort=await lockClass(c,id);
         if(cohort.state==='cancelled') return {classId:id,state:'cancelled'};
         const confirmed=(await c.query('SELECT class_id FROM enrollment_class_openings WHERE class_id=:p1',[id])).rows[0];
@@ -601,6 +602,13 @@ export function mountEnrollmentApplication(app: Express, { wrap, staff, visitor 
     }));
     r.json(result);
   });
+  app.get('/api/crm/enrollment/classes/:id/insertions/results/:requestId',wrap(async(q,r)=>{
+    const actor=await staff(q,'crm.operations.manage');
+    const result=await enrollTx(async c=>(await c.query('SELECT result FROM crm_operations WHERE actor=:p1 AND request_id=:p2',
+      [actor.id,q.params.requestId])).rows[0]?.result);
+    if(result?.operationKind!=='enrollment.order.insert'||result.classId!==q.params.id)invalid('enrollment_result_missing',404);
+    r.set('Cache-Control','no-store').json(result);
+  }));
 
   app.get(base + '/orders', wrap(async (q, r) => {
     if(!readEnrollmentSessionDigest(q.headers.cookie))invalid('enrollment_verification_required',401);

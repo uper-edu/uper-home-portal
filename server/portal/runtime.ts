@@ -392,7 +392,7 @@ export async function mountPortal(app: Express) {
   }
   await initializePortalDefaults();
   await initializeEnrollmentMailDelivery();
-  mountCourseRoutes(app,{wrap,staff});
+  mountCourseRoutes(app,{wrap,staff,authenticate:(q:Request)=>platform.authenticate(q)});
   app.use(accessRestoreGate);
   mountEnrollmentCatalog(app, { wrap, staff });
   mountFaculty(app,{wrap,staff,authenticate:q=>platform.authenticate(q)});
