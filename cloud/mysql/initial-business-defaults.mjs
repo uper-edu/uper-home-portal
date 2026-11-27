@@ -26,7 +26,7 @@ const tables={
 function assertPreset(condition,message){
  if(!condition)throw Error('Invalid initial business defaults: '+message);
 }
-function containsCredential(value){
+export function containsCredential(value){
  if(!value||typeof value!=='object')return false;
  return Object.entries(value).some(([key,v])=>(privateProperty.test(key)&&v!==''&&v!=null)||containsCredential(v));
 }
@@ -37,40 +37,44 @@ function withoutFields(config,fields){
 }
 const queryFields=fields=>fields.split(',').map(x=>'\`'+x+'\`').join(',');
 
-function safeNotificationChannel(config){
+function safeNotificationChannel(config, preserveMode){
+ const {mode,signingEnabled}=config;
  return {...withoutFields(config,['secretRef','encryptedWebhook','webhook','webhookUrl','signatureKey','signingSecret']),
-  mode:'simulation',signingEnabled:false};
+  mode:preserveMode?mode:'simulation',signingEnabled:preserveMode?signingEnabled:false};
 }
-function safeMail(config){
+function safeMail(config, preserveMode){
  const basic=withoutFields(config,['delivery','accounts']);
  const accounts=(config.accounts??[]).map(account=>({
   ...withoutFields(account,['secret','secretRef','encryptedPassword','password','credentialFingerprint','credentialGeneration']),secret:'',
  }));
- return {...basic,accounts,delivery:{mode:'disabled'}};
+ return {...basic,accounts,delivery:{mode:preserveMode?config.delivery?.mode:'disabled'}};
 }
 function resetCampaignStats(config){
  return {...config,stats:Object.fromEntries(Object.entries(config.stats??{}).map(([k,v])=>[k,k==='budgetCost'?v:typeof v==='number'?0:null]))};
 }
 
-export async function collectInitialBusinessDefaults(c){
+export async function collectInitialBusinessDefaults(c,{manualTest=false}={}){
  const result={version:1};
  for(const [key,[table,fields,id]] of Object.entries(tables)){
   const projection=key==='media'?fields.replace('content','NULL AS content').replace('uploaded_by',"'system-initialization' AS uploaded_by").replace('legacy_name','NULL AS legacy_name'):fields;
-  const condition=key==='settings'?" WHERE id IN('enrollment_bank','enrollment_rules','enrollment_catalog_replaced','sla','lark_personal_channel') OR id LIKE 'faculty:%' OR LEFT(id,20)='enrollment_template:' OR LEFT(id,17)='enrollment_batch:'":'';
+  const faculty = manualTest ? "id REGEXP '^faculty:(profile|rate|photo|cv):[a-z0-9-]+$'" : "id LIKE 'faculty:%'";
+  const batch = manualTest ? '' : " OR LEFT(id,17)='enrollment_batch:'";
+  const condition=key==='settings'?" WHERE id IN('enrollment_bank','enrollment_rules','enrollment_catalog_replaced','sla','lark_personal_channel') OR "+faculty+" OR LEFT(id,20)='enrollment_template:'"+batch:'';
   const [rows]=await c.query('SELECT '+projection+' FROM '+table+condition+' ORDER BY '+id);
   result[key]=rows;
  }
  result.settings=result.settings.filter(row=>settingId.test(row.id)).map(row=>row.id==='lark_personal_channel'
-  ?{...row,value:{mode:'simulation',revision:1}}:row);
- result.channels=result.channels.map(row=>({...row,config:safeNotificationChannel(row.config)}));
+  ?{...row,value:{mode:manualTest?row.value.mode:'simulation',revision:manualTest?row.value.revision:1}}:row);
+ result.channels=result.channels.map(row=>({...row,config:safeNotificationChannel(row.config,manualTest)}));
+ if(manualTest)result.classes=result.classes.map(row=>({...row,data:withoutFields(row.data,['decisionAt'])}));
  result.campaigns=result.campaigns.map(row=>({...row,config:resetCampaignStats(row.config)}));
  const [[mail]]=await c.execute('SELECT revision,config FROM enrollment_mail_configuration WHERE environment=?',['dev']);
- result.mail=mail?{revision:Math.max(1,mail.revision),config:safeMail(mail.config)}:null;
- validateInitialBusinessDefaults(result);
+ result.mail=mail?{revision:Math.max(1,mail.revision),config:safeMail(mail.config,manualTest)}:null;
+ validateInitialBusinessDefaults(result,{manualTest});
  return result;
 }
 
-export function validateInitialBusinessDefaults(bundle){
+export function validateInitialBusinessDefaults(bundle,{manualTest=false}={}){
  assertPreset(bundle?.version===1&&Object.keys(bundle).every(key=>key==='version'||key==='mail'||Object.hasOwn(tables,key)),'format');
  for(const [name,[,columns,id]] of Object.entries(tables)){
   const rows=bundle[name],keys=columns.split(',');
@@ -95,10 +99,13 @@ export function validateInitialBusinessDefaults(bundle){
     settings.has('faculty:'+kind+':'+facultyId)),'faculty attachments');
   }else if(id.startsWith('faculty:'))assertPreset(settings.has('faculty:profile:'+id.split(':')[2]),'faculty owner');
  }
- assertPreset(settings.get('lark_personal_channel')?.mode==='simulation','personal delivery mode');
- assertPreset(bundle.channels.every(row=>row.config?.mode==='simulation'&&row.config.signingEnabled===false),'group delivery mode');
+ const larkModes=manualTest?['simulation','live']:['simulation'];
+ assertPreset(larkModes.includes(settings.get('lark_personal_channel')?.mode),'personal delivery mode');
+ assertPreset(bundle.channels.every(row=>larkModes.includes(row.config?.mode)&&
+  (manualTest?typeof row.config.signingEnabled==='boolean':row.config.signingEnabled===false)),'group delivery mode');
  assertPreset(bundle.mail===null||Object.keys(bundle.mail??{}).sort().join(',')==='config,revision'&&
-  Number.isSafeInteger(bundle.mail.revision)&&bundle.mail.revision>0&&bundle.mail.config.delivery?.mode==='disabled','mail delivery mode');
+  Number.isSafeInteger(bundle.mail.revision)&&bundle.mail.revision>0&&
+  (manualTest?['disabled','simulation','smtp']:['disabled']).includes(bundle.mail.config.delivery?.mode),'mail delivery mode');
  const mediaIds=new Set(bundle.media.map(row=>row.id));
  for(const row of bundle.media)assertPreset(row.storage_type==='cos'&&row.content===null&&row.legacy_name===null&&
   row.uploaded_by==='system-initialization'&&row.cos_url===cmsMediaUrl(row.id)&&row.object_key==='cms/'+row.id+'.webp','CMS media');
