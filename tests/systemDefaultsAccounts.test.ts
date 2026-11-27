@@ -46,7 +46,7 @@ test('new account initialization creates the existing nine-account roster with h
   ]);
   assert.deepEqual(f.state.roles.get('academic_admin').grants,{'academics.manage':'all'});
   assert.deepEqual([...f.state.users.values()].filter(user=>user.roles.includes('access_admin')).map(user=>user.id).sort(),['Ethan','Monite','Robert']);
-  for (const name of ['Ethan','Monite']) assert.deepEqual(f.state.users.get(name).roles,['crm_leader','cms_admin','access_admin']);
+  for (const name of ['Ethan','Monite']) assert.deepEqual(f.state.users.get(name).roles,['crm_leader','cms_admin','access_admin','academic_admin']);
   assert.ok(f.state.users.get('Suki').roles.includes('finance'));
   for (const user of f.state.users.values()) assert.match(user.password_hash,/^[a-f0-9]{32}:[a-f0-9]{128}$/);
   // Saved permissions and credentials must survive a restart, including deliberate revocations.

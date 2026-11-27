@@ -132,7 +132,8 @@ export default {
       "Suki",
       [
         "crm_leader",
-        "finance"
+        "finance",
+        "academic_admin"
       ]
     ],
     [
@@ -140,7 +141,8 @@ export default {
       [
         "crm_leader",
         "cms_admin",
-        "finance"
+        "finance",
+        "academic_admin"
       ]
     ],
     [
@@ -171,6 +173,7 @@ export default {
     [
       "Fenny",
       [
+        "academic_admin",
         "cms_admin"
       ]
     ],
@@ -179,7 +182,8 @@ export default {
       [
         "crm_leader",
         "cms_admin",
-        "access_admin"
+        "access_admin",
+        "academic_admin"
       ]
     ],
     [
@@ -187,7 +191,8 @@ export default {
       [
         "crm_leader",
         "cms_admin",
-        "access_admin"
+        "access_admin",
+        "academic_admin"
       ]
     ]
   ]

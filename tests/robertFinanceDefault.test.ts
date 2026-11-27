@@ -7,7 +7,7 @@ test('Suki and Robert receive the explicit financial role in initial account def
  const accountSeeds=access.accounts as [string,string[]][];
  const roles=Object.entries(builtInRoles).map(([id,config])=>({id,config,enabled:true}));
  const robert=accountSeeds.find(([id])=>id==='Robert')!;
- assert.deepEqual(robert[1],['crm_leader','cms_admin','finance']);
+ assert.deepEqual(robert[1],['crm_leader','cms_admin','finance','academic_admin']);
  assert.deepEqual(accountSeeds.filter(([,ids])=>(ids as readonly string[]).includes('finance')).map(([id])=>id),['Suki','Robert']);
  const account=projectEmployee({id:'Robert',roles:robert[1],teams:[],display_name:'Robert Hui',active:true},roles);
  assert.equal(canVerifyPayments(account),true);

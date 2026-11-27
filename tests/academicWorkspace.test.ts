@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import {access} from '../src/data/system-defaults/index';
 import {academicManagePermission,builtInRoles,canDelegate,canManageAcademics,canReadFacultyCompensation,projectEmployee,validateRole} from '../src/utils/accessControl';
 import {availableWorkspaces} from '../src/utils/adminWorkspace';
 import {enrollmentManagementScopes} from '../src/utils/crmEnrollmentManagement';
@@ -25,6 +26,13 @@ test('academic management is independent of sales, finance, CMS and system admin
   assert.equal(canDelegate(employee(['access_admin']),builtInRoles.academic_admin.grants),true);
   assert.equal(canDelegate(employee(['crm_leader']),builtInRoles.academic_admin.grants),false);
   assert.doesNotThrow(()=>validateRole(builtInRoles.academic_admin));
+});
+
+test('five seeded staff accounts are assigned academics and Fenny keeps CMS without a sales manager role',()=>{
+  const accounts=new Map(access.accounts as [string,string[]][]);
+  assert.deepEqual([...accounts].filter(([,roles])=>roles.includes('academic_admin')).map(([id])=>id).sort(),
+    ['Ethan','Fenny','Monite','Robert','Suki']);
+  assert.deepEqual(accounts.get('Fenny'),['academic_admin','cms_admin']);
 });
 
 test('academic workbench metadata treats the route as private',()=>{
