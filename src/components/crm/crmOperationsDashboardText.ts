@@ -22,6 +22,7 @@ const words={
   tvCostCoveragePending:['Matched attribution data pending','Data atribusi yang cocok belum tersedia','待同批归因对账'],
   tvNeedsEvents:['Ad cost needs matched spend and first payments.','Biaya akuisisi memerlukan belanja iklan dan pembayaran pertama yang cocok.','获客成本待实花与首付学员按同批对账。'],
   enrollmentFunnel:['Enrollment funnel','Corong pendaftaran','报名站内漏斗'],
+  enrollmentFunnelThrough:['GA4 enrollment data through','Data pendaftaran GA4 sampai','GA4 报名数据截至'],
   enrollmentFunnelGap:['No session-level enrollment report for these dates.','Belum ada laporan sesi pendaftaran untuk tanggal ini.','所选日期暂无 GA4 同会话报名数据。'],
   enrollmentFunnelLanded:['Landed on enrollment','Mendarat di pendaftaran','落地报名'],
   enrollmentFunnelViewed:['Viewed a class','Melihat kelas','查看班次'],

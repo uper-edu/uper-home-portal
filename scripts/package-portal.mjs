@@ -17,7 +17,9 @@ const releaseMarker=path.join(out,'.uper-release.json');
 await fs.rm(releaseMarker,{force:true});
 execFileSync(process.execPath,['node_modules/vite/bin/vite.js','build','--mode',target,'--outDir',path.join(out,'web')],{stdio:'inherit',env:{...process.env,UPER_BUILD_IDENTITY:JSON.stringify(identity)}});
 // Preserve ESM module boundaries: a single bundle changes import.meta.url and async cycle semantics.
-const graph=await build({entryPoints:['server.ts','cloud/mysql/access-recovery.mjs','cloud/company-trial/maintenance.mjs','cloud/mysql/retire-test-policy.mjs'],outdir:path.join(out,'graph-only'),bundle:true,platform:'node',target:'node24',format:'esm',packages:'external',write:false,metafile:true});
+const entryPoints=['server.ts','cloud/mysql/access-recovery.mjs','cloud/company-trial/maintenance.mjs','cloud/mysql/retire-test-policy.mjs'];
+if(target==='test')entryPoints.push('cloud/company-trial/sync-enrollment-funnel.mjs');
+const graph=await build({entryPoints,outdir:path.join(out,'graph-only'),bundle:true,platform:'node',target:'node24',format:'esm',packages:'external',write:false,metafile:true});
 // esbuild may suffix JSON module identities with import attributes; the disk path is unchanged.
 const inputs=[...new Set(Object.keys(graph.metafile.inputs).map(f=>f.replace(/(\.json) with \{.*\}$/u,'$1')))];
 const runtime=path.join(out,'runtime');await fs.rm(runtime,{recursive:true,force:true});await fs.mkdir(runtime,{recursive:true});
@@ -42,6 +44,8 @@ for(const name of await readStartupMigrationSqlNames(migrationSource)){
  await fs.copyFile(path.join(migrationSource,name),path.join(packagedMigrations,name));
 }
 await verifyPackagedMigrationSql(migrationSource,packagedMigrations);
+if(target==='test')await fs.copyFile('scripts/analytics/enrollment-funnel.bigquery.sql',
+  path.join(runtime,'cloud/company-trial/enrollment-funnel.bigquery.sql'));
 for(const f of ['package.json','package-lock.json'])await fs.copyFile(f,path.join(out,f));
 const dockerfile=await fs.readFile('cloud/company-trial/Dockerfile','utf8');
 await fs.writeFile(path.join(out,'Dockerfile'),dockerfile+'\nENV PORTAL_ENV='+target+' PORTAL_PACKAGE_ENV='+target+' PORTAL_ENV_SOURCE=injected\n');

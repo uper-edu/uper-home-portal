@@ -1,0 +1,8 @@
+[Unit]
+Description=Synchronize the GA4 enrollment funnel for UPER company test (%i)
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+TimeoutStartSec=120
+ExecStart=/bin/sh -ec 'key=/opt/project/home/api/private/ga4-bigquery-service-account.json; test ! -L "$$key"; test "$$(stat -c %%u:%%a "$$key")" = 0:600; exec docker exec -i home-api node runtime/cloud/company-trial/sync-enrollment-funnel.mjs --database "$$1" < "$$key"' sh %i

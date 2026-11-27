@@ -5,7 +5,7 @@ import type {trafficEnvironment} from './operationsDashboardTraffic.ts';
 
 type Environment=ReturnType<typeof trafficEnvironment>;
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
-type FunnelDay={date:string;fetchedAt:string;missingSessionViews:number;campaigns:EnrollmentFunnelCampaign[]};
+type FunnelDay={date:string;fetchedAt:string;missingSessionViews:number;campaigns:EnrollmentFunnelCampaign[];sourceRevision?:string};
 const key=(environment:Environment,date:string)=>'ga_enrollment_funnel_v1:'+environment+':'+date;
 const blank=():EnrollmentFunnelCounts=>({landed:0,viewedClass:0,started:0,reserved:0,savedProof:0});
 const add=(to:EnrollmentFunnelCounts,from:EnrollmentFunnelCounts)=>{
@@ -65,15 +65,24 @@ export async function storeEnrollmentFunnel(db:Client,environment:Environment,da
       ON DUPLICATE KEY UPDATE value=IF(value->>'$.fetchedAt'<:p3,:p2,value)`,[key(environment,day.date),day,day.fetchedAt]);
 }
 
+async function readFunnelDays(db:Client,environment:Environment,from:string,to:string){
+  const {rows}=await db.query('SELECT value FROM portal_settings WHERE id BETWEEN :p1 AND :p2',[key(environment,from),key(environment,to)]);
+  return (rows as {value:FunnelDay}[]).map(({value})=>value);
+}
+
+export async function readEnrollmentFunnelRevisions(db:Client,environment:Environment,from:string,to:string){
+  return new Map((await readFunnelDays(db,environment,from,to)).map(day=>[day.date,day.sourceRevision]));
+}
+
 export async function readEnrollmentFunnel(db:Client,environment:Environment,from:string,to:string,now:number):Promise<DashboardEnrollmentFunnel|null>{
   if(from>to)return null;
   const expectedDays=dashboardReportingDates(from,to,now).length;
-  const {rows}=await db.query('SELECT value FROM portal_settings WHERE id BETWEEN :p1 AND :p2',[key(environment,from),key(environment,to)]);
+  const rows=await readFunnelDays(db,environment,from,to);
   if(!rows.length)return null;
   const totals=blank();
   const channels=new Map<string,EnrollmentFunnelChannel>(),campaigns=new Map<string,EnrollmentFunnelCampaign>();
   let missingSessionViews=0,fetchedAt='',firstCovered='',lastCovered='';
-  for(const {value:day} of rows as {value:FunnelDay}[]){
+  for(const day of rows){
     missingSessionViews+=day.missingSessionViews;
     if(!firstCovered||day.date<firstCovered)firstCovered=day.date;
     if(day.date>lastCovered)lastCovered=day.date;

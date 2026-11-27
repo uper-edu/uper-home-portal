@@ -363,6 +363,7 @@ function WallboardChannels({data,rows,t,lang}:{data:DashboardSnapshot;rows:Retur
   const number=new Intl.NumberFormat(languageTag[lang]);
   const percent=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
   const traffic=data.wallboard?.traffic;
+  const funnel=data.wallboard?.enrollmentFunnel;
   const coverage=sourceCoverage(data.sources,'first');
   const spend=data.adSpend;
   const completeTraffic=Boolean(traffic&&traffic.coveredDays===traffic.expectedDays);
@@ -403,8 +404,10 @@ function WallboardChannels({data,rows,t,lang}:{data:DashboardSnapshot;rows:Retur
     <p className="ops-dash-caption">{t('tvChannelPeriods')} · {sameDate(data.period.from,data.period.to)} WIB · {t('versus')} {sameDate(data.period.compareFrom,data.period.compareTo)}</p>
     <p className="ops-dash-caption">{traffic?gaCoverage(traffic,t):t('trafficGap')} · {t('sourceCoverage')} {coverage.verified}/{coverage.total}
       {spend?.currencies.map(row=>' · '+t('tvMappedSpend')+' '+row.currency+' '+(row.amount?percent.format(row.mapped/row.amount):'—'))}</p>
-    <p className="ops-dash-caption">{data.wallboard?.enrollmentFunnel?
-      enrollmentFunnelCoverage(data.wallboard.enrollmentFunnel,t):t('enrollmentFunnelGap')} · {t('tvNeedsEvents')}</p>
+    <p className="ops-dash-caption">{funnel?
+      <>{t('enrollmentFunnelThrough')} <time dateTime={funnel.lastCovered}>{funnel.lastCovered}</time> WIB
+        {' · '+t('gaDaysCovered')+' '+funnel.coveredDays+' / '+funnel.expectedDays}</>:
+      t('enrollmentFunnelGap')} · {t('tvNeedsEvents')}</p>
   </Panel>;
 }
 

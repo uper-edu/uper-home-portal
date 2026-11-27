@@ -53,6 +53,9 @@
 - 区分未取得数据、已覆盖但实际为零和缺会话标识的落地浏览。日期范围和覆盖天数一起展示。漏斗覆盖可以比常规 GA4 流量晚。GA4 延迟补送时重取近几日，以较新的汇总覆盖旧数据。
 - 以 [GA4 BigQuery 日表](https://support.google.com/analytics/answer/7029846?hl=en) 为来源，按 [三环境配置](./ga4-environments.md) 中的流筛选。从已确认埋点生效后的第一个完整 WIB 日查询，并等待次日的日表。查询使用 [站内漏斗 SQL](../../scripts/analytics/enrollment-funnel.bigquery.sql)，将 `ANALYTICS_DATASET` 换成对应数据集，传入 `from`、`to`（DATE）、`environment`（STRING）和 `streamId`（STRING），每次最多 93 天。BigQuery 查询身份需要在查询项目拥有运行查询的权限、对 GA4 数据集拥有读取权限。
 - 只导出按日、来源和活动的汇总 JSON 数组。先用 `node --import tsx scripts/import-enrollment-funnel.mts --environment dev --file <aggregate.json>` 预览，再在获得目标环境写入授权后加 `--apply`。测试站使用 `test`，生产使用 `prod`。浏览器标识、会话编号和个人资料留在汇总查询的输入侧，不进 CRM。
+- 公司 test 通过独立后台任务读取 UPER Test 的 UPER Staging 流。每天在 12:05、14:05、16:05、18:05、20:05、22:05 WIB 检查日表。首个待同步的完整日为 2026-11-27。只有会话日期与后一天的日表都已生成，才计算该日期。每次核对最近 3 个具备完整会话窗口的 WIB 日，日表变动后重算受影响日期。同步失败时保留上次汇总。
+- 电视大屏从 CRM 每分钟自动读一次，渠道成效矩阵显示「GA4 报名数据截至」和已覆盖天数。手动刷新只重新读取 CRM 的汇总。获客流量、广告实花和 CRM 订单采用各自的数据时间。
+- 公司 test 部署使用 `cloud/company-trial/uper-enrollment-funnel@.timer` 和同名 `.service`，实例名为当前 test 数据库名。服务账号只需测试项目的 BigQuery 查询权限和 `analytics_561827503` 的只读权限。凭证由服务器的私有文件 `/opt/project/home/api/private/ga4-bigquery-service-account.json` 提供，权限为 `0600`，由 root 持有。安装后可用 `journalctl -u uper-enrollment-funnel@<test数据库名>.service` 查看发现的日表、待覆盖日期和已更新日期。
 
 ## 隐私、去重与可靠性
 
