@@ -10,6 +10,8 @@ type Candidate = {
   amount: string | number;
   course_id: string;
   created_at: Date;
+  occurred_at: Date;
+  project_id: string;
   purchase_id: string;
 };
 type Client = {query(sql: string, values?: unknown[]): Promise<{rows: any[]; rowCount: number}>};
@@ -72,11 +74,12 @@ export async function dispatchPaymentAnalytics({
     await db.query("UPDATE crm_payment_analytics SET dispatch_state='unknown' WHERE environment=:p1 AND dispatch_state='sending' AND attempted_at<=:p2",
       [environment, new Date(clock.getTime() - 60_000)]);
     const {rows} = await db.query(
-      `SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id
+      `SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id,q.occurred_at,q.project_id
        FROM crm_payment_analytics q
        JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'
        WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3
          AND q.created_at>:p4 AND q.occurred_at>:p4 AND q.occurred_at<=:p3
+         AND (q.project_id NOT LIKE 'enrollment:%' OR q.occurred_at>=:p2)
          AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (
            SELECT 1 FROM crm_payment_analytics earlier
            WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id
@@ -85,6 +88,16 @@ export async function dispatchPaymentAnalytics({
              AND (earlier.dispatch_state IN ('sending','unknown','rejected')
                OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))
          )))
+         -- Once a returned payment has already been reported, hold later refunds for this order.
+         AND (q.kind='purchase' OR q.project_id NOT LIKE 'enrollment:%' OR NOT EXISTS (
+           SELECT 1 FROM crm_payment_analytics sent
+           JOIN enrollment_refund_payments payment ON sent.source_entry_id=LEFT(SHA2(payment.reference,256),36)
+           WHERE sent.environment=q.environment AND sent.project_id=q.project_id
+             AND payment.order_id=SUBSTRING(q.project_id,12)
+             AND sent.kind='refund' AND sent.dispatch_state='accepted'
+             AND sent.amount>payment.amount-(SELECT COALESCE(SUM(bank_return.amount),0)
+               FROM enrollment_refund_returns bank_return WHERE bank_return.refund_reference=payment.reference)
+         ))
        ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED`,
       [environment, oldest, clock, cutoff],
     );
@@ -112,7 +125,7 @@ export async function dispatchPaymentAnalytics({
       signal: AbortSignal.timeout(10_000),
       body: JSON.stringify({
         client_id: transactionClientId(environment,candidate.purchase_id),
-        timestamp_micros: candidate.created_at.getTime() * 1000,
+        timestamp_micros: (candidate.project_id.startsWith('enrollment:') ? candidate.occurred_at : candidate.created_at).getTime() * 1000,
         events: [{
           name: candidate.kind,
           params: {

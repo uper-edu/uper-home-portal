@@ -43,6 +43,7 @@ function fixture(...candidates: Candidate[]) {
   let cutoff: string | undefined = '2026-11-07 16:00:00.000000';
   let activationWrites = 0;
   let databaseTime = '2026-11-07 18:00:00.000000';
+  const netRefunds = new Map<string,number>();
   const calls: {url: URL; payload: any; init?: RequestInit}[] = [];
   const request: typeof fetch = async (url, init) => {
     assert.equal(inside, false, 'the claim must be committed before transport');
@@ -74,6 +75,7 @@ function fixture(...candidates: Candidate[]) {
         assert.match(sql, /p\.state='held' AND p\.dispatch_state='accepted' AND NOT EXISTS/);
         assert.match(sql, /earlier\.dispatch_state IN \('sending','unknown','rejected'\)/);
         assert.match(sql, /q\.created_at>:p4 AND q\.occurred_at>:p4 AND q\.occurred_at<=:p3/);
+        assert.match(sql, /sent\.amount>payment\.amount-\(SELECT COALESCE\(SUM\(bank_return\.amount\),0\)/);
         const start = new Date(args[3].replace(' ','T')+'Z');
         const ordered = candidates.slice().sort((a, b) => +a.created_at - +b.created_at || a.id.localeCompare(b.id));
         for (const item of ordered) {
@@ -86,6 +88,9 @@ function fixture(...candidates: Candidate[]) {
                 other.occurred_at && other.occurred_at > start &&
                 (['sending', 'unknown', 'rejected'].includes(other.dispatch_state ?? '') ||
                  (other.state === 'held' && other.dispatch_state !== 'accepted')))))) continue;
+          if (item.project_id.startsWith('enrollment:') && (item.occurred_at < value || item.kind === 'refund' &&
+              sameProject.some(other=>other.kind==='refund' && other.dispatch_state==='accepted' &&
+                other.amount > (netRefunds.get(other.id) ?? other.amount)))) continue;
           return result(1, [{...item, purchase_id: purchase.id}]);
         }
         return result();
@@ -120,10 +125,25 @@ function fixture(...candidates: Candidate[]) {
   }
   const run = (overrides: Partial<Parameters<typeof dispatchPaymentAnalytics>[0]> = {}) =>
     dispatchPaymentAnalytics({transaction, env: environment(), request, clock, ...overrides});
-  return {run, calls, request, candidates, get queries() {return queries;}, failFinalize() {failFinalize = true;},
+  return {run, calls, request, candidates, netRefunds, get queries() {return queries;}, failFinalize() {failFinalize = true;},
     get activationWrites(){return activationWrites;},
     setActivation(saved:string|undefined,now?:string){cutoff=saved;databaseTime=now??databaseTime;}};
 }
+
+test('enrollment sends the business time, and a returned refund already reported holds later refunds for the order', async () => {
+  const project_id='enrollment:fixture-order';
+  const confirmation=new Date('2026-11-07T16:45:00Z');
+  const payout=new Date('2026-11-07T17:15:00Z');
+  const f=fixture(row(0,{project_id,occurred_at:confirmation}),row(1,{project_id,occurred_at:payout}),row(2,{project_id}));
+  assert.equal(await f.run(),'accepted');
+  assert.equal(await f.run(),'accepted');
+  assert.deepEqual(f.calls.map(call=>call.payload.timestamp_micros),[+confirmation*1000,+payout*1000]);
+  assert.equal(f.calls[0].payload.events[0].params.transaction_id,f.calls[1].payload.events[0].params.transaction_id);
+  f.netRefunds.set('event-1',0);
+  assert.equal(await f.run(),undefined);
+  assert.equal(f.calls.length,2);
+  assert.equal(f.candidates[2].dispatch_state,undefined);
+});
 
 test('dispatch requires configured credentials and rejects cross-environment targets before DB or transport', async () => {
   const f = fixture(row(0));

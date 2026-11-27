@@ -9,7 +9,7 @@ const databaseHook = stubModules([['/cloud/mysql/runtime.mjs',`
 const {applyEnrollmentPaymentCredits} = await import('../server/portal/enrollmentPaymentCredits.ts');
 databaseHook.deregister();
 
-const cohort = {id:'fixture-class',state:'published',data:{level:'HSK 1',minimumPaid:3}};
+const cohort = {id:'fixture-class',course_id:'fixture-course',state:'published',data:{level:'HSK 1',minimumPaid:3}};
 const learner = {name:'Test Learner',phone:'+628123456789'};
 const expired = {
   id:'past-order',email:'learner@example.test',data:learner,state:'expired',received:160,price:300,
@@ -25,6 +25,7 @@ function creditFixture(related: Order[], target = current) {
   const locks: string[] = [];
   const allocations: unknown[] = [];
   const adjustments: unknown[] = [];
+  const analytics: unknown[][] = [];
   const db = {
     async query(sql: string, args: unknown[] = []) {
       if (sql.startsWith('SELECT GET_LOCK')) return {rows:[{acquired:true}]};
@@ -37,8 +38,11 @@ function creditFixture(related: Order[], target = current) {
         return {rows:[{reference:'receipt-a',available:100},{reference:'receipt-b',available:90}]};
       }
       if (sql.startsWith('INSERT INTO enrollment_payment_credits')) allocations.push(args.slice(1));
-      else if (sql.startsWith('UPDATE enrollment_orders')) adjustments.push(args);
+      else if (sql.startsWith('UPDATE enrollment_orders')) adjustments.push(sql.includes('activity_at=:p5')?args.slice(0,4):args);
       else if (sql.startsWith('SELECT COUNT(*)')) return {rows:[{count:0}]};
+      else if (sql.startsWith('SELECT id FROM crm_payment_analytics')) return {rows:[]};
+      else if (sql.startsWith('INSERT INTO crm_payment_analytics')) analytics.push(args);
+      else if (sql.includes('AS class_data,a.attribution')) return {rows:[]};
       else if (!sql.startsWith('SELECT opened_at FROM enrollment_class_openings')) assert.fail(sql);
       return {rows:[]};
     },
@@ -48,7 +52,7 @@ function creditFixture(related: Order[], target = current) {
     assert.ok([expired.id,target.id].includes(id));
     return {order:id===expired.id?expired:target,cohort};
   }
-  return {db,lockOrder,locks,allocations,adjustments};
+  return {db,lockOrder,locks,allocations,adjustments,analytics};
 }
 
 test('bank receipts credit the only later same-learner order in either arrival order', async () => {
@@ -67,6 +71,18 @@ test('bank receipts credit the only later same-learner order in either arrival o
       [180,'partial',{...differentlyFormatted.data,creditIn:160},current.id],
     ]);
   }
+});
+
+test('credit that completes a new order queues only the new enrollment at the confirmed amount',async t=>{
+  const previous=process.env.PORTAL_ENV;
+  process.env.PORTAL_ENV='dev';
+  t.after(()=>{if(previous===undefined)delete process.env.PORTAL_ENV;else process.env.PORTAL_ENV=previous;});
+  const target={...current,received:140};
+  const fixture=creditFixture([expired,target],target);
+  assert.equal(await applyEnrollmentPaymentCredits(fixture.db,{order:expired,cohort},fixture.lockOrder),true);
+  assert.equal(fixture.analytics.length,1);
+  assert.deepEqual(fixture.analytics[0].slice(1,8),['dev','enrollment:'+target.id,target.id,'purchase',0,300,cohort.course_id]);
+  assert.ok(fixture.analytics[0][8] instanceof Date);
 });
 
 test('ambiguous later orders and a target no longer payable under the lock receive no funds', async () => {

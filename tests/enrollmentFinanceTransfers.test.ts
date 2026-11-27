@@ -107,6 +107,8 @@ test('the finance routes can locate a proofless order and link existing receipts
     const receipt={orderId,reference:'BANK-ALREADY-SAVED',amount:920_000};
     const knownReferences=new Set([receipt.reference]);
     const operations=new Map<string,{fingerprint:string;result:unknown}>();
+    const analytics:unknown[][]=[];
+    let confirmationTime:unknown;
     let writes=0,reads=0,inserted=0;
     const client={transactionIsolation:'READ COMMITTED',query:async(sql:string,args:unknown[]=[])=>{
       reads++;
@@ -125,7 +127,7 @@ test('the finance routes can locate a proofless order and link existing receipts
       if(sql.startsWith('SELECT GET_LOCK'))return {rows:[{locked:1}]};
       if(sql.startsWith('SELECT * FROM crm_operations'))return {rows:operations.has(String(args[1]))?[operations.get(String(args[1]))]:[]};
       if(sql.startsWith('SELECT id,class_id,email FROM enrollment_orders'))return {rows:[args[0]===manualOrderId?manualOrder:order]};
-      if(sql.includes('FROM enrollment_classes WHERE id=:p1 FOR UPDATE'))return {rows:[{id:order.class_id,state:'published',data:{minimumPaid:1}}]};
+      if(sql.includes('FROM enrollment_classes WHERE id=:p1 FOR UPDATE'))return {rows:[{id:order.class_id,course_id:'fixture-course',state:'published',data:{minimumPaid:1}}]};
       if(sql.startsWith("UPDATE enrollment_orders SET state='expired'"))return {rows:[]};
       if(sql.includes('FROM enrollment_orders WHERE id=:p1 FOR UPDATE'))return {rows:[args[0]===manualOrderId?manualOrder:order]};
       if(sql.startsWith('WITH picked AS'))return {rows:[...proofs,receipt]};
@@ -138,7 +140,8 @@ test('the finance routes can locate a proofless order and link existing receipts
       if(sql.startsWith('INSERT INTO enrollment_receipts')){
         const [reference,id]=args;
         if(knownReferences.has(String(reference)))throw Object.assign(new Error('Duplicate'),{code:'ER_DUP_ENTRY'});
-        assert.deepEqual(args.slice(0,4),[id===manualOrderId?'MANUAL-01':'BANK-A',id,100_000,'fixture-finance']);
+        assert.deepEqual(args.slice(0,4),[id===manualOrderId?(reference==='MANUAL-02'?'MANUAL-02':'MANUAL-01'):'BANK-A',id,
+          reference==='MANUAL-02'?850_000:100_000,'fixture-finance']);
         knownReferences.add(String(reference));
         inserted++;
         return {rows:[]};
@@ -146,9 +149,16 @@ test('the finance routes can locate a proofless order and link existing receipts
       if(sql.startsWith('SELECT COALESCE(SUM(r.amount-'))return {rows:[{sum:100_000}]};
       if(sql.startsWith('UPDATE enrollment_orders SET received=')){
         const target=args[3]===manualOrderId?manualOrder:order;
+        if(target===manualOrder)confirmationTime=args[4];
         target.received=Number(args[0]);target.state=String(args[1]);target.data=args[2] as typeof target.data;
         return {rows:[]};
       }
+      if(sql.startsWith('SELECT id FROM crm_payment_analytics'))return {rows:analytics.filter(row=>row[0]===args[0])};
+      if(sql.startsWith('INSERT INTO crm_payment_analytics')){
+        analytics.push(args);
+        return {rows:[]};
+      }
+      if(sql.includes('AS class_data,a.attribution'))return {rows:[]};
       if(sql.startsWith('SELECT COUNT(*) AS count FROM enrollment_orders'))return {rows:[{count:1}]};
       if(sql.startsWith('SELECT opened_at'))return {rows:[{opened_at:'2026-11-22 00:00:00'}]};
       if(sql.startsWith('SELECT * FROM enrollment_orders WHERE'))return {rows:[args[0]===manualOrderId?manualOrder:order]};
@@ -194,6 +204,7 @@ test('the finance routes can locate a proofless order and link existing receipts
     assert.equal(manual.order.received,100_000);
     assert.equal(inserted,1);
     assert.deepEqual(manualOrder.data.learnerReceiptProofLinks,{'MANUAL-01':null});
+    assert.deepEqual(analytics,[]);
     const additional={...bankDetails,reference:'BANK-A',proofId:firstId,requestId:'7119a6d3-de0f-47fc-9bf9-d243c5e0ac4d'};
     const paid=await invoke('POST','/:id/receipts',{body:additional});
     assert.equal(paid.order.status,'paid');
@@ -202,9 +213,120 @@ test('the finance routes can locate a proofless order and link existing receipts
     await assert.rejects(invoke('POST','/:id/receipts',{body:{...additional,requestId:'462fae33-2a5e-4d30-8a25-8c2b8bee778d'}}),
       {status:409,message:'enrollment_duplicate_receipt'});
     assert.equal(inserted,2);
+    assert.deepEqual(analytics,[],'another receipt on an already paid order must not queue a purchase');
+    const complete={...bankDetails,amount:850_000,reference:'MANUAL-02',requestId:'02b9348c-c518-4182-90ba-9fbb44946abd'};
+    assert.equal((await invoke('POST','/:id/receipts',{order:manualOrderId,body:complete})).order.status,'paid');
+    assert.equal(analytics.length,1);
+    assert.deepEqual(analytics[0].slice(1,8),['test','enrollment:'+manualOrderId,manualOrderId,'purchase',0,manualOrder.price,'fixture-course']);
+    assert.deepEqual(analytics[0][8],confirmationTime);
+    assert.notEqual((analytics[0][8] as Date).toISOString(),bankDetails.transferredAt);
+    assert.equal((await invoke('POST','/:id/receipts',{order:manualOrderId,body:complete})).replayed,true);
+    await assert.rejects(invoke('POST','/:id/receipts',{order:manualOrderId,body:{...complete,requestId:'92e93e58-8563-4b00-9d9a-0b9350efdaa1'}}),{status:409,message:'enrollment_duplicate_receipt'});
+    assert.equal(analytics.length,1);
     scope='own';
     const before=reads;
     await assert.rejects(invoke('GET','',{query:{order:manualOrderId,bankLookup:'1'}}),{status:403});
     assert.equal(reads,before);
   }finally{process.env=previous;}
+});
+
+test('refund installments, returns and retries use the same transaction as the analytics queue',async t=>{
+  await import('./helpers/mockPortalDatabase.mjs');
+  const {mountEnrollmentResolution}=await import('../server/portal/enrollmentResolution.ts');
+  const {randomUUID}=await import('node:crypto');
+  const previous=process.env.PORTAL_ENV;
+  process.env.PORTAL_ENV='dev';
+  t.after(()=>{if(previous===undefined)delete process.env.PORTAL_ENV;else process.env.PORTAL_ENV=previous;});
+  type Payment={reference:string;receipt_reference:string;amount:number;recordedAt:Date};
+  type Return={reference:string;payment:string;amount:number};
+  type Event={id:string;projectId:string;sourceId:string;sequence:number;amount:number;at:Date;state:string};
+  let state={orderState:'refunding',payments:[] as Payment[],returns:[] as Return[],events:[] as Event[],
+    results:new Map<string,{fingerprint:string;result:unknown}>()};
+  let queueFailure=false;
+  type Client=Parameters<Parameters<typeof mountEnrollmentResolution>[1]['transact']>[0] extends (c:infer C)=>Promise<any>?C:never;
+  const cohort={course_id:'fixture-course'};
+  const handlers=new Map<string,(q:Request,r:Response)=>Promise<unknown>>();
+  const transact=async (work:(client:Client)=>Promise<any>)=>{
+    const pending=structuredClone(state);
+    const client:Client={query:async (sql,args=[])=>{
+      const [first,second,third,fourth,,,,,time]=args;
+      const rows=(...rows:unknown[])=>({rows});
+      if(sql.startsWith('SELECT * FROM crm_operations'))return {rows:pending.results.has(String(second))?[pending.results.get(String(second))]:[]};
+      if(sql.startsWith('INSERT INTO crm_operations')){
+        pending.results.set(String(second),{fingerprint:String(third),result:fourth});
+        return rows();
+      }
+      if(sql.startsWith('SELECT expected,timing'))return rows({expected:350_000});
+      if(sql.includes('FROM enrollment_refund_payments p'))return {rows:pending.payments.map(payment=>({...payment,returned:pending.returns
+        .filter(item=>item.payment===payment.reference).reduce((sum,item)=>sum+item.amount,0)}))};
+      if(sql.includes('FROM enrollment_receipts r WHERE'))return rows({reference:'MOCK-RECEIPT',amount:920_000});
+      if(sql.startsWith('INSERT INTO enrollment_refund_payments')){
+        pending.payments.push({reference:String(first),receipt_reference:String(second),amount:Number(fourth),recordedAt:args[5] as Date});
+        return rows();
+      }
+      if(sql.startsWith('SELECT reference FROM enrollment_refund_returns'))return {rows:pending.returns.filter(item=>item.reference===first)};
+      if(sql.startsWith('INSERT INTO enrollment_refund_returns')){
+        pending.returns.push({reference:String(first),payment:String(second),amount:Number(third)});
+        return rows();
+      }
+      if(sql.startsWith('SELECT COALESCE(MAX(sequence_no)'))return rows({last_sequence:pending.events.at(-1)?.sequence??0});
+      if(sql.startsWith('INSERT INTO crm_payment_analytics')){
+        if(queueFailure)throw Error('simulated queue failure');
+        assert.equal(args[4],'refund');
+        pending.events.push({id:String(first),projectId:String(third),sourceId:String(fourth),sequence:Number(args[5]),amount:Number(args[6]),at:time as Date,state:'held'});
+        return rows();
+      }
+      if(sql.startsWith('SELECT id FROM crm_payment_analytics'))return rows();
+      if(sql.startsWith('UPDATE crm_payment_analytics')){
+        const item=pending.events.find(event=>event.id===first);
+        assert.ok(item);
+        item.amount=Number(second);item.state=String(third);
+        return rows();
+      }
+      if(sql.startsWith("UPDATE enrollment_orders SET state='refunded'"))pending.orderState='refunded';
+      else if(sql.startsWith("UPDATE enrollment_orders SET state='refunding'"))pending.orderState='refunding';
+      else if(!sql.includes('AS class_data,a.attribution'))assert.fail(sql);
+      return rows();
+    }};
+    const result=await work(client);
+    state=pending;
+    return result;
+  };
+  const unexpected=async()=>assert.fail('Only the finance write routes should run');
+  mountEnrollmentResolution({get:()=>{}} as unknown as Express,{
+    wrap:fn=>fn,post:(path,handler)=>handlers.set(path,handler),transact,read:unexpected,session:unexpected,
+    lockOrder:async()=>({order:{state:state.orderState},cohort}),lockClass:unexpected,expireSeats:unexpected,
+    financeActor:async()=>({id:'mock-finance'}),supportActor:unexpected,
+  });
+  const id=orderId;
+  async function invoke(route:'refunds'|'refund-returns',body:object) {
+    let value:any;
+    await handlers.get('/api/crm/enrollment/finance/:id/'+route)!({params:{id},body} as Request,
+      {json:(result:unknown)=>{value=result;}} as Response);
+    return value;
+  }
+  const first={receiptReference:'MOCK-RECEIPT',reference:'MOCK-REFUND-A',amount:100_000,requestId:randomUUID()};
+  const last={...first,reference:'MOCK-REFUND-B',amount:250_000,requestId:randomUUID()};
+  queueFailure=true;
+  await assert.rejects(invoke('refunds',first),/simulated queue failure/);
+  assert.equal(state.payments.length,0);
+  assert.equal(state.events.length,0);
+  assert.equal(state.results.size,0);
+  queueFailure=false;
+  await invoke('refunds',first);
+  assert.equal((await invoke('refunds',first)).replayed,true);
+  await assert.rejects(invoke('refunds',{...first,requestId:randomUUID()}),{status:409,message:'enrollment_duplicate_refund'});
+  await invoke('refunds',last);
+  assert.deepEqual(state.events.map(item=>item.sequence),[1,2]);
+  assert.deepEqual(state.events.map(item=>item.amount),[100_000,250_000]);
+  assert.deepEqual(state.events.map(item=>item.at),state.payments.map(item=>item.recordedAt));
+  assert.ok(state.events.every(item=>item.projectId==='enrollment:'+id&&item.sourceId.length===36));
+  assert.equal(state.orderState,'refunded');
+  const bankReturn={refundReference:first.reference,reference:'MOCK-RETURN-A',amount:30_000,requestId:randomUUID()};
+  assert.equal((await invoke('refund-returns',bankReturn)).refunded,320_000);
+  assert.equal(state.orderState,'refunding');
+  assert.deepEqual(state.events.map(item=>item.amount),[70_000,250_000]);
+  assert.equal((await invoke('refund-returns',bankReturn)).replayed,true);
+  await invoke('refund-returns',{...bankReturn,reference:'MOCK-RETURN-B',amount:70_000,requestId:randomUUID()});
+  assert.deepEqual(state.events.map(item=>[item.amount,item.state]),[[0,'cancelled'],[250_000,'held']]);
 });

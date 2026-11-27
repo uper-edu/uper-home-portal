@@ -3,6 +3,7 @@ import {enrollmentLearnerNameKey} from '../../src/utils/enrollmentOrderStatus.ts
 import {normalizeContactPhone} from './trustWorkflow.ts';
 import {lockIdentityRegistry} from './identityConsolidation.ts';
 import {classOpeningNotices,orderNotice} from './enrollmentNotices.ts';
+import {queueEnrollmentPurchase} from './paymentAnalytics.ts';
 
 type Client={query:(sql:string,args?:unknown[])=>Promise<{rows:any[]}>};
 type LockedOrder={order:any;cohort:any};
@@ -15,15 +16,22 @@ export async function lockEnrollmentFunds(c:Client) {
 }
 
 export async function updateEnrollmentPayment(c:Client,{order,cohort}:LockedOrder,received:number,state:string,data=order.data) {
-  await c.query('UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=UTC_TIMESTAMP(6) WHERE id=:p4',[received,state,data,order.id]);
+  const newlyPaid=cohort.state==='published'&&['paid','recovered'].includes(state)&&!['paid','recovered'].includes(order.state);
+  const confirmedAt=new Date();
+  await c.query('UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=:p5 WHERE id=:p4',[received,state,data,order.id,confirmedAt]);
   const paid=cohort.state==='cancelled'?0:Number((await c.query("SELECT COUNT(*) AS count FROM enrollment_orders WHERE class_id=:p1 AND state IN ('paid','recovered')",[cohort.id])).rows[0].count);
   const openedBefore=(await c.query('SELECT opened_at FROM enrollment_class_openings WHERE class_id=:p1',[cohort.id])).rows[0];
-  const newlyPaid=cohort.state==='published'&&['paid','recovered'].includes(state)&&!['paid','recovered'].includes(order.state);
   if(cohort.state==='published'&&paid>=cohort.data.minimumPaid&&!openedBefore){
     await c.query('INSERT INTO enrollment_class_openings(class_id,opened_at) VALUES(:p1,UTC_TIMESTAMP(6)) ON DUPLICATE KEY UPDATE class_id=class_id',[cohort.id]);
   }
   const opened=Boolean(openedBefore||cohort.state==='published'&&paid>=cohort.data.minimumPaid);
-  if(newlyPaid)await orderNotice(c,'payment_confirmed',order.id,undefined,{received});
+  if(newlyPaid){
+    const price=Number(order.price);
+    if(Number.isSafeInteger(price)&&price>0&&received>=price){
+      await queueEnrollmentPurchase(c,{orderId:order.id,courseId:cohort.course_id,amount:price,occurredAt:confirmedAt});
+    }
+    await orderNotice(c,'payment_confirmed',order.id,undefined,{received});
+  }
   if(opened&&!openedBefore)await classOpeningNotices(c,cohort);
   return {paidCount:paid,opened};
 }

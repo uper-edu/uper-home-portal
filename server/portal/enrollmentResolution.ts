@@ -16,6 +16,7 @@ import { createEnrollmentTransferInvitation } from './enrollmentTransferOffers.t
 import { readEnrollmentRules, readEnrollmentWorkCalendar } from './enrollmentRules.ts';
 import { workingDayDeadline } from '../../src/utils/workCalendar.ts';
 import { enrollmentRefundReceiptFunds } from './enrollmentPaymentCredits.ts';
+import { adjustPendingEnrollmentRefund, queueEnrollmentRefund } from './paymentAnalytics.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
 type Handler=(q:Request,r:Response)=>Promise<unknown>;
@@ -426,7 +427,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
     const amount=q.body?.amount;
     if(!original||!returned||original===returned||!Number.isSafeInteger(amount)||amount<1||amount>1_000_000_000) invalid('enrollment_invalid_refund');
     const result=await transact(c=>operation(c,actor.id,q.body,{leadId:'enrollment:'+id,kind:'enrollment.refund.payment',authorize:()=>financeActor(q)},async()=>{
-      const {order}=await lockOrder(c,id);
+      const {order,cohort}=await lockOrder(c,id);
       const ledger=await refundLedger(c,id);
       if(!ledger || order.state!=='refunding') invalid('enrollment_refund_unavailable',409);
       const initial=(await enrollmentRefundReceiptFunds(c,id)).find(row=>row.reference===original&&Number(row.amount)>0);
@@ -436,10 +437,12 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
       const cumulative=refunded+amount;
       if(cumulative>expected||effectiveRefundForReceipt(ledger.installments,original)+amount>Number(initial.amount))
         invalid('enrollment_refund_amount_exceeds',409);
+      const recordedAt=new Date();
       try{
         await c.query(`INSERT INTO enrollment_refund_payments(reference,receipt_reference,order_id,amount,actor,created_at)
-          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))`,[returned,original,id,amount,actor.id]);
+          VALUES(:p1,:p2,:p3,:p4,:p5,:p6)`,[returned,original,id,amount,actor.id,recordedAt]);
       }catch(error:any){if(error.code==='ER_DUP_ENTRY') invalid('enrollment_duplicate_refund',409);throw error;}
+      await queueEnrollmentRefund(c,{orderId:id,courseId:cohort.course_id,amount,occurredAt:recordedAt,reference:returned});
       if(cumulative===expected) await c.query("UPDATE enrollment_orders SET state='refunded',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",[id]);
       await orderNotice(c,'refund_recorded',id,'payment-'+createHash('sha256').update(returned).digest('hex'),{installment:amount,refunded:cumulative,expected});
       return {orderId:id,refunded:cumulative,expected};
@@ -468,6 +471,7 @@ export function mountEnrollmentResolution(app:Express,ctx:Context) {
         await c.query(`INSERT INTO enrollment_refund_returns(reference,refund_reference,amount,actor,created_at)
           VALUES(:p1,:p2,:p3,:p4,UTC_TIMESTAMP(6))`,[bankReturn,refundReference,amount,actor.id]);
       }catch(error:any){if(error.code==='ER_DUP_ENTRY') invalid('enrollment_duplicate_refund_return',409);throw error;}
+      await adjustPendingEnrollmentRefund(c,id,refundReference,payment.amount-payment.returned-amount);
       await c.query("UPDATE enrollment_orders SET state='refunding',activity_at=UTC_TIMESTAMP(6) WHERE id=:p1",[id]);
       return {orderId:id,refunded:ledger.progress.refunded-amount,expected:ledger.progress.expected};
     }));

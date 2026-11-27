@@ -18,6 +18,7 @@ function result(rows) {
           for (const field of [
             "at",
             "created_at",
+            "occurred_at",
             "updated_at",
             "due_at",
             "original_due_at",

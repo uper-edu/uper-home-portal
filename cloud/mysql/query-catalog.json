@@ -500,8 +500,8 @@
       "server/portal/enrollmentResolution.ts"
     ]
   },
-  "INSERT INTO enrollment_refund_payments(reference,receipt_reference,order_id,amount,actor,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))": {
-    "sql": "INSERT INTO enrollment_refund_payments(reference,receipt_reference,order_id,amount,actor,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,UTC_TIMESTAMP(6))",
+  "INSERT INTO enrollment_refund_payments(reference,receipt_reference,order_id,amount,actor,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,:p6)": {
+    "sql": "INSERT INTO enrollment_refund_payments(reference,receipt_reference,order_id,amount,actor,created_at)\n          VALUES(:p1,:p2,:p3,:p4,:p5,:p6)",
     "sources": [
       "server/portal/enrollmentResolution.ts"
     ]
@@ -2452,6 +2452,12 @@
       "server/portal/identityConsolidation.ts"
     ]
   },
+  "SELECT id FROM crm_payment_analytics WHERE id=:p1 FOR UPDATE": {
+    "sql": "SELECT id FROM crm_payment_analytics WHERE id=:p1 FOR UPDATE",
+    "sources": [
+      "server/portal/paymentAnalytics.ts"
+    ]
+  },
   "SELECT id FROM crm_users WHERE email_key=:p1": {
     "sql": "SELECT id FROM crm_users WHERE email_key=:p1",
     "sources": [
@@ -3640,8 +3646,8 @@
       "server/portal/enrollmentApplication.ts"
     ]
   },
-  "SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND q.created_at>:p4 AND q.occurred_at>:p4 AND q.occurred_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND earlier.created_at>:p4 AND earlier.occurred_at>:p4\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED": {
-    "sql": "SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND q.created_at>:p4 AND q.occurred_at>:p4 AND q.occurred_at<=:p3\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND earlier.created_at>:p4 AND earlier.occurred_at>:p4\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED",
+  "SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id,q.occurred_at,q.project_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND q.created_at>:p4 AND q.occurred_at>:p4 AND q.occurred_at<=:p3\n         AND (q.project_id NOT LIKE 'enrollment:%' OR q.occurred_at>=:p2)\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND earlier.created_at>:p4 AND earlier.occurred_at>:p4\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n         -- Once a returned payment has already been reported, hold later refunds for this order.\n         AND (q.kind='purchase' OR q.project_id NOT LIKE 'enrollment:%' OR NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics sent\n           JOIN enrollment_refund_payments payment ON sent.source_entry_id=LEFT(SHA2(payment.reference,256),36)\n           WHERE sent.environment=q.environment AND sent.project_id=q.project_id\n             AND payment.order_id=SUBSTRING(q.project_id,12)\n             AND sent.kind='refund' AND sent.dispatch_state='accepted'\n             AND sent.amount>payment.amount-(SELECT COALESCE(SUM(bank_return.amount),0)\n               FROM enrollment_refund_returns bank_return WHERE bank_return.refund_reference=payment.reference)\n         ))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED": {
+    "sql": "SELECT q.id,q.kind,q.amount,q.course_id,q.created_at,p.id AS purchase_id,q.occurred_at,q.project_id\n       FROM crm_payment_analytics q\n       JOIN crm_payment_analytics p ON p.environment=q.environment AND p.project_id=q.project_id AND p.sequence_no=0 AND p.kind='purchase'\n       WHERE q.environment=:p1 AND q.state='held' AND q.dispatch_state IS NULL AND q.created_at>=:p2 AND q.created_at<=:p3\n         AND q.created_at>:p4 AND q.occurred_at>:p4 AND q.occurred_at<=:p3\n         AND (q.project_id NOT LIKE 'enrollment:%' OR q.occurred_at>=:p2)\n         AND (q.kind='purchase' OR (p.state='held' AND p.dispatch_state='accepted' AND NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics earlier\n           WHERE earlier.environment=q.environment AND earlier.project_id=q.project_id\n             AND earlier.sequence_no<q.sequence_no\n             AND earlier.created_at>:p4 AND earlier.occurred_at>:p4\n             AND (earlier.dispatch_state IN ('sending','unknown','rejected')\n               OR (earlier.state='held' AND COALESCE(earlier.dispatch_state,'held')<>'accepted'))\n         )))\n         -- Once a returned payment has already been reported, hold later refunds for this order.\n         AND (q.kind='purchase' OR q.project_id NOT LIKE 'enrollment:%' OR NOT EXISTS (\n           SELECT 1 FROM crm_payment_analytics sent\n           JOIN enrollment_refund_payments payment ON sent.source_entry_id=LEFT(SHA2(payment.reference,256),36)\n           WHERE sent.environment=q.environment AND sent.project_id=q.project_id\n             AND payment.order_id=SUBSTRING(q.project_id,12)\n             AND sent.kind='refund' AND sent.dispatch_state='accepted'\n             AND sent.amount>payment.amount-(SELECT COALESCE(SUM(bank_return.amount),0)\n               FROM enrollment_refund_returns bank_return WHERE bank_return.refund_reference=payment.reference)\n         ))\n       ORDER BY q.created_at,q.id LIMIT 1 FOR UPDATE OF q,p SKIP LOCKED",
     "sources": [
       "server/portal/paymentAnalyticsDispatch.ts"
     ]
@@ -4333,6 +4339,12 @@
       "server/portal/localAuth.ts"
     ]
   },
+  "UPDATE crm_payment_analytics SET amount=:p2,state=:p3\n    WHERE id=:p1 AND state='held' AND dispatch_state IS NULL": {
+    "sql": "UPDATE crm_payment_analytics SET amount=:p2,state=:p3\n    WHERE id=:p1 AND state='held' AND dispatch_state IS NULL",
+    "sources": [
+      "server/portal/paymentAnalytics.ts"
+    ]
+  },
   "UPDATE crm_payment_analytics SET dispatch_state=:p2 WHERE id=:p1 AND dispatch_state='sending'": {
     "sql": "UPDATE crm_payment_analytics SET dispatch_state=:p2 WHERE id=:p1 AND dispatch_state='sending'",
     "sources": [
@@ -4568,8 +4580,8 @@
       "server/portal/enrollmentCrm.ts"
     ]
   },
-  "UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=UTC_TIMESTAMP(6) WHERE id=:p4": {
-    "sql": "UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=UTC_TIMESTAMP(6) WHERE id=:p4",
+  "UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=:p5 WHERE id=:p4": {
+    "sql": "UPDATE enrollment_orders SET received=:p1,state=:p2,data=:p3,activity_at=:p5 WHERE id=:p4",
     "sources": [
       "server/portal/enrollmentPaymentCredits.ts"
     ]
