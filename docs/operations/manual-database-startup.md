@@ -35,22 +35,26 @@ cat NEW_PRIVATE_ACCOUNTS.sql sql/v20261126213845_empty_portal_accounts.sql |
 
 ### 公司 test 经营初值
 
-1. 从 local 3000 生成私有 SQL。该命令在一个只读快照中提取课程、班型、班次、教师档案及附件、CMS 内容及 COS 引用、推广、运营规则、月度 KPI、AI 和投递配置。核对输出计数及获批清单。输出新文件应存放在仓库外的私有目录。文件绑定指定的新库名，只适用于 `test`。
+1. 从 local 3000 生成私有 SQL。该命令在一个只读快照中提取课程、班型、班次、教师档案及附件、CMS 内容及 COS 引用、推广、运营规则、月度 KPI、AI 和投递配置。用获批清单核对命令输出的计数，并保存输出的摘要。将新文件存放在仓库外的私有目录。
 
-```sh
-node --import tsx scripts/prepare-empty-portal-business.mts <核准的公司test新库名> <私有目录>/business.private.sql
-```
+   私有 SQL 绑定核定的新库名和 `test` 环境。库名以 `uper_trial_` 开头，后缀只允许小写英文字母、数字和下划线。若实际库名与演练不同，按实际库名生成新文件，再核对导出计数和获批清单。
 
-2. 新库完成第 ① 步建表后，在**同一次**批处理客户端会话中先加载私有输入，再执行第 ② 步。保持应用和 worker 停止。成功后单独按第 ③ 步开户。
+   ```sh
+   node --import tsx scripts/prepare-empty-portal-business.mts <核准的公司test新库名> <私有目录>/business.private.sql
+   ```
 
-```sh
-set -o pipefail
-cat <私有目录>/business.private.sql sql/v20261126213844_empty_portal_system.sql |
-  mysql --host=<主机> --port=<端口> --user=<账号> -p --batch --default-character-set=utf8mb4 \
-    --init-command="SET @uper_expected_database='<核准的公司test新库名>', @uper_environment='test', @uper_require_business_defaults=1" <核准的公司test新库名>
-```
+2. 新库完成第 ① 步建表后，在**同一次**批处理客户端会话中先加载私有输入，再执行第 ② 步。保持应用和 worker 停止。
 
-教师照片和简历随档案写入数据库。CMS 媒体携带 COS 对象引用，切换服务前要验证目标环境能访问对象。班次日期、状态、教师关联和已有期号照录，按导入的期号生成下一个编号所用的计数；推广索引也从链接重建。通知、邮件和 GA4 开关以 local 3000 为准，GA4 数据流使用 UPER Test 的 Staging。发送或联网验证前，在公司 test 核对收件人和发件池，重新配置服务凭证、飞书绑定和加密密钥。孤立演练中以模拟账号和禁用网络验证。
+   ```sh
+   set -o pipefail
+   cat <私有目录>/business.private.sql sql/v20261126213844_empty_portal_system.sql |
+     mysql --host=<主机> --port=<端口> --user=<账号> -p --batch --default-character-set=utf8mb4 \
+       --init-command="SET @uper_expected_database='<核准的公司test新库名>', @uper_environment='test', @uper_require_business_defaults=1" <核准的公司test新库名>
+   ```
+
+3. 开户前，核对 `portal_settings` 中 `empty_bootstrap_system_v20` 的 `businessDigest` 与导出的摘要一致。用获批清单核对导入计数、班次状态和日期。逐件比较源库和新库中教师照片和简历的文件校验值。核对客户、订单和通知队列仍为空，再单独按第 ③ 步开户。
+
+教师照片和简历随档案写入数据库。CMS 媒体携带 COS 对象引用，切换服务前要验证目标环境能访问对象。班次日期、状态、教师关联和已有期号照录，期号计数和推广索引由导入数据重建。通知、邮件和 GA4 开关以 local 3000 为准，GA4 数据流使用 UPER Test 的 Staging。启动 worker 前，在公司 test 核对实际收件人、发件池和投递模式，按目标环境重新配置服务凭证、飞书绑定和加密密钥。隔离演练使用模拟账号和禁用网络的环境。
 
 业务初值和系统初值在同一事务提交。首次准备的私有输入须留到验收完成。重复使用同一输入只核对初始化记录，保留目标后续编辑和删除。已有系统初值但缺少对应业务包标记、输入不同或库中已有数据时，停止并核对。业务导入失败时沿用下节的新库中断恢复流程。
 
