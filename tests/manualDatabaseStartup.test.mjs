@@ -88,3 +88,23 @@ test('manual seed SQL carries exactly the system presets that startup used to in
   assert.deepEqual([...script.matchAll(/INSERT INTO (\w+)/gi)].map(m=>m[1]),['notification_rules','campaign_promotion_index','portal_audit']);
   assert.deepEqual([...script.matchAll(/UPDATE\s+(\w+)\s+SET/gi)].map(m=>m[1]),['notification_channels','trial_campaigns']);
 });
+test('manual rollback SQL targets exactly the upgrade artefacts, requires confirmation and refuses to drop used tables',async()=>{
+  const script=(await readFile(new URL('../sql/v20261127101113_rollback_v20_to_v18.sql',import.meta.url),'utf8')).replaceAll('\r\n','\n');
+  assert.doesNotMatch(script,/[^\x00-\x7F]/,'client charset must not affect restored text');
+  const array=name=>JSON.parse('['+script.match(new RegExp('DECLARE '+name+' JSON DEFAULT JSON_ARRAY[(]([^;]*?)[)];'))[1].replaceAll("'",'"')+']');
+  assert.deepEqual(array('v_tables').sort(),Object.keys(spec.tables).sort());
+  const presets=array('v_presets');
+  assert.deepEqual(presets,evergreenLinks.map(link=>link.id).filter(id=>id.startsWith('enroll-')));
+  for(const statement of script.matchAll(/WHERE p IN \(([^)]*)\)/g))assert.deepEqual(JSON.parse('['+statement[1].replaceAll("'",'"')+']'),presets);
+  const groupName=script.match(/CONCAT\('(Lark )',CONVERT\(0x([0-9A-F]+) USING utf8mb4\)\)/);
+  assert.equal(groupName[1]+Buffer.from(groupName[2],'hex').toString('utf8'),SYSTEM_LARK_GROUP_NAME);
+  assert.match(script,/@uper_rollback_confirm<>BINARY 'v20-to-v18'/);
+  // Tables are dropped only through the checked list, after the emptiness gate and the committed data rollback.
+  const code=script.split('\n').filter(line=>!line.trimStart().startsWith('--')).join('\n');
+  assert.deepEqual([...code.matchAll(/DROP TABLE\b[^;]*/g)].map(m=>m[0]),["DROP TABLE `',v_table,'`')"]);
+  assert.ok(script.indexOf('hold data; rollback would destroy it')<script.indexOf('START TRANSACTION')&&script.indexOf('START TRANSACTION')<script.indexOf("CONCAT('DROP TABLE"));
+  assert.doesNotMatch(script,/\b(?:TRUNCATE|FOREIGN KEY|REFERENCES|ALTER TABLE|CREATE TABLE)\b/i);
+  assert.deepEqual([...script.matchAll(/DELETE FROM (\w+)/gi)].map(m=>m[1]),['notification_rules','campaign_promotion_short_links','campaign_promotion_index','portal_settings','trial_schema_versions']);
+  assert.deepEqual([...script.matchAll(/UPDATE\s+(\w+)\s+SET/gi)].map(m=>m[1]),['notification_jobs','notification_channels','trial_campaigns']);
+  assert.deepEqual([...script.matchAll(/INSERT INTO (\w+)/gi)].map(m=>m[1]),['portal_audit']);
+});
