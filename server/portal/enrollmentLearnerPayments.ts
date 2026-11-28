@@ -108,8 +108,16 @@ export function enrollmentFinanceEvidence(rows:PaymentRows) {
   return {transfers,unmatchedReferences};
 }
 
+export function enrollmentPaymentPaused(
+  order:{state:string;price:number|string;received:number|string;recruitment_paused_at?:unknown},
+  classState:string,
+) {
+  return classState==='published'&&Boolean(order.recruitment_paused_at)&&Number(order.received)<Number(order.price)&&
+    ['awaiting_payment','proof_review','partial'].includes(order.state);
+}
+
 export function enrollmentLearnerPayment(
-  order:{state:string;price:number|string;received:number|string;before_due:number|string;data?:{bank?:unknown}},
+  order:{state:string;price:number|string;received:number|string;before_due:number|string;recruitment_paused_at?:unknown;data?:{bank?:unknown}},
   classState:string,
   {proofs,receipts}:PaymentRows=emptyPaymentRows,
 ) {
@@ -132,7 +140,7 @@ export function enrollmentLearnerPayment(
   const uncertain=order.state==='proof_review'&&!groups.size||pending>0&&(unmatchedReferences.length>0||unknownAmount||legacyUnknown>1);
   const estimated=pending>0&&!uncertain&&verifiedBalance>0;
   const balance=verifiedBalance===0?0:uncertain?null:Math.max(0,verifiedBalance-outstanding);
-  const action:EnrollmentLearnerPayment['action']=classState!=='published'||verifiedBalance===0?'none'
+  const action:EnrollmentLearnerPayment['action']=classState!=='published'||verifiedBalance===0||enrollmentPaymentPaused(order,classState)?'none'
     :order.state==='awaiting_payment'&&Number(order.before_due)?'transfer'
     :order.state==='proof_review'||order.state==='partial'
       ? balance===0||uncertain?'wait'

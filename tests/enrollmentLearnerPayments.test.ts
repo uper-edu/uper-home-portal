@@ -1,12 +1,32 @@
 import {strict as assert} from 'node:assert';
 import {test} from 'node:test';
-import {enrollmentLearnerPayment,enrollmentProofGroupId,enrollmentReceiptProofId,readEnrollmentLearnerPaymentRows,withEnrollmentReceiptProofLinks} from '../server/portal/enrollmentLearnerPayments';
+import {enrollmentLearnerPayment,enrollmentPaymentPaused,enrollmentProofGroupId,enrollmentReceiptProofId,readEnrollmentLearnerPaymentRows,withEnrollmentReceiptProofLinks} from '../server/portal/enrollmentLearnerPayments';
+import {allowsEnrollmentProof} from '../src/utils/enrollmentOrderStatus';
 
 const bank={name:'Fixture Bank',accountName:'Fixture',accountNumber:'01234'};
 const order={state:'proof_review',price:920_000,received:0,before_due:1,data:{bank}};
 const first={id:'first',digest:'image-a',submittedAt:'2027-01-02T00:00:00.000Z',details:{transferId:'first',amount:600_000,reference:'BANK-FIRST'}};
 const second={id:'second',digest:'image-b',submittedAt:'2027-01-03T00:00:00.000Z',details:{transferId:'second',amount:320_000,reference:'BANK-SECOND'}};
 const verified={reference:'BANK-FIRST',amount:580_000};
+
+test('a paused class stops new payment actions while accepted proof and verified receipts remain available',()=>{
+  const pausedAt='2027-01-02 00:00:00.000000';
+  const awaiting={...order,state:'awaiting_payment'};
+  assert.equal(enrollmentLearnerPayment(awaiting,'published').payment.action,'transfer');
+  assert.equal(enrollmentLearnerPayment({...awaiting,recruitment_paused_at:pausedAt},'published').payment.action,'none');
+  const evidence={proofs:[first],receipts:[verified]};
+  const part={...order,state:'partial',received:580_000,recruitment_paused_at:pausedAt};
+  assert.deepEqual(enrollmentLearnerPayment(part,'published',evidence).payment,
+    {balance:340_000,estimated:false,action:'none',awaitingVerification:false});
+  assert.equal(enrollmentLearnerPayment(part,'published',evidence).transfers[0].verifiedAmount,580_000);
+  assert.equal(enrollmentLearnerPayment({...part,recruitment_paused_at:null},'published',evidence).payment.action,'top_up');
+  for (const state of ['awaiting_payment','proof_review','partial']) {
+    assert.equal(enrollmentPaymentPaused({...part,state},'published'),true);
+    assert.equal(allowsEnrollmentProof(state),true);
+  }
+  assert.equal(enrollmentPaymentPaused({...part,state:'paid',received:920_000},'published'),false);
+  assert.equal(enrollmentPaymentPaused(part,'cancelled'),false);
+});
 
 test('estimated top-up accounts once for each unverified transfer, then replaces its declaration with actual receipts',()=>{
   const estimate=enrollmentLearnerPayment(order,'published',{proofs:[first],receipts:[]});

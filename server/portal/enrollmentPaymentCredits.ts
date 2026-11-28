@@ -1,3 +1,4 @@
+import {classPaymentClock} from './enrollmentClassTimeSql.ts';
 import {randomUUID} from 'node:crypto';
 import {enrollmentLearnerNameKey} from '../../src/utils/enrollmentOrderStatus.ts';
 import {normalizeContactPhone} from './trustWorkflow.ts';
@@ -63,7 +64,7 @@ async function sameLearnerOrders(c:Client,order:any,level:string) {
       AND COALESCE(member.profile->>'$.identityLifecycle','')<>'pending'
       AND COALESCE(original.profile->>'$.identityLifecycle','')<>'pending'
       AND (o.state='expired' OR (b.state='published' AND o.state IN ('awaiting_payment','proof_review','partial')
-        AND o.received<o.price AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6))))
+        AND o.received<o.price AND (o.state<>'awaiting_payment' OR o.payment_due_at>=${classPaymentClock('b.')})))
     ORDER BY o.created_at,o.id`,[order.id,order.email,level])).rows;
   return rows.filter(row=>typeof row.data?.name==='string'&&enrollmentLearnerNameKey(row.data.name)===enrollmentLearnerNameKey(order.data.name)
     &&normalizeContactPhone(row.data.phone)===phone);

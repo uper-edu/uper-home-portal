@@ -35,7 +35,7 @@ import {enrollmentSupportPath} from '../utils/enrollmentSupportNavigation';
 import { EnrollmentModuleBoundary, lazyEnrollmentModule } from './EnrollmentModuleBoundary';
 import { EnrollmentPayment, type EnrollmentOrder as Order } from './EnrollmentPayment';
 import {EnrollmentPaymentInformation} from './EnrollmentPaymentInformation';
-import type {EnrollmentProofDraft,EnrollmentProofSubmission} from '../utils/enrollmentLearnerPayments';
+import {enrollmentExistingTransferCopy,enrollmentPaymentPausedCopy,type EnrollmentProofDraft,type EnrollmentProofSubmission} from '../utils/enrollmentLearnerPayments';
 import { interestOption, waitlistStates } from '../utils/enrollmentInterestCopy';
 import { parseEnrollmentInterests, type DemandCriteria, type DemandItem, type Interests } from '../utils/enrollmentInterestRecords';
 import { enrollmentRecordClassLookup, sortEnrollmentRecords } from '../utils/enrollmentRecordOrder';
@@ -1281,7 +1281,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
     if(fromDetail)next.set(enrollmentOrderReturnParam,'1');
     return '/enrollment/payment?' + next.toString();
   };
-  const paymentBar=mine&&order?.status==='awaiting_payment'&&!order.restored;
+  const paymentBar=mine&&order?.status==='awaiting_payment'&&!order.restored&&!order.paymentPaused;
   const canUpload = order && order.status!=='paid_cancelled' && allowsEnrollmentProof(order.status,order.closureReason) && !order.restored;
   const cancelable=!payment&&order?.status==='awaiting_payment'&&order.received===0;
   function openCancellation() {
@@ -1615,7 +1615,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         : enrollmentStatuses[row.status]);
     const active = orderIsActive(row);
     const completed = !row.classCancelled&&(row.status==='paid'||row.restored);
-    const payable = row.payment?row.payment.action==='transfer':row.status==='awaiting_payment'&&!row.classCancelled;
+    const payable = !row.paymentPaused&&(row.payment?row.payment.action==='transfer':row.status==='awaiting_payment'&&!row.classCancelled);
     const topUp = row.payment?.action==='top_up';
     const needsSupport = row.payment?.action==='support';
     const proofWaiting = row.status==='proof_review'||row.status==='partial'&&!!row.payment?.awaitingVerification;
@@ -1625,7 +1625,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
       : payable ? recordEntry(key+'-pay',paymentPath(row.id),paymentLabel,true)
         : topUp ? recordEntry(key+'-balance',paymentPath(row.id,'balance'),topUpLabel,true)
         : needsSupport ? recordEntry(key+'-support',orderPath(row.id),t(['查看补款安排','View payment arrangements','Lihat pengaturan pembayaran']),true)
-        : row.status==='partial'&&row.needsPayment
+        : row.status==='partial'&&row.needsPayment&&!row.paymentPaused
           ? recordEntry(key+'-balance',orderPath(row.id),t(['查看补款','View balance','Lihat sisa tagihan']),true)
           : undefined;
     return {key,active,completed,updatedAt:row.updatedAt,needsAction:active&&!!primary,card:
@@ -1633,6 +1633,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         status={status} tone={enrollmentOrderTone(row.status,{restored:row.restored,classCancelled:row.classCancelled,needsAction:!!primary&&!proofWaiting})} primary={primary}>
         {row.invitation&&<p>{t(['待答复转班邀请','Transfer invitation awaiting reply','Undangan pindah kelas menunggu jawaban'])} · {paymentDeadline(row.invitation.deadline,row.invitation.timeZone)}</p>}
         {payable&&<p className="enrollment-record-next"><strong>{formatCurrency(Math.max(0,row.price-row.received),language)}</strong>{paymentDeadline(row.deadline,row.timeZone)&&<time dateTime={row.deadline}>{paymentDeadline(row.deadline,row.timeZone)}</time>}</p>}
+        {row.paymentPaused&&<p>{t(['付款已暂停，席位保留。','Payment is paused. Your seat stays reserved.','Pembayaran dijeda. Kursi Anda tetap disimpan.'])}</p>}
         {topUp&&row.payment?.balance!=null&&<p>{row.payment.estimated?t(['预计剩余应付','Estimated balance','Perkiraan sisa tagihan']):t(['剩余应付','Balance due','Sisa tagihan'])} · {formatCurrency(row.payment.balance,language)}</p>}
         {!row.payment&&row.status==='partial'&&row.needsPayment&&<p>{t(['还需补款','Balance due','Sisa tagihan'])} · {formatCurrency(Math.max(0,row.price-row.received),language)}</p>}
         {row.classCancelled&&row.status==='awaiting_payment'&&<p>{t(['原班已停止收款','Payment for the original class is closed','Pembayaran untuk kelas asal ditutup'])}</p>}
@@ -1858,10 +1859,10 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
   const pastRecords = records.filter(record=>!record.active);
   const isBalanceLink=params.get('proof')==='balance';
   const editingProof = payment && !!canUpload &&
-    (params.get('proof')==='upload'||isBalanceLink||!!pendingProof||!!file||!!proofTransfer.amount||!!proofTransfer.reference||!!proofTransfer.transferId);
+    (order?.paymentPaused||params.get('proof')==='upload'||isBalanceLink||!!pendingProof||!!file||!!proofTransfer.amount||!!proofTransfer.reference||!!proofTransfer.transferId);
   const classCancelled=aftercare?.originalClassState==='cancelled';
-  const existingTransferOnly = !!(editingProof && order && (!order.bank||classCancelled) &&
-    (order.status==='expired' || order.closureReason==='learner_cancelled' || aftercare?.originalClassState==='cancelled'));
+  const existingTransferOnly = !!(editingProof && order && (order.paymentPaused || ((!order.bank||classCancelled) &&
+    (order.status==='expired' || order.closureReason==='learner_cancelled' || classCancelled))));
   const refundMode = aftercare?.refund.mode;
   const canConsultRefund = refundMode==='contact_support' || refundMode==='special_review';
   const aftercareView = params.get('view');
@@ -1989,7 +1990,7 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         onCancel={cancelable?openCancellation:undefined} onTransfer={transfer} onEnablePriority={enablePriority}/>, 'aftercare') : showOrderResult ? orderDetailsView(<EnrollmentOrderResult enrollmentDetail={!payment} verifiedEmail={detailEmail} order={order} course={resultCourse} classInfo={aftercare?.currentClass}
         classState={aftercare?.originalClassState} language={language} busy={busy}
         refundPath={canConsultRefund ? '/enrollment/mine?'+refundParams.toString() : undefined}
-        balancePath={order.bank&&!classCancelled&&(order.payment?.action==='top_up'||!order.payment&&order.status==='partial')
+        balancePath={!order.paymentPaused&&order.bank&&!classCancelled&&(order.payment?.action==='top_up'||!order.payment&&order.status==='partial')
           ? paymentPath(order.id,order.payment?'balance':'upload',true) : undefined}
         uploadPath={canUpload ? '/enrollment/payment?'+proofParams.toString() : undefined}
        />, 'result') : payment ? <div className={existingTransferOnly ? 'enrollment-order-result enrollment-order-result-shell' : 'contents'}>
@@ -2010,8 +2011,8 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
         <EnrollmentRecordSummary language={language} teacherType={summaryClass?.teacherType} firstLesson={summaryClass?.firstLesson} timeZone={orderTimeZone} title={(summaryClass&&enrollmentClassTitle(summaryClass,language))||t(['班次报名','Class application','Pendaftaran kelas'])}
           status={status} tone={enrollmentOrderTone(order.status,{restored:order.restored,classCancelled})} schedule={summarySchedule}
           sessions={summaryClass?.sessions??resultCourse?.sessions} minutes={summaryClass?.minutes??resultCourse?.minutes}
-          statusSection={{kind:'enrollment',fields:[
-            [t(['付款截止','Payment deadline','Batas pembayaran']),order.status==='awaiting_payment'&&Number.isFinite(Date.parse(order.deadline))&&
+          statusSection={{kind:'enrollment',description:order.paymentPaused&&<p>{t(enrollmentPaymentPausedCopy)}</p>,fields:[
+            [t(['付款截止','Payment deadline','Batas pembayaran']),!order.paymentPaused&&order.status==='awaiting_payment'&&Number.isFinite(Date.parse(order.deadline))&&
               <time dateTime={order.deadline}>{enrollmentDateFormatter(language,'dateTime',orderTimeZone).format(new Date(order.deadline))} {enrollmentTimeZoneLabel(orderTimeZone)}</time>],
           ]}}
           additionalFields={[
@@ -2024,7 +2025,10 @@ export function EnrollmentForm({ classId, language, full = false, demandOnly = f
               amount={Math.max(0,order.price-order.received)} language={language} secondaryLink={cancelAction}>
               <EnrollmentJourneyLink className="enrollment-primary" stepEntry="enrollment-order-payment" to={paymentPath(order.id)}>{paymentLabel}</EnrollmentJourneyLink>
             </EnrollmentPriceActions>
-          : <EnrollmentRecordActions secondary={cancelAction} primary={canUpload&&<EnrollmentJourneyLink className="enrollment-primary" stepEntry="enrollment-order-payment" to={paymentPath(order.id)}>{paymentLabel}</EnrollmentJourneyLink>}/>}
+          : <EnrollmentRecordActions secondary={cancelAction} primary={canUpload&&<EnrollmentJourneyLink className="enrollment-primary"
+            stepEntry={order.paymentPaused?'enrollment-additional-proof':'enrollment-order-payment'} to={paymentPath(order.id,order.paymentPaused?'upload':undefined)}>
+            {order.paymentPaused?t(enrollmentExistingTransferCopy):paymentLabel}
+          </EnrollmentJourneyLink>}/>}
       </>}
       {!showAftercare && !showOrderResult && canConsultRefund && <EnrollmentJourneyLink className="enrollment-quiet" to={'/enrollment/mine?'+refundParams.toString()}>
         {t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}

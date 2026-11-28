@@ -1,3 +1,4 @@
+import {classPaymentClock} from './enrollmentClassTimeSql.ts';
 import type {Express,Request,Response} from 'express';
 import {canManageDashboardKpi,dashboardChannelKey,dashboardScopes,readDashboardFilters,type DashboardCash,type DashboardChange,type DashboardChannelOutcome,type DashboardCohort,type DashboardFilters,
   type DashboardMetrics,type DashboardMovementPage,type DashboardQueueAges,type DashboardReservationOutcome,type DashboardSnapshot,type DashboardSource,type DashboardSources,type DashboardTrend} from '../../src/utils/crmOperationsDashboard.ts';
@@ -97,7 +98,7 @@ async function orderFacts(c:Client,window:Window,filters:DashboardFilters,includ
     (SELECT ${iso('MIN(n.recorded_at)')} FROM enrollment_notification_receipts n WHERE n.subject_id=o.id AND ${confirmation}) AS paidAt,
     CASE WHEN :p5=1 THEN (SELECT ${iso('MIN(p.created_at)')} FROM enrollment_proofs p
       WHERE p.order_id=o.id AND p.created_at>=o.created_at) END AS firstProofAt,
-    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
+    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<${classPaymentClock('b.')}
       AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END AS state,
     CASE WHEN COALESCE(${learnerProfile},'')<>'pending' THEN customer.id END AS learnerId,
     customer.profile->>'$.promotionLinkStatus' AS promotionStatus,customer.profile->>'$.promotionSnapshot.source' AS firstSource,
@@ -380,7 +381,7 @@ async function financeQueue(c:Client,now:number){
     (SELECT COALESCE(SUM(GREATEST(0,CAST(o.price AS SIGNED)-CAST(o.received AS SIGNED))),0)
       FROM enrollment_orders o JOIN enrollment_classes b ON b.id=o.class_id
       WHERE b.state='published' AND (o.state IN ('proof_review','partial') OR
-        o.state='awaiting_payment' AND (o.received>0 OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.upload_expires_at>=UTC_TIMESTAMP(6)))) AS receivable
+        o.state='awaiting_payment' AND (o.received>0 OR o.payment_due_at>=${classPaymentClock('b.')} OR o.upload_expires_at>=UTC_TIMESTAMP(6)))) AS receivable
     FROM enrollment_refund_cases f JOIN enrollment_orders o ON o.id=f.order_id WHERE o.state='refunding'`,
   [marks(now),marks(now-day),marks(now-3*day)]);
   return {pending,oldest,pendingByClass,refunds:Number(r.refunds),refundOutstanding:Number(r.outstanding),receivable:Number(r.receivable),

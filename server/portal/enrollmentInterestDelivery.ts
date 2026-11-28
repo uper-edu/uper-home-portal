@@ -1,4 +1,4 @@
-import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
+import {classOpeningMidnight,classRecruitmentOpen} from './enrollmentClassTimeSql.ts';
 import {demandMatches} from '../../src/utils/enrollmentInterests.ts';
 
 type Client={query:(sql:string,params?:unknown[])=>Promise<{rows:any[]}>};
@@ -16,7 +16,7 @@ export async function enrollmentInterestStillAvailable(c:Client,event:string,rec
     + (SELECT COUNT(*) FROM enrollment_transfer_invitations t WHERE t.target_class_id=e.id AND t.state='offered'
       AND t.expires_at>UTC_TIMESTAMP(6)) AS occupied
     FROM enrollment_classes e JOIN crm_courses course ON course.id=e.course_id
-    WHERE e.id=:p1 AND e.state='published' AND JSON_EXTRACT(course.value,'$.active')=true
+    WHERE e.id=:p1 AND e.state='published' AND ${classRecruitmentOpen('e.')} AND JSON_EXTRACT(course.value,'$.active')=true
       AND LEAST(e.enrollment_closes_at,${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)`,[classId])).rows;
   if(!cohort||Number(cohort.occupied)>=cohort.data.capacity)return false;
 

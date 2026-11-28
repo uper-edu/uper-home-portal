@@ -1,4 +1,4 @@
-import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
+import {classOpeningMidnight,classRecruitmentOpen,classPaymentClock} from './enrollmentClassTimeSql.ts';
 import type { Express, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { demandMatches, enrollmentPhone, enrollmentPhoneDisplay, parseDemand,type PrivateLessonRegistration } from '../../src/utils/enrollmentInterests.ts';
@@ -37,17 +37,18 @@ export async function takenSeats(c: Client, id: string) {
 }
 
 export function allowsEnrollment(cohort: Cohort) {
-  return cohort.state === 'published' && Number(cohort.accepting) === 1 && Number(cohort.course_active) === 1;
+  return cohort.state === 'published' && !cohort.data?.recruitmentPausedAt && Number(cohort.accepting) === 1 && Number(cohort.course_active) === 1;
 }
 
 // The caller holds the class lock so an upload and an expiry cannot release the same seat.
 export async function expireSeats(c: Client, classId: string) {
   await c.query(`UPDATE enrollment_orders SET state='expired',activity_at=UTC_TIMESTAMP(6),upload_id=NULL,upload_expires_at=NULL
-    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<UTC_TIMESTAMP(6)
+    WHERE class_id=:p1 AND state='awaiting_payment' AND received=0 AND payment_due_at<(SELECT ${classPaymentClock()} FROM enrollment_classes WHERE id=:p1)
       AND (upload_expires_at IS NULL OR upload_expires_at<UTC_TIMESTAMP(6))`, [classId]);
 }
 
 export async function reconcileWaitlist(c: Client, cohort: Cohort, seats: number) {
+  if (cohort.data?.recruitmentPausedAt&&cohort.state!=='cancelled') return;
   if (!allowsEnrollment(cohort)) {
     if (!Number(cohort.accepting) || cohort.state === 'cancelled') {
       await c.query("UPDATE enrollment_waitlist SET state='closed',activity_at=UTC_TIMESTAMP(6) WHERE class_id=:p1 AND state='waiting'", [cohort.id]);
@@ -93,7 +94,7 @@ async function recordDemandMatch(c: Client, demand: Demand, offer: Offer) {
 // Run inside the publication transaction, with the class already locked by the save.
 export async function matchPublishedEnrollmentClass(c: Client, classId: string) {
   const offer=(await c.query(`SELECT id,data FROM enrollment_classes
-    WHERE id=:p1 AND state='published' AND LEAST(enrollment_closes_at, ${classOpeningMidnight()})>UTC_TIMESTAMP(6)`,[classId])).rows[0];
+    WHERE id=:p1 AND state='published' AND ${classRecruitmentOpen()} AND LEAST(enrollment_closes_at, ${classOpeningMidnight()})>UTC_TIMESTAMP(6)`,[classId])).rows[0];
   if (!offer) return;
   await expireSeats(c,classId);
   if (await takenSeats(c,classId)>=offer.data.capacity) return;
@@ -116,7 +117,7 @@ export function startEnrollmentVacancySimulation(transact:Context['transact'],lo
       if(!await enabled())return;
       const candidates=await transact(async c=>(await c.query(`SELECT e.id AS class_id FROM enrollment_classes e
         LEFT JOIN enrollment_vacancy_cycles v ON v.class_id=e.id
-        WHERE (e.state='published' AND EXISTS (
+        WHERE (e.state='published' AND ${classRecruitmentOpen('e.')} AND EXISTS (
           SELECT 1 FROM enrollment_orders o WHERE o.class_id=e.id AND o.state='awaiting_payment' AND o.received=0
             AND o.payment_due_at<UTC_TIMESTAMP(6) AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6))
         )) OR ((v.is_full=TRUE OR e.state='cancelled'
@@ -142,7 +143,7 @@ export function startEnrollmentVacancySimulation(transact:Context['transact'],lo
 
 async function offers(c: Client) {
   return (await c.query(`SELECT e.id,e.data FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
-    WHERE e.state='published' AND LEAST(e.enrollment_closes_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6) AND JSON_EXTRACT(c.value,'$.active')=true
+    WHERE e.state='published' AND ${classRecruitmentOpen('e.')} AND LEAST(e.enrollment_closes_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6) AND JSON_EXTRACT(c.value,'$.active')=true
     AND (SELECT COUNT(*) FROM enrollment_orders o WHERE o.class_id=e.id AND o.state NOT IN ('expired','ended','refunding','refunded')
       AND (o.state<>'awaiting_payment' OR o.payment_due_at>=UTC_TIMESTAMP(6) OR o.received>0 OR o.upload_expires_at>=UTC_TIMESTAMP(6))) + (SELECT COUNT(*) FROM enrollment_transfer_invitations i
           WHERE i.target_class_id=e.id AND i.state='offered' AND i.expires_at>UTC_TIMESTAMP(6))

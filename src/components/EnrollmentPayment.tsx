@@ -10,7 +10,7 @@ import {nextPaymentClockDelay,paymentMinuteMs} from '../utils/enrollmentPaymentC
 import {EnrollmentJoiningNote} from './EnrollmentJoiningNote';
 import {hasEnrollmentBankPlaceholder,type EnrollmentBank} from '../utils/enrollmentBank';
 import {enrollmentProofAccept,enrollmentProofSelectionIssue} from '../utils/enrollmentProofFile';
-import type {EnrollmentLearnerPayment,EnrollmentLearnerTransfer,EnrollmentProofDraft,EnrollmentProofSubmission} from '../utils/enrollmentLearnerPayments';
+import {enrollmentExistingTransferCopy,enrollmentPaymentPausedCopy,type EnrollmentLearnerPayment,type EnrollmentLearnerTransfer,type EnrollmentProofDraft,type EnrollmentProofSubmission} from '../utils/enrollmentLearnerPayments';
 
 export type EnrollmentOrder = {
   id: string;
@@ -30,6 +30,7 @@ export type EnrollmentOrder = {
   bankDetailsInvalid?: boolean;
   serverClockOffsetMs?: number;
   payment?: EnrollmentLearnerPayment;
+  paymentPaused?: boolean;
   transfers?: EnrollmentLearnerTransfer[];
 };
 
@@ -64,9 +65,9 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
   const clockOffset = order.serverClockOffsetMs ?? 0;
   const serverNow = now + clockOffset;
   const awaitingPayment = order.status === 'awaiting_payment';
-  const hasDeadline=awaitingPayment||showTopUp&&order.status==='proof_review';
+  const hasDeadline=!order.paymentPaused&&(awaitingPayment||showTopUp&&order.status==='proof_review');
   const deadlinePassed = hasDeadline && Number.isFinite(deadline.valueOf()) && serverNow >= deadline.valueOf();
-  const bank = deadlinePassed || existingTransferOnly ? undefined : order.bank;
+  const bank = deadlinePassed || existingTransferOnly || order.paymentPaused ? undefined : order.bank;
   const hasBalance = !!bank && (awaitingPayment || showTopUp || order.status === 'partial'&&!order.payment);
   const cohort=classInfo?{...course,...classInfo}:course;
   const timeZone=cohort?.timeZone??order.timeZone;
@@ -194,7 +195,8 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
         {hasEnrollmentBankPlaceholder(bank)&&<p className="enrollment-payment-test-note">{t('模拟账号，请勿转账。', 'Test account. Do not transfer funds.', 'Rekening uji. Jangan transfer dana.')}</p>}
       </section>
     </> : <div className="enrollment-payment-summary">
-      {existingTransferOnly || deadlinePassed ? <p>{t('原付款入口已关闭。此处可提交已发生的转账记录。','The original payment link is closed. Only submit proof of a transfer you already made.','Pembayaran awal telah ditutup. Kirim bukti transfer yang sudah dilakukan.')}</p>
+      {order.paymentPaused ? <p>{t(...enrollmentPaymentPausedCopy)}</p>
+        : existingTransferOnly || deadlinePassed ? <p>{t('原付款入口已关闭。此处可提交已发生的转账记录。','The original payment link is closed. Only submit proof of a transfer you already made.','Pembayaran awal telah ditutup. Kirim bukti transfer yang sudah dilakukan.')}</p>
         : supplementOnly ? <p>{t('这里仅用于提交已经转账的凭证。','Use this page to submit proof of a transfer you already made.','Gunakan halaman ini untuk mengirim bukti transfer yang sudah dilakukan.')}</p>
         : order.bankDetailsInvalid ? <p role="status">{t('暂时无法读取收款资料。请刷新状态后再转账。','Bank details are temporarily unavailable. Refresh the status before transferring funds.','Informasi rekening belum dapat dimuat. Muat ulang status sebelum transfer.')}</p>
         : <p>{t('实际到账', 'Verified receipts', 'Dana terverifikasi')} · {formatCurrency(order.received, language)}</p>}
@@ -254,7 +256,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
         <button className="enrollment-primary" type="submit" disabled={busy || !file || !newTransfer&&!selectedTransfer} aria-busy={submittingProof}>{submittingProof
           ? t('正在提交凭证…','Submitting proof…','Mengirim bukti…')
           : existingTransferOnly
-          ? t('提交已转账凭证','Submit proof of an existing transfer','Kirim bukti transfer yang sudah dilakukan')
+          ? t(...enrollmentExistingTransferCopy)
           : proofUploadFailed ? t('重新提交凭证','Retry proof submission','Coba kirim bukti lagi')
             : t('提交凭证', 'Submit proof', 'Kirim bukti')}</button>
       </div>

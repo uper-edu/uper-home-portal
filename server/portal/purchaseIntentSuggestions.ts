@@ -1,3 +1,4 @@
+import {classPaymentClock} from './enrollmentClassTimeSql.ts';
 import {createHash} from 'node:crypto';
 import {enrollmentOpportunityLevels} from '../../src/utils/enrollmentCatalog.ts';
 import {permittedRecord} from '../../src/utils/accessControl.ts';
@@ -94,7 +95,7 @@ const reviewSql=`SELECT lead_id,data FROM crm_facts
 const enrollmentSql=`SELECT r.lead_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%s.%fZ') AS submitted_at,
     COALESCE(o.level,b.data->>'$.level',d.criteria->>'$.level') AS level,
     (e.state IN ('partial','proof_review') OR (e.state='awaiting_payment' AND
-      (e.received>0 OR e.payment_due_at>=UTC_TIMESTAMP(6) OR e.upload_expires_at>=UTC_TIMESTAMP(6)))
+      (e.received>0 OR e.payment_due_at>=${classPaymentClock('b.')} OR e.upload_expires_at>=UTC_TIMESTAMP(6)))
       OR w.state='waiting' OR d.state='active') AS in_progress
   FROM enrollment_customer_records r
   LEFT JOIN enrollment_opportunities o ON o.id=r.opportunity_id

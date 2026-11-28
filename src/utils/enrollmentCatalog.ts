@@ -51,6 +51,7 @@ export interface EnrollmentClassAdmin extends EnrollmentClassConfig {
   revision: number;
   state: 'draft' | 'published' | 'cancelled';
   opened?: boolean;
+  recruitmentPausedAt?: string;
   canDelete?: boolean;
   hasOrders?: boolean;
 }

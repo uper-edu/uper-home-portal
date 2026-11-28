@@ -1,3 +1,4 @@
+import {classPaymentClock} from './enrollmentClassTimeSql.ts';
 import type { Express, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { allowed, type Employee } from './identity.ts';
@@ -107,7 +108,7 @@ export async function recordEnrollmentCustomer(c: Client, record: Submission) {
 }
 
 const courseRecords = `SELECT r.kind,r.record_id,r.opportunity_id,DATE_FORMAT(r.created_at,'%Y-%m-%dT%H:%i:%sZ') AS record_created_at_iso,
-    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
+    CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<${classPaymentClock('b.')}
       AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired'
       ELSE COALESCE(o.state,w.state,d.state) END AS state,
     o.price,o.received,COALESCE(o.data->>'$.name',w.learner_name,d.criteria->>'$.appointment.learnerName') AS learner_name,COALESCE(o.email,w.email,d.email) AS enrollment_email,

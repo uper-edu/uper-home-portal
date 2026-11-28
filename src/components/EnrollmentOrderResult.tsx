@@ -11,6 +11,7 @@ import type {AftercareCourse} from '../utils/enrollmentAftercare';
 import {enrollmentOrderTone} from '../utils/enrollmentOrderStatus';
 import {EnrollmentPaymentInformation,EnrollmentSubmittedTransfers} from './EnrollmentPaymentInformation';
 import {enrollmentDateFormatter,enrollmentTimeZoneLabel} from '../utils/enrollmentDateFormat';
+import {enrollmentExistingTransferCopy,enrollmentPaymentPausedCopy} from '../utils/enrollmentLearnerPayments';
 
 type Copy = readonly [string, string, string];
 
@@ -48,7 +49,7 @@ export function EnrollmentOrderResult({ order, enrollmentDetail, verifiedEmail, 
     to={enrollmentSupportPath('payment',language)}>{support}</EnrollmentJourneyLink>;
   const proofAction=!payableBalance&&uploadPath&&<EnrollmentJourneyLink className="enrollment-outline enrollment-proof-follow-up"
     stepEntry="enrollment-additional-proof" to={uploadPath}>
-    {t(['补交已转账凭证','Submit proof for an existing transfer','Kirim bukti transfer yang sudah dilakukan'])}
+    {order.paymentPaused?t(enrollmentExistingTransferCopy):t(['补交已转账凭证','Submit proof for an existing transfer','Kirim bukti transfer yang sudah dilakukan'])}
   </EnrollmentJourneyLink>;
   const refundAction=refundPath&&<EnrollmentJourneyLink className="enrollment-quiet" to={refundPath}>
     {t(['退款咨询','Refund assistance','Bantuan pengembalian dana'])}
@@ -68,7 +69,7 @@ export function EnrollmentOrderResult({ order, enrollmentDetail, verifiedEmail, 
     <div className="enrollment-result-body">
       <EnrollmentRecordSummary language={language} timeZone={timeZone} teacherType={classInfo?.teacherType??course?.teacherType} firstLesson={!cancelled?firstLesson:undefined} title={title||t(['班次报名','Class application','Pendaftaran kelas'])} schedule={schedule}
         sessions={classInfo?.sessions??course?.sessions} minutes={classInfo?.minutes??course?.minutes}
-        statusSection={enrollmentDetail?{kind:'enrollment',description:reviewDescription,fields:[
+        statusSection={enrollmentDetail?{kind:'enrollment',description:order.paymentPaused?<p>{t(enrollmentPaymentPausedCopy)}</p>:reviewDescription,fields:[
           [t(['付款截止','Payment deadline','Batas pembayaran']),hasReviewDeadline&&<time dateTime={order.deadline}>
             {enrollmentDateFormatter(language,'dateTime',timeZone).format(new Date(order.deadline))} {enrollmentTimeZoneLabel(timeZone)}
           </time>],
@@ -84,7 +85,7 @@ export function EnrollmentOrderResult({ order, enrollmentDetail, verifiedEmail, 
           now={openingClock} language={language}/>}
       </EnrollmentRecordSummary>
       <EnrollmentPaymentInformation order={order} language={language} includeBalance={!payableBalance}/>
-      {paymentWaiting&&!payableBalance&&<p>{t(['请等待核验。如果已有转账，可以提交对应凭证。','Please wait for verification. If you already transferred funds, you can submit the proof.','Tunggu hasil verifikasi. Jika sudah transfer, Anda dapat mengirim buktinya.'])}</p>}
+      {paymentWaiting&&!payableBalance&&!order.paymentPaused&&<p>{t(['请等待核验。如果已有转账，可以提交对应凭证。','Please wait for verification. If you already transferred funds, you can submit the proof.','Tunggu hasil verifikasi. Jika sudah transfer, Anda dapat mengirim buktinya.'])}</p>}
       <EnrollmentSubmittedTransfers transfers={order.transfers} language={language} timeZone={timeZone}/>
       <EnrollmentOrderInformation order={order} language={language} verifiedEmail={verifiedEmail}/>
       {inReview&&!enrollmentDetail&&<section className="enrollment-detail-section">

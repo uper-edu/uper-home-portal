@@ -108,10 +108,11 @@ const classFiltersDefault={search:'',level:'',format:'',period:'',status:'',date
 const classStatusCopy={
   draft:['Draft','Draf','草稿'],
   published:['Published','Diterbitkan','已发布'],
+  paused:['Enrollment paused','Pendaftaran dijeda','暂停招生'],
   opened:['Confirmed','Dikonfirmasi','已成班'],
   cancelled:['Cancelled','Dibatalkan','已取消'],
 } as const;
-const classStatus=(row:EnrollmentClassAdmin)=>row.state==='published'&&row.opened?'opened':row.state;
+const classStatus=(row:EnrollmentClassAdmin)=>row.state==='published'?(row.recruitmentPausedAt?'paused':row.opened?'opened':'published'):row.state;
 const initial: ClassDraftConfig = {
   courseId: '', level: 'HSK 1', format: 'standard', period: '',
   firstLesson: '', enrollmentCloses: '', enrollmentClosesMode:'automatic', schedule: '',
@@ -144,6 +145,7 @@ export function CrmEnrollmentClasses({ lang, isLight, canSales, secondaryActions
   const createOpened=useRef<string|undefined>(undefined);
   const [dirty, setDirty] = useState(false);
   const [discard, setDiscard] = useState(false);
+  const [recruitment,setRecruitment]=useState<{row:EnrollmentClassAdmin;paused:boolean;requestId:string}>();
   const [closing, setClosing] = useState<{id:string;requestId:string}>();
   const [deleting,setDeleting]=useState<{row:EnrollmentClassAdmin;requestId:string}>();
   const [deleteUnknown,setDeleteUnknown]=useState(false);
@@ -583,15 +585,18 @@ export function CrmEnrollmentClasses({ lang, isLight, canSales, secondaryActions
           {teacherType}{teacherType&&teacherDetail&&' · '}
           {row.teacherId?teacherDetail:<AdminStatus tone="danger" showDot={false}>{teacherDetail}</AdminStatus>}
         </small></>}</td><td>{firstSession}{schedule&&<><br/>{schedule.replace(/ (?:WIB|WAT)$/u,'')}</>}</td>
-        <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus showDot={false} tone={row.opened||row.state==='published'?'success':'neutral'}>{t(classStatusCopy[classStatus(row)])}</AdminStatus></td>
+        <td className="crm-list-number">{formatCurrency(row.price, lang)}</td><td><AdminStatus showDot={false} tone={classStatus(row)==='paused'?'warning':row.opened||row.state==='published'?'success':'neutral'}>{t(classStatusCopy[classStatus(row)])}</AdminStatus></td>
         <td><div className="flex flex-wrap items-center gap-x-3 gap-y-1">{canSales&&row.state!=='draft'&&<AdminRowAction href={enrollmentClassManagementPath(row.id)} title={t(['View enrollments','Lihat pendaftaran','查看报名'])}>{t(['View','Lihat','查看'])}</AdminRowAction>}
           {row.state!=='cancelled' && <AdminRowAction disabled={readState==='error'} onClick={() => edit(row)}>{t(['Edit', 'Ubah', '编辑'])}</AdminRowAction>}
           {row.canDelete&&<AdminRowAction title={t(['Delete draft','Hapus draf','删除班次草稿'])} disabled={readState!=='ready'} onClick={()=>{
             setDeleted(false);setDeleteError('');setDeleteUnknown(false);
             setDeleting({row,requestId:crypto.randomUUID()});
           }}>{t(['Delete','Hapus','删除'])}</AdminRowAction>}
-          {row.state==='published'&&!row.opened&&<AdminSecondaryActions alwaysMenu disabled={readState==='error'} label={t(['More actions','Tindakan lain','更多操作'])}>
-            <button type="button" onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>{t(['Cancel class','Batalkan kelas','取消班次'])}</button>
+          {row.state==='published'&&<AdminSecondaryActions alwaysMenu disabled={readState==='error'} label={t(['More actions','Tindakan lain','更多操作'])}>
+            <button type="button" onClick={()=>setRecruitment({row,paused:!row.recruitmentPausedAt,requestId:crypto.randomUUID()})}>
+              {row.recruitmentPausedAt?t(['Resume enrollment','Lanjutkan pendaftaran','恢复招生']):t(['Pause enrollment','Jeda pendaftaran','暂停招生'])}
+            </button>
+            {!row.opened&&<button type="button" onClick={()=>setClosing({id:row.id,requestId:crypto.randomUUID()})}>{t(['Cancel class','Batalkan kelas','取消班次'])}</button>}
           </AdminSecondaryActions>}</div></td>
       </tr>)}</AdminListTable>}
     {draft&&!preview&&!quoteTemplateId&&<AdminEditor variant="drawer" responsiveForm required className="crm-course-editor"
@@ -841,6 +846,29 @@ export function CrmEnrollmentClasses({ lang, isLight, canSales, secondaryActions
       onCancel={()=>{if(!deletingInFlight.current)setDeleting(undefined);}} onConfirm={()=>void deleteClass()}>
       {deleteError&&<p role="alert">{deleteError}</p>}
     </AdminConfirmation>}
+    {recruitment&&<AdminConfirmation light={isLight} busy={busy}
+      title={recruitment.paused?t(['Pause enrollment?','Jeda pendaftaran?','暂停招生？']):t(['Resume enrollment?','Lanjutkan pendaftaran?','恢复招生？'])}
+      description={recruitment.paused?t([
+        'This class will be hidden from public enrollment and recommendations. Existing seats are held and payment time stops. Learners can still submit proof for transfers already made.',
+        'Kelas ini disembunyikan dari pendaftaran publik dan rekomendasi. Kursi tetap disimpan dan waktu pembayaran dijeda. Bukti transfer yang sudah dilakukan tetap dapat dikirim.',
+        '班次将从公开报名和推荐下架。已有席位继续保留，付款倒计时暂停。已转账的学员仍可提交凭证。',
+      ]):t([
+        'Existing payment time continues from where it stopped. Public enrollment reopens if the registration window is still open.',
+        'Sisa waktu pembayaran dilanjutkan. Pendaftaran publik dibuka kembali jika masa pendaftaran masih berlaku.',
+        '已有订单从剩余付款时间继续计时。仍在报名期内的班次将重新开放。',
+      ])}
+      cancelLabel={t(['Back','Kembali','返回'])}
+      confirmLabel={recruitment.paused?t(['Pause enrollment','Jeda pendaftaran','暂停招生']):t(['Resume enrollment','Lanjutkan pendaftaran','恢复招生'])}
+      onCancel={()=>{if(!busy)setRecruitment(undefined);}}
+      onConfirm={()=>{
+        if(busy)return;
+        const {row,paused,requestId}=recruitment;
+        setBusy(true);setError('');
+        void enrollmentPost(endpoint+'/'+row.id+'/recruitment',{paused,revision:row.revision,requestId})
+          .then(async()=>{setRecruitment(undefined);setSaved(true);await load();})
+          .catch(()=>{setRecruitment(undefined);setError(t(['Refresh to check the current enrollment state.','Segarkan untuk memeriksa status pendaftaran.','请刷新核对当前招生状态。']));})
+          .finally(()=>setBusy(false));
+      }}/>}
     {closing&&<AdminDiscardDialog lang={lang} isLight={isLight}
       title={t(['Cancel this class?','Batalkan kelas ini?','取消这个班次？'])}
       description={t(['Stops new applications and payments. Existing payment records stay available.','Pendaftaran dan pembayaran baru dihentikan. Riwayat pembayaran tetap tersedia.','关闭新报名和转账入口，保留已有付款记录。'])}

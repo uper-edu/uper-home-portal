@@ -12,3 +12,11 @@ export function classFirstLessonLocal(alias=''){
 export function classOpeningMidnight(alias=''){
   return `TIMESTAMPADD(HOUR,-${classOffset(alias)},DATE(${classFirstLessonLocal(alias)}))`;
 }
+
+export function classRecruitmentOpen(alias=''){
+  return `(${alias}data->>'$.recruitmentPausedAt' IS NULL)`;
+}
+
+export function classPaymentClock(alias=''){
+  return `COALESCE(CAST(${alias}data->>'$.recruitmentPausedAt' AS DATETIME(6)),UTC_TIMESTAMP(6))`;
+}

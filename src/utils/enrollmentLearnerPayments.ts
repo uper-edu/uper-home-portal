@@ -1,3 +1,13 @@
+export const enrollmentPaymentPausedCopy = [
+  '付款已暂停。席位和剩余付款时间保留。请暂勿转账，已转账的学员仍可提交凭证。',
+  'Payment is paused. Your seat and remaining payment time are reserved. Please wait to transfer funds. You can still submit proof of a transfer you already made.',
+  'Pembayaran dijeda. Kursi dan sisa waktu pembayaran Anda tetap disimpan. Tunda transfer. Jika sudah transfer, Anda tetap dapat mengirim buktinya.',
+] as const;
+
+export const enrollmentExistingTransferCopy = [
+  '提交已转账凭证', 'Submit proof of an existing transfer', 'Kirim bukti transfer yang sudah dilakukan',
+] as const;
+
 export type EnrollmentLearnerPayment = {
   balance: number | null;
   estimated: boolean;

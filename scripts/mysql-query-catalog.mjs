@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import { validateSql } from "../cloud/mysql/sql.mjs";
-import {classFirstLessonLocal,classOpeningMidnight} from '../server/portal/enrollmentClassTimeSql.ts';
+import {classFirstLessonLocal,classOpeningMidnight,classRecruitmentOpen,classPaymentClock} from '../server/portal/enrollmentClassTimeSql.ts';
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
 const sources = fs
@@ -21,7 +21,7 @@ const sources = fs
     "scripts/crm-channel-map.ts",
   ]);
 const catalog = {};
-const classTimeSql = {classFirstLessonLocal,classOpeningMidnight};
+const classTimeSql = {classFirstLessonLocal,classOpeningMidnight,classRecruitmentOpen,classPaymentClock};
 function staticSql(node) {
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
   if (!ts.isTemplateExpression(node)) return;

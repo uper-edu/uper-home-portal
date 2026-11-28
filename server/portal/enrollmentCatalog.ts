@@ -1,6 +1,6 @@
 import {academicManagePermission} from '../../src/utils/accessControl.ts';
 import {enrollmentTimeZone,isEnrollmentClassTimeZone} from '../../src/utils/enrollmentDateFormat.ts';
-import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
+import {classRecruitmentOpen,classOpeningMidnight} from './enrollmentClassTimeSql.ts';
 import {portalPublicOrigin} from './enrollmentEmail.ts';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
@@ -56,7 +56,7 @@ export async function readPublicEnrollmentClasses(c: Parameters<Parameters<typeo
       FROM enrollment_classes e
       JOIN crm_courses c ON c.id=e.course_id
       LEFT JOIN enrollment_class_openings g ON g.class_id=e.id
-      WHERE e.state='published' AND LEAST(e.enrollment_closes_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)
+      WHERE e.state='published' AND ${classRecruitmentOpen('e.')} AND LEAST(e.enrollment_closes_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)
         AND JSON_EXTRACT(c.value,'$.active')=true
         AND (:p1 IS NULL OR e.id IN (:p2))
       ORDER BY e.first_lesson_at,e.id
@@ -80,7 +80,7 @@ export async function readPublicEnrollmentClassReference(c: Parameters<Parameter
   const row = (await c.query(`
     SELECT e.data
     FROM enrollment_classes e JOIN crm_courses c ON c.id=e.course_id
-    WHERE e.id=:p1 AND e.state='published'
+    WHERE e.id=:p1 AND e.state='published' AND ${classRecruitmentOpen('e.')}
       AND LEAST(e.enrollment_closes_at, ${classOpeningMidnight('e.')})>UTC_TIMESTAMP(6)
       AND JSON_EXTRACT(c.value,'$.active')=true
   `, [classId])).rows[0] as {data: EnrollmentClassConfig} | undefined;
@@ -218,7 +218,8 @@ export function mountEnrollmentCatalog(app: Express, { wrap, staff }: {
         await c.query('UPDATE portal_settings SET value=:p2 WHERE id=:p1',[key,{...counter,last:data.batchNumber}]);
       }
       const revision = body.revision + 1;
-      const fields = [data.courseId, revision, body.state, enrollmentInstant(data.firstLesson,data.timeZone), enrollmentInstant(data.enrollmentCloses,data.timeZone), data];
+      const fields = [data.courseId, revision, body.state, enrollmentInstant(data.firstLesson,data.timeZone), enrollmentInstant(data.enrollmentCloses,data.timeZone),
+        current?.data.recruitmentPausedAt?{...data,recruitmentPausedAt:current.data.recruitmentPausedAt}:data];
       if (current) {
         await c.query('UPDATE enrollment_classes SET course_id=:p1,revision=:p2,state=:p3,first_lesson_at=:p4,enrollment_closes_at=:p5,data=:p6,updated_at=UTC_TIMESTAMP(6) WHERE id=:p7', [...fields, body.id]);
       } else {

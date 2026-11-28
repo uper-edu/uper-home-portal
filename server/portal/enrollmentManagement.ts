@@ -1,4 +1,4 @@
-import {classOpeningMidnight} from './enrollmentClassTimeSql.ts';
+import {classOpeningMidnight,classPaymentClock,classRecruitmentOpen} from './enrollmentClassTimeSql.ts';
 import type { Express, Request, Response } from 'express';
 import { allowed, type Employee } from './identity.ts';
 import { permittedRecord } from '../../src/utils/accessControl.ts';
@@ -14,12 +14,12 @@ type Wrap=(handler:(q:Request,r:Response)=>Promise<unknown>)=>(q:Request,r:Respo
 type Scope=ReturnType<typeof enrollmentManagementScopes>;
 
 // Keep the live view read-only. Use the admission deadline rules even if the expiry worker has not run yet.
-const orderState=`CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<UTC_TIMESTAMP(6)
+const orderState=`CASE WHEN o.state='awaiting_payment' AND o.received=0 AND o.payment_due_at<${classPaymentClock('order_class.')}
   AND (o.upload_expires_at IS NULL OR o.upload_expires_at<UTC_TIMESTAMP(6)) THEN 'expired' ELSE o.state END`;
 const inviteDeadline=`LEAST(i.expires_at,${classOpeningMidnight('b.')})`;
 const orders=`SELECT o.class_id,o.id,o.id AS record_id,'order' AS kind,${orderState} AS state,
     o.data->>'$.name' AS name,o.email,o.data->>'$.phone' AS phone,o.price,o.received,o.payment_due_at AS due_at,o.data->>'$.closureReason' AS recorded_closure
-  FROM enrollment_orders o WHERE (:p1 IS NULL OR o.class_id=:p1)`;
+  FROM enrollment_orders o JOIN enrollment_classes order_class ON order_class.id=o.class_id WHERE (:p1 IS NULL OR o.class_id=:p1)`;
 const waitlist=`SELECT w.class_id,w.id,w.id AS record_id,'waitlist' AS kind,w.state,w.learner_name AS name,
     w.email,w.phone,NULL AS price,NULL AS received,NULL AS due_at,NULL AS recorded_closure
   FROM enrollment_waitlist w WHERE (:p1 IS NULL OR w.class_id=:p1)`;
@@ -46,7 +46,7 @@ export async function readEnrollmentManagementSummaries(c:Client,actor:Employee,
       WHERE customer.profile->>'$.owner'=:p3
     )
     SELECT b.id,b.state,b.data,b.first_lesson_at,g.class_id IS NOT NULL AS opened,
-      b.state='published' AND JSON_EXTRACT(course.value,'$.active')=true
+      b.state='published' AND ${classRecruitmentOpen('b.')} AND JSON_EXTRACT(course.value,'$.active')=true
         AND LEAST(b.enrollment_closes_at,${classOpeningMidnight('b.')})>UTC_TIMESTAMP(6) AS accepting,
       counts.state AS entry_state,counts.amount
     FROM enrollment_classes b JOIN crm_courses course ON course.id=b.course_id
@@ -113,7 +113,7 @@ export function mountEnrollmentManagement(app:Express,wrap:Wrap,staff:(q:Request
       if(!cohort)invalid('enrollment_management_class_not_found',404);
       if(scope.operations&&cohort.status!=='cancelled'){
         const offer=(await c.query(`SELECT b.data FROM enrollment_classes b JOIN crm_courses course ON b.course_id=course.id
-          WHERE b.id=:p1 AND b.state='published' AND JSON_EXTRACT(course.value,'$.active')=true`,[id])).rows[0]?.data;
+          WHERE b.id=:p1 AND b.state='published' AND ${classRecruitmentOpen('b.')} AND JSON_EXTRACT(course.value,'$.active')=true`,[id])).rows[0]?.data;
         if(offer&&isEnrollmentInsertionWindow(offer)&&(await enrollmentReadiness(c)).accepting)
           cohort.insertionPrice=offer.price;
       }

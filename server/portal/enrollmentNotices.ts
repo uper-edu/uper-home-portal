@@ -1,4 +1,5 @@
 import {enrollmentTimeZone,enrollmentTimeZoneLabel} from '../../src/utils/enrollmentDateFormat.ts';
+import {classPaymentClock} from './enrollmentClassTimeSql.ts';
 import {createHash} from 'node:crypto';
 import {enrollmentMailDeliveryState,enrollmentMailbox} from './enrollmentMail.ts';
 import {smtpRecipientPolicy} from './enrollmentMailRecipientPolicy.ts';
@@ -99,11 +100,12 @@ export async function proofNotices(c:Client,orderId:string,classId:string,digest
 }
 export async function classOpeningNotices(c:Client,cohort:any) {
   const {rows}=await c.query(`SELECT
-    SUM(state IN ('paid','recovered')) AS paid,
-    COALESCE(SUM(received),0) AS received,
-    SUM(received=0 AND state='awaiting_payment' AND payment_due_at>=UTC_TIMESTAMP(6)) AS waiting,
+    SUM(o.state IN ('paid','recovered')) AS paid,
+    COALESCE(SUM(o.received),0) AS received,
+    SUM(o.received=0 AND o.state='awaiting_payment' AND o.payment_due_at>=${classPaymentClock('e.')}) AS waiting,
     DATE_FORMAT(UTC_TIMESTAMP(6),'%Y-%m-%d %H:%i:%s.%f') AS cutoff
-    FROM enrollment_orders o WHERE class_id=:p1 AND state NOT IN ('refunding','refunded')`,[cohort.id]);
+    FROM enrollment_orders o JOIN enrollment_classes e ON e.id=o.class_id
+    WHERE o.class_id=:p1 AND o.state NOT IN ('refunding','refunded')`,[cohort.id]);
   const [totals]=rows;
   const {pendingParticipants,pendingAmount,pendingUnknownCount}=await pendingEnrollmentProofTotals(c,totals.cutoff,cohort.id);
   await record(c,'lark:class:'+cohort.id,'lark','class_confirmed',cohort.id,{
