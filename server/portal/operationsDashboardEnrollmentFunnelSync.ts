@@ -2,8 +2,8 @@ import {dashboardDate,dashboardDay} from '../../src/utils/crmOperationsDashboard
 import analytics from '../../src/data/analyticsEnvironments.json';
 import {parseEnrollmentFunnelReport,readEnrollmentFunnelRevisions,storeEnrollmentFunnel} from './operationsDashboardEnrollmentFunnel.ts';
 
-const firstFullWibDate='2026-11-27';
-const streamId=analytics.environments.test.streamId;
+type FunnelEnvironment='dev'|'test';
+const firstFullWibDate={dev:'2026-11-26',test:'2026-11-27'};
 export const testFunnelProject='uper-analytics-test-'+analytics.environments.test.propertyId;
 const testFunnelDataset='analytics_'+analytics.environments.test.propertyId;
 const projectUrl='https://bigquery.googleapis.com/bigquery/v2/projects/'+testFunnelProject;
@@ -23,31 +23,32 @@ const nextDay=(day:string)=>new Date(Date.parse(day+'T00:00:00Z')+dashboardDay).
 export async function syncTestEnrollmentFunnel(
   {db,transaction}:Store,
   {tableRevision,readReport}:{tableRevision:TableRevision;readReport:ReadReport},
-  {clock=Date.now,preview=false}={},
+  {clock=Date.now,preview=false,environment='test',latestOnly=false}: {clock?:()=>number;preview?:boolean;environment?:FunnelEnvironment;latestOnly?:boolean}={},
 ){
   const now=clock();
   const yesterday=dashboardDate(now-dashboardDay);
-  const cohorts=[4,3,2].map(days=>dashboardDate(now-days*dashboardDay)).filter(day=>day>=firstFullWibDate);
-  const tableDays=[...new Set([...cohorts,...cohorts.map(nextDay),yesterday].filter(day=>day>=firstFullWibDate))].sort();
+  const cohorts=[4,3,2].map(days=>dashboardDate(now-days*dashboardDay)).filter(day=>day>=firstFullWibDate[environment]);
+  const tableDays=[...new Set([...cohorts,...cohorts.map(nextDay),yesterday].filter(day=>day>=firstFullWibDate[environment]))].sort();
   const tables=new Map(await Promise.all(tableDays.map(async day=>[day,await tableRevision(day)] as const)));
-  const available=cohorts.filter(day=>tables.get(day)&&tables.get(nextDay(day)));
-  const pending=cohorts.filter(day=>!available.includes(day));
+  const ready=cohorts.filter(day=>tables.get(day)&&tables.get(nextDay(day)));
+  const available=latestOnly?ready.slice(-1):ready;
+  const pending=cohorts.filter(day=>!ready.includes(day));
   const observed=tableDays.filter(day=>tables.get(day));
   if(!available.length)return {observed,pending,synced:[],preview};
 
   const versions=new Map(available.map(day=>[day,tables.get(day)+'/'+tables.get(nextDay(day))]));
-  const saved=await readEnrollmentFunnelRevisions(db,'test',available[0],available.at(-1)!);
+  const saved=await readEnrollmentFunnelRevisions(db,environment,available[0],available.at(-1)!);
   const changed=available.filter(day=>saved.get(day)!==versions.get(day));
   if(!changed.length)return {observed,pending,synced:[],preview};
 
   const [from,to]=[changed[0],changed.at(-1)!];
   const expected=available.filter(day=>day>=from&&day<=to);
-  const days=parseEnrollmentFunnelReport(await readReport(from,to),'test',clock());
+  const days=parseEnrollmentFunnelReport(await readReport(from,to),environment,clock());
   if(days.length!==expected.length||days.some(({date},index)=>date!==expected[index]))
     throw Error('BigQuery enrollment coverage changed during sync');
 
   const changedDays=days.filter(({date})=>changed.includes(date)).map(day=>({...day,sourceRevision:versions.get(day.date)!}));
-  if(!preview)await transaction(c=>storeEnrollmentFunnel(c,'test',changedDays));
+  if(!preview)await transaction(c=>storeEnrollmentFunnel(c,environment,changedDays));
   return {observed,pending,synced:changed,preview};
 }
 
@@ -61,7 +62,7 @@ function record(fields:Field[],row:{f:Cell[]}):Record<string,unknown>{
   }));
 }
 
-export function testEnrollmentFunnelBigQuery(token:string,sql:string,request=fetch){
+export function testEnrollmentFunnelBigQuery(token:string,sql:string,request=fetch,environment:FunnelEnvironment='test'){
   const headers={Authorization:'Bearer '+token};
   const get=(path:string,init?:RequestInit)=>request(projectUrl+path,{
     ...init,headers:{...headers,...init?.headers},redirect:'error',signal:AbortSignal.timeout(20_000),
@@ -90,7 +91,7 @@ export function testEnrollmentFunnelBigQuery(token:string,sql:string,request=fet
           query:sql.replaceAll('ANALYTICS_DATASET',testFunnelProject+'.'+testFunnelDataset),
           useLegacySql:false,location,maximumBytesBilled:String(maxBytes),timeoutMs:15_000,parameterMode:'NAMED',
           queryParameters:[
-            ['from','DATE',from],['to','DATE',to],['streamId','STRING',streamId],['environment','STRING','test'],
+            ['from','DATE',from],['to','DATE',to],['streamId','STRING',analytics.environments[environment].streamId],['environment','STRING',environment],
           ].map(([name,type,value])=>({name,parameterType:{type},parameterValue:{value}})),
         }),
       });

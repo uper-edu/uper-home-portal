@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {syncTestEnrollmentFunnel,testEnrollmentFunnelBigQuery,testFunnelProject} from '../server/portal/operationsDashboardEnrollmentFunnelSync.ts';
 
-function harness(reportDate='2026-11-29'){
+function harness(reportDate='2026-11-29',environment:'dev'|'test'='test'){
   let now=Date.parse(reportDate+'T08:00:00.000Z');
   const tableRevisions=new Map<string,string>();
   const saved=new Map<string,{date:string;sourceRevision:string}>();
@@ -23,11 +23,11 @@ function harness(reportDate='2026-11-29'){
       async readReport(from,to){
         queries.push([from,to]);
         return [...tableRevisions.keys()].sort().filter(day=>day>=from&&day<=to).map(day=>({
-          version:'1',date:day,environment:'test',streamId:mismatched?'16251883595':'16252453328',
+          version:'1',date:day,environment,streamId:(environment==='dev')!==mismatched?'16251883595':'16252453328',
           fetchedAt:new Date(now).toISOString(),missingSessionViews:'0',campaigns:[],
         }));
       },
-    },{clock:()=>now,preview});
+    },{clock:()=>now,preview,environment});
   }
   return {tableRevisions,saved,queries,inspected,run,rejectOtherStream(){mismatched=true;},
     advance(){now+=86_400_000;}};
@@ -85,4 +85,15 @@ test('BigQuery checks the named daily table and queries only the test project an
   assert.equal(request.maximumBytesBilled,'50000000');
   assert.ok(request.query.includes(testFunnelProject+'.analytics_561827503'));
   assert.equal(request.queryParameters.find((p:{name:string})=>p.name==='streamId').parameterValue.value,'16252453328');
+});
+
+test('UPER Local imports the latest eligible day and revisits changed revisions',async()=>{
+  const h=harness('2026-11-28','dev');
+  h.tableRevisions.set('2026-11-26','first');
+  h.tableRevisions.set('2026-11-27','overnight');
+  assert.deepEqual((await h.run()).synced,['2026-11-26']);
+  assert.deepEqual((await h.run()).synced,[]);
+  h.tableRevisions.set('2026-11-27','updated');
+  assert.deepEqual((await h.run()).synced,['2026-11-26']);
+  assert.equal(h.saved.get('2026-11-26')?.sourceRevision,'first/updated');
 });
