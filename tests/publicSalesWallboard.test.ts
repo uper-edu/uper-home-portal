@@ -5,11 +5,22 @@ import {salesWallboardSnapshot} from '../src/utils/salesWallboard.ts';
 import type {DashboardSnapshot} from '../src/utils/crmOperationsDashboard.ts';
 import {resolveMetadata} from '../src/utils/siteMetadata.ts';
 
-test('anonymous sales wallboard is limited to company test and excluded from search indexing',()=>{
+test('the retired comparison route returns not-found metadata',()=>{
+  const metadata=resolveMetadata('/sales-new','zh');
+  assert.equal(metadata.indexable,false);
+  assert.equal(metadata.status,404);
+});
+
+test('anonymous sales wallboard is available in company test and local CRM and excluded from search indexing',()=>{
   assert.equal(hasPublicSalesWallboard({PORTAL_ENV:'test',PORTAL_DEPLOYMENT:'company-trial'}),true);
   assert.equal(hasPublicSalesWallboard({PORTAL_ENV:'test'}),false);
   assert.equal(hasPublicSalesWallboard({PORTAL_ENV:'prod',PORTAL_DEPLOYMENT:'production'}),false);
   assert.equal(hasPublicSalesWallboard({PORTAL_ENV:'dev',PORTAL_DEPLOYMENT:'company-trial'}),false);
+  const local={PORTAL_ENV:'dev',TRIAL_DATASET:'local-crm',PORTAL_LOCAL_CUTOVER:'true',
+    MYSQL_TRIAL_SOCKET:'/private/tmp/uper-crm-mysql-local3000.sock'};
+  assert.equal(hasPublicSalesWallboard(local),true);
+  assert.equal(hasPublicSalesWallboard({...local,PORTAL_DEPLOYMENT:'remote-dev'}),false);
+  assert.equal(hasPublicSalesWallboard({...local,PORTAL_LOCAL_CUTOVER:'false'}),false);
   const metadata=resolveMetadata('/sales','zh');
   assert.equal(metadata.indexable,false);
   assert.equal(metadata.status,200);

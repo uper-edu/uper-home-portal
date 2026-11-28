@@ -64,7 +64,7 @@ const StandAloneChat = lazyWithRetry(loadStandaloneChat);
 const CrmWorkbench = lazyWithRetry(() => import('./pages/CrmWorkbench'));
 const AcademicWorkbench = lazyWithRetry(() => import('./pages/AcademicWorkbench'));
 const FinanceWorkbench = lazyWithRetry(() => import('./pages/FinanceWorkbench'));
-const TestSalesWallboard = import.meta.env.MODE==='test'?lazyWithRetry(() => import('./components/crm/CrmOperationsDashboard')
+const SalesWallboard = ['dev','test'].includes(import.meta.env.MODE)?lazyWithRetry(() => import('./components/crm/CrmOperationsDashboard')
   .then(module=>({default:module.PublicSalesWallboard}))) : null;
 const AccessWorkbench = lazyWithRetry(() => import('./pages/AccessWorkbench'));
 const CmsWorkbench = lazyWithRetry(() => import('./pages/CmsWorkbench'));
@@ -140,7 +140,7 @@ export default function App() {
                 <Route path="crm" element={<CrmWorkbench />} />
                 <Route path="academics" element={<AcademicWorkbench />} />
                 <Route path="finance" element={<FinanceWorkbench />} />
-                {TestSalesWallboard&&<Route path={salesWallboardPath} element={<TestSalesWallboard/>}/>}
+                {SalesWallboard&&<Route path={salesWallboardPath} element={<SalesWallboard/>}/>}
                 
                 {/* Standalone Official Website CMS & Media Repository */}
                 <Route path="system" element={<AccessWorkbench />} />

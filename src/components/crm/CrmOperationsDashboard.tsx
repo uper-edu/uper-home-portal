@@ -191,21 +191,45 @@ function Capacity({row,t}:{row:WallboardClass;t:Translate}){
   </>;
 }
 
-function Upcoming({rows,t,lang,limited,onNavigate,pendingByClass}:{rows:WallboardClass[];t:Translate;lang:CrmLanguage;
-  limited?:boolean;onNavigate?:(href:string)=>void;pendingByClass?:Record<string,number>}){
+function Upcoming({rows,t,lang,limited,onNavigate,pendingByClass,publicLayout=false}:{rows:WallboardClass[];t:Translate;lang:CrmLanguage;
+  limited?:boolean;onNavigate?:(href:string)=>void;pendingByClass?:Record<string,number>;publicLayout?:boolean}){
   return <Panel title={t('nextClasses')} aside={<span>{t('last14')}</span>} className="ops-dash-upcoming">
     {rows.length?<ul>{(limited?rows.slice(0,3):rows).map(row=>{
       const gap=enrollmentClassShortfall(row);
+      const title=enrollmentClassTitle(row,lang);
+      const pending=pendingByClass?(Object.hasOwn(pendingByClass,row.id)?pendingByClass[row.id]:0):undefined;
+      const ready=t(row.status==='opened'?'openingDone':'openingGoal');
+      if(publicLayout){
+        const first=crmInstant(row.firstLessonAt);
+        const wib=formatWib(row.firstLessonAt);
+        return <li key={row.id}>
+          <div className="ops-dash-tv-class-priority">
+            <div className="ops-dash-tv-first-class">
+              <span>{t('classStart')}</span>
+              {first?<time dateTime={first.toISOString()} title={wib+' WIB'}>{wib.slice(0,16)} WIB</time>:
+                <span>{t('tvMissingData')}</span>}
+            </div>
+            <span className="ops-dash-tag" data-tone={gap?'warning':'success'}>
+              {gap?<>{t('tvActiveShortage')} <b>{gap} {t('tvLearnerUnit')}</b></>:ready}
+            </span>
+          </div>
+          <p className="ops-dash-class-meta">
+            <strong>{title}</strong>
+            {pending!==undefined&&<small>{t('tvClassPending')} · {pending}</small>}
+          </p>
+          <Capacity row={row} t={t}/>
+        </li>;
+      }
       return <li key={row.id}>
         <div className="ops-dash-class-head">
-          {onNavigate?<Link href={enrollmentClassManagementPath(row.id)} onNavigate={onNavigate}>{enrollmentClassTitle(row,lang)}</Link>:<strong>{enrollmentClassTitle(row,lang)}</strong>}
+          {onNavigate?<Link href={enrollmentClassManagementPath(row.id)} onNavigate={onNavigate}>{title}</Link>:<strong>{title}</strong>}
           <span className="ops-dash-tag" data-tone={gap?'warning':'success'}>
-            {gap?<>{t('missingSeats')} <b>{gap}</b></>:row.status==='opened'?t('openingDone'):t('openingGoal')}
+            {gap?<>{t('missingSeats')} <b>{gap}</b></>:ready}
           </span>
         </div>
         <p className="ops-dash-subvalue ops-dash-class-meta">
           <span>{t('classStart')} · {formatWib(row.firstLessonAt)} WIB</span>
-          {pendingByClass&&<span>{t('tvClassPending')} · {Object.hasOwn(pendingByClass,row.id)?pendingByClass[row.id]:0}</span>}
+          {pending!==undefined&&<span>{t('tvClassPending')} · {pending}</span>}
         </p>
         <Capacity row={row} t={t}/>
       </li>;
@@ -213,7 +237,7 @@ function Upcoming({rows,t,lang,limited,onNavigate,pendingByClass}:{rows:Wallboar
   </Panel>;
 }
 
-function Queue({data,t,wallboard=false,onNavigate,lang='zh'}:{data:Pick<SalesWallboardSnapshot,'queue'|'followup'|'demand'>;t:Translate;wallboard?:boolean;
+function Queue({data,t,wallboard=false,publicLayout=false,onNavigate,lang='zh'}:{data:Pick<SalesWallboardSnapshot,'queue'|'followup'|'demand'>;t:Translate;wallboard?:boolean;publicLayout?:boolean;
   onNavigate?:(href:string)=>void;lang?:CrmLanguage}){
   const rows:[DashboardWord,number|undefined,string?,string?][]=[
     ['review',data.queue?.pending,financePath,wallboard&&data.queue?t('tvCurrentQueueAge')+' · '+data.queue.reviewAges.atLeast72:
@@ -224,12 +248,15 @@ function Queue({data,t,wallboard=false,onNavigate,lang='zh'}:{data:Pick<SalesWal
   if(wallboard)rows.push(['tvPendingSchedule',data.demand?.filter(row=>row.format==='one-on-one'&&row.state==='active')
     .reduce((sum,row)=>sum+row.count,0)]);
   return <Panel title={t('queue')} className="ops-dash-queue">
-    <ul>{rows.map(([key,value,url,note])=><li key={key}>
-      <strong data-tone={value&&key==='overdue'?'danger':value?'warning':undefined}>{value??'—'}</strong>
-      <div>{url&&value!==undefined&&!wallboard?<Link href={url} onNavigate={url===financePath?onNavigate:undefined}>{t(key)}</Link>:<span>{t(key)}</span>}
-        {value===undefined?<small>{t('denied')}</small>:note?<small>{note}</small>:null}
-      </div>
-    </li>)}</ul>
+    <ul>{rows.map(([key,value,url,note])=>{
+      const tone=value?(key==='overdue'?'danger':'warning'):undefined;
+      return <li key={key} data-queue-state={publicLayout?(tone??(value===undefined?'unavailable':'clear')):undefined}>
+        <strong data-tone={tone}>{value??'—'}</strong>
+        <div>{url&&value!==undefined&&!wallboard?<Link href={url} onNavigate={url===financePath?onNavigate:undefined}>{t(key)}</Link>:<span>{t(key)}</span>}
+          {value===undefined?<small>{t('denied')}</small>:note?<small>{note}</small>:null}
+        </div>
+      </li>;
+    })}</ul>
   </Panel>;
 }
 
@@ -361,7 +388,7 @@ function wallboardChannels(data:SalesWallboardSnapshot){
   return [...primary,...selected.filter(row=>row.source.kind!=='verified')];
 }
 
-function WallboardChannels({data,rows,t,lang}:{data:SalesWallboardSnapshot;rows:ReturnType<typeof wallboardChannels>;t:Translate;lang:CrmLanguage}){
+function WallboardChannels({data,rows,t,lang,publicLayout}:{data:SalesWallboardSnapshot;rows:ReturnType<typeof wallboardChannels>;t:Translate;lang:CrmLanguage;publicLayout:boolean}){
   const number=new Intl.NumberFormat(languageTag[lang]);
   const percent=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
   const traffic=data.wallboard?.traffic;
@@ -376,6 +403,7 @@ function WallboardChannels({data,rows,t,lang}:{data:SalesWallboardSnapshot;rows:
       {leading&&<span className="sr-only"> · {t('tvColumnLeader')}</span>}
     </td>;
   }
+  const unavailable=(label:DashboardWord)=><td className="ops-dash-tv-unavailable">{t(label)}</td>;
   return <Panel title={t('tvChannelMatrix')} className="ops-dash-tv-channel-matrix" aside={<span>
     <strong className="ops-dash-tv-leading-key">{t('tvColumnLegend')}</strong> · {t('tvRateRankMinimum')} {dashboardRateComparisonMinimum}
   </span>}>
@@ -387,17 +415,23 @@ function WallboardChannels({data,rows,t,lang}:{data:SalesWallboardSnapshot;rows:
         const mediumLabel=kind==='paid'?t('tvPaidMedia'):medium==='organic'?t('tvOrganicSearch'):kind==='unpaid'?t('tvOrganicSocial'):medium;
         const source=ranked?row.source.source+' · '+mediumLabel:row.source.kind==='verified'?gaSourceTitle(row.source,t):sourceTitle(row.source,t);
         const rate=row.eligible?row.paid/row.eligible:undefined;
-        const costState=!ranked?t('tvSourcePending'):!row.spend.size&&(kind==='unpaid'||medium==='organic')?t('tvNonPaid'):'—';
+        const unpaid=kind==='unpaid'||medium==='organic';
+        const costState=!ranked?t('tvSourcePending'):!row.spend.size&&unpaid?t('tvNonPaid'):
+          publicLayout?t('tvCostReconciliation'):'—';
         return <tr key={row.source.key} data-source-pending={!ranked||undefined}>
           <th scope="row">{source}</th>
-          {metric(row.sessions===undefined?'—':number.format(row.sessions),leaders[index].sessions)}
-          {metric(row.funnel?.landed?percent.format(row.funnel.started/row.funnel.landed):'—',false,
+          {publicLayout&&row.sessions===undefined?unavailable('tvMissingData'):
+            metric(row.sessions===undefined?'—':number.format(row.sessions),leaders[index].sessions)}
+          {publicLayout&&!row.funnel?.landed?unavailable(funnel?'tvNoSessionSample':'tvNoSessionData'):
+            metric(row.funnel?.landed?percent.format(row.funnel.started/row.funnel.landed):'—',false,
             row.funnel?.landed?number.format(row.funnel.started)+'/'+number.format(row.funnel.landed):undefined)}
-          {metric(rate===undefined?'—':percent.format(rate),leaders[index].rate,
-            rate!==undefined?number.format(row.paid)+'/'+number.format(row.eligible):undefined)}
+          {publicLayout&&rate===undefined?unavailable('tvNoMatureSample'):metric(rate===undefined?'—':percent.format(rate),leaders[index].rate,
+            rate!==undefined?<>{number.format(row.paid)}/{number.format(row.eligible)}
+              {publicLayout&&row.eligible<dashboardRateComparisonMinimum&&<span className="ops-dash-tv-small-sample">{t('tvLowSample')}</span>}</>:undefined)}
           {metric(number.format(row.first),leaders[index].first,
             <DashboardDelta value={row.first-row.previousFirst} format={value=>number.format(value)}/>)}
-          <td><strong>{[...row.spend].map(([currency,amount])=>formatCurrency(amount/dashboardAdSpendScale,lang,currency)).join(' · ')||'—'}</strong></td>
+          {publicLayout&&kind==='paid'&&!row.spend.size?unavailable('tvNoSpendData'):
+            <td><strong>{[...row.spend].map(([currency,amount])=>formatCurrency(amount/dashboardAdSpendScale,lang,currency)).join(' · ')||'—'}</strong></td>}
           <td>{costState}</td>
         </tr>;
       })}
@@ -413,13 +447,14 @@ function WallboardChannels({data,rows,t,lang}:{data:SalesWallboardSnapshot;rows:
   </Panel>;
 }
 
-function WallboardPayment({rows,t,lang}:{rows:ReturnType<typeof wallboardChannels>;t:Translate;lang:CrmLanguage}){
+function WallboardPayment({rows,t,lang,publicLayout}:{rows:ReturnType<typeof wallboardChannels>;t:Translate;lang:CrmLanguage;publicLayout:boolean}){
   const percent=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
   return <Panel title={t('tvChannelDrop')} aside={<span>{t('byOrderSource')}</span>}>
     <Table headers={[t('source'),t('orders'),t('tvNoProof'),t('tvWithProof'),t('paid')]}>
       {rows.filter(row=>row.orders).map(row=><tr key={row.source.key}>
         <th scope="row">{sourceTitle(row.source,t)}</th><td>{row.eligible}</td>
-        {[row.noProof,row.withProof,row.paid].map((count,index)=>{
+        {publicLayout&&!row.eligible?<td colSpan={3} className="ops-dash-tv-unavailable">{t('tvNoMatureSample')}</td>:
+          [row.noProof,row.withProof,row.paid].map((count,index)=>{
           const prominent=row.source.kind==='verified'&&index<2&&count>(index===0?row.withProof:row.noProof);
           return <td key={index} className={prominent?'ops-dash-loss-focus':undefined}
             title={prominent?t('tvLossFocus'):undefined}>
@@ -433,7 +468,7 @@ function WallboardPayment({rows,t,lang}:{rows:ReturnType<typeof wallboardChannel
   </Panel>;
 }
 
-function WallboardSupply({data,t}:{data:SalesWallboardSnapshot;t:Translate}){
+function WallboardSupply({data,t,publicLayout}:{data:SalesWallboardSnapshot;t:Translate;publicLayout:boolean}){
   const groups=dashboardSupply(data.upcoming,data.demand);
   const shownLevels=dashboardLevels.filter(level=>groups.some(row=>row.level===level));
   return <Panel title={t('tvSupply')} className="ops-dash-tv-supply" aside={<span>{t('tvSupplyLegend')}</span>}>
@@ -443,7 +478,11 @@ function WallboardSupply({data,t}:{data:SalesWallboardSnapshot;t:Translate}){
         {enrollmentPeriods.map(period=>{
           const value=groups.find(row=>row.level===level&&row.period===period);
           return <td key={period} title={value?t('tvSupplyBasis'):undefined} data-shortage={Boolean(value?.waiting&&!value.seats)||undefined}>
-            {value?<>{value.waiting} · {data.demand?value.requests:'—'} · <strong>{value.seats}</strong></>:'—'}
+            {value?publicLayout?<span className="ops-dash-tv-supply-values">
+              <span>{value.waiting}</span><span aria-hidden="true">·</span>
+              <span>{data.demand?value.requests:'—'}</span><span aria-hidden="true">·</span>
+              <strong>{value.seats}</strong>
+            </span>:<>{value.waiting} · {data.demand?value.requests:'—'} · <strong>{value.seats}</strong></>:'—'}
           </td>;
         })}
       </tr>)}
@@ -473,12 +512,12 @@ function WallboardSeries({series,format,dates}:{series:{date:string;current:numb
   </div>;
 }
 
-function WallboardTrend({data,t,lang}:{data:SalesWallboardSnapshot;t:Translate;lang:CrmLanguage}){
+function WallboardTrend({data,t,lang,publicLayout}:{data:SalesWallboardSnapshot;t:Translate;lang:CrmLanguage;publicLayout:boolean}){
   const rows=data.wallboard?.dailyPaid??[];
   const hasCash=rows.some(row=>row.net!==null&&row.net!==undefined);
   const amounts=rows.flatMap(row=>row.net!=null&&row.previousNet!=null?[{date:row.date,current:row.net,previous:row.previousNet}]:[]);
   const compact=new Intl.NumberFormat(languageTag[lang],{notation:'compact',maximumFractionDigits:1});
-  return <Panel title={t('trend')} className="ops-dash-tv-trend">
+  return <Panel title={t(publicLayout?'tvSevenDayTrend':'trend')} className="ops-dash-tv-trend">
     <strong>{t('tvTrendCount')}</strong>
     <WallboardSeries series={rows.map(row=>({date:row.date,current:row.paid,previous:row.previous}))}
       dates={!hasCash} format={value=>String(value)}/>
@@ -820,9 +859,9 @@ function WallboardKpiTrack({fill,marker,tone}:{fill:number|null;marker:number|nu
   </div>;
 }
 
-function WallboardCumulativeKpi({label,value,previous,plan,monthProgress,format,percent,unit,t,coverage}:{
+function WallboardCumulativeKpi({label,value,previous,plan,monthProgress,format,percent,unit,t,coverage,publicLayout}:{
   label:string;value:number|null;previous:number|null;plan?:DashboardKpiTarget;format:(value:number)=>string;
-  monthProgress:number;percent:(value:number)=>string;unit?:string;t:Translate;coverage?:string;
+  monthProgress:number;percent:(value:number)=>string;unit?:string;t:Translate;coverage?:string;publicLayout:boolean;
 }){
   const amount=(value:number)=>format(value)+(unit?' '+unit:'');
   const ratio=value!==null&&plan?value/plan.target:null;
@@ -831,6 +870,29 @@ function WallboardCumulativeKpi({label,value,previous,plan,monthProgress,format,
   const reference=expected??previous;
   const pace=value!==null&&expected!==null?value-expected:null;
   const tone=pace===null?undefined:pace<0?'warning':'success';
+  const paceText=pace===null?null:pace===0?t('tvKpiOnPace'):
+    t(pace>0?'tvKpiAhead':'tvKpiBehind')+' '+amount(Math.abs(pace));
+  if(publicLayout)return <article className="ops-dash-tv-score ops-dash-tv-kpi-primary">
+    <span>{label}</span>
+    <div className="ops-dash-tv-score-value">
+      <strong>{value===null?'—':format(value)}</strong>
+      {value!==null&&unit&&<span>{unit}</span>}
+    </div>
+    <div className="ops-dash-tv-score-meta">
+      <span>{t(value===null?'tvMissingData':'tvKpiActual')}</span>
+      {ratio!==null&&<span aria-label={t('tvKpiCompletion')+' '+percent(ratio)}>{percent(ratio)}</span>}
+    </div>
+    <WallboardKpiTrack fill={value!==null&&value>=0?value/scale:null}
+      marker={reference!==null&&reference>=0?reference/scale:null} tone={tone}/>
+    <dl className="ops-dash-tv-kpi-breakdown">
+      {plan?<><div><dt>{t('tvKpiPlan')}</dt><dd>{expected===null?'—':amount(expected)}</dd></div>
+        <div><dt>{t('tvKpiGap')}</dt><dd>{paceText===null?t('tvMissingData'):<strong data-tone={tone}>{paceText}</strong>}</dd></div>
+        <div><dt>{t('tvKpiTarget')}</dt><dd>{amount(plan.target)}</dd></div></>:
+        <div><dt>{t('tvKpiComparison')}</dt><dd>{previous===null?t('tvMissingData'):amount(previous)}</dd></div>}
+    </dl>
+    {!plan&&<p>{t('tvTargetPending')}{value!==null&&previous!==null&&<> · <DashboardDelta value={value-previous} format={format}/></>}</p>}
+    {coverage&&<p className="ops-dash-caption">{coverage}</p>}
+  </article>;
   return <article className="ops-dash-tv-score">
     <span>{label}</span>
     <div className="ops-dash-tv-score-value"><strong>{value===null?'—':format(value)}</strong>
@@ -843,15 +905,15 @@ function WallboardCumulativeKpi({label,value,previous,plan,monthProgress,format,
     <WallboardKpiTrack fill={value!==null&&value>=0?value/scale:null}
       marker={reference!==null&&reference>=0?reference/scale:null} tone={tone}/>
     <p>{value===null?t('denied'):pace!==null&&expected!==null?<>
-      <strong data-tone={tone}>{pace===0?t('tvKpiOnPace'):t(pace>0?'tvKpiAhead':'tvKpiBehind')+' '+amount(Math.abs(pace))}</strong>
+      <strong data-tone={tone}>{paceText}</strong>
       {' · '+t('tvKpiPlan')+' '+amount(expected)}
     </>:<>{t('tvTargetPending')}{previous!==null&&<> · <DashboardDelta value={value-previous} format={format}/></>}</>}</p>
     {coverage&&<p className="ops-dash-caption">{coverage}</p>}
   </article>;
 }
 
-function WallboardRateKpi({data,t,percent,count}:{data:SalesWallboardSnapshot;t:Translate;
-  percent:(value:number)=>string;count:(value:number)=>string}){
+function WallboardRateKpi({data,t,percent,count,publicLayout}:{data:SalesWallboardSnapshot;t:Translate;
+  percent:(value:number)=>string;count:(value:number)=>string;publicLayout:boolean}){
   const current=data.current,previous=data.compare;
   const rate=current.mature?current.paidWithinWindow/current.mature:null;
   const sampleNote=paymentSampleNote(current,t,count);
@@ -860,17 +922,22 @@ function WallboardRateKpi({data,t,percent,count}:{data:SalesWallboardSnapshot;t:
   const deviation=rate!==null&&target!==undefined?Math.round((rate-target)*1000)/10:null;
   const periodChange=rate!==null&&prior!==null?Math.round((rate-prior)*1000)/10:null;
   const tone=deviation!==null?deviation<0?'warning':'success':undefined;
-  return <article className="ops-dash-tv-score">
+  const noMatureOrders=publicLayout&&rate===null;
+  const note=noMatureOrders&&!current.timingUnknown
+    ?current.observing?count(current.observing)+' '+t('tvKpiOrdersObserving'):null
+    :sampleNote;
+  return <article className={'ops-dash-tv-score'+(publicLayout?' ops-dash-tv-kpi-primary':'')}>
     <span>{t('rate')}</span>
     <div className="ops-dash-tv-score-value"><strong>{rate===null?'—':percent(rate)}</strong>
       {target!==undefined&&<span>{t('tvKpiTarget')} {percent(target)}</span>}
     </div>
-    <div className="ops-dash-tv-score-meta">
+    {noMatureOrders?<div className="ops-dash-tv-score-meta"><span>{t('tvKpiNoSample')}</span></div>:
+      <div className="ops-dash-tv-score-meta">
       <span>{t('tvKpiMaturePaid')}</span>
       <span>{count(current.paidWithinWindow)} / {count(current.mature)}</span>
-    </div>
+    </div>}
     <WallboardKpiTrack fill={rate} marker={target??prior} tone={tone}/>
-    <p>{sampleNote??(deviation!==null?
+    <p>{note??(noMatureOrders?null:deviation!==null?
       <strong data-tone={tone}>{deviation===0?t('tvKpiAtTarget'):
         t(deviation>0?'tvKpiAbove':'tvKpiBelow')+' '+count(Math.abs(deviation))+' '+t('percentagePoints')}</strong>:
       t('tvTargetPending'))}
@@ -880,7 +947,7 @@ function WallboardRateKpi({data,t,percent,count}:{data:SalesWallboardSnapshot;t:
   </article>;
 }
 
-function WallboardKpis({data,t,lang,compactMoney}:{data:SalesWallboardSnapshot;t:Translate;lang:CrmLanguage;compactMoney:(value:number)=>string}){
+function WallboardKpis({data,t,lang,compactMoney,publicLayout}:{data:SalesWallboardSnapshot;t:Translate;lang:CrmLanguage;compactMoney:(value:number)=>string;publicLayout:boolean}){
   const number=new Intl.NumberFormat(languageTag[lang]);
   const format=new Intl.NumberFormat(languageTag[lang],{style:'percent',maximumFractionDigits:1});
   const monthProgress=dashboardKpiMonthProgress(Date.parse(data.asOf));
@@ -892,13 +959,13 @@ function WallboardKpis({data,t,lang,compactMoney}:{data:SalesWallboardSnapshot;t
   return <section className="ops-dash-tv-scoreboard" aria-label={t('tvKpiHeading')}>
     <div className="ops-dash-tv-score-grid">
       <WallboardCumulativeKpi label={t('net')} value={data.cash?.current.net??null} previous={data.cash?.compare.net??null}
-        plan={kpi?.net} monthProgress={monthProgress} format={compactMoney} percent={value=>format.format(value)} t={t}/>
+        plan={kpi?.net} monthProgress={monthProgress} format={compactMoney} percent={value=>format.format(value)} t={t} publicLayout={publicLayout}/>
       <WallboardCumulativeKpi label={t('paid')} value={data.current.paid} previous={data.compare.paid}
-        plan={kpi?.paid} monthProgress={monthProgress} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvEnrollmentUnit')} t={t}/>
+        plan={kpi?.paid} monthProgress={monthProgress} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvEnrollmentUnit')} t={t} publicLayout={publicLayout}/>
       <WallboardCumulativeKpi label={t('first')} value={data.current.first} previous={data.compare.first}
-        plan={kpi?.first} monthProgress={monthProgress} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvLearnerUnit')} t={t}
+        plan={kpi?.first} monthProgress={monthProgress} format={value=>number.format(value)} percent={value=>format.format(value)} unit={t('tvLearnerUnit')} t={t} publicLayout={publicLayout}
         coverage={data.current.identityUnknown?t('firstIdentityPending')+' · '+number.format(data.current.identityUnknown):undefined}/>
-      <WallboardRateKpi data={data} t={t} percent={value=>format.format(value)} count={value=>number.format(value)}/>
+      <WallboardRateKpi data={data} t={t} percent={value=>format.format(value)} count={value=>number.format(value)} publicLayout={publicLayout}/>
       <article className="ops-dash-tv-score">
         <span>{t('tvKpiClassReadiness')}</span>
         <div className="ops-dash-tv-score-value"><strong>{number.format(ready)}</strong><span>/ {number.format(classes.length)}</span></div>
@@ -930,7 +997,7 @@ function WallboardKpis({data,t,lang,compactMoney}:{data:SalesWallboardSnapshot;t
   </section>;
 }
 
-function Wallboard({data,lang,t,stale}:{data:SalesWallboardSnapshot;lang:CrmLanguage;t:Translate;stale:boolean}){
+function Wallboard({data,lang,t,stale,publicLayout=false}:{data:SalesWallboardSnapshot;lang:CrmLanguage;t:Translate;stale:boolean;publicLayout?:boolean}){
   const board=useRef<HTMLDivElement>(null);
   const fullscreenPending=useRef(false);
   const [fullscreen,setFullscreen]=useState<'native'|'viewport'|null>(null);
@@ -984,10 +1051,13 @@ function Wallboard({data,lang,t,stale}:{data:SalesWallboardSnapshot;lang:CrmLang
   const short=data.upcoming.reduce<WallboardClass|undefined>((earliest,row)=>
     enrollmentClassShortfall(row)>0&&(!earliest||classStart(row)<classStart(earliest))?row:earliest,undefined);
   const fullscreenAction=fullscreen==='native'?'closeFullscreen':fullscreen==='viewport'?'closeWallboardViewport':'fullscreen';
-  return <div className="ops-dash-tv-outer" ref={board} data-fullscreen={fullscreen??undefined}>
+  return <div className="ops-dash-tv-outer" ref={board} data-fullscreen={fullscreen??undefined} data-wallboard-layout={publicLayout?'public':undefined}>
     <div className="ops-dash-tv">
       <header><div><span>UPER</span> <strong>{t('tvTitle')}</strong></div>
-        <div><time dateTime={data.asOf}>{formatWib(data.asOf)} WIB</time>
+        <div>{publicLayout?<div className="ops-dash-tv-updated">
+          <time dateTime={data.asOf}>{t('asOf')} · {formatWib(data.asOf)} WIB</time>
+          {stale&&<span role="status">{t('stale')}</span>}
+        </div>:<time dateTime={data.asOf}>{formatWib(data.asOf)} WIB</time>}
           <AdminPageAction label={t(fullscreenAction)} icon={fullscreen?Minimize:Maximize} onClick={toggleFullscreen}/></div>
       </header>
       <div className="ops-dash-tv-strip ops-dash-tv-summary">
@@ -995,7 +1065,7 @@ function Wallboard({data,lang,t,stale}:{data:SalesWallboardSnapshot;lang:CrmLang
         {short&&<span>{enrollmentClassTitle(short,lang)} · {t('tvActiveShortage')} <b className="ops-dash-loss-key">{enrollmentClassShortfall(short)} {t('tvLearnerUnit')}</b></span>}
         <span className="ops-dash-tv-context">{t('tvKpiHeading')} · {sameDate(data.period.from,monthEnd.toISOString().slice(0,10))} WIB</span>
       </div>
-      <WallboardKpis data={data} t={t} lang={lang} compactMoney={compactMoney}/>
+      <WallboardKpis data={data} t={t} lang={lang} compactMoney={compactMoney} publicLayout={publicLayout}/>
       <div className="ops-dash-tv-strip">
         <strong>{t('tvSameTimeLastWeek')}</strong>
         <span>{t('orders')} <b>{data.today.orders}</b> {todayChange(data.today.orders,today?.orders)}</span>
@@ -1005,13 +1075,13 @@ function Wallboard({data,lang,t,stale}:{data:SalesWallboardSnapshot;lang:CrmLang
         <span className="ops-dash-tv-kpi-legend ops-dash-tv-context">{t('tvKpiMarker')}</span>
       </div>
       <div className="ops-dash-tv-upper">
-        <WallboardChannels data={data} rows={rows} t={t} lang={lang}/>
-        <WallboardTrend data={data} t={t} lang={lang}/>
+        <WallboardChannels data={data} rows={rows} t={t} lang={lang} publicLayout={publicLayout}/>
+        <WallboardTrend data={data} t={t} lang={lang} publicLayout={publicLayout}/>
       </div>
       <div className="ops-dash-tv-lower">
-        <WallboardPayment rows={rows} t={t} lang={lang}/>
-        <WallboardSupply data={data} t={t}/>
-        <Upcoming rows={data.upcoming} t={t} lang={lang} limited pendingByClass={data.queue?.pendingByClass}/>
+        <WallboardPayment rows={rows} t={t} lang={lang} publicLayout={publicLayout}/>
+        <WallboardSupply data={data} t={t} publicLayout={publicLayout}/>
+        <Upcoming rows={data.upcoming} t={t} lang={lang} limited pendingByClass={data.queue?.pendingByClass} publicLayout={publicLayout}/>
       </div>
       <div className="ops-dash-tv-strip">
         <strong>{t('tvProcess')}</strong>
@@ -1020,9 +1090,9 @@ function Wallboard({data,lang,t,stale}:{data:SalesWallboardSnapshot;lang:CrmLang
       <div className="ops-dash-tv-footer-panels">
         <WallboardIntake data={data} t={t} lang={lang}/>
         <WallboardLevelChanges data={data} t={t} lang={lang}/>
-        <Queue data={data} t={t} lang={lang} wallboard/>
+        <Queue data={data} t={t} lang={lang} wallboard publicLayout={publicLayout}/>
       </div>
-      <footer role="status">{stale?t('stale'):t('asOf')+' · '+formatWib(data.asOf)+' WIB'}</footer>
+      {!publicLayout&&<footer role="status">{stale?t('stale'):t('asOf')+' · '+formatWib(data.asOf)+' WIB'}</footer>}
     </div>
   </div>;
 }
@@ -1033,7 +1103,7 @@ export function PublicSalesWallboard(){
   const t:Translate=key=>dashboardLabel(lang,key);
   const data=useDashboard<SalesWallboardSnapshot>(salesWallboardApi,'',true,true,0,'omit');
   return <main className="ops-dash-tv-public" aria-label={t('tvTitle')}>
-    {data.snapshot?<Wallboard data={data.snapshot} lang={lang} t={t} stale={Boolean(data.error)}/>:
+    {data.snapshot?<Wallboard data={data.snapshot} lang={lang} t={t} stale={Boolean(data.error)} publicLayout/>:
       <p role={data.error?'alert':'status'}>{t(data.error?'error':'load')}</p>}
   </main>;
 }

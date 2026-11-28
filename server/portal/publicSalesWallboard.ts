@@ -1,6 +1,8 @@
 import {isCompanyTrial} from '../companyTrial.ts';
+import {isLocalEnrollmentRuntime} from './enrollmentSimulation.ts';
 
-export const hasPublicSalesWallboard=(env=process.env)=>env.PORTAL_ENV==='test'&&isCompanyTrial(env);
+export const hasPublicSalesWallboard=(env=process.env)=>
+  (env.PORTAL_ENV==='test'&&isCompanyTrial(env))||isLocalEnrollmentRuntime(env);
 
 export function shareWallboardSnapshot<T>(read:()=>Promise<T>,clock=Date.now){
   let cached:{value:T;until:number}|undefined;
