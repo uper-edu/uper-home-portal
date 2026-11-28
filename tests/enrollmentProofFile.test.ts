@@ -167,9 +167,9 @@ test('proof retry checks the old receipt under the order lock before replacing a
     }
     if(sql.startsWith('UPDATE enrollment_orders SET upload_expires_at')){
       operations.push('refresh');
-      assert.deepEqual(args,[orderId,oldId]);
+      assert.deepEqual(args,[orderId,oldId,classId]);
       assert.match(sql,/upload_expires_at<UTC_TIMESTAMP\(6\)\+INTERVAL 190 SECOND/);
-      assert.match(sql,/payment_due_at>=UTC_TIMESTAMP\(6\)/);
+      assert.match(sql,/payment_due_at>=\(SELECT COALESCE\(CAST\(data->>'\$\.recruitmentPausedAt' AS DATETIME\(6\)\),UTC_TIMESTAMP\(6\)\) FROM enrollment_classes WHERE id=:p3\)/);
       return {rows:[]};
     }
     assert.fail('Unexpected proof query: '+sql);
