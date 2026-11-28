@@ -170,7 +170,7 @@ export function EnrollmentPayment({ order, course, classInfo, language, status, 
       {!bank && <p>{t('报名编号', 'Order number', 'Nomor pendaftaran')} · {order.id}</p>}
       {!!order.creditIn&&<p>{t('旧订单已冲抵','Credit applied from an earlier order','Dana pesanan sebelumnya yang digunakan')} · {formatCurrency(order.creditIn,language)}</p>}
     </div>
-    {order.status === 'awaiting_payment' && Number.isFinite(deadline.valueOf()) && <div className="enrollment-payment-deadline">
+    {awaitingPayment && Number.isFinite(cutoff) && <div className="enrollment-payment-deadline">
       <span><Clock3 size={16} aria-hidden="true"/>{minutes ? timeLeft : t('付款时间已到', 'Payment deadline reached', 'Batas pembayaran tercapai')}</span>
       <time dateTime={deadline.toISOString()}>{dayFormat.format(deadline)} {enrollmentDateFormatter(language,'time',timeZone).format(deadline)} {enrollmentTimeZoneLabel(timeZone)} <span>{t('截止', 'deadline', 'batas')}</span></time>
     </div>}
